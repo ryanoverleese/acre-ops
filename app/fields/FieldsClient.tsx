@@ -35,6 +35,8 @@ export default function FieldsClient({
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
   const [saving, setSaving] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [addForm, setAddForm] = useState({ name: '', acres: '', lat: '', lng: '' });
 
   const filteredFields = useMemo(() => {
     let filtered = initialFields;
@@ -133,6 +135,38 @@ export default function FieldsClient({
     setIsEditing(false);
   };
 
+  const handleAddField = async () => {
+    if (!addForm.name.trim()) {
+      alert('Field name is required');
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await fetch('/api/fields', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: addForm.name,
+          acres: addForm.acres ? parseFloat(addForm.acres) : undefined,
+          lat: addForm.lat ? parseFloat(addForm.lat) : undefined,
+          lng: addForm.lng ? parseFloat(addForm.lng) : undefined,
+        }),
+      });
+      if (response.ok) {
+        setShowAddModal(false);
+        setAddForm({ name: '', acres: '', lat: '', lng: '' });
+        window.location.reload();
+      } else {
+        alert('Failed to create field');
+      }
+    } catch (error) {
+      console.error('Create error:', error);
+      alert('Failed to create field');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { class: string; label: string }> = {
       installed: { class: 'installed', label: 'Installed' },
@@ -213,7 +247,7 @@ export default function FieldsClient({
                     <option value="operation">Operation</option>
                   </select>
                 )}
-                <button className="btn btn-primary">
+                <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
@@ -357,6 +391,71 @@ export default function FieldsClient({
                   <button className="btn btn-primary" onClick={handleEdit}>Edit Field</button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Add New Field</h3>
+              <button className="close-btn" onClick={() => setShowAddModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>Field Name *</label>
+                  <input
+                    type="text"
+                    value={addForm.name}
+                    onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                    placeholder="Enter field name"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Acres</label>
+                  <input
+                    type="number"
+                    value={addForm.acres}
+                    onChange={(e) => setAddForm({ ...addForm, acres: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Latitude</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={addForm.lat}
+                      onChange={(e) => setAddForm({ ...addForm, lat: e.target.value })}
+                      placeholder="41.234567"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Longitude</label>
+                    <input
+                      type="number"
+                      step="0.000001"
+                      value={addForm.lng}
+                      onChange={(e) => setAddForm({ ...addForm, lng: e.target.value })}
+                      placeholder="-96.123456"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAddField} disabled={saving}>
+                {saving ? 'Creating...' : 'Create Field'}
+              </button>
             </div>
           </div>
         </div>
