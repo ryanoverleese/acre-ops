@@ -4,7 +4,6 @@ import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProcessedField, OperationOption } from './page';
 
-// Dynamically import the map component to avoid SSR issues
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
   loading: () => <div className="fields-map" style={{ display: 'block' }}><div className="loading"><div className="loading-spinner"></div>Loading map...</div></div>,
@@ -35,22 +34,17 @@ export default function FieldsClient({
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
   const [saving, setSaving] = useState(false);
 
-  // Filter fields based on current selections
   const filteredFields = useMemo(() => {
     let filtered = initialFields;
-
     if (currentFilter !== 'all') {
       filtered = filtered.filter((f) => f.status === currentFilter);
     }
-
     if (currentOperation !== 'all') {
       filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
     }
-
     return filtered;
   }, [initialFields, currentFilter, currentOperation]);
 
-  // Prepare fields for map (convert to the format the map expects)
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
       id: f.id,
@@ -89,7 +83,6 @@ export default function FieldsClient({
 
   const handleSave = async () => {
     if (!selectedField) return;
-    
     setSaving(true);
     try {
       const response = await fetch(`/api/fields/${selectedField.id}`, {
@@ -102,9 +95,7 @@ export default function FieldsClient({
           lng: editForm.lng,
         }),
       });
-
       if (response.ok) {
-        // Refresh the page to show updated data
         window.location.reload();
       } else {
         alert('Failed to save changes');
@@ -154,80 +145,42 @@ export default function FieldsClient({
 
   return (
     <>
-      {/* Status Tabs */}
       <div className="tabs" style={{ marginBottom: '16px' }}>
-        <button
-          className={`tab ${currentFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('all')}
-        >
+        <button className={`tab ${currentFilter === 'all' ? 'active' : ''}`} onClick={() => setCurrentFilter('all')}>
           All Fields ({statusCounts.all})
         </button>
-        <button
-          className={`tab ${currentFilter === 'needs-probe' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('needs-probe')}
-        >
+        <button className={`tab ${currentFilter === 'needs-probe' ? 'active' : ''}`} onClick={() => setCurrentFilter('needs-probe')}>
           Needs Probe ({statusCounts['needs-probe']})
         </button>
-        <button
-          className={`tab ${currentFilter === 'pending' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('pending')}
-        >
+        <button className={`tab ${currentFilter === 'pending' ? 'active' : ''}`} onClick={() => setCurrentFilter('pending')}>
           Ready to Install ({statusCounts.pending})
         </button>
-        <button
-          className={`tab ${currentFilter === 'installed' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('installed')}
-        >
+        <button className={`tab ${currentFilter === 'installed' ? 'active' : ''}`} onClick={() => setCurrentFilter('installed')}>
           Installed ({statusCounts.installed})
         </button>
       </div>
 
-      {/* Fields Container */}
       <div className={`fields-container ${mapVisible ? 'map-visible' : ''}`}>
         <div className="fields-list">
           <div className="table-container">
             <div className="table-header">
               <h3 className="table-title">Fields — 2025 Season</h3>
               <div className="table-actions">
-                <select
-                  value={currentOperation}
-                  onChange={(e) => setCurrentOperation(e.target.value)}
-                >
+                <select value={currentOperation} onChange={(e) => setCurrentOperation(e.target.value)}>
                   <option value="all">All Operations</option>
                   {operations.map((op) => (
-                    <option key={op.id} value={op.id.toString()}>
-                      {op.name}
-                    </option>
+                    <option key={op.id} value={op.id.toString()}>{op.name}</option>
                   ))}
                 </select>
-                <button
-                  className={`map-toggle ${mapVisible ? 'active' : ''}`}
-                  onClick={() => setMapVisible(!mapVisible)}
-                >
+                <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                    />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                   </svg>
                   Map View
                 </button>
                 <button className="btn btn-primary">
-                  <svg
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                   Add Field
                 </button>
@@ -248,46 +201,25 @@ export default function FieldsClient({
               <tbody>
                 {filteredFields.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={7}
-                      style={{ textAlign: 'center', color: 'var(--text-muted)' }}
-                    >
-                      No fields found. Add some in Baserow or adjust your filters.
+                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No fields found.
                     </td>
                   </tr>
                 ) : (
                   filteredFields.map((field) => (
-                    <tr 
-                      key={field.id} 
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => handleRowClick(field)}
-                      className={selectedField?.id === field.id ? 'selected' : ''}
-                    >
+                    <tr key={field.id} style={{ cursor: 'pointer' }} onClick={() => handleRowClick(field)} className={selectedField?.id === field.id ? 'selected' : ''}>
                       <td className="operation-name">{field.name}</td>
-                      <td>
-                        <span style={{ fontSize: '13px' }}>{field.operation}</span>
-                      </td>
+                      <td><span style={{ fontSize: '13px' }}>{field.operation}</span></td>
                       <td className="field-count">{field.acres}</td>
                       <td>{getCropBadge(field.crop)}</td>
-                      <td
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: '12px',
-                          color: field.probe ? 'inherit' : 'var(--text-muted)',
-                        }}
-                      >
+                      <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '12px', color: field.probe ? 'inherit' : 'var(--text-muted)' }}>
                         {field.probe || '—'}
                       </td>
                       <td>{getStatusBadge(field.status)}</td>
                       <td>
                         <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(field); }}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"
-                            />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
                           </svg>
                         </button>
                       </td>
@@ -298,12 +230,9 @@ export default function FieldsClient({
             </table>
           </div>
         </div>
-
-        {/* Map */}
         <FieldsMap fields={mapFields} visible={mapVisible} />
       </div>
 
-      {/* Detail Panel */}
       {selectedField && (
         <div className="detail-panel-overlay" onClick={handleClosePanel}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
@@ -315,44 +244,25 @@ export default function FieldsClient({
                 </svg>
               </button>
             </div>
-            
             <div className="detail-panel-content">
               {isEditing ? (
                 <div className="edit-form">
                   <div className="form-group">
                     <label>Field Name</label>
-                    <input
-                      type="text"
-                      value={editForm.name || ''}
-                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    />
+                    <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                   </div>
                   <div className="form-group">
                     <label>Acres</label>
-                    <input
-                      type="number"
-                      value={editForm.acres || ''}
-                      onChange={(e) => setEditForm({ ...editForm, acres: parseFloat(e.target.value) })}
-                    />
+                    <input type="number" value={editForm.acres || ''} onChange={(e) => setEditForm({ ...editForm, acres: parseFloat(e.target.value) })} />
                   </div>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Latitude</label>
-                      <input
-                        type="number"
-                        step="0.000001"
-                        value={editForm.lat || ''}
-                        onChange={(e) => setEditForm({ ...editForm, lat: parseFloat(e.target.value) })}
-                      />
+                      <input type="number" step="0.000001" value={editForm.lat || ''} onChange={(e) => setEditForm({ ...editForm, lat: parseFloat(e.target.value) })} />
                     </div>
                     <div className="form-group">
                       <label>Longitude</label>
-                      <input
-                        type="number"
-                        step="0.000001"
-                        value={editForm.lng || ''}
-                        onChange={(e) => setEditForm({ ...editForm, lng: parseFloat(e.target.value) })}
-                      />
+                      <input type="number" step="0.000001" value={editForm.lng || ''} onChange={(e) => setEditForm({ ...editForm, lng: parseFloat(e.target.value) })} />
                     </div>
                   </div>
                 </div>
@@ -383,14 +293,14 @@ export default function FieldsClient({
                   <div className="detail-row">
                     <span className="detail-label">Location</span>
                     <span className="detail-value">
-                      {selectedField.lat && selectedField.lng ? (
+                      {selectedField.lat != null && selectedField.lng != null ? (
                         <a 
                           href={`https://www.google.com/maps/place/${selectedField.lat},${selectedField.lng}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: 'var(--green)' }}
+                          style={{ color: 'var(--accent-green)' }}
                         >
-                          {selectedField.lat.toFixed(6)}, {selectedField.lng.toFixed(6)}
+                          {Number(selectedField.lat).toFixed(6)}, {Number(selectedField.lng).toFixed(6)}
                         </a>
                       ) : '—'}
                     </span>
@@ -398,7 +308,6 @@ export default function FieldsClient({
                 </div>
               )}
             </div>
-
             <div className="detail-panel-footer">
               {isEditing ? (
                 <>
