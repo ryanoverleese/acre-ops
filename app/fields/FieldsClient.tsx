@@ -29,6 +29,7 @@ export default function FieldsClient({
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
   const [mapVisible, setMapVisible] = useState(false);
+  const [colorBy, setColorBy] = useState<'none' | 'crop' | 'status' | 'operation'>('none');
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
@@ -50,6 +51,7 @@ export default function FieldsClient({
       id: f.id,
       name: f.name,
       operation: f.operation,
+      operationId: f.operationId,
       acres: f.acres,
       crop: f.crop,
       probe: f.probe,
@@ -178,6 +180,18 @@ export default function FieldsClient({
                   </svg>
                   Map View
                 </button>
+                {mapVisible && (
+                  <select
+                    value={colorBy}
+                    onChange={(e) => setColorBy(e.target.value as 'none' | 'crop' | 'status' | 'operation')}
+                    className="color-by-select"
+                  >
+                    <option value="none">Color by...</option>
+                    <option value="crop">Crop</option>
+                    <option value="status">Status</option>
+                    <option value="operation">Operation</option>
+                  </select>
+                )}
                 <button className="btn btn-primary">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -230,7 +244,7 @@ export default function FieldsClient({
             </table>
           </div>
         </div>
-        <FieldsMap fields={mapFields} visible={mapVisible} />
+        <FieldsMap fields={mapFields} visible={mapVisible} colorBy={colorBy} />
       </div>
 
       {selectedField && (
