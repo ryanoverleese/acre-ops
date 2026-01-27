@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import 'leaflet/dist/leaflet.css';
 
-// Define types for our field data
 interface FieldData {
   id: number;
   name: string;
@@ -22,19 +21,21 @@ interface FieldsMapProps {
   visible: boolean;
 }
 
-// We need to dynamically import the map to avoid SSR issues with Leaflet
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
   { ssr: false }
 );
+
 const TileLayer = dynamic(
   () => import('react-leaflet').then((mod) => mod.TileLayer),
   { ssr: false }
 );
+
 const Marker = dynamic(
   () => import('react-leaflet').then((mod) => mod.Marker),
   { ssr: false }
 );
+
 const Popup = dynamic(
   () => import('react-leaflet').then((mod) => mod.Popup),
   { ssr: false }
@@ -53,14 +54,14 @@ export default function FieldsMap({ fields, visible }: FieldsMapProps) {
 
   // Filter fields that have valid coordinates
   const mappableFields = fields.filter(
-    (f) => f.lat && f.lng && !isNaN(f.lat) && !isNaN(f.lng)
+    (f) => f.lat != null && f.lng != null && !isNaN(Number(f.lat)) && !isNaN(Number(f.lng)) && f.lat !== 0 && f.lng !== 0
   );
 
   // Calculate center from fields or default to Nebraska
   const center: [number, number] = mappableFields.length > 0
     ? [
-        mappableFields.reduce((sum, f) => sum + f.lat, 0) / mappableFields.length,
-        mappableFields.reduce((sum, f) => sum + f.lng, 0) / mappableFields.length,
+        mappableFields.reduce((sum, f) => sum + Number(f.lat), 0) / mappableFields.length,
+        mappableFields.reduce((sum, f) => sum + Number(f.lng), 0) / mappableFields.length,
       ]
     : [41.23, -96.06];
 
@@ -88,7 +89,7 @@ export default function FieldsMap({ fields, visible }: FieldsMapProps) {
           return (
             <Marker
               key={field.id}
-              position={[field.lat, field.lng]}
+              position={[Number(field.lat), Number(field.lng)]}
             >
               <Popup>
                 <div className="popup-title">{field.name}</div>
