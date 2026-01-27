@@ -1,0 +1,2683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acre Insights - Probe Manager</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <style>
+    :root {
+      --bg-primary: #0f1419;
+      --bg-secondary: #1a2332;
+      --bg-card: #212d3b;
+      --bg-hover: #2a3a4d;
+      --text-primary: #e8edf4;
+      --text-secondary: #8b98a8;
+      --text-muted: #5c6b7a;
+      --accent-green: #34d399;
+      --accent-green-dim: rgba(52, 211, 153, 0.15);
+      --accent-blue: #60a5fa;
+      --accent-blue-dim: rgba(96, 165, 250, 0.15);
+      --accent-amber: #fbbf24;
+      --accent-amber-dim: rgba(251, 191, 36, 0.15);
+      --accent-red: #f87171;
+      --accent-red-dim: rgba(248, 113, 113, 0.15);
+      --border: #2d3d50;
+      --radius: 8px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+
+    .app {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      padding: 20px 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .logo h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent-green);
+      letter-spacing: -0.5px;
+    }
+
+    .logo span {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .nav-section {
+      padding: 0 12px;
+      margin-bottom: 24px;
+    }
+
+    .nav-section-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 0 8px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-green-dim);
+      color: var(--accent-green);
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      opacity: 0.7;
+    }
+
+    .nav-item.active svg {
+      opacity: 1;
+    }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--accent-red);
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .header h2 {
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    .season-badge {
+      background: var(--accent-blue-dim);
+      color: var(--accent-blue);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 8px 12px;
+      width: 280px;
+    }
+
+    .search-box input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .search-box input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .search-box svg {
+      width: 16px;
+      height: 16px;
+      color: var(--text-muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: var(--accent-green);
+      color: var(--bg-primary);
+    }
+
+    .btn-primary:hover {
+      background: #2fc58c;
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-hover);
+    }
+
+    /* Content Area */
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .stat-value.green { color: var(--accent-green); }
+    .stat-value.blue { color: var(--accent-blue); }
+    .stat-value.amber { color: var(--accent-amber); }
+    .stat-value.red { color: var(--accent-red); }
+
+    .stat-change {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg-card);
+      padding: 4px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      width: fit-content;
+    }
+
+    .tab {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .tab:hover {
+      color: var(--text-primary);
+    }
+
+    .tab.active {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    /* Table */
+    .table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px 16px;
+      font-size: 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .operation-name {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .operation-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .field-count {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .status-badge.installed {
+      background: var(--accent-green-dim);
+      color: var(--accent-green);
+    }
+
+    .status-badge.pending {
+      background: var(--accent-amber-dim);
+      color: var(--accent-amber);
+    }
+
+    .status-badge.repair {
+      background: var(--accent-red-dim);
+      color: var(--accent-red);
+    }
+
+    .status-badge.removed {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .action-btn {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .action-btn:hover {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
+
+    .action-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Mobile View Indicator */
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+    }
+
+    .view-btn {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-card);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .view-btn.active {
+      background: var(--bg-secondary);
+      color: var(--accent-green);
+      border-color: var(--accent-green);
+    }
+
+    .view-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Installer Route Panel */
+    .route-panel {
+      display: none;
+      position: fixed;
+      right: 0;
+      top: 0;
+      width: 400px;
+      height: 100vh;
+      background: var(--bg-secondary);
+      border-left: 1px solid var(--border);
+      z-index: 100;
+      flex-direction: column;
+    }
+
+    .route-panel.open {
+      display: flex;
+    }
+
+    .route-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .route-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .close-btn {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: none;
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .close-btn:hover {
+      color: var(--text-primary);
+    }
+
+    .route-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .route-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .route-card:hover {
+      border-color: var(--accent-green);
+    }
+
+    .route-card.completed {
+      opacity: 0.5;
+    }
+
+    .route-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      background: var(--accent-green);
+      color: var(--bg-primary);
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .route-card.completed .route-number {
+      background: var(--text-muted);
+    }
+
+    .route-field {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .route-operation {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .route-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .route-detail {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .route-detail svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .route-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+
+    .route-actions .btn {
+      flex: 1;
+      justify-content: center;
+    }
+
+    /* Water Recs View */
+    .water-recs-grid {
+      display: none;
+    }
+
+    .water-recs-grid.active {
+      display: block;
+    }
+
+    .recs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .operation-selector {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .operation-selector select {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: var(--text-primary);
+      font-size: 14px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .operation-selector select:focus {
+      outline: none;
+      border-color: var(--accent-green);
+    }
+
+    .recs-container {
+      display: grid;
+      gap: 12px;
+    }
+
+    .rec-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 200px 1fr 120px auto;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .rec-field-info h4 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .rec-field-info p {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .rec-textarea {
+      width: 100%;
+      min-height: 60px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+    }
+
+    .rec-textarea:focus {
+      outline: none;
+      border-color: var(--accent-green);
+    }
+
+    .water-day-select {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .water-day-select:focus {
+      outline: none;
+      border-color: var(--accent-green);
+    }
+
+    .copy-btn {
+      padding: 10px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--accent-green-dim);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .copy-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .copy-all-bar {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+    }
+
+    .copy-all-bar span {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* Billing View */
+    .billing-grid {
+      display: none;
+    }
+
+    .billing-grid.active {
+      display: block;
+    }
+
+    .billing-summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .billing-table td {
+      vertical-align: top;
+    }
+
+    .billing-amount {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+
+    .billing-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .billing-status.draft {
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+    }
+
+    .billing-status.sent {
+      background: var(--accent-blue-dim);
+      color: var(--accent-blue);
+    }
+
+    .billing-status.paid {
+      background: var(--accent-green-dim);
+      color: var(--accent-green);
+    }
+
+    /* Repair View */
+    .repair-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 12px;
+    }
+
+    .repair-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .repair-title {
+      font-weight: 600;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .repair-sub {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .repair-body {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .repair-field label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .repair-field input,
+    .repair-field textarea {
+      width: 100%;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    .repair-field textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .repair-field input:focus,
+    .repair-field textarea:focus {
+      outline: none;
+      border-color: var(--accent-green);
+    }
+
+    .repair-actions {
+      display: flex;
+      gap: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-green);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--accent-green);
+      font-weight: 500;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      
+      .rec-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+      
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .search-box {
+        display: none;
+      }
+    }
+
+    /* Map Styles */
+    .fields-container {
+      display: flex;
+      gap: 20px;
+      height: calc(100vh - 200px);
+    }
+
+    .fields-container.map-visible .fields-list {
+      width: 55%;
+    }
+
+    .fields-container.map-visible .fields-map {
+      width: 45%;
+      display: block;
+    }
+
+    .fields-list {
+      width: 100%;
+      overflow-y: auto;
+    }
+
+    .fields-map {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    #map {
+      height: 100%;
+      width: 100%;
+      background: var(--bg-secondary);
+    }
+
+    .map-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .map-toggle:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .map-toggle.active {
+      background: var(--accent-green-dim);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    .map-toggle svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Custom map markers */
+    .custom-marker {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 3px solid white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .custom-marker.installed {
+      background: #34d399;
+    }
+
+    .custom-marker.pending {
+      background: #fbbf24;
+    }
+
+    .custom-marker.repair {
+      background: #f87171;
+    }
+
+    .custom-marker.needs-probe {
+      background: #5c6b7a;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-card);
+      color: var(--text-primary);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .leaflet-popup-tip {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+    }
+
+    .leaflet-popup-content {
+      margin: 12px 14px;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .popup-title {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .popup-detail {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .popup-status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 500;
+      margin-top: 6px;
+    }
+
+    .popup-status.installed {
+      background: var(--accent-green-dim);
+      color: var(--accent-green);
+    }
+
+    .popup-status.pending {
+      background: var(--accent-amber-dim);
+      color: var(--accent-amber);
+    }
+
+    .popup-status.repair {
+      background: var(--accent-red-dim);
+      color: var(--accent-red);
+    }
+
+    .popup-actions {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .popup-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 10px;
+      background: var(--accent-green);
+      color: var(--bg-primary);
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .popup-btn:hover {
+      background: #2fc58c;
+    }
+
+    /* Route builder styles */
+    .route-builder-bar {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--accent-green);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .route-builder-bar.active {
+      display: flex;
+    }
+
+    .route-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .route-info span {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    .route-count {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--accent-green-dim);
+      color: var(--accent-green);
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>Acre Insights</h1>
+        <span>Probe Manager</span>
+      </div>
+      
+      <nav class="nav-section">
+        <div class="nav-section-title">Overview</div>
+        <div class="nav-item active" onclick="showView('dashboard')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+          Dashboard
+        </div>
+        <div class="nav-item" onclick="showView('operations')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+          Operations
+        </div>
+        <div class="nav-item" onclick="showView('fields')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+          Fields
+        </div>
+        <div class="nav-item" onclick="showView('probes')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+          Probes
+        </div>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Field Work</div>
+        <div class="nav-item" onclick="toggleRoutePanel()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+          Today's Route
+          <span class="nav-badge">8</span>
+        </div>
+        <div class="nav-item" onclick="showView('repairs')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+          Repairs
+          <span class="nav-badge">3</span>
+        </div>
+      </nav>
+
+      <nav class="nav-section">
+        <div class="nav-section-title">Reports</div>
+        <div class="nav-item" onclick="showView('water-recs')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+          Water Recs
+        </div>
+        <div class="nav-item" onclick="showView('billing')">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          Billing
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="header">
+        <div class="header-left">
+          <h2 id="page-title">Dashboard</h2>
+          <span class="season-badge">2025 Season</span>
+        </div>
+        <div class="header-right">
+          <div class="search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <input type="text" placeholder="Search operations, fields, probes...">
+          </div>
+          <div class="view-toggle">
+            <button class="view-btn active">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"></path></svg>
+            </button>
+            <button class="view-btn">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+            </button>
+          </div>
+          <button class="btn btn-primary" onclick="toggleRoutePanel()">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            New Install
+          </button>
+        </div>
+      </header>
+
+      <div class="content">
+        <!-- Dashboard View -->
+        <div id="dashboard-view">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Operations</div>
+              <div class="stat-value green">44</div>
+              <div class="stat-change">+3 from last season</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Active Fields</div>
+              <div class="stat-value blue">555</div>
+              <div class="stat-change">482 with probes assigned</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Probes Installed</div>
+              <div class="stat-value amber">312</div>
+              <div class="stat-change">88 pending install</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Needs Repair</div>
+              <div class="stat-value red">3</div>
+              <div class="stat-change">Down from 7 last week</div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-header">
+              <h3 class="table-title">Operations Overview</h3>
+              <div class="table-actions">
+                <button class="btn btn-secondary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                  Filter
+                </button>
+                <button class="btn btn-secondary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                  Export
+                </button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Fields</th>
+                  <th>Probes</th>
+                  <th>Status</th>
+                  <th>Last Activity</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="operation-name">37 Ag</div>
+                    <div class="operation-sub">Blake Johnson, Grady Johnson, Jett Johnson</div>
+                  </td>
+                  <td class="field-count">42</td>
+                  <td class="field-count">48</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>All Installed</span></td>
+                  <td>Jan 24, 2025</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">River View Farms</div>
+                    <div class="operation-sub">Josh Brader</div>
+                  </td>
+                  <td class="field-count">28</td>
+                  <td class="field-count">32</td>
+                  <td><span class="status-badge pending"><span class="status-dot"></span>8 Pending</span></td>
+                  <td>Jan 26, 2025</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">T and L Farms</div>
+                    <div class="operation-sub">Tim Hock</div>
+                  </td>
+                  <td class="field-count">18</td>
+                  <td class="field-count">18</td>
+                  <td><span class="status-badge repair"><span class="status-dot"></span>1 Repair</span></td>
+                  <td>Jan 25, 2025</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">Double BJ Farms</div>
+                    <div class="operation-sub">Blake Johnson</div>
+                  </td>
+                  <td class="field-count">15</td>
+                  <td class="field-count">17</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>All Installed</span></td>
+                  <td>Jan 22, 2025</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">37 Ag Bros LLC</div>
+                    <div class="operation-sub">Grady Johnson, Jett Johnson</div>
+                  </td>
+                  <td class="field-count">12</td>
+                  <td class="field-count">14</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>All Installed</span></td>
+                  <td>Jan 20, 2025</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Operations View -->
+        <div id="operations-view" style="display: none;">
+          <div class="table-container">
+            <div class="table-header">
+              <h3 class="table-title">All Operations</h3>
+              <div class="table-actions">
+                <button class="btn btn-primary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  Add Operation
+                </button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Operation Name</th>
+                  <th>Contacts</th>
+                  <th>Billing Entities</th>
+                  <th>Fields</th>
+                  <th>Probes</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr onclick="showOperationDetail('37ag')" style="cursor: pointer;">
+                  <td>
+                    <div class="operation-name">37 Ag</div>
+                    <div class="operation-sub">Main operation for Johnson family</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">Blake Johnson</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Grady, Jett +1 more</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">37 Ag LLC</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Double BJ, 37 Ag Bros</div>
+                  </td>
+                  <td class="field-count">42</td>
+                  <td class="field-count">48</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>All Installed</span></td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                  </td>
+                </tr>
+                <tr onclick="showOperationDetail('riverview')" style="cursor: pointer;">
+                  <td>
+                    <div class="operation-name">River View Farms</div>
+                    <div class="operation-sub">Brader operation</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">Josh Brader</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">River View Farms Inc</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Brader Ag Inc</div>
+                  </td>
+                  <td class="field-count">28</td>
+                  <td class="field-count">32</td>
+                  <td><span class="status-badge pending"><span class="status-dot"></span>8 Pending</span></td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                  </td>
+                </tr>
+                <tr onclick="showOperationDetail('tl')" style="cursor: pointer;">
+                  <td>
+                    <div class="operation-name">T and L Farms</div>
+                    <div class="operation-sub">Tim Hock operation</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">Tim Hock</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">T and L Farms LLC</div>
+                  </td>
+                  <td class="field-count">18</td>
+                  <td class="field-count">18</td>
+                  <td><span class="status-badge repair"><span class="status-dot"></span>1 Repair</span></td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                  </td>
+                </tr>
+                <tr style="cursor: pointer;">
+                  <td>
+                    <div class="operation-name">Connie Shares</div>
+                    <div class="operation-sub">Grady + Landlord split</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">Grady Johnson</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Connie Miller</div>
+                  </td>
+                  <td>
+                    <div style="font-size: 13px;">Grady-Connie Split</div>
+                  </td>
+                  <td class="field-count">4</td>
+                  <td class="field-count">4</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>All Installed</span></td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Operation Detail Panel -->
+          <div id="operation-detail" style="display: none; margin-top: 24px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+              <button class="btn btn-secondary" onclick="hideOperationDetail()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                Back
+              </button>
+              <h3 style="font-size: 18px; font-weight: 600;">37 Ag — Detail View</h3>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <!-- Contacts -->
+              <div class="table-container">
+                <div class="table-header">
+                  <h3 class="table-title">Contacts</h3>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="operation-name">Blake Johnson</td>
+                      <td style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">402-555-1234</td>
+                      <td><span style="font-size: 12px; color: var(--text-muted);">Primary</span></td>
+                    </tr>
+                    <tr>
+                      <td class="operation-name">Grady Johnson</td>
+                      <td style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">402-555-2345</td>
+                      <td><span style="font-size: 12px; color: var(--text-muted);">Partner</span></td>
+                    </tr>
+                    <tr>
+                      <td class="operation-name">Jett Johnson</td>
+                      <td style="font-family: 'JetBrains Mono', monospace; font-size: 13px;">402-555-3456</td>
+                      <td><span style="font-size: 12px; color: var(--text-muted);">Partner</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              
+              <!-- Billing Entities -->
+              <div class="table-container">
+                <div class="table-header">
+                  <h3 class="table-title">Billing Entities</h3>
+                </div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Entity Name</th>
+                      <th>Invoice Contact</th>
+                      <th>Fields</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="operation-name">37 Ag LLC</td>
+                      <td>Blake Johnson</td>
+                      <td class="field-count">28</td>
+                    </tr>
+                    <tr>
+                      <td class="operation-name">Double BJ Farms LLC</td>
+                      <td>Blake Johnson</td>
+                      <td class="field-count">15</td>
+                    </tr>
+                    <tr>
+                      <td class="operation-name">37 Ag Bros LLC</td>
+                      <td>Grady Johnson</td>
+                      <td class="field-count">12</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fields View -->
+        <div id="fields-view" style="display: none;">
+          <div class="tabs" style="margin-bottom: 16px;">
+            <div class="tab active" onclick="filterFields('all')">All Fields (15)</div>
+            <div class="tab" onclick="filterFields('needs-probe')">Needs Probe (3)</div>
+            <div class="tab" onclick="filterFields('pending')">Ready to Install (5)</div>
+            <div class="tab" onclick="filterFields('installed')">Installed (7)</div>
+          </div>
+
+          <div class="route-builder-bar" id="route-builder">
+            <div class="route-info">
+              <span>🗺️ Building Route</span>
+              <span class="route-count" id="route-count">0 stops</span>
+              <span style="color: var(--text-muted);">Click pins on map to add to route</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary" onclick="clearRoute()">Clear</button>
+              <button class="btn btn-primary" onclick="saveRoute()">Save Route</button>
+            </div>
+          </div>
+
+          <div class="fields-container" id="fields-container">
+            <div class="fields-list">
+              <div class="table-container">
+                <div class="table-header">
+                  <h3 class="table-title">Fields — 2025 Season</h3>
+                  <div class="table-actions">
+                    <select id="operation-filter" style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary); font-size: 14px;" onchange="filterByOperation(this.value)">
+                      <option value="all">All Operations</option>
+                      <option value="37ag">37 Ag</option>
+                      <option value="riverview">River View Farms</option>
+                      <option value="tl">T and L Farms</option>
+                      <option value="connie">Connie Shares</option>
+                    </select>
+                    <button class="map-toggle" id="map-toggle" onclick="toggleMap()">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                      Map View
+                    </button>
+                    <button class="btn btn-secondary" id="route-builder-toggle" onclick="toggleRouteBuilder()">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"></path></svg>
+                      Build Route
+                    </button>
+                    <button class="btn btn-primary">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                      Add Field
+                    </button>
+                  </div>
+                </div>
+                <table id="fields-table">
+                  <thead>
+                    <tr>
+                      <th>Field Name</th>
+                      <th>Operation</th>
+                      <th>Acres</th>
+                      <th>Crop</th>
+                      <th>Probe</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="fields-tbody">
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="fields-map" id="fields-map">
+              <div id="map"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Probes View -->
+        <div id="probes-view" style="display: none;">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Inventory</div>
+              <div class="stat-value green">400</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">In Stock</div>
+              <div class="stat-value blue">88</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Installed</div>
+              <div class="stat-value amber">305</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">RMA / Retired</div>
+              <div class="stat-value red">7</div>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active">All Probes (10)</div>
+            <div class="tab">In Stock (3)</div>
+            <div class="tab">Assigned (2)</div>
+            <div class="tab">Installed (4)</div>
+            <div class="tab">RMA (1)</div>
+          </div>
+
+          <div class="table-container">
+            <div class="table-header">
+              <h3 class="table-title">Probe Inventory</h3>
+              <div class="table-actions">
+                <select style="background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px; color: var(--text-primary); font-size: 14px;">
+                  <option>All Brands</option>
+                  <option>CropX</option>
+                  <option>Sentek</option>
+                </select>
+                <button class="btn btn-secondary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                  Filter
+                </button>
+                <button class="btn btn-primary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  Add Probe
+                </button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Serial #</th>
+                  <th>Brand</th>
+                  <th>Model</th>
+                  <th>Length</th>
+                  <th>Owner</th>
+                  <th>Rack Location</th>
+                  <th>Assigned Field</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#16679</td>
+                  <td><span style="background: var(--accent-blue-dim); color: var(--accent-blue); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Sentek</span></td>
+                  <td>Drill & Drop</td>
+                  <td>36"</td>
+                  <td>37 Ag</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">—</td>
+                  <td>Johnson North Pivot</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>Installed</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#16680</td>
+                  <td><span style="background: var(--accent-blue-dim); color: var(--accent-blue); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Sentek</span></td>
+                  <td>Drill & Drop</td>
+                  <td>36"</td>
+                  <td>37 Ag</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">6A-7</td>
+                  <td>Johnson South 80</td>
+                  <td><span class="status-badge pending"><span class="status-dot"></span>Assigned</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#14221</td>
+                  <td><span style="background: var(--accent-green-dim); color: var(--accent-green); padding: 2px 8px; border-radius: 4px; font-size: 12px;">CropX</span></td>
+                  <td>Gen 3</td>
+                  <td>24"</td>
+                  <td>River View Farms</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">4B-2</td>
+                  <td>Brader West Pivot</td>
+                  <td><span class="status-badge pending"><span class="status-dot"></span>Assigned</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#14892</td>
+                  <td><span style="background: var(--accent-green-dim); color: var(--accent-green); padding: 2px 8px; border-radius: 4px; font-size: 12px;">CropX</span></td>
+                  <td>Gen 3</td>
+                  <td>36"</td>
+                  <td>37 Ag</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">—</td>
+                  <td>Grady Home Quarter</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>Installed</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#16842</td>
+                  <td><span style="background: var(--accent-green-dim); color: var(--accent-green); padding: 2px 8px; border-radius: 4px; font-size: 12px;">CropX</span></td>
+                  <td>Gen 3</td>
+                  <td>24"</td>
+                  <td>T and L Farms</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">—</td>
+                  <td>Hock East 160</td>
+                  <td><span class="status-badge repair"><span class="status-dot"></span>Repair</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#15234</td>
+                  <td><span style="background: var(--accent-blue-dim); color: var(--accent-blue); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Sentek</span></td>
+                  <td>Drill & Drop</td>
+                  <td>36"</td>
+                  <td>37 Ag</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">—</td>
+                  <td>Jett River Bottom</td>
+                  <td><span class="status-badge installed"><span class="status-dot"></span>Installed</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#17001</td>
+                  <td><span style="background: var(--accent-blue-dim); color: var(--accent-blue); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Sentek</span></td>
+                  <td>Drill & Drop</td>
+                  <td>24"</td>
+                  <td>Acre Insights</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">1A-1</td>
+                  <td style="color: var(--text-muted);">—</td>
+                  <td><span class="status-badge" style="background: var(--accent-blue-dim); color: var(--accent-blue);"><span class="status-dot"></span>In Stock</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#17002</td>
+                  <td><span style="background: var(--accent-blue-dim); color: var(--accent-blue); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Sentek</span></td>
+                  <td>Drill & Drop</td>
+                  <td>36"</td>
+                  <td>Acre Insights</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">1A-2</td>
+                  <td style="color: var(--text-muted);">—</td>
+                  <td><span class="status-badge" style="background: var(--accent-blue-dim); color: var(--accent-blue);"><span class="status-dot"></span>In Stock</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#17003</td>
+                  <td><span style="background: var(--accent-green-dim); color: var(--accent-green); padding: 2px 8px; border-radius: 4px; font-size: 12px;">CropX</span></td>
+                  <td>Gen 3</td>
+                  <td>24"</td>
+                  <td>Acre Insights</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px;">1A-3</td>
+                  <td style="color: var(--text-muted);">—</td>
+                  <td><span class="status-badge" style="background: var(--accent-blue-dim); color: var(--accent-blue);"><span class="status-dot"></span>In Stock</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+                <tr>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-weight: 600;">#12005</td>
+                  <td><span style="background: var(--accent-green-dim); color: var(--accent-green); padding: 2px 8px; border-radius: 4px; font-size: 12px;">CropX</span></td>
+                  <td>Gen 2</td>
+                  <td>24"</td>
+                  <td>37 Ag</td>
+                  <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-muted);">—</td>
+                  <td style="color: var(--text-muted);">—</td>
+                  <td><span class="status-badge" style="background: var(--accent-red-dim); color: var(--accent-red);"><span class="status-dot"></span>RMA</span></td>
+                  <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Water Recs View -->
+        <div id="water-recs-view" class="water-recs-grid">
+          <div class="recs-header">
+            <div class="operation-selector">
+              <label style="color: var(--text-secondary); font-size: 14px;">Operation:</label>
+              <select>
+                <option>37 Ag (All Entities)</option>
+                <option>River View Farms</option>
+                <option>T and L Farms</option>
+                <option>Double BJ Farms</option>
+              </select>
+              <span style="color: var(--text-muted); font-size: 13px;">12 fields need reports today</span>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                Jan 27, 2025
+              </button>
+            </div>
+          </div>
+
+          <div class="recs-container">
+            <div class="rec-card">
+              <div class="rec-field-info">
+                <h4>Johnson North Pivot</h4>
+                <p>Corn • 125 ac • Sentek</p>
+              </div>
+              <textarea class="rec-textarea" placeholder="Write recommendation...">Looking good at 78%. Can wait until Thursday to start next round.</textarea>
+              <select class="water-day-select">
+                <option>Water Day</option>
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option selected>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+              </select>
+              <button class="copy-btn" onclick="copyRec(this)">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              </button>
+            </div>
+
+            <div class="rec-card">
+              <div class="rec-field-info">
+                <h4>Johnson South 80</h4>
+                <p>Corn • 80 ac • Sentek</p>
+              </div>
+              <textarea class="rec-textarea" placeholder="Write recommendation...">Getting dry at 62%. Priority field - start watering tomorrow.</textarea>
+              <select class="water-day-select">
+                <option>Water Day</option>
+                <option>Monday</option>
+                <option selected>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+              </select>
+              <button class="copy-btn" onclick="copyRec(this)">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              </button>
+            </div>
+
+            <div class="rec-card">
+              <div class="rec-field-info">
+                <h4>Grady Home Quarter</h4>
+                <p>Soybeans • 160 ac • CropX</p>
+              </div>
+              <textarea class="rec-textarea" placeholder="Write recommendation..."></textarea>
+              <select class="water-day-select">
+                <option selected>Water Day</option>
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+              </select>
+              <button class="copy-btn" onclick="copyRec(this)">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              </button>
+            </div>
+
+            <div class="rec-card">
+              <div class="rec-field-info">
+                <h4>Jett River Bottom</h4>
+                <p>Corn • 95 ac • Sentek</p>
+              </div>
+              <textarea class="rec-textarea" placeholder="Write recommendation..."></textarea>
+              <select class="water-day-select">
+                <option selected>Water Day</option>
+                <option>Monday</option>
+                <option>Tuesday</option>
+                <option>Wednesday</option>
+                <option>Thursday</option>
+                <option>Friday</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+              </select>
+              <button class="copy-btn" onclick="copyRec(this)">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="copy-all-bar">
+            <span>4 recommendations ready</span>
+            <button class="btn btn-primary" onclick="copyAllRecs()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+              Copy All for iMessage
+            </button>
+          </div>
+        </div>
+
+        <!-- Billing View -->
+        <div id="billing-view" class="billing-grid">
+          <div class="billing-summary">
+            <div class="stat-card">
+              <div class="stat-label">Total Billable</div>
+              <div class="stat-value green">$168,450</div>
+              <div class="stat-change">555 fields × avg $303</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Invoiced</div>
+              <div class="stat-value blue">$142,200</div>
+              <div class="stat-change">84% of total</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Paid</div>
+              <div class="stat-value amber">$98,750</div>
+              <div class="stat-change">69% collected</div>
+            </div>
+          </div>
+
+          <div class="table-container billing-table">
+            <div class="table-header">
+              <h3 class="table-title">Invoices by Billing Entity</h3>
+              <div class="table-actions">
+                <button class="btn btn-secondary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                  Filter
+                </button>
+                <button class="btn btn-primary">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  Generate Invoices
+                </button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Billing Entity</th>
+                  <th>Operation</th>
+                  <th>Fields</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                  <th>Contact</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    <div class="operation-name">37 Ag LLC</div>
+                  </td>
+                  <td>37 Ag</td>
+                  <td class="field-count">28</td>
+                  <td class="billing-amount">$8,400</td>
+                  <td><span class="billing-status paid"><span class="status-dot"></span>Paid</span></td>
+                  <td>Blake Johnson</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">Double BJ Farms LLC</div>
+                  </td>
+                  <td>37 Ag</td>
+                  <td class="field-count">15</td>
+                  <td class="billing-amount">$4,500</td>
+                  <td><span class="billing-status sent"><span class="status-dot"></span>Sent</span></td>
+                  <td>Blake Johnson</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">37 Ag Bros LLC</div>
+                  </td>
+                  <td>37 Ag</td>
+                  <td class="field-count">12</td>
+                  <td class="billing-amount">$3,600</td>
+                  <td><span class="billing-status sent"><span class="status-dot"></span>Sent</span></td>
+                  <td>Grady Johnson</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">River View Farms Inc</div>
+                  </td>
+                  <td>River View Farms</td>
+                  <td class="field-count">18</td>
+                  <td class="billing-amount">$5,400</td>
+                  <td><span class="billing-status draft"><span class="status-dot"></span>Draft</span></td>
+                  <td>Josh Brader</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">Brader Ag Inc</div>
+                  </td>
+                  <td>River View Farms</td>
+                  <td class="field-count">10</td>
+                  <td class="billing-amount">$3,000</td>
+                  <td><span class="billing-status draft"><span class="status-dot"></span>Draft</span></td>
+                  <td>Josh Brader</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="operation-name">T and L Farms LLC</div>
+                  </td>
+                  <td>T and L Farms</td>
+                  <td class="field-count">18</td>
+                  <td class="billing-amount">$5,400</td>
+                  <td><span class="billing-status paid"><span class="status-dot"></span>Paid</span></td>
+                  <td>Tim Hock</td>
+                  <td>
+                    <button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Repairs View -->
+        <div id="repairs-view" style="display: none;">
+          <div class="tabs">
+            <div class="tab active">Needs Repair (3)</div>
+            <div class="tab">In Progress (1)</div>
+            <div class="tab">Completed</div>
+          </div>
+
+          <div class="repair-card">
+            <div class="repair-header">
+              <div>
+                <div class="repair-title">T and L Farms - Hock East 160</div>
+                <div class="repair-sub">Probe #16842 • CropX 24" • Reported Jan 25</div>
+              </div>
+              <span class="status-badge repair"><span class="status-dot"></span>No Signal</span>
+            </div>
+            <div class="repair-body">
+              <div class="repair-field">
+                <label>Problem</label>
+                <input type="text" value="No signal for 3 days, was working fine before rain">
+              </div>
+              <div class="repair-field">
+                <label>Fix Applied</label>
+                <input type="text" placeholder="What did you do to fix it?">
+              </div>
+            </div>
+            <div class="repair-actions">
+              <button class="btn btn-secondary" onclick="navigateToRepair()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Navigate
+              </button>
+              <button class="btn btn-primary" onclick="completeRepair()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Mark Complete & Notify Customer
+              </button>
+            </div>
+          </div>
+
+          <div class="repair-card">
+            <div class="repair-header">
+              <div>
+                <div class="repair-title">River View Farms - Brader West Pivot</div>
+                <div class="repair-sub">Probe #14221 • Sentek 36" • Reported Jan 26</div>
+              </div>
+              <span class="status-badge repair"><span class="status-dot"></span>Low Battery</span>
+            </div>
+            <div class="repair-body">
+              <div class="repair-field">
+                <label>Problem</label>
+                <input type="text" value="Battery showing 15%, readings intermittent">
+              </div>
+              <div class="repair-field">
+                <label>Fix Applied</label>
+                <input type="text" placeholder="What did you do to fix it?">
+              </div>
+            </div>
+            <div class="repair-actions">
+              <button class="btn btn-secondary" onclick="navigateToRepair()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Navigate
+              </button>
+              <button class="btn btn-primary" onclick="completeRepair()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Mark Complete & Notify Customer
+              </button>
+            </div>
+          </div>
+
+          <div class="repair-card">
+            <div class="repair-header">
+              <div>
+                <div class="repair-title">37 Ag - Grady South 40</div>
+                <div class="repair-sub">Probe #15567 • CropX 36" • Reported Jan 27</div>
+              </div>
+              <span class="status-badge repair"><span class="status-dot"></span>Damaged</span>
+            </div>
+            <div class="repair-body">
+              <div class="repair-field">
+                <label>Problem</label>
+                <input type="text" value="Hit by tillage equipment, antenna bent">
+              </div>
+              <div class="repair-field">
+                <label>Fix Applied</label>
+                <input type="text" placeholder="What did you do to fix it?">
+              </div>
+            </div>
+            <div class="repair-actions">
+              <button class="btn btn-secondary" onclick="navigateToRepair()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Navigate
+              </button>
+              <button class="btn btn-primary" onclick="completeRepair()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Mark Complete & Notify Customer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Installer Route Panel -->
+    <div class="route-panel" id="route-panel">
+      <div class="route-header">
+        <h3>Today's Install Route</h3>
+        <button class="close-btn" onclick="toggleRoutePanel()">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div style="padding: 12px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border);">
+        <div style="font-size: 13px; color: var(--text-secondary);">Installer: <strong style="color: var(--text-primary);">Mike (Crew 1)</strong></div>
+        <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">8 installs • ~45 miles</div>
+      </div>
+      <div class="route-content">
+        <div class="route-card completed">
+          <div class="route-number">1</div>
+          <div class="route-field">Johnson North Pivot</div>
+          <div class="route-operation">37 Ag • Blake Johnson</div>
+          <div class="route-details">
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+              #16679
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              Sentek 36"
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              Standard
+            </div>
+          </div>
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); color: var(--accent-green); font-size: 13px; font-weight: 500;">
+            ✓ Installed at 8:42 AM
+          </div>
+        </div>
+
+        <div class="route-card">
+          <div class="route-number">2</div>
+          <div class="route-field">Johnson South 80</div>
+          <div class="route-operation">37 Ag • Blake Johnson</div>
+          <div class="route-details">
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+              #16680
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              Sentek 36"
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              Tall Mast
+            </div>
+          </div>
+          <div class="route-actions">
+            <button class="btn btn-secondary" onclick="navigateToField()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Navigate
+            </button>
+            <button class="btn btn-primary" onclick="logInstall()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Log Install
+            </button>
+          </div>
+        </div>
+
+        <div class="route-card">
+          <div class="route-number">3</div>
+          <div class="route-field">Brader West Pivot</div>
+          <div class="route-operation">River View Farms • Josh Brader</div>
+          <div class="route-details">
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+              #14221
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              CropX 24"
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              Standard
+            </div>
+          </div>
+          <div class="route-actions">
+            <button class="btn btn-secondary" onclick="navigateToField()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Navigate
+            </button>
+            <button class="btn btn-primary" onclick="logInstall()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Log Install
+            </button>
+          </div>
+        </div>
+
+        <div class="route-card">
+          <div class="route-number">4</div>
+          <div class="route-field">Brader Home Quarter</div>
+          <div class="route-operation">River View Farms • Josh Brader</div>
+          <div class="route-details">
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path></svg>
+              #14225
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+              CropX 24"
+            </div>
+            <div class="route-detail">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+              Standard
+            </div>
+          </div>
+          <div class="route-actions">
+            <button class="btn btn-secondary" onclick="navigateToField()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+              Navigate
+            </button>
+            <button class="btn btn-primary" onclick="logInstall()">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+              Log Install
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+      <span id="toast-message">Copied to clipboard!</span>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+    // Field data with coordinates (around Nebraska)
+    const fieldsData = [
+      { id: 1, name: 'Johnson North Pivot', operation: '37 Ag', operationId: '37ag', acres: 125, crop: 'Corn', probe: '#16679', status: 'installed', lat: 41.2565, lng: -96.0345 },
+      { id: 2, name: 'Johnson South 80', operation: '37 Ag', operationId: '37ag', acres: 80, crop: 'Corn', probe: '#16680', status: 'pending', lat: 41.2412, lng: -96.0423 },
+      { id: 3, name: 'Grady Home Quarter', operation: '37 Ag', operationId: '37ag', acres: 160, crop: 'Soybeans', probe: '#14892', status: 'installed', lat: 41.2689, lng: -96.0567 },
+      { id: 4, name: 'Jett River Bottom', operation: '37 Ag', operationId: '37ag', acres: 95, crop: 'Corn', probe: '#15234', status: 'installed', lat: 41.2234, lng: -96.0789 },
+      { id: 5, name: 'Blake West 160', operation: '37 Ag', operationId: '37ag', acres: 160, crop: 'Corn', probe: null, status: 'needs-probe', lat: 41.2456, lng: -96.1023 },
+      { id: 6, name: 'Brader West Pivot', operation: 'River View Farms', operationId: 'riverview', acres: 130, crop: 'Corn', probe: '#14221', status: 'pending', lat: 41.1987, lng: -96.1234 },
+      { id: 7, name: 'Brader Home Quarter', operation: 'River View Farms', operationId: 'riverview', acres: 160, crop: 'Soybeans', probe: '#14225', status: 'pending', lat: 41.2034, lng: -96.1345 },
+      { id: 8, name: 'Brader East Dryland', operation: 'River View Farms', operationId: 'riverview', acres: 200, crop: 'Soybeans', probe: null, status: 'needs-probe', lat: 41.2123, lng: -96.0987 },
+      { id: 9, name: 'Hock East 160', operation: 'T and L Farms', operationId: 'tl', acres: 160, crop: 'Corn', probe: '#16842', status: 'repair', lat: 41.1756, lng: -96.0654 },
+      { id: 10, name: 'Hock West Pivot', operation: 'T and L Farms', operationId: 'tl', acres: 125, crop: 'Corn', probe: '#16845', status: 'installed', lat: 41.1823, lng: -96.0876 },
+      { id: 11, name: 'Hock Home 80', operation: 'T and L Farms', operationId: 'tl', acres: 80, crop: 'Soybeans', probe: '#16848', status: 'installed', lat: 41.1789, lng: -96.0543 },
+      { id: 12, name: 'Connie North 160', operation: 'Connie Shares', operationId: 'connie', acres: 160, crop: 'Corn', probe: '#15567', status: 'installed', lat: 41.2876, lng: -96.0234 },
+      { id: 13, name: 'Connie South 80', operation: 'Connie Shares', operationId: 'connie', acres: 80, crop: 'Soybeans', probe: null, status: 'needs-probe', lat: 41.2765, lng: -96.0321 },
+      { id: 14, name: 'Blake Double Probe', operation: '37 Ag', operationId: '37ag', acres: 320, crop: 'Corn', probe: '#16690, #16691', status: 'installed', lat: 41.2543, lng: -96.0678 },
+      { id: 15, name: 'Grady South 40', operation: '37 Ag', operationId: '37ag', acres: 40, crop: 'Corn', probe: '#15567', status: 'repair', lat: 41.2345, lng: -96.0456 }
+    ];
+
+    let map = null;
+    let markers = [];
+    let mapVisible = false;
+    let currentFilter = 'all';
+    let currentOperation = 'all';
+    let routeBuilderActive = false;
+    let routeStops = [];
+
+    // Initialize fields table
+    function initFieldsTable() {
+      renderFieldsTable(fieldsData);
+    }
+
+    function renderFieldsTable(fields) {
+      const tbody = document.getElementById('fields-tbody');
+      if (!tbody) return;
+      
+      tbody.innerHTML = fields.map(field => `
+        <tr data-id="${field.id}" onclick="highlightField(${field.id})" style="cursor: pointer;">
+          <td class="operation-name">${field.name}</td>
+          <td><span style="font-size: 13px;">${field.operation}</span></td>
+          <td class="field-count">${field.acres}</td>
+          <td><span style="background: var(--accent-${field.crop === 'Corn' ? 'amber' : 'green'}-dim); color: var(--accent-${field.crop === 'Corn' ? 'amber' : 'green'}); padding: 2px 8px; border-radius: 4px; font-size: 12px;">${field.crop}</span></td>
+          <td style="font-family: 'JetBrains Mono', monospace; font-size: 12px; ${!field.probe ? 'color: var(--text-muted);' : ''}">${field.probe || '—'}</td>
+          <td>${getStatusBadge(field.status)}</td>
+          <td><button class="action-btn"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z"></path></svg></button></td>
+        </tr>
+      `).join('');
+    }
+
+    function getStatusBadge(status) {
+      const statusMap = {
+        'installed': '<span class="status-badge installed"><span class="status-dot"></span>Installed</span>',
+        'pending': '<span class="status-badge pending"><span class="status-dot"></span>Pending</span>',
+        'repair': '<span class="status-badge repair"><span class="status-dot"></span>Repair</span>',
+        'needs-probe': '<span class="status-badge" style="background: var(--bg-secondary); color: var(--text-muted);"><span class="status-dot"></span>Needs Probe</span>'
+      };
+      return statusMap[status] || '';
+    }
+
+    // Map functions
+    function toggleMap() {
+      mapVisible = !mapVisible;
+      const container = document.getElementById('fields-container');
+      const toggle = document.getElementById('map-toggle');
+      
+      if (mapVisible) {
+        container.classList.add('map-visible');
+        toggle.classList.add('active');
+        
+        // Initialize map if not already done
+        setTimeout(() => {
+          if (!map) {
+            initMap();
+          } else {
+            map.invalidateSize();
+          }
+          updateMapMarkers();
+        }, 100);
+      } else {
+        container.classList.remove('map-visible');
+        toggle.classList.remove('active');
+      }
+    }
+
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: true,
+        attributionControl: false
+      }).setView([41.23, -96.06], 11);
+
+      // Dark tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 19
+      }).addTo(map);
+
+      updateMapMarkers();
+    }
+
+    function updateMapMarkers() {
+      if (!map) return;
+
+      // Clear existing markers
+      markers.forEach(m => map.removeLayer(m));
+      markers = [];
+
+      // Filter fields based on current filters
+      let filteredFields = fieldsData;
+      
+      if (currentFilter !== 'all') {
+        filteredFields = filteredFields.filter(f => f.status === currentFilter);
+      }
+      
+      if (currentOperation !== 'all') {
+        filteredFields = filteredFields.filter(f => f.operationId === currentOperation);
+      }
+
+      // Add markers
+      filteredFields.forEach(field => {
+        const marker = createMarker(field);
+        marker.addTo(map);
+        markers.push(marker);
+      });
+
+      // Fit bounds if we have markers
+      if (markers.length > 0) {
+        const group = L.featureGroup(markers);
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+    }
+
+    function createMarker(field) {
+      const colors = {
+        'installed': '#34d399',
+        'pending': '#fbbf24',
+        'repair': '#f87171',
+        'needs-probe': '#5c6b7a'
+      };
+
+      const icon = L.divIcon({
+        className: 'custom-marker-wrapper',
+        html: `<div class="custom-marker ${field.status}" style="background: ${colors[field.status]};">${field.id}</div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
+      });
+
+      const marker = L.marker([field.lat, field.lng], { icon });
+      
+      const popupContent = `
+        <div class="popup-title">${field.name}</div>
+        <div class="popup-detail">${field.operation} • ${field.acres} ac</div>
+        <div class="popup-detail">${field.crop} ${field.probe ? '• ' + field.probe : ''}</div>
+        <div class="popup-status ${field.status}">${field.status.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+        <div class="popup-actions">
+          <button class="popup-btn" onclick="navigateToFieldLocation(${field.lat}, ${field.lng})">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path></svg>
+            Navigate
+          </button>
+          ${routeBuilderActive ? `<button class="popup-btn" style="margin-left: 6px; background: var(--accent-blue);" onclick="addToRoute(${field.id})">+ Add to Route</button>` : ''}
+        </div>
+      `;
+      
+      marker.bindPopup(popupContent);
+      
+      // If route builder is active, clicking adds to route
+      if (routeBuilderActive) {
+        marker.on('click', () => addToRoute(field.id));
+      }
+
+      return marker;
+    }
+
+    function highlightField(fieldId) {
+      const field = fieldsData.find(f => f.id === fieldId);
+      if (field && map && mapVisible) {
+        map.setView([field.lat, field.lng], 14);
+        // Find and open the marker popup
+        markers.forEach(m => {
+          if (m.getLatLng().lat === field.lat && m.getLatLng().lng === field.lng) {
+            m.openPopup();
+          }
+        });
+      }
+    }
+
+    function navigateToFieldLocation(lat, lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+    }
+
+    // Filter functions
+    function filterFields(status) {
+      currentFilter = status;
+      
+      // Update tab active state
+      document.querySelectorAll('#fields-view .tab').forEach(tab => tab.classList.remove('active'));
+      event.target.classList.add('active');
+      
+      applyFilters();
+    }
+
+    function filterByOperation(operationId) {
+      currentOperation = operationId;
+      applyFilters();
+    }
+
+    function applyFilters() {
+      let filtered = fieldsData;
+      
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(f => f.status === currentFilter);
+      }
+      
+      if (currentOperation !== 'all') {
+        filtered = filtered.filter(f => f.operationId === currentOperation);
+      }
+      
+      renderFieldsTable(filtered);
+      
+      if (mapVisible) {
+        updateMapMarkers();
+      }
+    }
+
+    // Route builder
+    function toggleRouteBuilder() {
+      routeBuilderActive = !routeBuilderActive;
+      const bar = document.getElementById('route-builder');
+      const toggle = document.getElementById('route-builder-toggle');
+      
+      if (routeBuilderActive) {
+        bar.classList.add('active');
+        toggle.classList.add('btn-primary');
+        toggle.classList.remove('btn-secondary');
+        
+        // Auto-show map
+        if (!mapVisible) {
+          toggleMap();
+        }
+        
+        // Filter to pending only
+        currentFilter = 'pending';
+        document.querySelectorAll('#fields-view .tab').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('#fields-view .tab')[2].classList.add('active');
+        applyFilters();
+        
+        showToast('Click map pins to build your route');
+      } else {
+        bar.classList.remove('active');
+        toggle.classList.remove('btn-primary');
+        toggle.classList.add('btn-secondary');
+        routeStops = [];
+        updateRouteCount();
+      }
+      
+      updateMapMarkers();
+    }
+
+    function addToRoute(fieldId) {
+      if (!routeBuilderActive) return;
+      
+      const field = fieldsData.find(f => f.id === fieldId);
+      if (!field) return;
+      
+      // Check if already in route
+      if (routeStops.find(s => s.id === fieldId)) {
+        showToast('Already in route');
+        return;
+      }
+      
+      routeStops.push(field);
+      updateRouteCount();
+      showToast(`Added ${field.name} to route`);
+    }
+
+    function updateRouteCount() {
+      document.getElementById('route-count').textContent = `${routeStops.length} stops`;
+    }
+
+    function clearRoute() {
+      routeStops = [];
+      updateRouteCount();
+      showToast('Route cleared');
+    }
+
+    function saveRoute() {
+      if (routeStops.length === 0) {
+        showToast('Add some stops first');
+        return;
+      }
+      
+      // In real app, this would save to database
+      showToast(`Route saved with ${routeStops.length} stops!`);
+      toggleRouteBuilder();
+    }
+
+    // View switching
+    function showView(view) {
+      // Hide all views
+      document.getElementById('dashboard-view').style.display = 'none';
+      document.getElementById('operations-view').style.display = 'none';
+      document.getElementById('fields-view').style.display = 'none';
+      document.getElementById('probes-view').style.display = 'none';
+      document.getElementById('water-recs-view').classList.remove('active');
+      document.getElementById('billing-view').classList.remove('active');
+      document.getElementById('repairs-view').style.display = 'none';
+
+      // Remove active from all nav items
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+
+      // Show selected view
+      const titles = {
+        'dashboard': 'Dashboard',
+        'operations': 'Operations',
+        'fields': 'Fields',
+        'probes': 'Probes',
+        'water-recs': 'Water Recommendations',
+        'billing': 'Billing',
+        'repairs': 'Repairs'
+      };
+
+      document.getElementById('page-title').textContent = titles[view] || 'Dashboard';
+
+      if (view === 'dashboard') {
+        document.getElementById('dashboard-view').style.display = 'block';
+      } else if (view === 'operations') {
+        document.getElementById('operations-view').style.display = 'block';
+      } else if (view === 'fields') {
+        document.getElementById('fields-view').style.display = 'block';
+        initFieldsTable();
+        if (mapVisible && map) {
+          setTimeout(() => map.invalidateSize(), 100);
+        }
+      } else if (view === 'probes') {
+        document.getElementById('probes-view').style.display = 'block';
+      } else if (view === 'water-recs') {
+        document.getElementById('water-recs-view').classList.add('active');
+      } else if (view === 'billing') {
+        document.getElementById('billing-view').classList.add('active');
+      } else if (view === 'repairs') {
+        document.getElementById('repairs-view').style.display = 'block';
+      }
+
+      // Set active nav item
+      event.target.closest('.nav-item')?.classList.add('active');
+    }
+    
+    // Operation detail panel
+    function showOperationDetail(opId) {
+      document.getElementById('operation-detail').style.display = 'block';
+    }
+    
+    function hideOperationDetail() {
+      document.getElementById('operation-detail').style.display = 'none';
+    }
+
+    // Route panel toggle
+    function toggleRoutePanel() {
+      document.getElementById('route-panel').classList.toggle('open');
+    }
+
+    // Navigate to field (would open Google Maps)
+    function navigateToField() {
+      // Example coordinates - would come from database
+      const lat = 41.2565;
+      const lon = -96.0345;
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+    }
+
+    function navigateToRepair() {
+      const lat = 41.2123;
+      const lon = -96.1234;
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, '_blank');
+    }
+
+    // Log install (would capture GPS + photo)
+    function logInstall() {
+      showToast('Install logged successfully!');
+    }
+
+    // Complete repair
+    function completeRepair() {
+      showToast('Repair completed. Customer notified!');
+    }
+
+    // Copy recommendation
+    function copyRec(btn) {
+      const card = btn.closest('.rec-card');
+      const field = card.querySelector('.rec-field-info h4').textContent;
+      const rec = card.querySelector('.rec-textarea').value;
+      const day = card.querySelector('.water-day-select').value;
+      
+      const text = `${field}: ${rec}${day !== 'Water Day' ? ` (Water ${day})` : ''}`;
+      navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard!');
+    }
+
+    // Copy all recommendations
+    function copyAllRecs() {
+      const cards = document.querySelectorAll('.rec-card');
+      let text = '';
+      
+      cards.forEach(card => {
+        const field = card.querySelector('.rec-field-info h4').textContent;
+        const rec = card.querySelector('.rec-textarea').value;
+        const day = card.querySelector('.water-day-select').value;
+        
+        if (rec) {
+          text += `${field}: ${rec}${day !== 'Water Day' ? ` (Water ${day})` : ''}\n\n`;
+        }
+      });
+      
+      navigator.clipboard.writeText(text.trim());
+      showToast('All recommendations copied!');
+    }
+
+    // Toast notification
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-message').textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+  </script>
+</body>
+</html>
