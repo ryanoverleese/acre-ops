@@ -52,12 +52,10 @@ export default function FieldsMap({ fields, visible }: FieldsMapProps) {
     return null;
   }
 
-  // Filter fields that have valid coordinates
   const mappableFields = fields.filter(
     (f) => f.lat != null && f.lng != null && !isNaN(Number(f.lat)) && !isNaN(Number(f.lng)) && f.lat !== 0 && f.lng !== 0
   );
 
-  // Calculate center from fields or default to Nebraska
   const center: [number, number] = mappableFields.length > 0
     ? [
         mappableFields.reduce((sum, f) => sum + Number(f.lat), 0) / mappableFields.length,
@@ -81,8 +79,8 @@ export default function FieldsMap({ fields, visible }: FieldsMapProps) {
         zoomControl={true}
       >
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; Google'
+          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
         {mappableFields.map((field) => {
           const color = statusColors[field.status] || '#5c6b7a';
