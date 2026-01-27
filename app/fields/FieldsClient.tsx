@@ -28,6 +28,7 @@ export default function FieldsClient({
 }: FieldsClientProps) {
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [mapVisible, setMapVisible] = useState(false);
   const [colorBy, setColorBy] = useState<'none' | 'crop' | 'status' | 'operation'>('none');
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
@@ -37,6 +38,15 @@ export default function FieldsClient({
 
   const filteredFields = useMemo(() => {
     let filtered = initialFields;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((f) =>
+        f.name.toLowerCase().includes(query) ||
+        f.operation.toLowerCase().includes(query) ||
+        f.crop.toLowerCase().includes(query) ||
+        f.probe?.toLowerCase().includes(query)
+      );
+    }
     if (currentFilter !== 'all') {
       filtered = filtered.filter((f) => f.status === currentFilter);
     }
@@ -44,7 +54,7 @@ export default function FieldsClient({
       filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
     }
     return filtered;
-  }, [initialFields, currentFilter, currentOperation]);
+  }, [initialFields, searchQuery, currentFilter, currentOperation]);
 
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
@@ -168,6 +178,17 @@ export default function FieldsClient({
             <div className="table-header">
               <h3 className="table-title">Fields — 2025 Season</h3>
               <div className="table-actions">
+                <div className="search-box" style={{ width: '200px' }}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search fields..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
                 <select value={currentOperation} onChange={(e) => setCurrentOperation(e.target.value)}>
                   <option value="all">All Operations</option>
                   {operations.map((op) => (

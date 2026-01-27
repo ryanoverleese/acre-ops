@@ -130,17 +130,6 @@ export default async function FieldsPage() {
           <span className="season-badge">2025 Season</span>
         </div>
         <div className="header-right">
-          <div className="search-box">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <input type="text" placeholder="Search fields..." />
-          </div>
           <button className="btn btn-primary">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
