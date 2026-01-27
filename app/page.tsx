@@ -9,7 +9,7 @@ async function DashboardStats() {
       getRepairs(),
     ]);
 
-    const needsRepair = repairs.filter(r => r.Status !== 'Completed').length;
+    const needsRepair = repairs.filter(r => r.repaired_at === null || r.repaired_at === undefined).length;
 
     return (
       <div className="stats-grid">
