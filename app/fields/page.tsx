@@ -1,4 +1,4 @@
-import { getFields, getOperations, getFieldSeasons, getProbes } from '@/lib/baserow';
+import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
 // Define the shape of our processed field data
@@ -25,54 +25,76 @@ async function getFieldsData(): Promise<{
   operations: OperationOption[];
 }> {
   try {
-    const [rawFields, operations, fieldSeasons, probes] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
       getProbes(),
+      getBillingEntities(),
     ]);
 
     // Create lookup maps
-    const operationMap = new Map(operations.map((op) => [op.id, op.Name]));
-    const probeMap = new Map(probes.map((p) => [p.id, p['Serial Number']]));
+    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+    const probeMap = new Map(probes.map((p) => [p.id, p.serial_number]));
+    
+    // Map billing entity to operation
+    const billingToOperationMap = new Map<number, number>();
+    billingEntities.forEach((be) => {
+      if (be.operation?.[0]?.id) {
+        billingToOperationMap.set(be.id, be.operation[0].id);
+      }
+    });
 
     // Process fields with their related data
     const processedFields: ProcessedField[] = rawFields.map((field) => {
-      // Get operation name from linked field
-      const operationLink = field.Operation?.[0];
-      const operationName = operationLink ? operationMap.get(operationLink.id) || operationLink.value : 'Unknown';
-      const operationId = operationLink?.id || null;
+      // Get operation from billing_entity -> operation chain
+      const billingEntityLink = field.billing_entity?.[0];
+      let operationName = 'Unknown';
+      let operationId: number | null = null;
+      
+      if (billingEntityLink) {
+        operationId = billingToOperationMap.get(billingEntityLink.id) || null;
+        if (operationId) {
+          operationName = operationMap.get(operationId) || 'Unknown';
+        } else {
+          // Fallback to billing entity name
+          operationName = billingEntityLink.value || 'Unknown';
+        }
+      }
 
       // Find field season for this field to get probe and status
-      const season = fieldSeasons.find((fs) => fs.Field?.[0]?.id === field.id);
-      const probeLink = season?.Probe?.[0];
+      const season = fieldSeasons.find((fs) => fs.field?.[0]?.id === field.id);
+      const probeLink = season?.probe?.[0];
       const probeName = probeLink ? probeMap.get(probeLink.id) || probeLink.value : null;
 
-      // Determine status
+      // Determine status from field_season
       let status = 'needs-probe';
-      if (season?.Status) {
-        status = season.Status.toLowerCase().replace(' ', '-');
+      if (season?.probe_status?.value) {
+        status = season.probe_status.value.toLowerCase().replace(' ', '-');
       } else if (probeName) {
-        status = 'pending';
+        status = 'assigned';
       }
+
+      // Get crop from field_season
+      const crop = season?.crop?.value || 'Unknown';
 
       return {
         id: field.id,
-        name: field.Name || 'Unnamed Field',
+        name: field.name || 'Unnamed Field',
         operation: operationName,
         operationId,
-        acres: field.Acres || 0,
-        crop: season?.Crop || field.Crop || 'Unknown',
+        acres: field.acres || 0,
+        crop,
         probe: probeName ? `#${probeName}` : null,
         status,
-        lat: field.Latitude || 0,
-        lng: field.Longitude || 0,
+        lat: field.lat || 0,
+        lng: field.lng || 0,
       };
     });
 
     const operationOptions: OperationOption[] = operations.map((op) => ({
       id: op.id,
-      name: op.Name,
+      name: op.name,
     }));
 
     return {
@@ -95,7 +117,7 @@ export default async function FieldsPage() {
   const statusCounts = {
     all: fields.length,
     'needs-probe': fields.filter((f) => f.status === 'needs-probe').length,
-    pending: fields.filter((f) => f.status === 'pending').length,
+    pending: fields.filter((f) => f.status === 'pending' || f.status === 'assigned').length,
     installed: fields.filter((f) => f.status === 'installed').length,
     repair: fields.filter((f) => f.status === 'repair').length,
   };
