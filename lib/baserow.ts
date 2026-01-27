@@ -99,81 +99,113 @@ export async function getRow<T>(tableName: TableName, rowId: number): Promise<T>
 // Specific typed fetchers for each table
 export interface Contact {
   id: number;
-  Name: string;
-  Phone?: string;
-  Email?: string;
-  Role?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  customer_type?: { id: number; value: string };
+  notes?: string;
 }
 
 export interface Operation {
   id: number;
-  Name: string;
-  Notes?: string;
+  name: string;
+  notes?: string;
 }
 
 export interface BillingEntity {
   id: number;
-  Name: string;
-  Operation?: { id: number; value: string }[];
-  'Invoice Contact'?: { id: number; value: string }[];
+  name: string;
+  operation?: { id: number; value: string }[];
+  invoice_contact?: { id: number; value: string }[];
+  notes?: string;
 }
 
 export interface Field {
   id: number;
-  Name: string;
-  Operation?: { id: number; value: string }[];
-  Acres?: number;
-  Crop?: string;
-  Latitude?: number;
-  Longitude?: number;
-  Status?: string;
+  name: string;
+  billing_entity?: { id: number; value: string }[];
+  acres?: number;
+  pivot_acres?: number;
+  billed_acres?: number;
+  lat?: number;
+  lng?: number;
+  water_source?: { id: number; value: string };
+  fuel_source?: { id: number; value: string };
+  notes?: string;
 }
 
 export interface Probe {
   id: number;
-  'Serial Number'?: string;
-  Brand?: string;
-  Model?: string;
-  Length?: string;
-  Owner?: { id: number; value: string }[];
-  'Rack Location'?: string;
-  'Assigned Field'?: { id: number; value: string }[];
-  Status?: string;
+  serial_number?: string;
+  brand?: { id: number; value: string };
+  owner_operation?: { id: number; value: string }[];
+  year_new?: number;
+  status?: { id: number; value: string };
+  rack_location?: string;
+  notes?: string;
 }
 
 export interface FieldSeason {
   id: number;
-  Field?: { id: number; value: string }[];
-  Season?: string;
-  Crop?: string;
-  Probe?: { id: number; value: string }[];
-  Status?: string;
+  field?: { id: number; value: string }[];
+  season?: number;
+  crop?: { id: number; value: string };
+  service_type?: { id: number; value: string };
+  antenna_type?: { id: number; value: string };
+  probe?: { id: number; value: string }[];
+  probe_status?: { id: number; value: string };
+  installer?: string;
+  install_date?: string;
+  install_lat?: number;
+  install_lng?: number;
+  install_photo_url?: string;
+  install_notes?: string;
+  probe_2?: { id: number; value: string }[];
+  probe_2_status?: { id: number; value: string };
+  probe_2_install_date?: string;
+  probe_2_install_lat?: number;
+  probe_2_install_lng?: number;
+  probe_2_install_photo_url?: string;
+  removal_date?: string;
+  removal_notes?: string;
 }
 
 export interface Repair {
   id: number;
-  Probe?: { id: number; value: string }[];
-  Field?: { id: number; value: string }[];
-  Problem?: string;
-  'Fix Applied'?: string;
-  Status?: string;
-  'Reported Date'?: string;
+  field_season?: { id: number; value: string }[];
+  reported_at?: string;
+  problem?: string;
+  fix?: string;
+  repaired_at?: string;
+  notified_customer?: boolean;
 }
 
 export interface WaterRec {
   id: number;
-  Field?: { id: number; value: string }[];
-  Date?: string;
-  Recommendation?: string;
-  'Water Day'?: string;
+  field_season?: { id: number; value: string }[];
+  date?: string;
+  recommendation?: string;
+  suggested_water_day?: { id: number; value: string };
 }
 
 export interface Invoice {
   id: number;
-  'Billing Entity'?: { id: number; value: string }[];
-  Amount?: number;
-  Status?: string;
-  'Created Date'?: string;
+  billing_entity?: { id: number; value: string }[];
+  season?: number;
+  amount?: number;
+  status?: { id: number; value: string };
+  sent_at?: string;
+  paid_at?: string;
+  notes?: string;
+}
+
+export interface InvoiceLine {
+  id: number;
+  invoice?: { id: number; value: string }[];
+  field_season?: { id: number; value: string }[];
+  service_type?: string;
+  rate?: number;
 }
 
 // Convenience functions for each table
@@ -186,3 +218,4 @@ export const getFieldSeasons = (options?: FetchOptions) => getRows<FieldSeason>(
 export const getRepairs = (options?: FetchOptions) => getRows<Repair>('repairs', options);
 export const getWaterRecs = (options?: FetchOptions) => getRows<WaterRec>('water_recs', options);
 export const getInvoices = (options?: FetchOptions) => getRows<Invoice>('invoices', options);
+export const getInvoiceLines = (options?: FetchOptions) => getRows<InvoiceLine>('invoice_lines', options);
