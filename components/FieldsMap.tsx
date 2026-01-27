@@ -2,7 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+// Fix for default marker icons in Next.js
+const defaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
 
 interface FieldData {
   id: number;
@@ -63,13 +75,6 @@ export default function FieldsMap({ fields, visible }: FieldsMapProps) {
       ]
     : [41.23, -96.06];
 
-  const statusColors: Record<string, string> = {
-    installed: '#34d399',
-    pending: '#fbbf24',
-    repair: '#f87171',
-    'needs-probe': '#5c6b7a',
-  };
-
   return (
     <div className="fields-map" style={{ display: visible ? 'block' : 'none' }}>
       <MapContainer
@@ -82,41 +87,39 @@ export default function FieldsMap({ fields, visible }: FieldsMapProps) {
           attribution='&copy; Google'
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
-        {mappableFields.map((field) => {
-          const color = statusColors[field.status] || '#5c6b7a';
-          return (
-            <Marker
-              key={field.id}
-              position={[Number(field.lat), Number(field.lng)]}
-            >
-              <Popup>
-                <div className="popup-title">{field.name}</div>
-                <div className="popup-detail">
-                  {field.operation} • {field.acres} ac
-                </div>
-                <div className="popup-detail">
-                  {field.crop} {field.probe ? `• ${field.probe}` : ''}
-                </div>
-                <div className={`popup-status ${field.status}`}>
-                  {field.status.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                </div>
-                <div className="popup-actions">
-                  <button
-                    className="popup-btn"
-                    onClick={() => {
-                      window.open(
-                        `https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`,
-                        '_blank'
-                      );
-                    }}
-                  >
-                    Navigate
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          );
-        })}
+        {mappableFields.map((field) => (
+          <Marker
+            key={field.id}
+            position={[Number(field.lat), Number(field.lng)]}
+            icon={defaultIcon}
+          >
+            <Popup>
+              <div className="popup-title">{field.name}</div>
+              <div className="popup-detail">
+                {field.operation} • {field.acres} ac
+              </div>
+              <div className="popup-detail">
+                {field.crop} {field.probe ? `• ${field.probe}` : ''}
+              </div>
+              <div className={`popup-status ${field.status}`}>
+                {field.status.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+              </div>
+              <div className="popup-actions">
+                <button
+                  className="popup-btn"
+                  onClick={() => {
+                    window.open(
+                      `https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`,
+                      '_blank'
+                    );
+                  }}
+                >
+                  Navigate
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );
