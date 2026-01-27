@@ -30,6 +30,10 @@ export default function FieldsClient({
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
   const [mapVisible, setMapVisible] = useState(false);
+  const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
+  const [saving, setSaving] = useState(false);
 
   // Filter fields based on current selections
   const filteredFields = useMemo(() => {
@@ -61,10 +65,76 @@ export default function FieldsClient({
     }));
   }, [filteredFields]);
 
+  const handleRowClick = (field: ProcessedField) => {
+    setSelectedField(field);
+    setEditForm({
+      name: field.name,
+      acres: field.acres,
+      crop: field.crop,
+      lat: field.lat,
+      lng: field.lng,
+    });
+    setIsEditing(false);
+  };
+
+  const handleClosePanel = () => {
+    setSelectedField(null);
+    setIsEditing(false);
+    setEditForm({});
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedField) return;
+    
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/fields/${selectedField.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editForm.name,
+          acres: editForm.acres,
+          lat: editForm.lat,
+          lng: editForm.lng,
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh the page to show updated data
+        window.location.reload();
+      } else {
+        alert('Failed to save changes');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      alert('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (selectedField) {
+      setEditForm({
+        name: selectedField.name,
+        acres: selectedField.acres,
+        crop: selectedField.crop,
+        lat: selectedField.lat,
+        lng: selectedField.lng,
+      });
+    }
+    setIsEditing(false);
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { class: string; label: string }> = {
       installed: { class: 'installed', label: 'Installed' },
       pending: { class: 'pending', label: 'Pending' },
+      assigned: { class: 'pending', label: 'Assigned' },
       repair: { class: 'repair', label: 'Repair' },
       'needs-probe': { class: 'needs-probe', label: 'Needs Probe' },
     };
@@ -187,7 +257,12 @@ export default function FieldsClient({
                   </tr>
                 ) : (
                   filteredFields.map((field) => (
-                    <tr key={field.id} style={{ cursor: 'pointer' }}>
+                    <tr 
+                      key={field.id} 
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleRowClick(field)}
+                      className={selectedField?.id === field.id ? 'selected' : ''}
+                    >
                       <td className="operation-name">{field.name}</td>
                       <td>
                         <span style={{ fontSize: '13px' }}>{field.operation}</span>
@@ -205,7 +280,7 @@ export default function FieldsClient({
                       </td>
                       <td>{getStatusBadge(field.status)}</td>
                       <td>
-                        <button className="action-btn">
+                        <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(field); }}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
                               strokeLinecap="round"
@@ -227,6 +302,121 @@ export default function FieldsClient({
         {/* Map */}
         <FieldsMap fields={mapFields} visible={mapVisible} />
       </div>
+
+      {/* Detail Panel */}
+      {selectedField && (
+        <div className="detail-panel-overlay" onClick={handleClosePanel}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>{isEditing ? 'Edit Field' : selectedField.name}</h3>
+              <button className="close-btn" onClick={handleClosePanel}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="detail-panel-content">
+              {isEditing ? (
+                <div className="edit-form">
+                  <div className="form-group">
+                    <label>Field Name</label>
+                    <input
+                      type="text"
+                      value={editForm.name || ''}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Acres</label>
+                    <input
+                      type="number"
+                      value={editForm.acres || ''}
+                      onChange={(e) => setEditForm({ ...editForm, acres: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Latitude</label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={editForm.lat || ''}
+                        onChange={(e) => setEditForm({ ...editForm, lat: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Longitude</label>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        value={editForm.lng || ''}
+                        onChange={(e) => setEditForm({ ...editForm, lng: parseFloat(e.target.value) })}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="detail-info">
+                  <div className="detail-row">
+                    <span className="detail-label">Operation</span>
+                    <span className="detail-value">{selectedField.operation}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Acres</span>
+                    <span className="detail-value">{selectedField.acres}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Crop</span>
+                    <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Probe</span>
+                    <span className="detail-value" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      {selectedField.probe || '—'}
+                    </span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Status</span>
+                    <span className="detail-value">{getStatusBadge(selectedField.status)}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">Location</span>
+                    <span className="detail-value">
+                      {selectedField.lat && selectedField.lng ? (
+                        <a 
+                          href={`https://www.google.com/maps/place/${selectedField.lat},${selectedField.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: 'var(--green)' }}
+                        >
+                          {selectedField.lat.toFixed(6)}, {selectedField.lng.toFixed(6)}
+                        </a>
+                      ) : '—'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="detail-panel-footer">
+              {isEditing ? (
+                <>
+                  <button className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
+                  <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn btn-secondary" onClick={handleClosePanel}>Close</button>
+                  <button className="btn btn-primary" onClick={handleEdit}>Edit Field</button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
