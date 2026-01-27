@@ -903,3 +903,98 @@ tr.selected {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
+
+/* Route page styles */
+.route-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.route-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.route-card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.route-number {
+  width: 36px;
+  height: 36px;
+  background: var(--accent-green);
+  color: var(--bg-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.route-field-info {
+  flex: 1;
+}
+
+.route-field-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.route-operation {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.route-card-body {
+  display: flex;
+  gap: 32px;
+  padding: 16px 20px;
+  background: var(--bg-secondary);
+}
+
+.route-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.route-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.route-value {
+  font-size: 14px;
+}
+
+.route-card-footer {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+}
+
+/* Empty state */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+}
