@@ -1,234 +1,847 @@
-'use client';
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
-import { useState, useMemo } from 'react';
-import dynamic from 'next/dynamic';
-import type { ProcessedField, OperationOption } from './page';
-
-// Dynamically import the map component to avoid SSR issues
-const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
-  ssr: false,
-  loading: () => <div className="fields-map" style={{ display: 'block' }}><div className="loading"><div className="loading-spinner"></div>Loading map...</div></div>,
-});
-
-interface FieldsClientProps {
-  initialFields: ProcessedField[];
-  operations: OperationOption[];
-  statusCounts: {
-    all: number;
-    'needs-probe': number;
-    pending: number;
-    installed: number;
-    repair: number;
-  };
+:root {
+  --bg-primary: #0f1419;
+  --bg-secondary: #1a2332;
+  --bg-card: #212d3b;
+  --bg-hover: #2a3a4d;
+  --text-primary: #e8edf4;
+  --text-secondary: #8b98a8;
+  --text-muted: #5c6b7a;
+  --accent-green: #34d399;
+  --accent-green-dim: rgba(52, 211, 153, 0.15);
+  --accent-blue: #60a5fa;
+  --accent-blue-dim: rgba(96, 165, 250, 0.15);
+  --accent-amber: #fbbf24;
+  --accent-amber-dim: rgba(251, 191, 36, 0.15);
+  --accent-red: #f87171;
+  --accent-red-dim: rgba(248, 113, 113, 0.15);
+  --border: #2d3d50;
+  --radius: 8px;
 }
 
-export default function FieldsClient({
-  initialFields,
-  operations,
-  statusCounts,
-}: FieldsClientProps) {
-  const [currentFilter, setCurrentFilter] = useState<string>('all');
-  const [currentOperation, setCurrentOperation] = useState<string>('all');
-  const [mapVisible, setMapVisible] = useState(false);
-  const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
-  const [saving, setSaving] = useState(false);
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
-  // Filter fields based on current selections
-  const filteredFields = useMemo(() => {
-    let filtered = initialFields;
+body {
+  font-family: 'DM Sans', -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
 
-    if (currentFilter !== 'all') {
-      filtered = filtered.filter((f) => f.status === currentFilter);
-    }
+.app {
+  display: flex;
+  min-height: 100vh;
+}
 
-    if (currentOperation !== 'all') {
-      filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
-    }
+/* Sidebar */
+.sidebar {
+  width: 240px;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
 
-    return filtered;
-  }, [initialFields, currentFilter, currentOperation]);
+.logo {
+  padding: 0 20px 24px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
 
-  // Prepare fields for map (convert to the format the map expects)
-  const mapFields = useMemo(() => {
-    return filteredFields.map((f) => ({
-      id: f.id,
-      name: f.name,
-      operation: f.operation,
-      acres: f.acres,
-      crop: f.crop,
-      probe: f.probe,
-      status: f.status,
-      lat: f.lat,
-      lng: f.lng,
-    }));
-  }, [filteredFields]);
+.logo h1 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-green);
+  letter-spacing: -0.5px;
+}
 
-  const handleRowClick = (field: ProcessedField) => {
-    setSelectedField(field);
-    setEditForm({
-      name: field.name,
-      acres: field.acres,
-      crop: field.crop,
-      lat: field.lat,
-      lng: field.lng,
-    });
-    setIsEditing(false);
-  };
+.logo span {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
 
-  const handleClosePanel = () => {
-    setSelectedField(null);
-    setIsEditing(false);
-    setEditForm({});
-  };
+.nav-section {
+  padding: 0 12px;
+  margin-bottom: 24px;
+}
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
+.nav-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 0 8px;
+  margin-bottom: 8px;
+}
 
-  const handleSave = async () => {
-    if (!selectedField) return;
-    
-    setSaving(true);
-    try {
-      const response = await fetch(`/api/fields/${selectedField.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editForm.name,
-          acres: editForm.acres,
-          lat: editForm.lat,
-          lng: editForm.lng,
-        }),
-      });
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
 
-      if (response.ok) {
-        window.location.reload();
-      } else {
-        alert('Failed to save changes');
-      }
-    } catch (error) {
-      console.error('Save error:', error);
-      alert('Failed to save changes');
-    } finally {
-      setSaving(false);
-    }
-  };
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
 
-  const handleCancel = () => {
-    if (selectedField) {
-      setEditForm({
-        name: selectedField.name,
-        acres: selectedField.acres,
-        crop: selectedField.crop,
-        lat: selectedField.lat,
-        lng: selectedField.lng,
-      });
-    }
-    setIsEditing(false);
-  };
+.nav-item.active {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
 
-  const getStatusBadge = (status: string) => {
-    const statusMap: Record<string, { class: string; label: string }> = {
-      installed: { class: 'installed', label: 'Installed' },
-      pending: { class: 'pending', label: 'Pending' },
-      assigned: { class: 'pending', label: 'Assigned' },
-      repair: { class: 'repair', label: 'Repair' },
-      'needs-probe': { class: 'needs-probe', label: 'Needs Probe' },
-    };
-    const config = statusMap[status] || { class: 'needs-probe', label: status };
-    return (
-      <span className={`status-badge ${config.class}`}>
-        <span className="status-dot"></span>
-        {config.label}
-      </span>
-    );
-  };
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.7;
+}
 
-  const getCropBadge = (crop: string) => {
-    const cropClass = crop.toLowerCase() === 'corn' ? 'corn' : 'soybeans';
-    return <span className={`crop-badge ${cropClass}`}>{crop}</span>;
-  };
+.nav-item.active svg {
+  opacity: 1;
+}
 
-  return (
-    <>
-      {/* Status Tabs */}
-      <div className="tabs" style={{ marginBottom: '16px' }}>
-        <button
-          className={`tab ${currentFilter === 'all' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('all')}
-        >
-          All Fields ({statusCounts.all})
-        </button>
-        <button
-          className={`tab ${currentFilter === 'needs-probe' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('needs-probe')}
-        >
-          Needs Probe ({statusCounts['needs-probe']})
-        </button>
-        <button
-          className={`tab ${currentFilter === 'pending' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('pending')}
-        >
-          Ready to Install ({statusCounts.pending})
-        </button>
-        <button
-          className={`tab ${currentFilter === 'installed' ? 'active' : ''}`}
-          onClick={() => setCurrentFilter('installed')}
-        >
-          Installed ({statusCounts.installed})
-        </button>
-      </div>
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent-red);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+}
 
-      {/* Fields Container */}
-      <div className={`fields-container ${mapVisible ? 'map-visible' : ''}`}>
-        <div className="fields-list">
-          <div className="table-container">
-            <div className="table-header">
-              <h3 className="table-title">Fields — 2025 Season</h3>
-              <div className="table-actions">
-                <select
-                  value={currentOperation}
-                  onChange={(e) => setCurrentOperation(e.target.value)}
-                >
-                  <option value="all">All Operations</option>
-                  {operations.map((op) => (
-                    <option key={op.id} value={op.id.toString()}>
-                      {op.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className={`map-toggle ${mapVisible ? 'active' : ''}`}
-                  onClick={() => setMapVisible(!mapVisible)}
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                    />
-                  </svg>
-                  Map View
-                </button>
-                <button className="btn btn-primary">
-                  <svg
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    width="16"
-                    height="16"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                  Add Field
-                </button>
-              </div>
-            </div
+/* Main Content */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-left: 240px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header h2 {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.season-badge {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  width: 280px;
+}
+
+.search-box input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 14px;
+  width: 100%;
+}
+
+.search-box input::placeholder {
+  color: var(--text-muted);
+}
+
+.search-box svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--accent-green);
+  color: var(--bg-primary);
+}
+
+.btn-primary:hover {
+  background: #2fc58c;
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-hover);
+}
+
+/* Content Area */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.stat-value.green { color: var(--accent-green); }
+.stat-value.blue { color: var(--accent-blue); }
+.stat-value.amber { color: var(--accent-amber); }
+.stat-value.red { color: var(--accent-red); }
+
+.stat-change {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-card);
+  padding: 4px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  width: fit-content;
+}
+
+.tab {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: none;
+  border: none;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Table */
+.table-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  text-align: left;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 14px 16px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover {
+  background: var(--bg-hover);
+}
+
+.operation-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.operation-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.field-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge.installed {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.status-badge.pending {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
+.status-badge.repair {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+.status-badge.needs-probe {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.status-badge.in-stock {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.action-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.action-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Map Styles */
+.fields-container {
+  display: flex;
+  gap: 20px;
+  height: calc(100vh - 280px);
+  min-height: 400px;
+}
+
+.fields-container.map-visible .fields-list {
+  width: 55%;
+}
+
+.fields-container.map-visible .fields-map {
+  width: 45%;
+  display: block;
+}
+
+.fields-list {
+  width: 100%;
+  overflow-y: auto;
+}
+
+.fields-map {
+  display: none;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+  background: var(--bg-secondary);
+}
+
+.map-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.map-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.map-toggle.active {
+  background: var(--accent-green-dim);
+  border-color: var(--accent-green);
+  color: var(--accent-green);
+}
+
+.map-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Custom map markers */
+.custom-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.custom-marker.installed {
+  background: #34d399;
+}
+
+.custom-marker.pending {
+  background: #fbbf24;
+}
+
+.custom-marker.repair {
+  background: #f87171;
+}
+
+.custom-marker.needs-probe {
+  background: #5c6b7a;
+}
+
+/* Leaflet popup styles */
+.leaflet-popup-content-wrapper {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+
+.leaflet-popup-tip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.popup-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+}
+
+.popup-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.popup-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 6px;
+}
+
+.popup-status.installed {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.popup-status.pending {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
+.popup-status.repair {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+.popup-actions {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.popup-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--accent-green);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.popup-btn:hover {
+  background: #2fc58c;
+}
+
+/* Crop badges */
+.crop-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.crop-badge.corn {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
+.crop-badge.soybeans {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+/* Brand badges */
+.brand-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.brand-badge.sentek {
+  background: var(--accent-blue-dim);
+  color: var(--accent-blue);
+}
+
+.brand-badge.cropx {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+/* Select inputs */
+select {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+/* Loading state */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent-green);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 12px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--accent-green);
+  font-weight: 500;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+
+  .main {
+    margin-left: 0;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .search-box {
+    display: none;
+  }
+}
+
+/* Detail Panel */
+.detail-panel-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 1000;
+}
+
+.detail-panel {
+  width: 400px;
+  max-width: 100%;
+  background: var(--bg-secondary);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.detail-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.detail-panel-header h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.close-btn:hover {
+  color: var(--text-primary);
+}
+
+.detail-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.detail-info {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-label {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.detail-value {
+  font-size: 14px;
+}
+
+.detail-panel-footer {
+  padding: 20px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+tr.selected {
+  background: var(--bg-hover) !important;
+}
