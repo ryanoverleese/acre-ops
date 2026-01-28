@@ -71,21 +71,6 @@ export default async function ApprovePage({ params }: PageProps) {
     (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id) && String(fs.season) === String(seasonYear)
   );
 
-  // Debug: find all field seasons that match our fields (regardless of season)
-  const allFieldSeasonsForOperation = fieldSeasons.filter(
-    (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id)
-  );
-
-  // Debug info
-  console.log('DEBUG Approval Page:');
-  console.log('- Operation:', operation.name, 'ID:', operation.id);
-  console.log('- Total billing entities:', billingEntities.length);
-  console.log('- Billing entities for this operation:', operationBillingEntities.length, operationBillingEntities.map(be => be.name));
-  console.log('- Total fields:', rawFields.length);
-  console.log('- Fields for this operation:', operationFields.length, operationFields.map(f => f.name));
-  console.log('- Total field seasons:', fieldSeasons.length);
-  console.log('- Field seasons for this operation + season:', operationFieldSeasons.length);
-
   // Build approval fields
   const approvalFields: ApprovalField[] = operationFieldSeasons.map((fs) => {
     const field = operationFields.find((f) => f.id === fs.field?.[0]?.id);
@@ -110,31 +95,11 @@ export default async function ApprovePage({ params }: PageProps) {
   // Sort by name
   approvalFields.sort((a, b) => a.name.localeCompare(b.name));
 
-  // Debug data to pass to client
-  const debugInfo = {
-    operationId: operation.id,
-    totalBillingEntities: billingEntities.length,
-    operationBillingEntities: operationBillingEntities.map(be => ({ id: be.id, name: be.name })),
-    totalFields: rawFields.length,
-    operationFields: operationFields.map(f => ({ id: f.id, name: f.name })),
-    totalFieldSeasons: fieldSeasons.length,
-    operationFieldSeasons: operationFieldSeasons.length,
-    // Show all field seasons for this operation (any season) to debug
-    allFieldSeasonsForOp: allFieldSeasonsForOperation.map(fs => ({
-      id: fs.id,
-      fieldId: fs.field?.[0]?.id,
-      fieldName: fs.field?.[0]?.value,
-      season: fs.season,
-      seasonType: typeof fs.season,
-    })),
-  };
-
   return (
     <ApprovalClient
       operationName={operation.name}
       season={seasonYear}
       fields={approvalFields}
-      debugInfo={debugInfo}
     />
   );
 }

@@ -14,25 +14,13 @@ const ApprovalMap = dynamic(() => import('./ApprovalMap'), {
   ),
 });
 
-interface DebugInfo {
-  operationId: number;
-  totalBillingEntities: number;
-  operationBillingEntities: { id: number; name: string }[];
-  totalFields: number;
-  operationFields: { id: number; name: string }[];
-  totalFieldSeasons: number;
-  operationFieldSeasons: number;
-  allFieldSeasonsForOp?: { id: number; fieldId?: number; fieldName?: string; season?: number; seasonType: string }[];
-}
-
 interface ApprovalClientProps {
   operationName: string;
   season: number;
   fields: ApprovalField[];
-  debugInfo?: DebugInfo;
 }
 
-export default function ApprovalClient({ operationName, season, fields: initialFields, debugInfo }: ApprovalClientProps) {
+export default function ApprovalClient({ operationName, season, fields: initialFields }: ApprovalClientProps) {
   const [fields, setFields] = useState(initialFields);
   const [changeNotes, setChangeNotes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
@@ -310,7 +298,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
 
         {/* Bottom Bulk Actions */}
         {pendingCount > 0 && (
-          <div className="bulk-actions" style={{ marginBottom: '24px' }}>
+          <div className="bulk-actions" style={{ marginTop: '32px', marginBottom: '32px' }}>
             <button
               className="btn btn-primary"
               onClick={handleBulkApprove}
@@ -318,41 +306,6 @@ export default function ApprovalClient({ operationName, season, fields: initialF
             >
               {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Pending Sensor Locations`}
             </button>
-          </div>
-        )}
-
-        {/* Debug Info */}
-        {debugInfo && (
-          <div style={{ marginTop: '24px', padding: '16px', background: '#fff3cd', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace' }}>
-            <strong>DEBUG INFO:</strong>
-            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-              <li>Operation ID: {debugInfo.operationId}</li>
-              <li>Total billing entities in DB: {debugInfo.totalBillingEntities}</li>
-              <li>Billing entities for this operation: {debugInfo.operationBillingEntities.length}
-                {debugInfo.operationBillingEntities.length > 0 && (
-                  <ul>{debugInfo.operationBillingEntities.map(be => <li key={be.id}>{be.name} (ID: {be.id})</li>)}</ul>
-                )}
-              </li>
-              <li>Total fields in DB: {debugInfo.totalFields}</li>
-              <li>Fields for this operation: {debugInfo.operationFields.length}
-                {debugInfo.operationFields.length > 0 && (
-                  <ul>{debugInfo.operationFields.map(f => <li key={f.id}>{f.name} (ID: {f.id})</li>)}</ul>
-                )}
-              </li>
-              <li>Total field seasons in DB: {debugInfo.totalFieldSeasons}</li>
-              <li>Field seasons for this operation + {season}: {debugInfo.operationFieldSeasons}</li>
-              <li><strong>All field seasons for these fields (any season):</strong>
-                {debugInfo.allFieldSeasonsForOp && debugInfo.allFieldSeasonsForOp.length > 0 ? (
-                  <ul>{debugInfo.allFieldSeasonsForOp.map(fs => (
-                    <li key={fs.id}>
-                      {fs.fieldName} (FieldID: {fs.fieldId}) - Season: {fs.season} (type: {fs.seasonType})
-                    </li>
-                  ))}</ul>
-                ) : (
-                  <span style={{ color: 'red' }}> NONE - these fields have no field_season records!</span>
-                )}
-              </li>
-            </ul>
           </div>
         )}
 
