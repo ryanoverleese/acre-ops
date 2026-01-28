@@ -51,8 +51,15 @@ export async function POST(request: NextRequest) {
     if (!fieldResponse.ok) {
       const errorText = await fieldResponse.text();
       console.error('Baserow API error creating field:', fieldResponse.status, errorText);
+      let errorDetail = 'Failed to create field in database';
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorDetail = errorJson.error || errorJson.detail || JSON.stringify(errorJson);
+      } catch {
+        errorDetail = errorText || errorDetail;
+      }
       return NextResponse.json(
-        { error: 'Failed to create field in database' },
+        { error: errorDetail },
         { status: fieldResponse.status }
       );
     }
@@ -62,7 +69,7 @@ export async function POST(request: NextRequest) {
     // Create the field_seasons record
     const fieldSeasonData: Record<string, unknown> = {
       field: [newField.id], // Link to the new field
-      season: body.season || 2026,
+      season: parseInt(body.season, 10) || 2026,
       probe_status: 'Unassigned',
     };
 
