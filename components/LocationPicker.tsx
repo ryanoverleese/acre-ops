@@ -61,7 +61,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   const [elevationLoading, setElevationLoading] = useState(false);
   const [soilType, setSoilType] = useState<string | null>(null);
   const [soilLoading, setSoilLoading] = useState(false);
-  const [showSoilLayer, setShowSoilLayer] = useState(false);
+  const [showSoilLayer, setShowSoilLayer] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
