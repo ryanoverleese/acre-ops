@@ -819,154 +819,19 @@ export default function FieldsClient({
                     )}
                     <div className="detail-row">
                       <span className="detail-label">Crop</span>
-                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {showSeasonFieldsEdit ? (
-                          <select
-                            value={seasonFieldsForm.crop}
-                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, crop: e.target.value })}
-                            style={{ flex: 1 }}
-                          >
-                            <option value="">Select crop...</option>
-                            <option value="Corn">Corn</option>
-                            <option value="Soybeans">Soybeans</option>
-                            <option value="Wheat">Wheat</option>
-                            <option value="Seed Corn">Seed Corn</option>
-                            <option value="Other">Other</option>
-                          </select>
-                        ) : (
-                          <>
-                            {getCropBadge(selectedField.crop)}
-                            {selectedField.fieldSeasonId && (
-                              <button
-                                className="action-btn"
-                                title="Edit season fields"
-                                onClick={() => setShowSeasonFieldsEdit(true)}
-                                style={{ marginLeft: '4px' }}
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </span>
+                      <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Service Type</span>
-                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {showSeasonFieldsEdit ? (
-                          <select
-                            value={seasonFieldsForm.service_type}
-                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, service_type: e.target.value })}
-                            style={{ flex: 1 }}
-                          >
-                            <option value="">Select...</option>
-                            <option value="Full Service">Full Service</option>
-                            <option value="DIY">DIY</option>
-                            <option value="VRS">VRS</option>
-                          </select>
-                        ) : (
-                          <>{selectedField.serviceType || '—'}</>
-                        )}
-                      </span>
+                      <span className="detail-value">{selectedField.serviceType || '—'}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Antenna Type</span>
-                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {showSeasonFieldsEdit ? (
-                          <>
-                            <select
-                              value={seasonFieldsForm.antenna_type}
-                              onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, antenna_type: e.target.value })}
-                              style={{ flex: 1 }}
-                            >
-                              <option value="">Select...</option>
-                              <option value="Short">Short</option>
-                              <option value="Tall">Tall</option>
-                            </select>
-                            <button
-                              className="btn btn-primary"
-                              style={{ padding: '4px 8px', fontSize: '12px' }}
-                              onClick={handleSaveSeasonFields}
-                              disabled={savingSeasonFields}
-                            >
-                              {savingSeasonFields ? '...' : 'Save'}
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 8px', fontSize: '12px' }}
-                              onClick={() => {
-                                setShowSeasonFieldsEdit(false);
-                                setSeasonFieldsForm({
-                                  crop: selectedField.crop || '',
-                                  service_type: selectedField.serviceType || '',
-                                  antenna_type: selectedField.antennaType || '',
-                                });
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>{selectedField.antennaType || '—'}</>
-                        )}
-                      </span>
+                      <span className="detail-value">{selectedField.antennaType || '—'}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Probe</span>
-                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {showProbeAssign ? (
-                          <>
-                            <select
-                              value={selectedProbeId}
-                              onChange={(e) => setSelectedProbeId(e.target.value)}
-                              style={{ flex: 1 }}
-                            >
-                              <option value="">— Unassign Probe —</option>
-                              {sortedProbes.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                  #{p.serialNumber} ({p.ownerOperation})
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              className="btn btn-primary"
-                              style={{ padding: '4px 8px', fontSize: '12px' }}
-                              onClick={handleAssignProbe}
-                              disabled={savingProbe}
-                            >
-                              {savingProbe ? '...' : 'Save'}
-                            </button>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ padding: '4px 8px', fontSize: '12px' }}
-                              onClick={() => {
-                                setShowProbeAssign(false);
-                                setSelectedProbeId(selectedField.probeId?.toString() || '');
-                              }}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            {selectedField.probe || '—'}
-                            {selectedField.fieldSeasonId && (
-                              <button
-                                className="action-btn"
-                                title="Change probe"
-                                onClick={() => setShowProbeAssign(true)}
-                                style={{ marginLeft: '4px' }}
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </span>
+                      <span className="detail-value">{selectedField.probe || '—'}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Status</span>
@@ -1010,6 +875,12 @@ export default function FieldsClient({
                 ) : (
                   <>
                     <button className="btn btn-secondary" style={{ color: 'var(--accent-red)' }} onClick={handleDelete}>Delete</button>
+                    {selectedField.fieldSeasonId && (
+                      <button className="btn btn-secondary" onClick={() => setShowSeasonFieldsEdit(true)}>
+                        Edit Season
+                      </button>
+                    )}
+                    <button className="btn btn-primary" onClick={handleEdit}>Edit Field</button>
                     {missingSeasonsForField.length > 0 && (
                       <button
                         className="btn btn-secondary"
@@ -1018,9 +889,117 @@ export default function FieldsClient({
                         Add Season
                       </button>
                     )}
-                    <button className="btn btn-primary" onClick={handleEdit}>Edit</button>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Season Modal */}
+        {showSeasonFieldsEdit && selectedField && (
+          <div className="detail-panel-overlay" onClick={() => setShowSeasonFieldsEdit(false)}>
+            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="detail-panel-header">
+                <h3>Edit {selectedField.season} Season</h3>
+                <button className="close-btn" onClick={() => setShowSeasonFieldsEdit(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                <div className="edit-form">
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                    Edit seasonal data for <strong>{selectedField.name}</strong> in the {selectedField.season} season.
+                  </p>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Crop</label>
+                      <select value={seasonFieldsForm.crop} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, crop: e.target.value })}>
+                        <option value="">Select crop...</option>
+                        <option value="Corn">Corn</option>
+                        <option value="Soybeans">Soybeans</option>
+                        <option value="Wheat">Wheat</option>
+                        <option value="Seed Corn">Seed Corn</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Service Type</label>
+                      <select value={seasonFieldsForm.service_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, service_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Full Service">Full Service</option>
+                        <option value="DIY">DIY</option>
+                        <option value="VRS">VRS</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Antenna Type</label>
+                      <select value={seasonFieldsForm.antenna_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, antenna_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Short">Short</option>
+                        <option value="Tall">Tall</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Probe</label>
+                      <select value={selectedProbeId} onChange={(e) => setSelectedProbeId(e.target.value)}>
+                        <option value="">— No Probe —</option>
+                        {sortedProbes.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            #{p.serialNumber} ({p.ownerOperation})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => {
+                  setShowSeasonFieldsEdit(false);
+                  setSeasonFieldsForm({
+                    crop: selectedField.crop || '',
+                    service_type: selectedField.serviceType || '',
+                    antenna_type: selectedField.antennaType || '',
+                  });
+                  setSelectedProbeId(selectedField.probeId?.toString() || '');
+                }}>Cancel</button>
+                <button className="btn btn-primary" onClick={async () => {
+                  if (!selectedField.fieldSeasonId) return;
+                  setSavingSeasonFields(true);
+                  try {
+                    const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : null;
+                    const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        crop: seasonFieldsForm.crop || null,
+                        service_type: seasonFieldsForm.service_type || null,
+                        antenna_type: seasonFieldsForm.antenna_type || null,
+                        probe: probeId,
+                        probe_status: probeId ? 'Assigned' : 'Unassigned',
+                      }),
+                    });
+                    if (response.ok) {
+                      setShowSeasonFieldsEdit(false);
+                      window.location.reload();
+                    } else {
+                      const error = await response.json();
+                      alert(error.error || 'Failed to update season');
+                    }
+                  } catch (error) {
+                    console.error('Save error:', error);
+                    alert('Failed to update season');
+                  } finally {
+                    setSavingSeasonFields(false);
+                  }
+                }} disabled={savingSeasonFields}>
+                  {savingSeasonFields ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             </div>
           </div>
