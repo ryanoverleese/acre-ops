@@ -407,6 +407,29 @@ export default function FieldsClient({
     }
   }, [probes]);
 
+  // Delete a field season entry
+  const handleDeleteFieldSeason = async (fieldSeasonId: number, fieldName: string, season: string) => {
+    if (!confirm(`Delete the ${season} season entry for "${fieldName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/field-seasons/${fieldSeasonId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove from local state
+        setFields(prev => prev.filter(f => f.fieldSeasonId !== fieldSeasonId));
+      } else {
+        alert('Failed to delete field season');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete field season');
+    }
+  };
+
   const handleRowClick = (field: ProcessedField) => {
     setSelectedField(field);
     setEditForm({
@@ -976,12 +999,13 @@ export default function FieldsClient({
                           <th style={{ minWidth: '110px' }}>Installer</th>
                           <th style={{ minWidth: '60px' }}>Ready</th>
                           <th style={{ minWidth: '100px' }}>Approval</th>
+                          <th style={{ minWidth: '40px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={12} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={13} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                               No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                             </td>
                           </tr>
@@ -1126,6 +1150,20 @@ export default function FieldsClient({
                                   savingFields={savingFields}
                                   savedFields={savedFields}
                                 />
+                              </td>
+                              <td>
+                                {field.fieldSeasonId && (
+                                  <button
+                                    className="action-btn"
+                                    title="Delete season entry"
+                                    onClick={() => handleDeleteFieldSeason(field.fieldSeasonId!, field.name, field.season)}
+                                    style={{ color: 'var(--text-muted)' }}
+                                  >
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           ))
