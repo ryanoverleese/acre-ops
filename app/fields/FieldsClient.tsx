@@ -59,6 +59,14 @@ export default function FieldsClient({
   const [showProbeAssign, setShowProbeAssign] = useState(false);
   const [selectedProbeId, setSelectedProbeId] = useState<string>('');
   const [savingProbe, setSavingProbe] = useState(false);
+  const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
+  const [addSeasonForm, setAddSeasonForm] = useState({
+    season: '2026',
+    crop: '',
+    service_type: '',
+    antenna_type: '',
+  });
+  const [savingSeason, setSavingSeason] = useState(false);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -282,6 +290,41 @@ export default function FieldsClient({
       alert('Failed to assign probe');
     } finally {
       setSavingProbe(false);
+    }
+  };
+
+  const handleAddSeason = async () => {
+    if (!selectedField) return;
+    if (!addSeasonForm.season) {
+      alert('Season is required');
+      return;
+    }
+    setSavingSeason(true);
+    try {
+      const response = await fetch('/api/field-seasons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          field: selectedField.id,
+          season: addSeasonForm.season,
+          crop: addSeasonForm.crop || undefined,
+          service_type: addSeasonForm.service_type || undefined,
+          antenna_type: addSeasonForm.antenna_type || undefined,
+        }),
+      });
+      if (response.ok) {
+        setShowAddSeasonModal(false);
+        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '' });
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create season');
+      }
+    } catch (error) {
+      console.error('Add season error:', error);
+      alert('Failed to create season');
+    } finally {
+      setSavingSeason(false);
     }
   };
 
@@ -738,6 +781,12 @@ export default function FieldsClient({
                 ) : (
                   <>
                     <button className="btn btn-secondary" style={{ color: 'var(--accent-red)' }} onClick={handleDelete}>Delete</button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setShowAddSeasonModal(true)}
+                    >
+                      Add Season
+                    </button>
                     <button className="btn btn-primary" onClick={handleEdit}>Edit</button>
                   </>
                 )}
@@ -872,6 +921,75 @@ export default function FieldsClient({
                 <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleAddField} disabled={saving}>
                   {saving ? 'Creating...' : 'Create Field'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Season Modal */}
+        {showAddSeasonModal && selectedField && (
+          <div className="detail-panel-overlay" onClick={() => setShowAddSeasonModal(false)}>
+            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="detail-panel-header">
+                <h3>Add Season for {selectedField.name}</h3>
+                <button className="close-btn" onClick={() => setShowAddSeasonModal(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                <div className="edit-form">
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                    Create a new season entry for this field. This will allow you to assign a probe and track service for the new season.
+                  </p>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Season *</label>
+                      <select value={addSeasonForm.season} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, season: e.target.value })}>
+                        <option value="2027">2027</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Crop</label>
+                      <select value={addSeasonForm.crop} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, crop: e.target.value })}>
+                        <option value="">Select crop...</option>
+                        <option value="Corn">Corn</option>
+                        <option value="Soybeans">Soybeans</option>
+                        <option value="Wheat">Wheat</option>
+                        <option value="Seed Corn">Seed Corn</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Service Type</label>
+                      <select value={addSeasonForm.service_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, service_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Full Service">Full Service</option>
+                        <option value="DIY">DIY</option>
+                        <option value="VRS">VRS</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Antenna Type</label>
+                      <select value={addSeasonForm.antenna_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, antenna_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Short">Short</option>
+                        <option value="Tall">Tall</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => setShowAddSeasonModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleAddSeason} disabled={savingSeason}>
+                  {savingSeason ? 'Creating...' : 'Create Season'}
                 </button>
               </div>
             </div>
