@@ -23,6 +23,17 @@ export interface ProcessedField {
   waterSource?: string;
   fuelSource?: string;
   notes?: string;
+  elevation?: number;
+  soilType?: string;
+  placementNotes?: string;
+  irrigationType?: string;
+  rowDirection?: string;
+  dripTubingDirection?: string;
+  dripTubingSpacing?: number;
+  dripEmitterSpacing?: number;
+  dripZones?: number;
+  dripGpm?: number;
+  dripDepth?: number;
 }
 
 export interface OperationOption {
@@ -132,6 +143,17 @@ async function getFieldsData(): Promise<{
           waterSource: field.water_source?.value,
           fuelSource: field.fuel_source?.value,
           notes: field.notes,
+          elevation: field.elevation,
+          soilType: field.soil_type,
+          placementNotes: field.placement_notes,
+          irrigationType: field.irrigation_type?.value,
+          rowDirection: field.row_direction?.value,
+          dripTubingDirection: field.drip_tubing_direction?.value,
+          dripTubingSpacing: field.drip_tubing_spacing,
+          dripEmitterSpacing: field.drip_emitter_spacing,
+          dripZones: field.drip_zones,
+          dripGpm: field.drip_gpm,
+          dripDepth: field.drip_depth,
         });
       } else {
         // Create entry for each season
@@ -161,6 +183,17 @@ async function getFieldsData(): Promise<{
             waterSource: field.water_source?.value,
             fuelSource: field.fuel_source?.value,
             notes: field.notes,
+            elevation: field.elevation,
+            soilType: field.soil_type,
+            placementNotes: field.placement_notes,
+            irrigationType: field.irrigation_type?.value,
+            rowDirection: field.row_direction?.value,
+            dripTubingDirection: field.drip_tubing_direction?.value,
+            dripTubingSpacing: field.drip_tubing_spacing,
+            dripEmitterSpacing: field.drip_emitter_spacing,
+            dripZones: field.drip_zones,
+            dripGpm: field.drip_gpm,
+            dripDepth: field.drip_depth,
           });
         });
       }

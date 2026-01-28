@@ -50,6 +50,7 @@ export default function FieldsClient({
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
+  const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [mapVisible, setMapVisible] = useState(false);
   const [colorBy, setColorBy] = useState<'none' | 'crop' | 'status' | 'operation'>('none');
@@ -172,6 +173,10 @@ export default function FieldsClient({
       filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
     }
 
+    if (currentIrrigationType !== 'all') {
+      filtered = filtered.filter((f) => (f.irrigationType || 'Unknown') === currentIrrigationType);
+    }
+
     // Sort
     filtered = [...filtered].sort((a, b) => {
       let aVal: string | number = '';
@@ -192,7 +197,7 @@ export default function FieldsClient({
     });
 
     return filtered;
-  }, [seasonFields, searchQuery, currentFilter, currentOperation, sortColumn, sortDirection]);
+  }, [seasonFields, searchQuery, currentFilter, currentOperation, currentIrrigationType, sortColumn, sortDirection]);
 
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
@@ -232,6 +237,17 @@ export default function FieldsClient({
       waterSource: field.waterSource,
       fuelSource: field.fuelSource,
       notes: field.notes,
+      elevation: field.elevation,
+      soilType: field.soilType,
+      placementNotes: field.placementNotes,
+      irrigationType: field.irrigationType,
+      rowDirection: field.rowDirection,
+      dripTubingDirection: field.dripTubingDirection,
+      dripTubingSpacing: field.dripTubingSpacing,
+      dripEmitterSpacing: field.dripEmitterSpacing,
+      dripZones: field.dripZones,
+      dripGpm: field.dripGpm,
+      dripDepth: field.dripDepth,
     });
     setSeasonFieldsForm({
       crop: field.crop || '',
@@ -274,6 +290,17 @@ export default function FieldsClient({
           water_source: editForm.waterSource || null,
           fuel_source: editForm.fuelSource || null,
           notes: editForm.notes || null,
+          elevation: editForm.elevation || null,
+          soil_type: editForm.soilType || null,
+          placement_notes: editForm.placementNotes || null,
+          irrigation_type: editForm.irrigationType || null,
+          row_direction: editForm.rowDirection || null,
+          drip_tubing_direction: editForm.dripTubingDirection || null,
+          drip_tubing_spacing: editForm.dripTubingSpacing || null,
+          drip_emitter_spacing: editForm.dripEmitterSpacing || null,
+          drip_zones: editForm.dripZones || null,
+          drip_gpm: editForm.dripGpm || null,
+          drip_depth: editForm.dripDepth || null,
         }),
       });
       if (response.ok) {
@@ -302,6 +329,17 @@ export default function FieldsClient({
         waterSource: selectedField.waterSource,
         fuelSource: selectedField.fuelSource,
         notes: selectedField.notes,
+        elevation: selectedField.elevation,
+        soilType: selectedField.soilType,
+        placementNotes: selectedField.placementNotes,
+        irrigationType: selectedField.irrigationType,
+        rowDirection: selectedField.rowDirection,
+        dripTubingDirection: selectedField.dripTubingDirection,
+        dripTubingSpacing: selectedField.dripTubingSpacing,
+        dripEmitterSpacing: selectedField.dripEmitterSpacing,
+        dripZones: selectedField.dripZones,
+        dripGpm: selectedField.dripGpm,
+        dripDepth: selectedField.dripDepth,
       });
     }
     setIsEditing(false);
@@ -623,6 +661,14 @@ export default function FieldsClient({
                       <option key={op.id} value={op.id.toString()}>{op.name}</option>
                     ))}
                   </select>
+                  <select value={currentIrrigationType} onChange={(e) => setCurrentIrrigationType(e.target.value)}>
+                    <option value="all">All Irrigation</option>
+                    <option value="Pivot">Pivot</option>
+                    <option value="Gravity">Gravity</option>
+                    <option value="Drip">Drip</option>
+                    <option value="Dryland">Dryland</option>
+                    <option value="Unknown">Unknown</option>
+                  </select>
                   <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -818,6 +864,88 @@ export default function FieldsClient({
                       <label>Notes</label>
                       <textarea value={editForm.notes || ''} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} rows={3} />
                     </div>
+
+                    {/* Irrigation Fields */}
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Irrigation Details</h4>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Irrigation Type</label>
+                          <select value={editForm.irrigationType || ''} onChange={(e) => setEditForm({ ...editForm, irrigationType: e.target.value })}>
+                            <option value="">Select...</option>
+                            <option value="Pivot">Pivot</option>
+                            <option value="Gravity">Gravity</option>
+                            <option value="Drip">Drip</option>
+                            <option value="Dryland">Dryland</option>
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Row Direction</label>
+                          <select value={editForm.rowDirection || ''} onChange={(e) => setEditForm({ ...editForm, rowDirection: e.target.value })}>
+                            <option value="">Select...</option>
+                            <option value="N-S">N-S</option>
+                            <option value="E-W">E-W</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Drip-specific fields - only show when irrigation type is Drip */}
+                      {editForm.irrigationType === 'Drip' && (
+                        <>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>Tubing Direction</label>
+                              <select value={editForm.dripTubingDirection || ''} onChange={(e) => setEditForm({ ...editForm, dripTubingDirection: e.target.value })}>
+                                <option value="">Select...</option>
+                                <option value="N-S">N-S</option>
+                                <option value="E-W">E-W</option>
+                              </select>
+                            </div>
+                            <div className="form-group">
+                              <label>Tubing Spacing (in)</label>
+                              <input type="number" value={editForm.dripTubingSpacing || ''} onChange={(e) => setEditForm({ ...editForm, dripTubingSpacing: parseInt(e.target.value) || undefined })} />
+                            </div>
+                            <div className="form-group">
+                              <label>Emitter Spacing (in)</label>
+                              <input type="number" value={editForm.dripEmitterSpacing || ''} onChange={(e) => setEditForm({ ...editForm, dripEmitterSpacing: parseInt(e.target.value) || undefined })} />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label>Zones</label>
+                              <input type="number" value={editForm.dripZones || ''} onChange={(e) => setEditForm({ ...editForm, dripZones: parseInt(e.target.value) || undefined })} />
+                            </div>
+                            <div className="form-group">
+                              <label>GPM</label>
+                              <input type="number" value={editForm.dripGpm || ''} onChange={(e) => setEditForm({ ...editForm, dripGpm: parseInt(e.target.value) || undefined })} />
+                            </div>
+                            <div className="form-group">
+                              <label>Depth (in)</label>
+                              <input type="number" value={editForm.dripDepth || ''} onChange={(e) => setEditForm({ ...editForm, dripDepth: parseInt(e.target.value) || undefined })} />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Location Data Fields */}
+                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Location Data</h4>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Elevation (ft)</label>
+                          <input type="number" value={editForm.elevation || ''} onChange={(e) => setEditForm({ ...editForm, elevation: parseInt(e.target.value) || undefined })} />
+                        </div>
+                        <div className="form-group">
+                          <label>Soil Type</label>
+                          <input type="text" value={editForm.soilType || ''} onChange={(e) => setEditForm({ ...editForm, soilType: e.target.value })} />
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>Placement Notes</label>
+                        <textarea value={editForm.placementNotes || ''} onChange={(e) => setEditForm({ ...editForm, placementNotes: e.target.value })} rows={2} placeholder="Notes about probe placement location..." />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <div className="detail-info">
@@ -881,6 +1009,95 @@ export default function FieldsClient({
                       <div className="detail-row">
                         <span className="detail-label">Notes</span>
                         <span className="detail-value">{selectedField.notes}</span>
+                      </div>
+                    )}
+
+                    {/* Irrigation Details Section */}
+                    {(selectedField.irrigationType || selectedField.rowDirection) && (
+                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
+                        <div className="detail-row" style={{ marginBottom: '8px' }}>
+                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Irrigation Details</span>
+                        </div>
+                        {selectedField.irrigationType && (
+                          <div className="detail-row">
+                            <span className="detail-label">Irrigation Type</span>
+                            <span className="detail-value">{selectedField.irrigationType}</span>
+                          </div>
+                        )}
+                        {selectedField.rowDirection && (
+                          <div className="detail-row">
+                            <span className="detail-label">Row Direction</span>
+                            <span className="detail-value">{selectedField.rowDirection}</span>
+                          </div>
+                        )}
+                        {/* Drip-specific fields - only show when irrigation type is Drip */}
+                        {selectedField.irrigationType === 'Drip' && (
+                          <>
+                            {selectedField.dripTubingDirection && (
+                              <div className="detail-row">
+                                <span className="detail-label">Tubing Direction</span>
+                                <span className="detail-value">{selectedField.dripTubingDirection}</span>
+                              </div>
+                            )}
+                            {selectedField.dripTubingSpacing && (
+                              <div className="detail-row">
+                                <span className="detail-label">Tubing Spacing</span>
+                                <span className="detail-value">{selectedField.dripTubingSpacing}"</span>
+                              </div>
+                            )}
+                            {selectedField.dripEmitterSpacing && (
+                              <div className="detail-row">
+                                <span className="detail-label">Emitter Spacing</span>
+                                <span className="detail-value">{selectedField.dripEmitterSpacing}"</span>
+                              </div>
+                            )}
+                            {selectedField.dripZones && (
+                              <div className="detail-row">
+                                <span className="detail-label">Zones</span>
+                                <span className="detail-value">{selectedField.dripZones}</span>
+                              </div>
+                            )}
+                            {selectedField.dripGpm && (
+                              <div className="detail-row">
+                                <span className="detail-label">GPM</span>
+                                <span className="detail-value">{selectedField.dripGpm}</span>
+                              </div>
+                            )}
+                            {selectedField.dripDepth && (
+                              <div className="detail-row">
+                                <span className="detail-label">Tubing Depth</span>
+                                <span className="detail-value">{selectedField.dripDepth}"</span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Location Data Section */}
+                    {(selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
+                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
+                        <div className="detail-row" style={{ marginBottom: '8px' }}>
+                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Location Data</span>
+                        </div>
+                        {selectedField.elevation && (
+                          <div className="detail-row">
+                            <span className="detail-label">Elevation</span>
+                            <span className="detail-value">{selectedField.elevation} ft</span>
+                          </div>
+                        )}
+                        {selectedField.soilType && (
+                          <div className="detail-row">
+                            <span className="detail-label">Soil Type</span>
+                            <span className="detail-value">{selectedField.soilType}</span>
+                          </div>
+                        )}
+                        {selectedField.placementNotes && (
+                          <div className="detail-row">
+                            <span className="detail-label">Placement Notes</span>
+                            <span className="detail-value">{selectedField.placementNotes}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

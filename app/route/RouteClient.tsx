@@ -12,6 +12,19 @@ export interface PendingInstall {
   lat: number;
   lng: number;
   status: string;
+  // Irrigation details
+  irrigationType?: string;
+  rowDirection?: string;
+  dripTubingDirection?: string;
+  dripTubingSpacing?: number;
+  dripEmitterSpacing?: number;
+  dripZones?: number;
+  dripGpm?: number;
+  dripDepth?: number;
+  // Location data
+  elevation?: number;
+  soilType?: string;
+  placementNotes?: string;
 }
 
 interface RouteClientProps {
@@ -99,7 +112,53 @@ export default function RouteClient({ pendingInstalls, today }: RouteClientProps
                       {install.status}
                     </span>
                   </div>
+                  {install.irrigationType && (
+                    <div className="route-detail">
+                      <span className="route-label">Irrigation</span>
+                      <span className="route-value">{install.irrigationType}</span>
+                    </div>
+                  )}
+                  {install.rowDirection && (
+                    <div className="route-detail">
+                      <span className="route-label">Row Dir.</span>
+                      <span className="route-value">{install.rowDirection}</span>
+                    </div>
+                  )}
                 </div>
+                {/* Drip details - only show for drip irrigation */}
+                {install.irrigationType === 'Drip' && (
+                  <div className="route-card-body" style={{ borderTop: '1px solid var(--border)', paddingTop: '8px', marginTop: '8px' }}>
+                    <div className="route-detail">
+                      <span className="route-label">Tubing Dir.</span>
+                      <span className="route-value">{install.dripTubingDirection || '—'}</span>
+                    </div>
+                    <div className="route-detail">
+                      <span className="route-label">Tube/Emitter</span>
+                      <span className="route-value">
+                        {install.dripTubingSpacing ? `${install.dripTubingSpacing}"` : '—'} / {install.dripEmitterSpacing ? `${install.dripEmitterSpacing}"` : '—'}
+                      </span>
+                    </div>
+                    <div className="route-detail">
+                      <span className="route-label">Zones</span>
+                      <span className="route-value">{install.dripZones || '—'}</span>
+                    </div>
+                    <div className="route-detail">
+                      <span className="route-label">GPM</span>
+                      <span className="route-value">{install.dripGpm || '—'}</span>
+                    </div>
+                    <div className="route-detail">
+                      <span className="route-label">Depth</span>
+                      <span className="route-value">{install.dripDepth ? `${install.dripDepth}"` : '—'}</span>
+                    </div>
+                  </div>
+                )}
+                {/* Placement notes - only show if present */}
+                {install.placementNotes && (
+                  <div style={{ padding: '8px 16px', borderTop: '1px solid var(--border)', background: 'var(--bg-tertiary)' }}>
+                    <span className="route-label" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Placement Notes</span>
+                    <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>{install.placementNotes}</p>
+                  </div>
+                )}
                 <div className="route-card-footer">
                   <a
                     href={`https://www.google.com/maps/dir/?api=1&destination=${install.lat},${install.lng}`}

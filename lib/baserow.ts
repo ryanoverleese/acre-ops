@@ -149,6 +149,14 @@ export interface Field {
   elevation?: number;
   soil_type?: string;
   placement_notes?: string;
+  irrigation_type?: { id: number; value: string };
+  row_direction?: { id: number; value: string };
+  drip_tubing_direction?: { id: number; value: string };
+  drip_tubing_spacing?: number;
+  drip_emitter_spacing?: number;
+  drip_zones?: number;
+  drip_gpm?: number;
+  drip_depth?: number;
 }
 
 export interface Probe {

@@ -55,6 +55,19 @@ async function getPendingInstalls(): Promise<PendingInstall[]> {
         lat: field?.lat || 0,
         lng: field?.lng || 0,
         status: fs.probe_status?.value || 'Pending',
+        // Irrigation details
+        irrigationType: field?.irrigation_type?.value,
+        rowDirection: field?.row_direction?.value,
+        dripTubingDirection: field?.drip_tubing_direction?.value,
+        dripTubingSpacing: field?.drip_tubing_spacing,
+        dripEmitterSpacing: field?.drip_emitter_spacing,
+        dripZones: field?.drip_zones,
+        dripGpm: field?.drip_gpm,
+        dripDepth: field?.drip_depth,
+        // Location data
+        elevation: field?.elevation,
+        soilType: field?.soil_type,
+        placementNotes: field?.placement_notes,
       };
     }).filter((install) => install.lat !== 0 && install.lng !== 0);
 
