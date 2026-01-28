@@ -190,9 +190,9 @@ export default function FieldsClient({
   const sortedProbes = useMemo(() => {
     return [...probes].sort((a, b) => {
       // Sort by owner operation first, then by serial number
-      const opCompare = a.ownerOperation.localeCompare(b.ownerOperation);
+      const opCompare = (a.ownerOperation || '').localeCompare(b.ownerOperation || '');
       if (opCompare !== 0) return opCompare;
-      return a.serialNumber.localeCompare(b.serialNumber);
+      return (a.serialNumber || '').localeCompare(b.serialNumber || '');
     });
   }, [probes]);
 
@@ -833,7 +833,7 @@ export default function FieldsClient({
                     {selectedField.lat && selectedField.lng && (
                       <div className="detail-row">
                         <span className="detail-label">Location</span>
-                        <span className="detail-value">{selectedField.lat.toFixed(4)}, {selectedField.lng.toFixed(4)}</span>
+                        <span className="detail-value">{Number(selectedField.lat).toFixed(4)}, {Number(selectedField.lng).toFixed(4)}</span>
                       </div>
                     )}
                     {selectedField.waterSource && (
