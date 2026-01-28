@@ -156,8 +156,8 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
       submitData.append('fieldSeasonId', selectedField.id.toString());
       submitData.append('probeNum', selectedProbe.toString());
       submitData.append('installer', formData.installer);
-      submitData.append('lat', formData.lat.toString());
-      submitData.append('lng', formData.lng.toString());
+      submitData.append('lat', String(formData.lat));
+      submitData.append('lng', String(formData.lng));
       submitData.append('crop', formData.cropChanged || selectedField.crop);
       submitData.append('cropConfirmed', 'true');
 

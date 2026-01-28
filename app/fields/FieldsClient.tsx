@@ -2107,8 +2107,8 @@ export default function FieldsClient({
         {/* Location Picker */}
         {showLocationPicker && (
           <LocationPicker
-            lat={locationPickerTarget === 'edit' ? (editForm.lat || null) : (addForm.lat ? parseFloat(addForm.lat) : null)}
-            lng={locationPickerTarget === 'edit' ? (editForm.lng || null) : (addForm.lng ? parseFloat(addForm.lng) : null)}
+            lat={locationPickerTarget === 'edit' ? (editForm.lat ? Number(editForm.lat) : null) : (addForm.lat ? parseFloat(addForm.lat) : null)}
+            lng={locationPickerTarget === 'edit' ? (editForm.lng ? Number(editForm.lng) : null) : (addForm.lng ? parseFloat(addForm.lng) : null)}
             onLocationChange={(lat, lng, elevation, soilType) => {
               if (locationPickerTarget === 'edit') {
                 setEditForm({
