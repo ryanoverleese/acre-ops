@@ -3,9 +3,71 @@
 import { useState, useMemo } from 'react';
 import type { ProbeOption } from './page';
 
-// Max photo size: 5MB
-const MAX_PHOTO_SIZE_MB = 5;
-const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
+// Target photo size: 2MB (compress anything larger)
+const TARGET_PHOTO_SIZE_MB = 2;
+const TARGET_PHOTO_SIZE_BYTES = TARGET_PHOTO_SIZE_MB * 1024 * 1024;
+
+// Compress image using canvas
+async function compressImage(file: File, maxSizeBytes: number): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    img.onload = () => {
+      // Start with original dimensions
+      let { width, height } = img;
+
+      // If image is very large, scale it down
+      const MAX_DIMENSION = 2048;
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+        if (width > height) {
+          height = Math.round((height * MAX_DIMENSION) / width);
+          width = MAX_DIMENSION;
+        } else {
+          width = Math.round((width * MAX_DIMENSION) / height);
+          height = MAX_DIMENSION;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      ctx?.drawImage(img, 0, 0, width, height);
+
+      // Try different quality levels until we get under target size
+      const tryCompress = (quality: number) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Failed to compress image'));
+              return;
+            }
+
+            // If still too large and quality > 0.3, try lower quality
+            if (blob.size > maxSizeBytes && quality > 0.3) {
+              tryCompress(quality - 0.1);
+            } else {
+              // Create new file with compressed data
+              const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      // Start with 0.8 quality
+      tryCompress(0.8);
+    };
+
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 export interface InstallableField {
   id: number;
@@ -84,6 +146,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
   const [locationError, setLocationError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showCropChange, setShowCropChange] = useState(false);
+  const [compressing, setCompressing] = useState<'photoFieldEnd' | 'photoExtra' | null>(null);
 
   // Filter by planned installer
   const filteredFields = useMemo(() => {
@@ -110,22 +173,40 @@ export default function InstallClient({ fields: initialFields, probes }: Install
     setGettingLocation(true);
     setLocationError(null);
 
-    navigator.geolocation.getCurrentPosition(
+    // Use watchPosition to get multiple readings over 2 seconds and pick the most accurate
+    let bestPosition: GeolocationPosition | null = null;
+
+    const watchId = navigator.geolocation.watchPosition(
       (position) => {
-        setFormData({
-          ...formData,
-          lat: Math.round(position.coords.latitude * 1000000) / 1000000,
-          lng: Math.round(position.coords.longitude * 1000000) / 1000000,
-          accuracy: position.coords.accuracy, // accuracy in meters
-        });
-        setGettingLocation(false);
+        // Keep the position with best (lowest) accuracy value
+        if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+          bestPosition = position;
+        }
       },
       (error) => {
         setLocationError(`Error getting location: ${error.message}`);
         setGettingLocation(false);
+        navigator.geolocation.clearWatch(watchId);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+
+    // After 2 seconds, stop watching and use best position
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+
+      if (bestPosition) {
+        setFormData({
+          ...formData,
+          lat: Math.round(bestPosition.coords.latitude * 1000000) / 1000000,
+          lng: Math.round(bestPosition.coords.longitude * 1000000) / 1000000,
+          accuracy: bestPosition.coords.accuracy,
+        });
+      } else {
+        setLocationError('Could not get GPS location. Please try again.');
+      }
+      setGettingLocation(false);
+    }, 2000);
   };
 
   const handleConfirmCrop = () => {
@@ -138,12 +219,28 @@ export default function InstallClient({ fields: initialFields, probes }: Install
     setShowCropChange(false);
   };
 
-  const handleFileChange = (field: 'photoFieldEnd' | 'photoExtra', file: File | null) => {
-    if (file && file.size > MAX_PHOTO_SIZE_BYTES) {
-      alert(`Photo is too large. Maximum size is ${MAX_PHOTO_SIZE_MB}MB. Your photo is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+  const handleFileChange = async (field: 'photoFieldEnd' | 'photoExtra', file: File | null) => {
+    if (!file) {
+      setFormData({ ...formData, [field]: null });
       return;
     }
-    setFormData({ ...formData, [field]: file });
+
+    // If file is larger than target size, compress it
+    if (file.size > TARGET_PHOTO_SIZE_BYTES) {
+      setCompressing(field);
+      try {
+        const compressedFile = await compressImage(file, TARGET_PHOTO_SIZE_BYTES);
+        setFormData(prev => ({ ...prev, [field]: compressedFile }));
+      } catch (error) {
+        console.error('Compression error:', error);
+        // Fall back to original file if compression fails
+        setFormData(prev => ({ ...prev, [field]: file }));
+      } finally {
+        setCompressing(null);
+      }
+    } else {
+      setFormData({ ...formData, [field]: file });
+    }
   };
 
   const handleSubmit = async () => {
@@ -693,8 +790,17 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                     capture="environment"
                     onChange={(e) => handleFileChange('photoFieldEnd', e.target.files?.[0] || null)}
                     style={{ fontSize: '16px' }}
+                    disabled={compressing === 'photoFieldEnd'}
                   />
-                  {formData.photoFieldEnd && (
+                  {compressing === 'photoFieldEnd' && (
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-amber-dim)', borderRadius: '8px', color: 'var(--accent-amber)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ animation: 'spin 1s linear infinite' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Compressing photo...</span>
+                    </div>
+                  )}
+                  {formData.photoFieldEnd && !compressing && (
                     <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-green-dim)', borderRadius: '8px', color: 'var(--accent-green)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -713,8 +819,17 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                     capture="environment"
                     onChange={(e) => handleFileChange('photoExtra', e.target.files?.[0] || null)}
                     style={{ fontSize: '16px' }}
+                    disabled={compressing === 'photoExtra'}
                   />
-                  {formData.photoExtra && (
+                  {compressing === 'photoExtra' && (
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-amber-dim)', borderRadius: '8px', color: 'var(--accent-amber)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ animation: 'spin 1s linear infinite' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      <span>Compressing photo...</span>
+                    </div>
+                  )}
+                  {formData.photoExtra && !compressing && (
                     <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-green-dim)', borderRadius: '8px', color: 'var(--accent-green)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -745,10 +860,10 @@ export default function InstallClient({ fields: initialFields, probes }: Install
               <button
                 className="btn btn-primary"
                 onClick={handleSubmit}
-                disabled={submitting}
+                disabled={submitting || compressing !== null}
                 style={{ flex: 1, justifyContent: 'center' }}
               >
-                {submitting ? 'Submitting...' : 'Submit Install'}
+                {submitting ? 'Submitting...' : compressing ? 'Compressing...' : 'Submit Install'}
               </button>
             </div>
           </div>
