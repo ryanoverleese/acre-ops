@@ -240,7 +240,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                   <div className="card-content">
                     {/* Map */}
                     <div className="card-map">
-                      <ApprovalMap lat={field.lat} lng={field.lng} fieldName={field.name} />
+                      <ApprovalMap lat={Number(field.lat)} lng={Number(field.lng)} fieldName={field.name} />
                     </div>
 
                     {/* Details */}
@@ -248,7 +248,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                       <div className="detail-row">
                         <span className="detail-label">Coordinates</span>
                         <span className="detail-value">
-                          {field.lat.toFixed(6)}, {field.lng.toFixed(6)}
+                          {Number(field.lat).toFixed(6)}, {Number(field.lng).toFixed(6)}
                         </span>
                       </div>
                       {field.elevation && (
