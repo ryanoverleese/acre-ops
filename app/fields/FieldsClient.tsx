@@ -1012,10 +1012,16 @@ export default function FieldsClient({
                         ) : (
                           filteredFields.map((field) => (
                             <tr key={`${field.id}-${field.fieldSeasonId}`}>
-                              <td style={{ fontWeight: 500 }}>{field.name}</td>
+                              <td
+                                style={{ fontWeight: 500, cursor: 'pointer' }}
+                                onClick={() => handleRowClick(field)}
+                                title="Click to view details"
+                              >
+                                {field.name}
+                              </td>
                               <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{field.season || '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="crop"
@@ -1033,7 +1039,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="serviceType"
@@ -1049,7 +1055,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="antennaType"
@@ -1064,7 +1070,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="probeId"
@@ -1079,7 +1085,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="probeStatus"
@@ -1096,7 +1102,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="routeOrder"
@@ -1107,7 +1113,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="plannedInstaller"
@@ -1124,7 +1130,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="readyToInstall"
@@ -1135,7 +1141,7 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
                                   fieldSeasonId={field.fieldSeasonId}
                                   field="approvalStatus"
@@ -1151,7 +1157,18 @@ export default function FieldsClient({
                                   savedFields={savedFields}
                                 />
                               </td>
-                              <td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  className="action-btn"
+                                  title="View details"
+                                  onClick={() => handleRowClick(field)}
+                                  style={{ marginRight: '4px' }}
+                                >
+                                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                  </svg>
+                                </button>
                                 {field.fieldSeasonId && (
                                   <button
                                     className="action-btn"
@@ -1281,9 +1298,7 @@ export default function FieldsClient({
           </div>
 
           {mapVisible && (
-            <div className="fields-map">
-              <FieldsMap fields={mapFields} visible={mapVisible} colorBy={colorBy} />
-            </div>
+            <FieldsMap fields={mapFields} visible={mapVisible} colorBy={colorBy} />
           )}
         </div>
 
