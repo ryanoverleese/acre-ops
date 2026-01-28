@@ -1141,7 +1141,7 @@ export default function FieldsClient({
                             <td>{field.irrigationType || '—'}</td>
                             <td>{field.rowDirection || '—'}</td>
                             <td style={{ fontSize: '11px', fontFamily: 'monospace' }}>
-                              {field.lat && field.lng ? `${field.lat.toFixed(4)}, ${field.lng.toFixed(4)}` : '—'}
+                              {field.lat && field.lng ? `${Number(field.lat).toFixed(4)}, ${Number(field.lng).toFixed(4)}` : '—'}
                             </td>
                             <td>{field.elevation ? `${field.elevation} ft` : '—'}</td>
                             <td>{field.soilType || '—'}</td>
