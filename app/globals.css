@@ -1266,3 +1266,112 @@ tr.selected {
     font-size: 24px;
   }
 }
+
+/* Mobile Card View */
+.mobile-cards {
+  display: none;
+}
+
+.desktop-table {
+  display: table;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .desktop-table {
+    display: none;
+  }
+
+  .mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .mobile-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+
+  .mobile-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .mobile-card-title {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .mobile-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .mobile-card-row {
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+
+  .mobile-card-row span {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin-right: 8px;
+  }
+
+  .mobile-card-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .mobile-card-actions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+/* Sortable table headers */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.sortable:hover {
+  color: var(--text-primary);
+}
+
+.sort-indicator {
+  color: var(--accent-green);
+  margin-left: 4px;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-green);
+  cursor: pointer;
+}
+
+/* Date input styling */
+input[type="date"] {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: inherit;
+}
+
+input[type="date"]:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}

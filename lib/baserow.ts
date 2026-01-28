@@ -220,9 +220,17 @@ export interface InvoiceLine {
   rate?: number;
 }
 
+export interface OperationContact {
+  id: number;
+  operation?: { id: number; value: string }[];
+  contact?: { id: number; value: string }[];
+  is_main_contact?: boolean;
+}
+
 // Convenience functions for each table
 export const getContacts = (options?: FetchOptions) => getRows<Contact>('contacts', options);
 export const getOperations = (options?: FetchOptions) => getRows<Operation>('operations', options);
+export const getOperationContacts = (options?: FetchOptions) => getRows<OperationContact>('operation_contacts', options);
 export const getBillingEntities = (options?: FetchOptions) => getRows<BillingEntity>('billing_entities', options);
 export const getFields = (options?: FetchOptions) => getRows<Field>('fields', options);
 export const getProbes = (options?: FetchOptions) => getRows<Probe>('probes', options);
