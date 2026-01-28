@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProcessedField, OperationOption, BillingEntityOption, ProbeOption } from './page';
 
@@ -14,12 +14,110 @@ const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   loading: () => <div className="location-picker-overlay"><div className="location-picker-modal"><div className="loading">Loading map...</div></div></div>,
 });
 
+type ViewMode = 'seasonal' | 'permanent';
+
 interface FieldsClientProps {
   initialFields: ProcessedField[];
   operations: OperationOption[];
   billingEntities: BillingEntityOption[];
   probes: ProbeOption[];
   availableSeasons: string[];
+}
+
+// Inline editable cell component for seasonal data
+interface InlineCellProps {
+  fieldSeasonId: number | null;
+  field: string;
+  value: string | number | boolean | null | undefined;
+  type: 'text' | 'select' | 'number' | 'checkbox';
+  options?: { value: string; label: string }[];
+  onSave: (fieldSeasonId: number, field: string, value: unknown) => Promise<void>;
+  savingFields: Set<string>;
+  savedFields: Set<string>;
+}
+
+function InlineCell({ fieldSeasonId, field, value, type, options, onSave, savingFields, savedFields }: InlineCellProps) {
+  const cellKey = `${fieldSeasonId}-${field}`;
+  const isSaving = savingFields.has(cellKey);
+  const justSaved = savedFields.has(cellKey);
+
+  const handleChange = async (newValue: unknown) => {
+    if (!fieldSeasonId) return;
+    await onSave(fieldSeasonId, field, newValue);
+  };
+
+  if (type === 'checkbox') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <input
+          type="checkbox"
+          checked={!!value}
+          onChange={(e) => handleChange(e.target.checked)}
+          disabled={isSaving}
+          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+        />
+        {isSaving && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+        {justSaved && <span style={{ fontSize: '10px', color: 'var(--accent-green)' }}>✓</span>}
+      </div>
+    );
+  }
+
+  if (type === 'select') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <select
+          value={value as string || ''}
+          onChange={(e) => handleChange(e.target.value || null)}
+          disabled={isSaving}
+          style={{
+            width: '100%',
+            padding: '4px 6px',
+            fontSize: '12px',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            transition: 'background 0.3s',
+          }}
+        >
+          <option value="">—</option>
+          {options?.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {isSaving && (
+          <span style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'number') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <input
+          type="number"
+          value={value as number || ''}
+          onChange={(e) => handleChange(e.target.value ? parseInt(e.target.value, 10) : null)}
+          disabled={isSaving}
+          min="1"
+          style={{
+            width: '60px',
+            padding: '4px 6px',
+            fontSize: '12px',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            transition: 'background 0.3s',
+          }}
+        />
+        {isSaving && (
+          <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
+        )}
+      </div>
+    );
+  }
+
+  return <span>{value?.toString() || '—'}</span>;
 }
 
 const initialAddForm = {
@@ -46,7 +144,7 @@ export default function FieldsClient({
   probes,
   availableSeasons,
 }: FieldsClientProps) {
-  const [fields] = useState(initialFields);
+  const [fields, setFields] = useState(initialFields);
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
@@ -57,6 +155,9 @@ export default function FieldsClient({
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
+  const [viewMode, setViewMode] = useState<ViewMode>('seasonal');
+  const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
+  const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ ...initialAddForm, season: currentSeason });
@@ -225,6 +326,84 @@ export default function FieldsClient({
       if (opCompare !== 0) return opCompare;
       return (a.serialNumber || '').localeCompare(b.serialNumber || '');
     });
+  }, [probes]);
+
+  // Inline save handler for seasonal data
+  const handleInlineSave = useCallback(async (fieldSeasonId: number, field: string, value: unknown) => {
+    const cellKey = `${fieldSeasonId}-${field}`;
+
+    // Mark as saving
+    setSavingFields(prev => new Set(prev).add(cellKey));
+
+    try {
+      // Map field names to API field names
+      const apiFieldMap: Record<string, string> = {
+        crop: 'crop',
+        serviceType: 'service_type',
+        antennaType: 'antenna_type',
+        probeId: 'probe',
+        probeStatus: 'probe_status',
+        routeOrder: 'route_order',
+        plannedInstaller: 'planned_installer',
+        readyToInstall: 'ready_to_install',
+      };
+
+      const apiField = apiFieldMap[field] || field;
+      const body: Record<string, unknown> = {};
+
+      // Handle probe assignment specially
+      if (field === 'probeId') {
+        body.probe = value ? parseInt(value as string, 10) : null;
+        body.probe_status = value ? 'Assigned' : 'Unassigned';
+      } else {
+        body[apiField] = value;
+      }
+
+      const response = await fetch(`/api/field-seasons/${fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        // Update local state
+        setFields(prev => prev.map(f => {
+          if (f.fieldSeasonId === fieldSeasonId) {
+            const updated = { ...f };
+            if (field === 'probeId') {
+              const probe = probes.find(p => p.id === parseInt(value as string, 10));
+              updated.probeId = value ? parseInt(value as string, 10) : null;
+              updated.probe = probe ? `#${probe.serialNumber}` : null;
+              updated.probeStatus = value ? 'Assigned' : 'Unassigned';
+            } else {
+              (updated as Record<string, unknown>)[field] = value;
+            }
+            return updated;
+          }
+          return f;
+        }));
+
+        // Show saved indicator
+        setSavedFields(prev => new Set(prev).add(cellKey));
+        setTimeout(() => {
+          setSavedFields(prev => {
+            const next = new Set(prev);
+            next.delete(cellKey);
+            return next;
+          });
+        }, 1500);
+      } else {
+        console.error('Failed to save:', await response.text());
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+    } finally {
+      setSavingFields(prev => {
+        const next = new Set(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    }
   }, [probes]);
 
   const handleRowClick = (field: ProcessedField) => {
@@ -629,19 +808,62 @@ export default function FieldsClient({
       </header>
 
       <div className="content">
-        <div className="tabs" style={{ marginBottom: '16px' }}>
-          <button className={`tab ${currentFilter === 'all' ? 'active' : ''}`} onClick={() => setCurrentFilter('all')}>
-            All Fields ({statusCounts.all})
-          </button>
-          <button className={`tab ${currentFilter === 'unassigned' ? 'active' : ''}`} onClick={() => setCurrentFilter('unassigned')}>
-            Unassigned ({statusCounts['unassigned']})
-          </button>
-          <button className={`tab ${currentFilter === 'assigned' ? 'active' : ''}`} onClick={() => setCurrentFilter('assigned')}>
-            Assigned ({statusCounts['assigned']})
-          </button>
-          <button className={`tab ${currentFilter === 'installed' ? 'active' : ''}`} onClick={() => setCurrentFilter('installed')}>
-            Installed ({statusCounts['installed']})
-          </button>
+        {/* View Mode Toggle */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="tabs">
+            <button className={`tab ${currentFilter === 'all' ? 'active' : ''}`} onClick={() => setCurrentFilter('all')}>
+              All Fields ({statusCounts.all})
+            </button>
+            <button className={`tab ${currentFilter === 'unassigned' ? 'active' : ''}`} onClick={() => setCurrentFilter('unassigned')}>
+              Unassigned ({statusCounts['unassigned']})
+            </button>
+            <button className={`tab ${currentFilter === 'assigned' ? 'active' : ''}`} onClick={() => setCurrentFilter('assigned')}>
+              Assigned ({statusCounts['assigned']})
+            </button>
+            <button className={`tab ${currentFilter === 'installed' ? 'active' : ''}`} onClick={() => setCurrentFilter('installed')}>
+              Installed ({statusCounts['installed']})
+            </button>
+          </div>
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-tertiary)',
+            borderRadius: '8px',
+            padding: '4px',
+            gap: '4px',
+          }}>
+            <button
+              onClick={() => setViewMode('seasonal')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                background: viewMode === 'seasonal' ? 'var(--accent-green)' : 'transparent',
+                color: viewMode === 'seasonal' ? 'white' : 'var(--text-secondary)',
+                transition: 'all 0.2s',
+              }}
+            >
+              Seasonal Data
+            </button>
+            <button
+              onClick={() => setViewMode('permanent')}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                background: viewMode === 'permanent' ? 'var(--accent-green)' : 'transparent',
+                color: viewMode === 'permanent' ? 'white' : 'var(--text-secondary)',
+                transition: 'all 0.2s',
+              }}
+            >
+              Permanent Data
+            </button>
+          </div>
         </div>
 
         <div className={`fields-container ${mapVisible ? 'map-visible' : ''}`}>
@@ -695,88 +917,269 @@ export default function FieldsClient({
                   )}
                 </div>
               </div>
-              <table className="desktop-table">
-                <thead>
-                  <tr>
-                    <th className="sortable" onClick={() => handleSort('name')}>
-                      Field Name
-                      {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    </th>
-                    <th className="sortable" onClick={() => handleSort('operation')}>
-                      Operation
-                      {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    </th>
-                    <th className="sortable" onClick={() => handleSort('acres')}>
-                      Acres
-                      {sortColumn === 'acres' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    </th>
-                    <th className="sortable" onClick={() => handleSort('crop')}>
-                      Crop
-                      {sortColumn === 'crop' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    </th>
-                    <th>Probe</th>
-                    <th className="sortable" onClick={() => handleSort('status')}>
-                      Status
-                      {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                    </th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFields.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredFields.map((field) => (
-                      <tr key={`${field.id}-${field.fieldSeasonId}`} onClick={() => handleRowClick(field)} style={{ cursor: 'pointer' }}>
-                        <td className="operation-name">{field.name}</td>
-                        <td style={{ fontSize: '13px' }}>{field.operation}</td>
-                        <td className="field-count">{field.acres}</td>
-                        <td>{getCropBadge(field.crop)}</td>
-                        <td>
-                          {field.probe ? (
-                            <code style={{ fontSize: '13px' }}>{field.probe}</code>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)' }}>—</span>
-                          )}
-                        </td>
-                        <td>{getStatusBadge(field.probeStatus)}</td>
-                        <td onClick={(e) => e.stopPropagation()}>
-                          <button className="action-btn" title="Edit" onClick={() => handleRowClick(field)}>
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+              {/* Seasonal Data View - Inline Editable */}
+              {viewMode === 'seasonal' && (
+                <>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="desktop-table" style={{ fontSize: '12px' }}>
+                      <thead>
+                        <tr>
+                          <th style={{ minWidth: '140px' }}>Field</th>
+                          <th style={{ minWidth: '100px' }}>Operation</th>
+                          <th style={{ minWidth: '90px' }}>Crop</th>
+                          <th style={{ minWidth: '90px' }}>Service</th>
+                          <th style={{ minWidth: '80px' }}>Antenna</th>
+                          <th style={{ minWidth: '140px' }}>Probe</th>
+                          <th style={{ minWidth: '90px' }}>Status</th>
+                          <th style={{ minWidth: '60px' }}>Route #</th>
+                          <th style={{ minWidth: '110px' }}>Installer</th>
+                          <th style={{ minWidth: '60px' }}>Ready</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredFields.length === 0 ? (
+                          <tr>
+                            <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                              No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredFields.map((field) => (
+                            <tr key={`${field.id}-${field.fieldSeasonId}`}>
+                              <td style={{ fontWeight: 500 }}>{field.name}</td>
+                              <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="crop"
+                                  value={field.crop}
+                                  type="select"
+                                  options={[
+                                    { value: 'Corn', label: 'Corn' },
+                                    { value: 'Soybeans', label: 'Soybeans' },
+                                    { value: 'Wheat', label: 'Wheat' },
+                                    { value: 'Seed Corn', label: 'Seed Corn' },
+                                    { value: 'Other', label: 'Other' },
+                                  ]}
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="serviceType"
+                                  value={field.serviceType}
+                                  type="select"
+                                  options={[
+                                    { value: 'Full Service', label: 'Full Service' },
+                                    { value: 'DIY', label: 'DIY' },
+                                    { value: 'VRS', label: 'VRS' },
+                                  ]}
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="antennaType"
+                                  value={field.antennaType}
+                                  type="select"
+                                  options={[
+                                    { value: 'Short', label: 'Short' },
+                                    { value: 'Tall', label: 'Tall' },
+                                  ]}
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="probeId"
+                                  value={field.probeId?.toString() || ''}
+                                  type="select"
+                                  options={sortedProbes.map(p => ({
+                                    value: p.id.toString(),
+                                    label: `#${p.serialNumber} (${p.ownerOperation})`,
+                                  }))}
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="probeStatus"
+                                  value={field.probeStatus}
+                                  type="select"
+                                  options={[
+                                    { value: 'Unassigned', label: 'Unassigned' },
+                                    { value: 'Assigned', label: 'Assigned' },
+                                    { value: 'Installed', label: 'Installed' },
+                                    { value: 'RMA', label: 'RMA' },
+                                  ]}
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="routeOrder"
+                                  value={field.routeOrder}
+                                  type="number"
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="plannedInstaller"
+                                  value={field.plannedInstaller}
+                                  type="select"
+                                  options={[
+                                    { value: 'Brian', label: 'Brian' },
+                                    { value: 'Daine', label: 'Daine' },
+                                    { value: 'Ryan', label: 'Ryan' },
+                                    { value: 'Ryan and Kasen', label: 'Ryan and Kasen' },
+                                  ]}
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="readyToInstall"
+                                  value={field.readyToInstall}
+                                  type="checkbox"
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mobile-cards">
+                    {filteredFields.length === 0 ? (
+                      <div className="empty-state">No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.</div>
+                    ) : (
+                      filteredFields.map((field) => (
+                        <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>
+                          <div className="mobile-card-header">
+                            <span className="mobile-card-title">{field.name}</span>
+                            {getStatusBadge(field.probeStatus)}
+                          </div>
+                          <div className="mobile-card-body">
+                            <div className="mobile-card-row"><span>Operation:</span> {field.operation}</div>
+                            <div className="mobile-card-row"><span>Crop:</span> {field.crop}</div>
+                            <div className="mobile-card-row"><span>Probe:</span> {field.probe || '—'}</div>
+                            <div className="mobile-card-row"><span>Route #:</span> {field.routeOrder || '—'}</div>
+                            <div className="mobile-card-row"><span>Installer:</span> {field.plannedInstaller || '—'}</div>
+                            <div className="mobile-card-row"><span>Ready:</span> {field.readyToInstall ? 'Yes' : 'No'}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
 
-              <div className="mobile-cards">
-                {filteredFields.length === 0 ? (
-                  <div className="empty-state">No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.</div>
-                ) : (
-                  filteredFields.map((field) => (
-                    <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>
-                      <div className="mobile-card-header">
-                        <span className="mobile-card-title">{field.name}</span>
-                        {getStatusBadge(field.probeStatus)}
-                      </div>
-                      <div className="mobile-card-body">
-                        <div className="mobile-card-row"><span>Operation:</span> {field.operation}</div>
-                        <div className="mobile-card-row"><span>Acres:</span> {field.acres}</div>
-                        <div className="mobile-card-row"><span>Crop:</span> {field.crop}</div>
-                        {field.probe && <div className="mobile-card-row"><span>Probe:</span> {field.probe}</div>}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              {/* Permanent Data View - Read-only with click to edit */}
+              {viewMode === 'permanent' && (
+                <>
+                  <table className="desktop-table">
+                    <thead>
+                      <tr>
+                        <th className="sortable" onClick={() => handleSort('name')}>
+                          Field Name
+                          {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                        </th>
+                        <th className="sortable" onClick={() => handleSort('operation')}>
+                          Operation
+                          {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                        </th>
+                        <th className="sortable" onClick={() => handleSort('acres')}>
+                          Acres
+                          {sortColumn === 'acres' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                        </th>
+                        <th>Irrigation</th>
+                        <th>Row Dir</th>
+                        <th>Lat/Lng</th>
+                        <th>Elevation</th>
+                        <th>Soil Type</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredFields.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredFields.map((field) => (
+                          <tr key={`${field.id}-${field.fieldSeasonId}`} onClick={() => handleRowClick(field)} style={{ cursor: 'pointer' }}>
+                            <td className="operation-name">{field.name}</td>
+                            <td style={{ fontSize: '13px' }}>{field.operation}</td>
+                            <td className="field-count">{field.acres}</td>
+                            <td>{field.irrigationType || '—'}</td>
+                            <td>{field.rowDirection || '—'}</td>
+                            <td style={{ fontSize: '11px', fontFamily: 'monospace' }}>
+                              {field.lat && field.lng ? `${field.lat.toFixed(4)}, ${field.lng.toFixed(4)}` : '—'}
+                            </td>
+                            <td>{field.elevation ? `${field.elevation} ft` : '—'}</td>
+                            <td>{field.soilType || '—'}</td>
+                            <td onClick={(e) => e.stopPropagation()}>
+                              <button className="action-btn" title="Edit" onClick={() => handleRowClick(field)}>
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                  <div className="mobile-cards">
+                    {filteredFields.length === 0 ? (
+                      <div className="empty-state">No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.</div>
+                    ) : (
+                      filteredFields.map((field) => (
+                        <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>
+                          <div className="mobile-card-header">
+                            <span className="mobile-card-title">{field.name}</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{field.irrigationType || 'Unknown'}</span>
+                          </div>
+                          <div className="mobile-card-body">
+                            <div className="mobile-card-row"><span>Operation:</span> {field.operation}</div>
+                            <div className="mobile-card-row"><span>Acres:</span> {field.acres}</div>
+                            <div className="mobile-card-row"><span>Row Direction:</span> {field.rowDirection || '—'}</div>
+                            <div className="mobile-card-row"><span>Elevation:</span> {field.elevation ? `${field.elevation} ft` : '—'}</div>
+                            <div className="mobile-card-row"><span>Soil Type:</span> {field.soilType || '—'}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
