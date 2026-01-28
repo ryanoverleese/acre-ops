@@ -66,8 +66,14 @@ export default async function ApprovePage({ params }: PageProps) {
   const fieldIds = new Set(operationFields.map((f) => f.id));
 
   // Get field seasons for this operation and season
+  // Use String() comparison since Baserow may return season as string or number
   const operationFieldSeasons = fieldSeasons.filter(
-    (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id) && fs.season === seasonYear
+    (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id) && String(fs.season) === String(seasonYear)
+  );
+
+  // Debug: find all field seasons that match our fields (regardless of season)
+  const allFieldSeasonsForOperation = fieldSeasons.filter(
+    (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id)
   );
 
   // Debug info
@@ -113,6 +119,14 @@ export default async function ApprovePage({ params }: PageProps) {
     operationFields: operationFields.map(f => ({ id: f.id, name: f.name })),
     totalFieldSeasons: fieldSeasons.length,
     operationFieldSeasons: operationFieldSeasons.length,
+    // Show all field seasons for this operation (any season) to debug
+    allFieldSeasonsForOp: allFieldSeasonsForOperation.map(fs => ({
+      id: fs.id,
+      fieldId: fs.field?.[0]?.id,
+      fieldName: fs.field?.[0]?.value,
+      season: fs.season,
+      seasonType: typeof fs.season,
+    })),
   };
 
   return (

@@ -22,6 +22,7 @@ interface DebugInfo {
   operationFields: { id: number; name: string }[];
   totalFieldSeasons: number;
   operationFieldSeasons: number;
+  allFieldSeasonsForOp?: { id: number; fieldId?: number; fieldName?: string; season?: number; seasonType: string }[];
 }
 
 interface ApprovalClientProps {
@@ -341,6 +342,17 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               </li>
               <li>Total field seasons in DB: {debugInfo.totalFieldSeasons}</li>
               <li>Field seasons for this operation + {season}: {debugInfo.operationFieldSeasons}</li>
+              <li><strong>All field seasons for these fields (any season):</strong>
+                {debugInfo.allFieldSeasonsForOp && debugInfo.allFieldSeasonsForOp.length > 0 ? (
+                  <ul>{debugInfo.allFieldSeasonsForOp.map(fs => (
+                    <li key={fs.id}>
+                      {fs.fieldName} (FieldID: {fs.fieldId}) - Season: {fs.season} (type: {fs.seasonType})
+                    </li>
+                  ))}</ul>
+                ) : (
+                  <span style={{ color: 'red' }}> NONE - these fields have no field_season records!</span>
+                )}
+              </li>
             </ul>
           </div>
         )}
