@@ -1,22 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-primary: #0f1419;
-  --bg-secondary: #1a2332;
-  --bg-card: #212d3b;
-  --bg-hover: #2a3a4d;
-  --text-primary: #e8edf4;
-  --text-secondary: #8b98a8;
-  --text-muted: #5c6b7a;
-  --accent-green: #34d399;
-  --accent-green-dim: rgba(52, 211, 153, 0.15);
-  --accent-blue: #60a5fa;
-  --accent-blue-dim: rgba(96, 165, 250, 0.15);
-  --accent-amber: #fbbf24;
-  --accent-amber-dim: rgba(251, 191, 36, 0.15);
-  --accent-red: #f87171;
-  --accent-red-dim: rgba(248, 113, 113, 0.15);
-  --border: #2d3d50;
+  /* Earthy light theme */
+  --bg-primary: #f5f0e8;
+  --bg-secondary: #ebe4d8;
+  --bg-card: #faf8f4;
+  --bg-hover: #e5ddd0;
+  --text-primary: #3d3529;
+  --text-secondary: #6b5d4d;
+  --text-muted: #9a8b78;
+  --accent-green: #5a8a5a;
+  --accent-green-dim: rgba(90, 138, 90, 0.15);
+  --accent-blue: #5b7a9a;
+  --accent-blue-dim: rgba(91, 122, 154, 0.15);
+  --accent-amber: #c4903d;
+  --accent-amber-dim: rgba(196, 144, 61, 0.15);
+  --accent-red: #b85450;
+  --accent-red-dim: rgba(184, 84, 80, 0.15);
+  --border: #d4c9b8;
   --radius: 8px;
 }
 
