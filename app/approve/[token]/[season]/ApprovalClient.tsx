@@ -34,7 +34,6 @@ interface ApprovalClientProps {
 
 export default function ApprovalClient({ operationName, season, fields: initialFields, debugInfo }: ApprovalClientProps) {
   const [fields, setFields] = useState(initialFields);
-  const [expandedFieldId, setExpandedFieldId] = useState<number | null>(null);
   const [changeNotes, setChangeNotes] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -205,13 +204,12 @@ export default function ApprovalClient({ operationName, season, fields: initialF
         {/* Field Cards */}
         <div className="approval-fields">
           {fields.map((field) => {
-            const isExpanded = expandedFieldId === field.id;
             const isLoading = loading[field.fieldSeasonId];
 
             return (
-              <div key={field.fieldSeasonId} className={`approval-card ${isExpanded ? 'expanded' : ''}`}>
+              <div key={field.fieldSeasonId} className="approval-card expanded">
                 {/* Card Header */}
-                <div className="card-header" onClick={() => setExpandedFieldId(isExpanded ? null : field.id)}>
+                <div className="card-header">
                   <div className="card-title">
                     <h3>{field.name}</h3>
                     <span className={getStatusBadgeClass(field.approvalStatus)}>
@@ -223,106 +221,105 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                     <span>{field.crop}</span>
                     <span>{field.serviceType}</span>
                   </div>
-                  <button className="expand-btn">
-                    <svg
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      width="20"
-                      height="20"
-                      style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
                 </div>
 
-                {/* Expanded Content */}
-                {isExpanded && (
-                  <div className="card-content">
-                    {/* Map */}
-                    <div className="card-map">
-                      <ApprovalMap lat={Number(field.lat)} lng={Number(field.lng)} fieldName={field.name} />
-                    </div>
+                {/* Content - Always visible */}
+                <div className="card-content">
+                  {/* Map */}
+                  <div className="card-map">
+                    <ApprovalMap lat={Number(field.lat)} lng={Number(field.lng)} fieldName={field.name} />
+                  </div>
 
-                    {/* Details */}
-                    <div className="card-details">
+                  {/* Details */}
+                  <div className="card-details">
+                    <div className="detail-row">
+                      <span className="detail-label">Coordinates</span>
+                      <span className="detail-value">
+                        {Number(field.lat).toFixed(6)}, {Number(field.lng).toFixed(6)}
+                      </span>
+                    </div>
+                    {field.elevation && (
                       <div className="detail-row">
-                        <span className="detail-label">Coordinates</span>
-                        <span className="detail-value">
-                          {Number(field.lat).toFixed(6)}, {Number(field.lng).toFixed(6)}
-                        </span>
-                      </div>
-                      {field.elevation && (
-                        <div className="detail-row">
-                          <span className="detail-label">Elevation</span>
-                          <span className="detail-value">{field.elevation} ft</span>
-                        </div>
-                      )}
-                      {field.soilType && (
-                        <div className="detail-row">
-                          <span className="detail-label">Soil Type</span>
-                          <span className="detail-value">{field.soilType}</span>
-                        </div>
-                      )}
-                      {field.placementNotes && (
-                        <div className="detail-row full-width">
-                          <span className="detail-label">Placement Notes</span>
-                          <p className="detail-notes">{field.placementNotes}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    {field.approvalStatus === 'Pending' && (
-                      <div className="card-actions">
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleApprove(field.fieldSeasonId)}
-                          disabled={isLoading}
-                        >
-                          {isLoading ? 'Approving...' : 'Approve Location'}
-                        </button>
-                        <div className="change-request-form">
-                          <textarea
-                            placeholder="Describe the change you'd like..."
-                            value={changeNotes[field.fieldSeasonId] || ''}
-                            onChange={(e) =>
-                              setChangeNotes((prev) => ({ ...prev, [field.fieldSeasonId]: e.target.value }))
-                            }
-                          />
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => handleRequestChange(field.fieldSeasonId)}
-                            disabled={isLoading}
-                          >
-                            Request Change
-                          </button>
-                        </div>
+                        <span className="detail-label">Elevation</span>
+                        <span className="detail-value">{field.elevation} ft</span>
                       </div>
                     )}
-
-                    {field.approvalStatus === 'Approved' && field.approvalDate && (
-                      <div className="card-approved-info">
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Approved on {field.approvalDate}
+                    {field.soilType && (
+                      <div className="detail-row">
+                        <span className="detail-label">Soil Type</span>
+                        <span className="detail-value">{field.soilType}</span>
                       </div>
                     )}
-
-                    {field.approvalStatus === 'Change Requested' && field.approvalNotes && (
-                      <div className="card-change-info">
-                        <strong>Change Requested:</strong>
-                        <p>{field.approvalNotes}</p>
+                    {field.placementNotes && (
+                      <div className="detail-row full-width">
+                        <span className="detail-label">Placement Notes</span>
+                        <p className="detail-notes">{field.placementNotes}</p>
                       </div>
                     )}
                   </div>
-                )}
+
+                  {/* Actions */}
+                  {field.approvalStatus === 'Pending' && (
+                    <div className="card-actions">
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => handleApprove(field.fieldSeasonId)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Approving...' : 'Approve Location'}
+                      </button>
+                      <div className="change-request-form">
+                        <textarea
+                          placeholder="Describe the change you'd like..."
+                          value={changeNotes[field.fieldSeasonId] || ''}
+                          onChange={(e) =>
+                            setChangeNotes((prev) => ({ ...prev, [field.fieldSeasonId]: e.target.value }))
+                          }
+                        />
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleRequestChange(field.fieldSeasonId)}
+                          disabled={isLoading}
+                        >
+                          Request Change
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {field.approvalStatus === 'Approved' && field.approvalDate && (
+                    <div className="card-approved-info">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Approved on {field.approvalDate}
+                    </div>
+                  )}
+
+                  {field.approvalStatus === 'Change Requested' && field.approvalNotes && (
+                    <div className="card-change-info">
+                      <strong>Change Requested:</strong>
+                      <p>{field.approvalNotes}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
+
+        {/* Bottom Bulk Actions */}
+        {pendingCount > 0 && (
+          <div className="bulk-actions">
+            <button
+              className="btn btn-primary"
+              onClick={handleBulkApprove}
+              disabled={bulkLoading}
+            >
+              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Pending Sensor Locations`}
+            </button>
+          </div>
+        )}
 
         {/* Debug Info */}
         {debugInfo && (
