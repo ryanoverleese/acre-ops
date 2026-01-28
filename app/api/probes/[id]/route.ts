@@ -62,3 +62,42 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const probeId = parseInt(id, 10);
+
+    if (isNaN(probeId)) {
+      return NextResponse.json(
+        { error: 'Invalid probe ID' },
+        { status: 400 }
+      );
+    }
+
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.probes}/${probeId}/`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Token ${BASEROW_TOKEN}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Baserow API error:', response.status, errorText);
+      return NextResponse.json(
+        { error: 'Failed to delete probe' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting probe:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

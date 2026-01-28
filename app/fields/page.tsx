@@ -8,11 +8,16 @@ export interface ProcessedField {
   operation: string;
   operationId: number | null;
   acres: number;
+  pivotAcres?: number;
+  billedAcres?: number;
   crop: string;
   probe: string | null;
   status: string;
   lat: number;
   lng: number;
+  waterSource?: string;
+  fuelSource?: string;
+  notes?: string;
 }
 
 export interface OperationOption {
@@ -91,11 +96,16 @@ async function getFieldsData(): Promise<{
         operation: operationName,
         operationId,
         acres: field.acres || 0,
+        pivotAcres: field.pivot_acres,
+        billedAcres: field.billed_acres,
         crop,
         probe: probeName ? `#${probeName}` : null,
         status,
         lat: field.lat || 0,
         lng: field.lng || 0,
+        waterSource: field.water_source?.value,
+        fuelSource: field.fuel_source?.value,
+        notes: field.notes,
       };
     });
 

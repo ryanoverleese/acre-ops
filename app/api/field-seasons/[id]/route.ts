@@ -11,11 +11,11 @@ interface RouteParams {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const operationId = parseInt(id, 10);
+    const fieldSeasonId = parseInt(id, 10);
 
-    if (isNaN(operationId)) {
+    if (isNaN(fieldSeasonId)) {
       return NextResponse.json(
-        { error: 'Invalid operation ID' },
+        { error: 'Invalid field season ID' },
         { status: 400 }
       );
     }
@@ -23,10 +23,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const updateData: Record<string, unknown> = {};
 
-    if (body.name !== undefined) updateData.name = body.name;
-    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.probe_status !== undefined) updateData.probe_status = body.probe_status;
+    if (body.install_date !== undefined) updateData.install_date = body.install_date;
+    if (body.install_lat !== undefined) updateData.install_lat = body.install_lat;
+    if (body.install_lng !== undefined) updateData.install_lng = body.install_lng;
+    if (body.installer !== undefined) updateData.installer = body.installer;
+    if (body.install_notes !== undefined) updateData.install_notes = body.install_notes;
+    if (body.removal_date !== undefined) updateData.removal_date = body.removal_date;
+    if (body.removal_notes !== undefined) updateData.removal_notes = body.removal_notes;
+    if (body.crop !== undefined) updateData.crop = body.crop;
+    if (body.service_type !== undefined) updateData.service_type = body.service_type;
+    if (body.antenna_type !== undefined) updateData.antenna_type = body.antenna_type;
+    if (body.probe !== undefined) {
+      updateData.probe = body.probe ? [body.probe] : [];
+    }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.operations}/${operationId}/?user_field_names=true`;
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -40,15 +52,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to update operation' },
+        { error: 'Failed to update field season' },
         { status: response.status }
       );
     }
 
-    const updatedOperation = await response.json();
-    return NextResponse.json(updatedOperation);
+    const updated = await response.json();
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error('Error updating operation:', error);
+    console.error('Error updating field season:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -59,16 +71,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const operationId = parseInt(id, 10);
+    const fieldSeasonId = parseInt(id, 10);
 
-    if (isNaN(operationId)) {
+    if (isNaN(fieldSeasonId)) {
       return NextResponse.json(
-        { error: 'Invalid operation ID' },
+        { error: 'Invalid field season ID' },
         { status: 400 }
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.operations}/${operationId}/`;
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/`;
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {
@@ -80,14 +92,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to delete operation' },
+        { error: 'Failed to delete field season' },
         { status: response.status }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting operation:', error);
+    console.error('Error deleting field season:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

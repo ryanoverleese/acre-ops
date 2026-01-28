@@ -11,11 +11,11 @@ interface RouteParams {
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const operationId = parseInt(id, 10);
+    const invoiceId = parseInt(id, 10);
 
-    if (isNaN(operationId)) {
+    if (isNaN(invoiceId)) {
       return NextResponse.json(
-        { error: 'Invalid operation ID' },
+        { error: 'Invalid invoice ID' },
         { status: 400 }
       );
     }
@@ -23,10 +23,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const updateData: Record<string, unknown> = {};
 
-    if (body.name !== undefined) updateData.name = body.name;
+    if (body.amount !== undefined) updateData.amount = body.amount;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.sent_at !== undefined) updateData.sent_at = body.sent_at;
+    if (body.paid_at !== undefined) updateData.paid_at = body.paid_at;
     if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.season !== undefined) updateData.season = body.season;
+    if (body.billing_entity !== undefined) {
+      updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
+    }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.operations}/${operationId}/?user_field_names=true`;
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.invoices}/${invoiceId}/?user_field_names=true`;
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -40,15 +47,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to update operation' },
+        { error: 'Failed to update invoice' },
         { status: response.status }
       );
     }
 
-    const updatedOperation = await response.json();
-    return NextResponse.json(updatedOperation);
+    const updated = await response.json();
+    return NextResponse.json(updated);
   } catch (error) {
-    console.error('Error updating operation:', error);
+    console.error('Error updating invoice:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -59,16 +66,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
-    const operationId = parseInt(id, 10);
+    const invoiceId = parseInt(id, 10);
 
-    if (isNaN(operationId)) {
+    if (isNaN(invoiceId)) {
       return NextResponse.json(
-        { error: 'Invalid operation ID' },
+        { error: 'Invalid invoice ID' },
         { status: 400 }
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.operations}/${operationId}/`;
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.invoices}/${invoiceId}/`;
     const response = await fetch(url, {
       method: 'DELETE',
       headers: {
@@ -80,14 +87,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to delete operation' },
+        { error: 'Failed to delete invoice' },
         { status: response.status }
       );
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting operation:', error);
+    console.error('Error deleting invoice:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

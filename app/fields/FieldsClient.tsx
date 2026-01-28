@@ -97,9 +97,14 @@ export default function FieldsClient({
     setEditForm({
       name: field.name,
       acres: field.acres,
+      pivotAcres: field.pivotAcres,
+      billedAcres: field.billedAcres,
       crop: field.crop,
       lat: field.lat,
       lng: field.lng,
+      waterSource: field.waterSource,
+      fuelSource: field.fuelSource,
+      notes: field.notes,
     });
     setIsEditing(false);
   };
@@ -124,8 +129,13 @@ export default function FieldsClient({
         body: JSON.stringify({
           name: editForm.name,
           acres: editForm.acres,
+          pivot_acres: editForm.pivotAcres,
+          billed_acres: editForm.billedAcres,
           lat: editForm.lat,
           lng: editForm.lng,
+          water_source: editForm.waterSource || null,
+          fuel_source: editForm.fuelSource || null,
+          notes: editForm.notes || null,
         }),
       });
       if (response.ok) {
@@ -146,9 +156,14 @@ export default function FieldsClient({
       setEditForm({
         name: selectedField.name,
         acres: selectedField.acres,
+        pivotAcres: selectedField.pivotAcres,
+        billedAcres: selectedField.billedAcres,
         crop: selectedField.crop,
         lat: selectedField.lat,
         lng: selectedField.lng,
+        waterSource: selectedField.waterSource,
+        fuelSource: selectedField.fuelSource,
+        notes: selectedField.notes,
       });
     }
     setIsEditing(false);
@@ -354,9 +369,19 @@ export default function FieldsClient({
                     <label>Field Name</label>
                     <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                   </div>
-                  <div className="form-group">
-                    <label>Acres</label>
-                    <input type="number" value={editForm.acres || ''} onChange={(e) => setEditForm({ ...editForm, acres: parseFloat(e.target.value) })} />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Acres</label>
+                      <input type="number" value={editForm.acres || ''} onChange={(e) => setEditForm({ ...editForm, acres: parseFloat(e.target.value) })} />
+                    </div>
+                    <div className="form-group">
+                      <label>Pivot Acres</label>
+                      <input type="number" value={editForm.pivotAcres || ''} onChange={(e) => setEditForm({ ...editForm, pivotAcres: parseFloat(e.target.value) })} />
+                    </div>
+                    <div className="form-group">
+                      <label>Billed Acres</label>
+                      <input type="number" value={editForm.billedAcres || ''} onChange={(e) => setEditForm({ ...editForm, billedAcres: parseFloat(e.target.value) })} />
+                    </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
@@ -367,6 +392,31 @@ export default function FieldsClient({
                       <label>Longitude</label>
                       <input type="number" step="0.000001" value={editForm.lng || ''} onChange={(e) => setEditForm({ ...editForm, lng: parseFloat(e.target.value) })} />
                     </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Water Source</label>
+                      <select value={editForm.waterSource || ''} onChange={(e) => setEditForm({ ...editForm, waterSource: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Well">Well</option>
+                        <option value="Canal">Canal</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Fuel Source</label>
+                      <select value={editForm.fuelSource || ''} onChange={(e) => setEditForm({ ...editForm, fuelSource: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Electric">Electric</option>
+                        <option value="Natural Gas">Natural Gas</option>
+                        <option value="Diesel">Diesel</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Notes</label>
+                    <textarea value={editForm.notes || ''} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} placeholder="Enter notes..." rows={2} />
                   </div>
                 </div>
               ) : (

@@ -37,6 +37,24 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.lng !== undefined) {
       updateData.lng = body.lng;
     }
+    if (body.pivot_acres !== undefined) {
+      updateData.pivot_acres = body.pivot_acres;
+    }
+    if (body.billed_acres !== undefined) {
+      updateData.billed_acres = body.billed_acres;
+    }
+    if (body.water_source !== undefined) {
+      updateData.water_source = body.water_source;
+    }
+    if (body.fuel_source !== undefined) {
+      updateData.fuel_source = body.fuel_source;
+    }
+    if (body.notes !== undefined) {
+      updateData.notes = body.notes;
+    }
+    if (body.billing_entity !== undefined) {
+      updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
+    }
 
     // Make the PATCH request to Baserow
     const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/?user_field_names=true`;
@@ -104,6 +122,45 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(field);
   } catch (error) {
     console.error('Error fetching field:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const fieldId = parseInt(id, 10);
+
+    if (isNaN(fieldId)) {
+      return NextResponse.json(
+        { error: 'Invalid field ID' },
+        { status: 400 }
+      );
+    }
+
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Token ${BASEROW_TOKEN}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Baserow API error:', response.status, errorText);
+      return NextResponse.json(
+        { error: 'Failed to delete field' },
+        { status: response.status }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting field:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
