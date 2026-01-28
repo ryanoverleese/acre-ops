@@ -103,7 +103,7 @@ export default function FieldsClient({
 
   // Calculate status counts for current season
   const statusCounts = useMemo(() => {
-    const normalizeStatus = (status: string) => status.toLowerCase().replace(' ', '-');
+    const normalizeStatus = (status: string | undefined | null) => (status || 'unassigned').toLowerCase().replace(' ', '-');
     return {
       all: seasonFields.length,
       'unassigned': seasonFields.filter((f) => normalizeStatus(f.probeStatus) === 'unassigned').length,
@@ -133,15 +133,15 @@ export default function FieldsClient({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((f) =>
-        f.name.toLowerCase().includes(query) ||
-        f.operation.toLowerCase().includes(query) ||
-        f.crop.toLowerCase().includes(query) ||
+        (f.name || '').toLowerCase().includes(query) ||
+        (f.operation || '').toLowerCase().includes(query) ||
+        (f.crop || '').toLowerCase().includes(query) ||
         f.probe?.toLowerCase().includes(query)
       );
     }
 
     if (currentFilter !== 'all') {
-      const normalizeStatus = (status: string) => status.toLowerCase().replace(' ', '-');
+      const normalizeStatus = (status: string | undefined | null) => (status || 'unassigned').toLowerCase().replace(' ', '-');
       filtered = filtered.filter((f) => normalizeStatus(f.probeStatus) === currentFilter);
     }
 
@@ -155,12 +155,12 @@ export default function FieldsClient({
       let bVal: string | number = '';
 
       switch (sortColumn) {
-        case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
-        case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
-        case 'acres': aVal = a.acres; bVal = b.acres; break;
-        case 'crop': aVal = a.crop.toLowerCase(); bVal = b.crop.toLowerCase(); break;
-        case 'status': aVal = a.probeStatus.toLowerCase(); bVal = b.probeStatus.toLowerCase(); break;
-        default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
+        case 'name': aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase(); break;
+        case 'operation': aVal = (a.operation || '').toLowerCase(); bVal = (b.operation || '').toLowerCase(); break;
+        case 'acres': aVal = a.acres || 0; bVal = b.acres || 0; break;
+        case 'crop': aVal = (a.crop || '').toLowerCase(); bVal = (b.crop || '').toLowerCase(); break;
+        case 'status': aVal = (a.probeStatus || '').toLowerCase(); bVal = (b.probeStatus || '').toLowerCase(); break;
+        default: aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase();
       }
 
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -180,7 +180,7 @@ export default function FieldsClient({
       acres: f.acres,
       crop: f.crop,
       probe: f.probe,
-      status: f.probeStatus.toLowerCase().replace(' ', '-'),
+      status: (f.probeStatus || 'unassigned').toLowerCase().replace(' ', '-'),
       lat: f.lat,
       lng: f.lng,
     }));
@@ -453,15 +453,16 @@ export default function FieldsClient({
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const normalized = status.toLowerCase().replace(' ', '-');
+  const getStatusBadge = (status: string | undefined | null) => {
+    const safeStatus = status || 'Unassigned';
+    const normalized = safeStatus.toLowerCase().replace(' ', '-');
     const statusMap: Record<string, { class: string; label: string }> = {
       installed: { class: 'installed', label: 'Installed' },
       assigned: { class: 'pending', label: 'Assigned' },
       unassigned: { class: 'needs-probe', label: 'Unassigned' },
       rma: { class: 'repair', label: 'RMA' },
     };
-    const config = statusMap[normalized] || { class: 'needs-probe', label: status };
+    const config = statusMap[normalized] || { class: 'needs-probe', label: safeStatus };
     return (
       <span className={`status-badge ${config.class}`}>
         <span className="status-dot"></span>
@@ -470,13 +471,14 @@ export default function FieldsClient({
     );
   };
 
-  const getCropBadge = (crop: string) => {
-    const cropLower = crop.toLowerCase();
+  const getCropBadge = (crop: string | undefined | null) => {
+    const safeCrop = crop || 'Unknown';
+    const cropLower = safeCrop.toLowerCase();
     let cropClass = 'other';
     if (cropLower === 'corn' || cropLower === 'seed corn') cropClass = 'corn';
     else if (cropLower === 'soybeans') cropClass = 'soybeans';
     else if (cropLower === 'wheat') cropClass = 'wheat';
-    return <span className={`crop-badge ${cropClass}`}>{crop}</span>;
+    return <span className={`crop-badge ${cropClass}`}>{safeCrop}</span>;
   };
 
   return (
