@@ -175,22 +175,34 @@ export interface FieldSeason {
   field?: { id: number; value: string }[];
   season?: number;
   crop?: { id: number; value: string };
+  crop_confirmed?: boolean;
   service_type?: { id: number; value: string };
   antenna_type?: { id: number; value: string };
+  // Probe 1
   probe?: { id: number; value: string }[];
   probe_status?: { id: number; value: string };
   installer?: string;
   install_date?: string;
   install_lat?: number;
   install_lng?: number;
-  install_photo_url?: string;
+  install_photo_field_end_url?: { url: string; name: string }[];
+  install_photo_extra_url?: { url: string; name: string }[];
   install_notes?: string;
+  cropx_telemetry_id?: string;
+  signal_strength?: string;
+  // Probe 2
   probe_2?: { id: number; value: string }[];
   probe_2_status?: { id: number; value: string };
+  probe_2_installer?: string;
   probe_2_install_date?: string;
   probe_2_install_lat?: number;
   probe_2_install_lng?: number;
-  probe_2_install_photo_url?: string;
+  probe_2_install_photo_field_end_url?: { url: string; name: string }[];
+  probe_2_install_photo_extra_url?: { url: string; name: string }[];
+  probe_2_install_notes?: string;
+  probe_2_cropx_telemetry_id?: string;
+  probe_2_signal_strength?: string;
+  // Other
   removal_date?: string;
   removal_notes?: string;
   approval_status?: { id: number; value: string };

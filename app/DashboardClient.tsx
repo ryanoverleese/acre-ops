@@ -8,6 +8,9 @@ export interface DashboardStats {
   fieldsCount: number;
   probesCount: number;
   repairsCount: number;
+  installedCount: number;
+  assignedCount: number;
+  unassignedCount: number;
 }
 
 export interface DashboardOperation {
@@ -59,7 +62,7 @@ export default function DashboardClient({ stats, operations: initialOperations }
       <header className="header">
         <div className="header-left">
           <h2>Dashboard</h2>
-          <span className="season-badge">2025 Season</span>
+          <span className="season-badge">2026 Season</span>
         </div>
         <div className="header-right">
           <div className="search-box">
@@ -73,36 +76,62 @@ export default function DashboardClient({ stats, operations: initialOperations }
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Link href="/route" className="btn btn-primary">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Install
-          </Link>
         </div>
       </header>
 
       <div className="content">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-label">Total Operations</div>
-            <div className="stat-value green">{stats.operationsCount}</div>
-            <div className="stat-change">Active operations</div>
+        {/* Install Status Section */}
+        <div style={{ marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Install Status (2026)
+          </h3>
+          <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <Link href="/install" style={{ textDecoration: 'none' }}>
+              <div className="stat-card" style={{ cursor: 'pointer' }}>
+                <div className="stat-label">Ready to Install</div>
+                <div className="stat-value amber">{stats.assignedCount}</div>
+                <div className="stat-change">Assigned probes</div>
+              </div>
+            </Link>
+            <div className="stat-card">
+              <div className="stat-label">Installed</div>
+              <div className="stat-value green">{stats.installedCount}</div>
+              <div className="stat-change">Completed installs</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Unassigned</div>
+              <div className="stat-value blue">{stats.unassignedCount}</div>
+              <div className="stat-change">Need probe assignment</div>
+            </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-label">Active Fields</div>
-            <div className="stat-value blue">{stats.fieldsCount}</div>
-            <div className="stat-change">Fields with probe data</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Total Probes</div>
-            <div className="stat-value amber">{stats.probesCount}</div>
-            <div className="stat-change">In inventory</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Needs Repair</div>
-            <div className="stat-value red">{stats.repairsCount}</div>
-            <div className="stat-change">Active repairs</div>
+        </div>
+
+        {/* Overview Stats */}
+        <div style={{ marginBottom: '24px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Overview
+          </h3>
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-label">Total Operations</div>
+              <div className="stat-value green">{stats.operationsCount}</div>
+              <div className="stat-change">Active operations</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Active Fields</div>
+              <div className="stat-value blue">{stats.fieldsCount}</div>
+              <div className="stat-change">Fields with probe data</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Total Probes</div>
+              <div className="stat-value amber">{stats.probesCount}</div>
+              <div className="stat-change">In inventory</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Needs Repair</div>
+              <div className="stat-value red">{stats.repairsCount}</div>
+              <div className="stat-change">Active repairs</div>
+            </div>
           </div>
         </div>
 
