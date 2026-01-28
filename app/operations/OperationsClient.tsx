@@ -2,22 +2,39 @@
 
 import { useState, useMemo } from 'react';
 
+export interface LinkedContact {
+  operationContactId: number;
+  contactId: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  isMainContact: boolean;
+}
+
 export interface ProcessedOperation {
   id: number;
   name: string;
-  contacts: { id: number; name: string; email?: string; phone?: string }[];
+  linkedContacts: LinkedContact[];
   billingEntities: { id: number; name: string }[];
   fieldCount: number;
   notes?: string;
 }
 
+export interface ContactOption {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+}
+
 interface OperationsClientProps {
   operations: ProcessedOperation[];
+  allContacts: ContactOption[];
 }
 
 const initialAddForm = { name: '', notes: '' };
 
-export default function OperationsClient({ operations: initialOperations }: OperationsClientProps) {
+export default function OperationsClient({ operations: initialOperations, allContacts }: OperationsClientProps) {
   const [operations, setOperations] = useState(initialOperations);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -28,6 +45,12 @@ export default function OperationsClient({ operations: initialOperations }: Oper
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Linked contacts management
+  const [linkedContacts, setLinkedContacts] = useState<LinkedContact[]>([]);
+  const [showAddContactDropdown, setShowAddContactDropdown] = useState(false);
+  const [newContactId, setNewContactId] = useState('');
+  const [newContactIsMain, setNewContactIsMain] = useState(false);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -46,11 +69,10 @@ export default function OperationsClient({ operations: initialOperations }: Oper
         (op) =>
           op.name.toLowerCase().includes(query) ||
           op.notes?.toLowerCase().includes(query) ||
-          op.contacts.some((c) => c.name.toLowerCase().includes(query))
+          op.linkedContacts.some((c) => c.name.toLowerCase().includes(query))
       );
     }
 
-    // Sort
     filtered = [...filtered].sort((a, b) => {
       let aVal: string | number = '';
       let bVal: string | number = '';
@@ -82,9 +104,17 @@ export default function OperationsClient({ operations: initialOperations }: Oper
         body: JSON.stringify(addForm),
       });
       if (response.ok) {
+        const newOp = await response.json();
+        setOperations([...operations, {
+          id: newOp.id,
+          name: newOp.name,
+          linkedContacts: [],
+          billingEntities: [],
+          fieldCount: 0,
+          notes: newOp.notes,
+        }]);
         setShowAddModal(false);
         setAddForm(initialAddForm);
-        window.location.reload();
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to create operation');
@@ -111,9 +141,13 @@ export default function OperationsClient({ operations: initialOperations }: Oper
         body: JSON.stringify(editForm),
       });
       if (response.ok) {
+        setOperations(operations.map((op) =>
+          op.id === selectedOperation.id
+            ? { ...op, name: editForm.name, notes: editForm.notes, linkedContacts }
+            : op
+        ));
         setShowEditModal(false);
         setSelectedOperation(null);
-        window.location.reload();
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to update operation');
@@ -146,8 +180,70 @@ export default function OperationsClient({ operations: initialOperations }: Oper
   const openEditModal = (op: ProcessedOperation) => {
     setSelectedOperation(op);
     setEditForm({ name: op.name, notes: op.notes || '' });
+    setLinkedContacts([...op.linkedContacts]);
     setShowEditModal(true);
   };
+
+  const handleAddContact = async () => {
+    if (!newContactId || !selectedOperation) return;
+    setSaving(true);
+    try {
+      const response = await fetch('/api/operation-contacts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operation: [selectedOperation.id],
+          contact: [parseInt(newContactId)],
+          is_main_contact: newContactIsMain,
+        }),
+      });
+      if (response.ok) {
+        const newOC = await response.json();
+        const contact = allContacts.find((c) => c.id === parseInt(newContactId));
+        if (contact) {
+          setLinkedContacts([...linkedContacts, {
+            operationContactId: newOC.id,
+            contactId: contact.id,
+            name: contact.name,
+            email: contact.email,
+            phone: contact.phone,
+            isMainContact: newContactIsMain,
+          }]);
+        }
+        setShowAddContactDropdown(false);
+        setNewContactId('');
+        setNewContactIsMain(false);
+      } else {
+        alert('Failed to add contact');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to add contact');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveContact = async (lc: LinkedContact) => {
+    if (!confirm(`Remove ${lc.name} from this operation?`)) return;
+    try {
+      const response = await fetch(`/api/operation-contacts/${lc.operationContactId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setLinkedContacts(linkedContacts.filter((c) => c.operationContactId !== lc.operationContactId));
+      } else {
+        alert('Failed to remove contact');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to remove contact');
+    }
+  };
+
+  const availableContacts = allContacts.filter(
+    (c) => !linkedContacts.some((lc) => lc.contactId === c.id)
+  );
 
   return (
     <>
@@ -184,7 +280,7 @@ export default function OperationsClient({ operations: initialOperations }: Oper
               {searchQuery ? `Matching Operations (${filteredOperations.length})` : 'All Operations'}
             </h3>
           </div>
-          <table>
+          <table className="desktop-table">
             <thead>
               <tr>
                 <th className="sortable" onClick={() => handleSort('name')}>
@@ -213,13 +309,16 @@ export default function OperationsClient({ operations: initialOperations }: Oper
                   <tr key={op.id}>
                     <td className="operation-name">{op.name}</td>
                     <td>
-                      {op.contacts.length > 0 ? (
+                      {op.linkedContacts.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {op.contacts.map((c) => (
-                            <div key={c.id} style={{ fontSize: '13px' }}>
+                          {op.linkedContacts.map((c) => (
+                            <div key={c.operationContactId} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>{c.name}</span>
+                              {c.isMainContact && (
+                                <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                              )}
                               {c.phone && (
-                                <span style={{ color: 'var(--text-muted)', marginLeft: '8px' }}>{c.phone}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{c.phone}</span>
                               )}
                             </div>
                           ))}
@@ -262,6 +361,32 @@ export default function OperationsClient({ operations: initialOperations }: Oper
               )}
             </tbody>
           </table>
+
+          <div className="mobile-cards">
+            {filteredOperations.length === 0 ? (
+              <div className="empty-state">No operations found.</div>
+            ) : (
+              filteredOperations.map((op) => (
+                <div key={op.id} className="mobile-card">
+                  <div className="mobile-card-header">
+                    <span className="mobile-card-title">{op.name}</span>
+                    <span className="status-badge in-stock">{op.fieldCount} fields</span>
+                  </div>
+                  <div className="mobile-card-body">
+                    {op.linkedContacts.length > 0 && (
+                      <div className="mobile-card-row">
+                        <span>Contacts:</span> {op.linkedContacts.map((c) => c.name).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                  <div className="mobile-card-actions">
+                    <button className="btn btn-secondary" onClick={() => openEditModal(op)}>Edit</button>
+                    <button className="btn btn-secondary" onClick={() => handleDelete(op)}>Delete</button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
@@ -338,6 +463,97 @@ export default function OperationsClient({ operations: initialOperations }: Oper
                     placeholder="Enter notes..."
                     rows={3}
                   />
+                </div>
+
+                {/* Linked Contacts Section */}
+                <div className="form-group">
+                  <label style={{ marginBottom: '12px', display: 'block' }}>Linked Contacts</label>
+
+                  {linkedContacts.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                      {linkedContacts.map((lc) => (
+                        <div key={lc.operationContactId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontWeight: 500 }}>{lc.name}</span>
+                            {lc.isMainContact && (
+                              <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                            )}
+                            {lc.phone && <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{lc.phone}</span>}
+                          </div>
+                          <button
+                            type="button"
+                            className="action-btn"
+                            title="Remove"
+                            onClick={() => handleRemoveContact(lc)}
+                          >
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: 'var(--text-muted)', marginBottom: '12px', fontSize: '13px' }}>No contacts linked to this operation.</p>
+                  )}
+
+                  {!showAddContactDropdown ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowAddContactDropdown(true)}
+                      style={{ width: '100%' }}
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Contact
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                      <select
+                        value={newContactId}
+                        onChange={(e) => setNewContactId(e.target.value)}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="">Select contact...</option>
+                        {availableContacts.map((c) => (
+                          <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                      </select>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                        <input
+                          type="checkbox"
+                          checked={newContactIsMain}
+                          onChange={(e) => setNewContactIsMain(e.target.checked)}
+                        />
+                        Main Contact
+                      </label>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setShowAddContactDropdown(false);
+                            setNewContactId('');
+                            setNewContactIsMain(false);
+                          }}
+                          style={{ flex: 1 }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleAddContact}
+                          disabled={!newContactId || saving}
+                          style={{ flex: 1 }}
+                        >
+                          {saving ? 'Adding...' : 'Add'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

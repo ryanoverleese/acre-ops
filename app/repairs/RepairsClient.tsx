@@ -28,6 +28,7 @@ interface RepairsClientProps {
 
 const initialForm = {
   field_season: '',
+  reported_at: new Date().toISOString().split('T')[0],
   problem: '',
   fix: '',
   repaired_at: '',
@@ -117,6 +118,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
     try {
       const payload: Record<string, unknown> = {
         field_season: parseInt(addForm.field_season, 10),
+        reported_at: addForm.reported_at,
         problem: addForm.problem,
       };
       if (addForm.fix) payload.fix = addForm.fix;
@@ -197,6 +199,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
     setSelectedRepair(repair);
     setEditForm({
       field_season: repair.fieldSeasonId.toString(),
+      reported_at: repair.reportedAt || '',
       problem: repair.problem,
       fix: repair.fix || '',
       repaired_at: repair.repairedAt || '',
@@ -402,6 +405,14 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
                       </option>
                     ))}
                   </select>
+                </div>
+                <div className="form-group">
+                  <label>Reported Date *</label>
+                  <input
+                    type="date"
+                    value={addForm.reported_at}
+                    onChange={(e) => setAddForm({ ...addForm, reported_at: e.target.value })}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Problem Description *</label>
