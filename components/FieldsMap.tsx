@@ -127,7 +127,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsM
   const getMarkerColor = (field: FieldData): string => {
     switch (colorBy) {
       case 'crop':
-        return CROP_COLORS[field.crop.toLowerCase()] || CROP_COLORS.default;
+        return CROP_COLORS[(field.crop || '').toLowerCase()] || CROP_COLORS.default;
       case 'status':
         return STATUS_COLORS[field.status] || STATUS_COLORS.default;
       case 'operation':
@@ -161,8 +161,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsM
               <div className="popup-detail">
                 {field.crop} {field.probe ? `• ${field.probe}` : ''}
               </div>
-              <div className={`popup-status ${field.status}`}>
-                {field.status.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+              <div className={`popup-status ${field.status || 'unassigned'}`}>
+                {(field.status || 'unassigned').replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
               </div>
               <div className="popup-actions">
                 <button
