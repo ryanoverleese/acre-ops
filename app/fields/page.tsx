@@ -23,7 +23,7 @@ export interface ProcessedField {
   waterSource?: string;
   fuelSource?: string;
   notes?: string;
-  elevation?: number;
+  elevation?: string | number;
   soilType?: string;
   placementNotes?: string;
   irrigationType?: string;

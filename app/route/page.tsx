@@ -65,8 +65,8 @@ async function getPendingInstalls(): Promise<PendingInstall[]> {
         dripGpm: field?.drip_gpm,
         dripDepth: field?.drip_depth,
         // Location data
-        elevation: field?.elevation,
-        soilType: field?.soil_type,
+        elevation: typeof field?.elevation === 'object' ? field?.elevation?.value : field?.elevation,
+        soilType: typeof field?.soil_type === 'object' ? field?.soil_type?.value : field?.soil_type,
         placementNotes: field?.placement_notes,
       };
     }).filter((install) => install.lat !== 0 && install.lng !== 0);

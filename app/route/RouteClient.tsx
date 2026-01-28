@@ -22,7 +22,7 @@ export interface PendingInstall {
   dripGpm?: number;
   dripDepth?: number;
   // Location data
-  elevation?: number;
+  elevation?: string | number;
   soilType?: string;
   placementNotes?: string;
 }
