@@ -146,8 +146,8 @@ export interface Field {
   water_source?: { id: number; value: string };
   fuel_source?: { id: number; value: string };
   notes?: string;
-  elevation?: number;
-  soil_type?: string;
+  elevation?: number | { id: number; value: string };
+  soil_type?: string | { id: number; value: string };
   placement_notes?: string;
   irrigation_type?: { id: number; value: string };
   row_direction?: { id: number; value: string };
