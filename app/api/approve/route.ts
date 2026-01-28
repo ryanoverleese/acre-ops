@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Baserow API error:', response.status, errorText);
-        return NextResponse.json({ error: 'Failed to approve field' }, { status: response.status });
+        console.error('Request was:', { fieldSeasonId, url: `${BASEROW_API_URL}/${FIELD_SEASONS_TABLE_ID}/${fieldSeasonId}/` });
+        return NextResponse.json({ error: `Failed to approve field: ${errorText}` }, { status: response.status });
       }
 
       return NextResponse.json({ success: true });

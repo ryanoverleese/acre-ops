@@ -65,10 +65,12 @@ export default function ApprovalClient({ operationName, season, fields: initialF
         );
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to approve');
+        console.error('Approve error:', error);
+        alert(`Failed to approve field (ID: ${fieldSeasonId}): ${error.error || 'Unknown error'}`);
       }
-    } catch {
-      alert('Failed to approve');
+    } catch (err) {
+      console.error('Approve exception:', err);
+      alert('Failed to approve field');
     } finally {
       setLoading((prev) => ({ ...prev, [fieldSeasonId]: false }));
     }
