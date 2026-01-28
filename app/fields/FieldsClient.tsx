@@ -1637,6 +1637,85 @@ export default function FieldsClient({
                         </div>
                       </div>
                     )}
+
+                    {/* Install Details Section - shown when installed */}
+                    {selectedField.probeStatus === 'Installed' && (selectedField.installer || selectedField.installDate || selectedField.installLat) && (
+                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
+                        <div className="detail-row" style={{ marginBottom: '8px' }}>
+                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--accent-green)' }}>Install Details</span>
+                        </div>
+                        {selectedField.installer && (
+                          <div className="detail-row">
+                            <span className="detail-label">Installer</span>
+                            <span className="detail-value">{selectedField.installer}</span>
+                          </div>
+                        )}
+                        {selectedField.installDate && (
+                          <div className="detail-row">
+                            <span className="detail-label">Install Date</span>
+                            <span className="detail-value">{selectedField.installDate}</span>
+                          </div>
+                        )}
+                        {selectedField.installLat && selectedField.installLng && (
+                          <div className="detail-row">
+                            <span className="detail-label">Install Location</span>
+                            <span className="detail-value">
+                              <a
+                                href={`https://www.google.com/maps?q=${selectedField.installLat},${selectedField.installLng}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'var(--accent-blue)' }}
+                              >
+                                {Number(selectedField.installLat).toFixed(5)}, {Number(selectedField.installLng).toFixed(5)}
+                              </a>
+                            </span>
+                          </div>
+                        )}
+                        {selectedField.installNotes && (
+                          <div className="detail-row">
+                            <span className="detail-label">Install Notes</span>
+                            <span className="detail-value">{selectedField.installNotes}</span>
+                          </div>
+                        )}
+                        {(selectedField.installPhotoFieldEndUrl || selectedField.installPhotoExtraUrl) && (
+                          <div style={{ marginTop: '12px' }}>
+                            <span className="detail-label" style={{ display: 'block', marginBottom: '8px' }}>Install Photos</span>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              {selectedField.installPhotoFieldEndUrl && (
+                                <a href={selectedField.installPhotoFieldEndUrl} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={selectedField.installPhotoFieldEndUrl}
+                                    alt="Field End"
+                                    style={{
+                                      width: '120px',
+                                      height: '90px',
+                                      objectFit: 'cover',
+                                      borderRadius: '8px',
+                                      border: '1px solid var(--border)',
+                                    }}
+                                  />
+                                </a>
+                              )}
+                              {selectedField.installPhotoExtraUrl && (
+                                <a href={selectedField.installPhotoExtraUrl} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={selectedField.installPhotoExtraUrl}
+                                    alt="Extra"
+                                    style={{
+                                      width: '120px',
+                                      height: '90px',
+                                      objectFit: 'cover',
+                                      borderRadius: '8px',
+                                      border: '1px solid var(--border)',
+                                    }}
+                                  />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

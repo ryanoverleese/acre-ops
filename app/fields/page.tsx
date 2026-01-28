@@ -41,6 +41,14 @@ export interface ProcessedField {
   routeOrder?: number;
   plannedInstaller?: string;
   readyToInstall?: boolean;
+  // Install details (after installation)
+  installer?: string;
+  installDate?: string;
+  installLat?: number;
+  installLng?: number;
+  installNotes?: string;
+  installPhotoFieldEndUrl?: string;
+  installPhotoExtraUrl?: string;
   // Approval
   approvalStatus?: string;
 }
@@ -209,6 +217,14 @@ async function getFieldsData(): Promise<{
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
             readyToInstall: fs.ready_to_install,
+            // Install details (after installation)
+            installer: fs.installer,
+            installDate: fs.install_date,
+            installLat: fs.install_lat,
+            installLng: fs.install_lng,
+            installNotes: fs.install_notes,
+            installPhotoFieldEndUrl: fs.install_photo_field_end_url?.[0]?.url,
+            installPhotoExtraUrl: fs.install_photo_extra_url?.[0]?.url,
             // Approval
             approvalStatus: fs.approval_status?.value || 'Pending',
           });
