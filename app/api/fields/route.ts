@@ -28,14 +28,33 @@ export async function POST(request: NextRequest) {
       billing_entity: [body.billing_entity], // Link field format
     };
 
-    if (body.acres !== undefined) createData.acres = body.acres;
-    if (body.pivot_acres !== undefined) createData.pivot_acres = body.pivot_acres;
-    if (body.billed_acres !== undefined) createData.billed_acres = body.billed_acres;
-    if (body.lat !== undefined) createData.lat = body.lat;
-    if (body.lng !== undefined) createData.lng = body.lng;
-    if (body.water_source) createData.water_source = body.water_source;
-    if (body.fuel_source) createData.fuel_source = body.fuel_source;
-    if (body.notes) createData.notes = body.notes;
+    // Only add optional fields if they have valid values
+    if (body.acres !== undefined && body.acres !== null && body.acres !== '') {
+      createData.acres = Number(body.acres);
+    }
+    if (body.pivot_acres !== undefined && body.pivot_acres !== null && body.pivot_acres !== '') {
+      createData.pivot_acres = Number(body.pivot_acres);
+    }
+    if (body.billed_acres !== undefined && body.billed_acres !== null && body.billed_acres !== '') {
+      createData.billed_acres = Number(body.billed_acres);
+    }
+    if (body.lat !== undefined && body.lat !== null && body.lat !== '') {
+      createData.lat = Number(body.lat);
+    }
+    if (body.lng !== undefined && body.lng !== null && body.lng !== '') {
+      createData.lng = Number(body.lng);
+    }
+    if (body.water_source && body.water_source.trim() !== '') {
+      createData.water_source = body.water_source;
+    }
+    if (body.fuel_source && body.fuel_source.trim() !== '') {
+      createData.fuel_source = body.fuel_source;
+    }
+    if (body.notes && body.notes.trim() !== '') {
+      createData.notes = body.notes;
+    }
+
+    console.log('Creating field with data:', JSON.stringify(createData, null, 2));
 
     // Create the field
     const fieldUrl = `${BASEROW_API_URL}/${TABLE_IDS.fields}/?user_field_names=true`;
