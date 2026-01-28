@@ -462,6 +462,10 @@ export default function FieldsClient({
     if (!selectedField) return;
     setSaving(true);
     try {
+      // Round lat/lng to 6 decimal places (Baserow limit)
+      const lat = editForm.lat ? Math.round(Number(editForm.lat) * 1000000) / 1000000 : null;
+      const lng = editForm.lng ? Math.round(Number(editForm.lng) * 1000000) / 1000000 : null;
+
       const response = await fetch(`/api/fields/${selectedField.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -470,8 +474,8 @@ export default function FieldsClient({
           acres: editForm.acres,
           pivot_acres: editForm.pivotAcres,
           billed_acres: editForm.billedAcres,
-          lat: editForm.lat,
-          lng: editForm.lng,
+          lat,
+          lng,
           water_source: editForm.waterSource || null,
           fuel_source: editForm.fuelSource || null,
           notes: editForm.notes || null,
