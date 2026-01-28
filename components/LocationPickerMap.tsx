@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -20,8 +21,8 @@ interface LocationPickerMapProps {
   onPositionChange: (lat: number, lng: number) => void;
 }
 
-// Click handler component - must be inside MapContainer
-function ClickHandler({ onPositionChange }: { onPositionChange: (lat: number, lng: number) => void }) {
+// Component to handle map clicks - must be a child of MapContainer
+function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number, lng: number) => void }) {
   useMapEvents({
     click: (e) => {
       onPositionChange(e.latlng.lat, e.latlng.lng);
@@ -31,6 +32,20 @@ function ClickHandler({ onPositionChange }: { onPositionChange: (lat: number, ln
 }
 
 export default function LocationPickerMap({ position, onPositionChange }: LocationPickerMapProps) {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  if (!isClient) {
+    return (
+      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="loading">Loading map...</div>
+      </div>
+    );
+  }
+
   const center: [number, number] = position || [41.23, -99.5];
 
   return (
@@ -43,7 +58,7 @@ export default function LocationPickerMap({ position, onPositionChange }: Locati
         attribution='&copy; Google'
         url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
       />
-      <ClickHandler onPositionChange={onPositionChange} />
+      <MapClickHandler onPositionChange={onPositionChange} />
       {position && <Marker position={position} icon={defaultIcon} />}
     </MapContainer>
   );
