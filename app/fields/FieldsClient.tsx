@@ -729,25 +729,6 @@ export default function FieldsClient({
     }
   };
 
-  // Fetch elevation from coordinates using Open-Meteo API
-  const fetchElevation = async (lat: number, lng: number): Promise<number | null> => {
-    try {
-      const response = await fetch(
-        `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
-      );
-      if (response.ok) {
-        const data = await response.json();
-        // API returns elevation in meters, convert to feet
-        if (data.elevation && data.elevation.length > 0) {
-          return Math.round(data.elevation[0] * 3.28084);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching elevation:', error);
-    }
-    return null;
-  };
-
   const handleAddField = async () => {
     if (!addForm.billing_entity) {
       alert('Billing Entity is required');
@@ -2108,12 +2089,15 @@ export default function FieldsClient({
           <LocationPicker
             lat={locationPickerTarget === 'edit' ? (editForm.lat || null) : (addForm.lat ? parseFloat(addForm.lat) : null)}
             lng={locationPickerTarget === 'edit' ? (editForm.lng || null) : (addForm.lng ? parseFloat(addForm.lng) : null)}
-            onLocationChange={async (lat, lng) => {
-              // Fetch elevation for the new location
-              const elevation = await fetchElevation(lat, lng);
-
+            onLocationChange={(lat, lng, elevation, soilType) => {
               if (locationPickerTarget === 'edit') {
-                setEditForm({ ...editForm, lat, lng, elevation: elevation ?? editForm.elevation });
+                setEditForm({
+                  ...editForm,
+                  lat,
+                  lng,
+                  elevation: elevation ?? editForm.elevation,
+                  soilType: soilType ?? editForm.soilType,
+                });
               } else {
                 setAddForm({ ...addForm, lat: lat.toString(), lng: lng.toString() });
               }
