@@ -1,18 +1,17 @@
-import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations } from '@/lib/baserow';
-import RouteClient, { PendingInstall } from './RouteClient';
+import { getFields, getBillingEntities, getOperations } from '@/lib/baserow';
+import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
-async function getPendingInstalls(): Promise<PendingInstall[]> {
+export const dynamic = 'force-dynamic';
+
+async function getFieldLocations(): Promise<FieldLocation[]> {
   try {
-    const [fields, fieldSeasons, probes, billingEntities, operations] = await Promise.all([
+    const [fields, billingEntities, operations] = await Promise.all([
       getFields(),
-      getFieldSeasons(),
-      getProbes(),
       getBillingEntities(),
       getOperations(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-    const probeMap = new Map(probes.map((p) => [p.id, p.serial_number]));
 
     // Map billing entity to operation
     const billingToOperationMap = new Map<number, number>();
@@ -22,23 +21,10 @@ async function getPendingInstalls(): Promise<PendingInstall[]> {
       }
     });
 
-    // Find field seasons that are pending/assigned (not installed)
-    const pendingSeasons = fieldSeasons.filter((fs) => {
-      const status = fs.probe_status?.value?.toLowerCase() || '';
-      return (
-        (status === 'assigned' || status === 'pending' || status === '') &&
-        fs.probe?.[0] && // Has a probe assigned
-        !fs.install_date // Not yet installed
-      );
-    });
-
-    const pendingInstalls: PendingInstall[] = pendingSeasons.map((fs) => {
-      const fieldLink = fs.field?.[0];
-      const field = fields.find((f) => f.id === fieldLink?.id);
-      const probeLink = fs.probe?.[0];
-
+    // Convert all fields to FieldLocation objects
+    const fieldLocations: FieldLocation[] = fields.map((field) => {
       let operationName = 'Unknown';
-      if (field?.billing_entity?.[0]) {
+      if (field.billing_entity?.[0]) {
         const opId = billingToOperationMap.get(field.billing_entity[0].id);
         if (opId) {
           operationName = operationMap.get(opId) || 'Unknown';
@@ -46,47 +32,41 @@ async function getPendingInstalls(): Promise<PendingInstall[]> {
       }
 
       return {
-        id: fs.id,
-        fieldName: field?.name || fieldLink?.value || 'Unknown Field',
+        id: field.id,
+        name: field.name || 'Unnamed Field',
         operation: operationName,
-        acres: field?.acres || 0,
-        crop: fs.crop?.value || 'Unknown',
-        probeSerial: probeLink ? probeMap.get(probeLink.id) || probeLink.value : 'Unknown',
-        lat: field?.lat || 0,
-        lng: field?.lng || 0,
-        status: fs.probe_status?.value || 'Pending',
+        acres: field.acres || 0,
+        lat: field.lat || 0,
+        lng: field.lng || 0,
+        waterSource: field.water_source?.value,
+        fuelSource: field.fuel_source?.value,
+        notes: field.notes,
         // Irrigation details
-        irrigationType: field?.irrigation_type?.value,
-        rowDirection: field?.row_direction?.value,
-        dripTubingDirection: field?.drip_tubing_direction?.value,
-        dripTubingSpacing: field?.drip_tubing_spacing,
-        dripEmitterSpacing: field?.drip_emitter_spacing,
-        dripZones: field?.drip_zones,
-        dripGpm: field?.drip_gpm,
-        dripDepth: field?.drip_depth,
+        irrigationType: field.irrigation_type?.value,
+        rowDirection: field.row_direction?.value,
+        dripTubingDirection: field.drip_tubing_direction?.value,
+        dripTubingSpacing: field.drip_tubing_spacing,
+        dripEmitterSpacing: field.drip_emitter_spacing,
+        dripZones: field.drip_zones,
+        dripGpm: field.drip_gpm,
+        dripDepth: field.drip_depth,
         // Location data
-        elevation: typeof field?.elevation === 'object' ? field?.elevation?.value : field?.elevation,
-        soilType: typeof field?.soil_type === 'object' ? field?.soil_type?.value : field?.soil_type,
-        placementNotes: field?.placement_notes,
+        elevation: typeof field.elevation === 'object' ? field.elevation?.value : field.elevation,
+        soilType: typeof field.soil_type === 'object' ? field.soil_type?.value : field.soil_type,
+        placementNotes: field.placement_notes,
       };
-    }).filter((install) => install.lat !== 0 && install.lng !== 0);
+    });
 
-    return pendingInstalls;
+    // Sort alphabetically by name
+    return fieldLocations.sort((a, b) => a.name.localeCompare(b.name));
   } catch (error) {
-    console.error('Error fetching pending installs:', error);
+    console.error('Error fetching field locations:', error);
     return [];
   }
 }
 
-export default async function RoutePage() {
-  const pendingInstalls = await getPendingInstalls();
+export default async function FieldLocationsPage() {
+  const fieldLocations = await getFieldLocations();
 
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-
-  return <RouteClient pendingInstalls={pendingInstalls} today={today} />;
+  return <FieldLocationsClient fieldLocations={fieldLocations} />;
 }
