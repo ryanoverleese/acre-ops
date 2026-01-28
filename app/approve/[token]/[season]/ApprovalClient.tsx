@@ -184,7 +184,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               onClick={handleBulkApprove}
               disabled={bulkLoading}
             >
-              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Pending Fields`}
+              {bulkLoading ? 'Approving...' : 'Approve All Locations'}
             </button>
           </div>
         )}
@@ -304,7 +304,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               onClick={handleBulkApprove}
               disabled={bulkLoading}
             >
-              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Pending Sensor Locations`}
+              {bulkLoading ? 'Approving...' : 'Approve All Locations'}
             </button>
           </div>
         )}
