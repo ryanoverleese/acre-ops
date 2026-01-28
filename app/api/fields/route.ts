@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     };
 
     // Only add optional fields if they have valid values
+    // Note: Only adding basic fields that work with Baserow
+    // Select fields (water_source, fuel_source) can be edited after creation
     if (body.acres !== undefined && body.acres !== null && body.acres !== '') {
       createData.acres = Number(body.acres);
     }
@@ -44,15 +46,10 @@ export async function POST(request: NextRequest) {
     if (body.lng !== undefined && body.lng !== null && body.lng !== '') {
       createData.lng = Number(body.lng);
     }
-    if (body.water_source && body.water_source.trim() !== '') {
-      createData.water_source = body.water_source;
-    }
-    if (body.fuel_source && body.fuel_source.trim() !== '') {
-      createData.fuel_source = body.fuel_source;
-    }
     if (body.notes && body.notes.trim() !== '') {
       createData.notes = body.notes;
     }
+    // Skip water_source and fuel_source on create - they can be edited after
 
     console.log('Creating field with data:', JSON.stringify(createData, null, 2));
 
