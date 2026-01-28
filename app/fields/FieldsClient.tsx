@@ -346,6 +346,7 @@ export default function FieldsClient({
         routeOrder: 'route_order',
         plannedInstaller: 'planned_installer',
         readyToInstall: 'ready_to_install',
+        approvalStatus: 'approval_status',
       };
 
       const apiField = apiFieldMap[field] || field;
@@ -964,6 +965,7 @@ export default function FieldsClient({
                       <thead>
                         <tr>
                           <th style={{ minWidth: '140px' }}>Field</th>
+                          <th style={{ minWidth: '70px' }}>Season</th>
                           <th style={{ minWidth: '100px' }}>Operation</th>
                           <th style={{ minWidth: '90px' }}>Crop</th>
                           <th style={{ minWidth: '90px' }}>Service</th>
@@ -973,12 +975,13 @@ export default function FieldsClient({
                           <th style={{ minWidth: '60px' }}>Route #</th>
                           <th style={{ minWidth: '110px' }}>Installer</th>
                           <th style={{ minWidth: '60px' }}>Ready</th>
+                          <th style={{ minWidth: '100px' }}>Approval</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={12} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                               No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                             </td>
                           </tr>
@@ -986,6 +989,7 @@ export default function FieldsClient({
                           filteredFields.map((field) => (
                             <tr key={`${field.id}-${field.fieldSeasonId}`}>
                               <td style={{ fontWeight: 500 }}>{field.name}</td>
+                              <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{field.season || '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
                               <td>
                                 <InlineCell
@@ -1102,6 +1106,22 @@ export default function FieldsClient({
                                   field="readyToInstall"
                                   value={field.readyToInstall}
                                   type="checkbox"
+                                  onSave={handleInlineSave}
+                                  savingFields={savingFields}
+                                  savedFields={savedFields}
+                                />
+                              </td>
+                              <td>
+                                <InlineCell
+                                  fieldSeasonId={field.fieldSeasonId}
+                                  field="approvalStatus"
+                                  value={field.approvalStatus}
+                                  type="select"
+                                  options={[
+                                    { value: 'Pending', label: 'Pending' },
+                                    { value: 'Approved', label: 'Approved' },
+                                    { value: 'Change Requested', label: 'Change Requested' },
+                                  ]}
                                   onSave={handleInlineSave}
                                   savingFields={savingFields}
                                   savedFields={savedFields}

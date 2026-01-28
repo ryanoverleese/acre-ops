@@ -38,6 +38,8 @@ export interface ProcessedField {
   routeOrder?: number;
   plannedInstaller?: string;
   readyToInstall?: boolean;
+  // Approval
+  approvalStatus?: string;
 }
 
 export interface OperationOption {
@@ -158,6 +160,8 @@ async function getFieldsData(): Promise<{
           dripZones: field.drip_zones,
           dripGpm: field.drip_gpm,
           dripDepth: field.drip_depth,
+          // No season = no approval status
+          approvalStatus: undefined,
         });
       } else {
         // Create entry for each season
@@ -202,6 +206,8 @@ async function getFieldsData(): Promise<{
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
             readyToInstall: fs.ready_to_install,
+            // Approval
+            approvalStatus: fs.approval_status?.value || 'Pending',
           });
         });
       }
