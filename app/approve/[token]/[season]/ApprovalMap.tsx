@@ -24,7 +24,7 @@ interface ApprovalMapProps {
 
 export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
   const [isClient, setIsClient] = useState(false);
-  const [showSoilLayer, setShowSoilLayer] = useState(false);
+  const [showSoilLayer, setShowSoilLayer] = useState(true);
 
   useEffect(() => {
     setIsClient(true);
