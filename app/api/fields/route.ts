@@ -41,10 +41,12 @@ export async function POST(request: NextRequest) {
       createData.billed_acres = Number(body.billed_acres);
     }
     if (body.lat !== undefined && body.lat !== null && body.lat !== '') {
-      createData.lat = Number(body.lat);
+      // Round to 6 decimal places (Baserow limit)
+      createData.lat = Math.round(Number(body.lat) * 1000000) / 1000000;
     }
     if (body.lng !== undefined && body.lng !== null && body.lng !== '') {
-      createData.lng = Number(body.lng);
+      // Round to 6 decimal places (Baserow limit)
+      createData.lng = Math.round(Number(body.lng) * 1000000) / 1000000;
     }
     if (body.notes && body.notes.trim() !== '') {
       createData.notes = body.notes;
