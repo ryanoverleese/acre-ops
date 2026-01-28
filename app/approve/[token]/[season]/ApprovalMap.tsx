@@ -75,6 +75,10 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
         zoom={16}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={false}
+        dragging={false}
+        touchZoom={false}
+        doubleClickZoom={false}
+        zoomControl={false}
       >
         <TileLayer
           attribution="&copy; Google"
