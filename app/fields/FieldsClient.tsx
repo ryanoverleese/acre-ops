@@ -67,6 +67,13 @@ export default function FieldsClient({
     antenna_type: '',
   });
   const [savingSeason, setSavingSeason] = useState(false);
+  const [showRolloverModal, setShowRolloverModal] = useState(false);
+  const [rolloverForm, setRolloverForm] = useState({
+    fromSeason: '2025',
+    toSeason: '2026',
+    copyProbes: false,
+  });
+  const [rollingOver, setRollingOver] = useState(false);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -92,6 +99,21 @@ export default function FieldsClient({
       'installed': seasonFields.filter((f) => normalizeStatus(f.probeStatus) === 'installed').length,
     };
   }, [seasonFields]);
+
+  // Calculate fields that can be rolled over (exist in fromSeason but not in toSeason)
+  const rolloverStats = useMemo(() => {
+    const fromFields = fields.filter((f) => f.season === rolloverForm.fromSeason);
+    const toFieldIds = new Set(
+      fields.filter((f) => f.season === rolloverForm.toSeason).map((f) => f.id)
+    );
+    const fieldsToRollover = fromFields.filter((f) => !toFieldIds.has(f.id));
+    return {
+      fromCount: fromFields.length,
+      toCount: fields.filter((f) => f.season === rolloverForm.toSeason).length,
+      canRollover: fieldsToRollover.length,
+      fieldsToRollover,
+    };
+  }, [fields, rolloverForm.fromSeason, rolloverForm.toSeason]);
 
   const filteredFields = useMemo(() => {
     let filtered = seasonFields;
@@ -328,6 +350,50 @@ export default function FieldsClient({
     }
   };
 
+  const handleRollover = async () => {
+    if (rolloverStats.canRollover === 0) {
+      alert('No fields to roll over');
+      return;
+    }
+
+    if (!confirm(`This will create ${rolloverStats.canRollover} new field season entries for ${rolloverForm.toSeason}. Continue?`)) {
+      return;
+    }
+
+    setRollingOver(true);
+    try {
+      const items = rolloverStats.fieldsToRollover.map((f) => ({
+        field: f.id,
+        season: rolloverForm.toSeason,
+        service_type: f.serviceType || undefined,
+        antenna_type: f.antennaType || undefined,
+        probe: f.probeId || undefined,
+        copy_probe: rolloverForm.copyProbes,
+      }));
+
+      const response = await fetch('/api/field-seasons/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Successfully created ${result.created} field seasons for ${rolloverForm.toSeason}!`);
+        setShowRolloverModal(false);
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to roll over fields');
+      }
+    } catch (error) {
+      console.error('Rollover error:', error);
+      alert('Failed to roll over fields');
+    } finally {
+      setRollingOver(false);
+    }
+  };
+
   const handleAddField = async () => {
     if (!addForm.billing_entity) {
       alert('Billing Entity is required');
@@ -426,7 +492,13 @@ export default function FieldsClient({
             ))}
           </select>
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={() => setShowRolloverModal(true)}>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            Copy to New Season
+          </button>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -990,6 +1062,104 @@ export default function FieldsClient({
                 <button className="btn btn-secondary" onClick={() => setShowAddSeasonModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleAddSeason} disabled={savingSeason}>
                   {savingSeason ? 'Creating...' : 'Create Season'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rollover Modal */}
+        {showRolloverModal && (
+          <div className="detail-panel-overlay" onClick={() => setShowRolloverModal(false)}>
+            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="detail-panel-header">
+                <h3>Copy Fields to New Season</h3>
+                <button className="close-btn" onClick={() => setShowRolloverModal(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                <div className="edit-form">
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                    Copy all fields from one season to another. This will create new season entries for fields that don&apos;t already exist in the target season.
+                  </p>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>From Season</label>
+                      <select
+                        value={rolloverForm.fromSeason}
+                        onChange={(e) => setRolloverForm({ ...rolloverForm, fromSeason: e.target.value })}
+                      >
+                        {availableSeasons.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>To Season</label>
+                      <select
+                        value={rolloverForm.toSeason}
+                        onChange={(e) => setRolloverForm({ ...rolloverForm, toSeason: e.target.value })}
+                      >
+                        <option value="2027">2027</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'var(--bg-tertiary)',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span>Fields in {rolloverForm.fromSeason}:</span>
+                      <strong>{rolloverStats.fromCount}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span>Already in {rolloverForm.toSeason}:</span>
+                      <strong>{rolloverStats.toCount}</strong>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingTop: '8px',
+                      borderTop: '1px solid var(--border)',
+                      color: 'var(--accent-green)'
+                    }}>
+                      <span>Will be copied:</span>
+                      <strong>{rolloverStats.canRollover}</strong>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={rolloverForm.copyProbes}
+                        onChange={(e) => setRolloverForm({ ...rolloverForm, copyProbes: e.target.checked })}
+                        style={{ width: '18px', height: '18px' }}
+                      />
+                      Also copy probe assignments
+                    </label>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      If checked, probes from the source season will be assigned to the same fields in the new season.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => setShowRolloverModal(false)}>Cancel</button>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleRollover}
+                  disabled={rollingOver || rolloverStats.canRollover === 0}
+                >
+                  {rollingOver ? 'Copying...' : `Copy ${rolloverStats.canRollover} Fields`}
                 </button>
               </div>
             </div>
