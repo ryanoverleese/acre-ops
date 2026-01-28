@@ -123,6 +123,13 @@ export default function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  // Don't show navigation on public approval pages
+  const isPublicPage = pathname?.startsWith('/approve');
+
+  if (isPublicPage) {
+    return <>{children}</>;
+  }
+
   const handleNavClick = () => {
     setMobileMenuOpen(false);
   };
