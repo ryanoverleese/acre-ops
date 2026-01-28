@@ -1,0 +1,104 @@
+import { getOperations, getFields, getFieldSeasons, getBillingEntities } from '@/lib/baserow';
+import ApprovalClient from './ApprovalClient';
+
+interface PageProps {
+  params: Promise<{
+    token: string;
+    season: string;
+  }>;
+}
+
+export interface ApprovalField {
+  id: number;
+  fieldSeasonId: number;
+  name: string;
+  acres: number;
+  lat: number;
+  lng: number;
+  elevation?: number;
+  soilType?: string;
+  placementNotes?: string;
+  crop: string;
+  serviceType: string;
+  approvalStatus: string;
+  approvalNotes?: string;
+  approvalDate?: string;
+}
+
+export default async function ApprovePage({ params }: PageProps) {
+  const { token, season } = await params;
+  const seasonYear = parseInt(season, 10);
+
+  // Fetch all data in parallel
+  const [operations, rawFields, fieldSeasons, billingEntities] = await Promise.all([
+    getOperations(),
+    getFields(),
+    getFieldSeasons(),
+    getBillingEntities(),
+  ]);
+
+  // Find operation by approval token
+  const operation = operations.find((op) => op.approval_token === token);
+
+  if (!operation) {
+    return (
+      <div className="approval-page">
+        <div className="approval-container">
+          <div className="approval-error">
+            <h1>Invalid Link</h1>
+            <p>This approval link is not valid or has expired.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Get billing entities for this operation
+  const operationBillingEntities = billingEntities.filter(
+    (be) => be.operation?.[0]?.id === operation.id
+  );
+  const billingEntityIds = new Set(operationBillingEntities.map((be) => be.id));
+
+  // Get fields belonging to this operation (via billing entity)
+  const operationFields = rawFields.filter(
+    (f) => f.billing_entity?.[0]?.id && billingEntityIds.has(f.billing_entity[0].id)
+  );
+  const fieldIds = new Set(operationFields.map((f) => f.id));
+
+  // Get field seasons for this operation and season
+  const operationFieldSeasons = fieldSeasons.filter(
+    (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id) && fs.season === seasonYear
+  );
+
+  // Build approval fields
+  const approvalFields: ApprovalField[] = operationFieldSeasons.map((fs) => {
+    const field = operationFields.find((f) => f.id === fs.field?.[0]?.id);
+    return {
+      id: field?.id || 0,
+      fieldSeasonId: fs.id,
+      name: field?.name || 'Unknown Field',
+      acres: field?.acres || 0,
+      lat: field?.lat || 0,
+      lng: field?.lng || 0,
+      elevation: field?.elevation,
+      soilType: field?.soil_type,
+      placementNotes: field?.placement_notes,
+      crop: fs.crop?.value || 'Not Set',
+      serviceType: fs.service_type?.value || 'Not Set',
+      approvalStatus: fs.approval_status?.value || 'Pending',
+      approvalNotes: fs.approval_notes,
+      approvalDate: fs.approval_date,
+    };
+  });
+
+  // Sort by name
+  approvalFields.sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <ApprovalClient
+      operationName={operation.name}
+      season={seasonYear}
+      fields={approvalFields}
+    />
+  );
+}

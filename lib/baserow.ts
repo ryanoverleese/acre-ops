@@ -123,6 +123,7 @@ export interface Operation {
   id: number;
   name: string;
   notes?: string;
+  approval_token?: string;
 }
 
 export interface BillingEntity {
@@ -145,6 +146,9 @@ export interface Field {
   water_source?: { id: number; value: string };
   fuel_source?: { id: number; value: string };
   notes?: string;
+  elevation?: number;
+  soil_type?: string;
+  placement_notes?: string;
 }
 
 export interface Probe {
@@ -181,6 +185,9 @@ export interface FieldSeason {
   probe_2_install_photo_url?: string;
   removal_date?: string;
   removal_notes?: string;
+  approval_status?: { id: number; value: string };
+  approval_notes?: string;
+  approval_date?: string;
 }
 
 export interface Repair {
