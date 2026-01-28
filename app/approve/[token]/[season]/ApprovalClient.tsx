@@ -312,7 +312,6 @@ export default function ApprovalClient({ operationName, season, fields: initialF
         {/* Footer */}
         <footer className="approval-footer">
           <p>Thank you for reviewing your probe placement locations.</p>
-          <p className="footer-contact">Questions? Contact your agronomist.</p>
         </footer>
       </div>
     </div>
