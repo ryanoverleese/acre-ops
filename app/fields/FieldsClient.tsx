@@ -45,6 +45,7 @@ export default function FieldsClient({
   billingEntities,
   statusCounts,
 }: FieldsClientProps) {
+  const [fields, setFields] = useState(initialFields);
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -58,7 +59,7 @@ export default function FieldsClient({
   const [addForm, setAddForm] = useState(initialAddForm);
 
   const filteredFields = useMemo(() => {
-    let filtered = initialFields;
+    let filtered = fields;
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter((f) =>
@@ -75,7 +76,7 @@ export default function FieldsClient({
       filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
     }
     return filtered;
-  }, [initialFields, searchQuery, currentFilter, currentOperation]);
+  }, [fields, searchQuery, currentFilter, currentOperation]);
 
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
@@ -167,6 +168,27 @@ export default function FieldsClient({
       });
     }
     setIsEditing(false);
+  };
+
+  const handleDelete = async (field: ProcessedField) => {
+    if (!confirm(`Delete field "${field.name}"? This cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/fields/${field.id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setFields(fields.filter((f) => f.id !== field.id));
+        if (selectedField?.id === field.id) {
+          setSelectedField(null);
+          setIsEditing(false);
+        }
+      } else {
+        alert('Failed to delete field');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete field');
+    }
   };
 
   const handleAddField = async () => {
@@ -335,11 +357,18 @@ export default function FieldsClient({
                       </td>
                       <td>{getStatusBadge(field.status)}</td>
                       <td>
-                        <button className="action-btn" onClick={(e) => { e.stopPropagation(); handleRowClick(field); }}>
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
-                          </svg>
-                        </button>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button className="action-btn" title="Edit" onClick={(e) => { e.stopPropagation(); handleRowClick(field); }}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button className="action-btn" title="Delete" onClick={(e) => { e.stopPropagation(); handleDelete(field); }}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

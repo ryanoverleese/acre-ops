@@ -29,8 +29,8 @@ const navSections: NavSection[] = [
   {
     title: 'Field Work',
     items: [
-      { name: "Today's Route", href: '/route', icon: 'route', badge: 8 },
-      { name: 'Repairs', href: '/repairs', icon: 'settings', badge: 3 },
+      { name: "Today's Route", href: '/route', icon: 'route' },
+      { name: 'Repairs', href: '/repairs', icon: 'settings' },
     ],
   },
   {

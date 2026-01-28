@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export interface ProcessedOperation {
   id: number;
@@ -17,13 +17,26 @@ interface OperationsClientProps {
 
 const initialAddForm = { name: '', notes: '' };
 
-export default function OperationsClient({ operations }: OperationsClientProps) {
+export default function OperationsClient({ operations: initialOperations }: OperationsClientProps) {
+  const [operations, setOperations] = useState(initialOperations);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedOperation, setSelectedOperation] = useState<ProcessedOperation | null>(null);
   const [addForm, setAddForm] = useState(initialAddForm);
   const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const [saving, setSaving] = useState(false);
+
+  const filteredOperations = useMemo(() => {
+    if (!searchQuery.trim()) return operations;
+    const query = searchQuery.toLowerCase();
+    return operations.filter(
+      (op) =>
+        op.name.toLowerCase().includes(query) ||
+        op.notes?.toLowerCase().includes(query) ||
+        op.contacts.some((c) => c.name.toLowerCase().includes(query))
+    );
+  }, [operations, searchQuery]);
 
   const handleAdd = async () => {
     if (!addForm.name.trim()) {
@@ -82,6 +95,23 @@ export default function OperationsClient({ operations }: OperationsClientProps) 
     }
   };
 
+  const handleDelete = async (op: ProcessedOperation) => {
+    if (!confirm(`Delete operation "${op.name}"? This cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/operations/${op.id}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        setOperations(operations.filter((o) => o.id !== op.id));
+      } else {
+        alert('Failed to delete operation');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete operation');
+    }
+  };
+
   const openEditModal = (op: ProcessedOperation) => {
     setSelectedOperation(op);
     setEditForm({ name: op.name, notes: op.notes || '' });
@@ -93,9 +123,20 @@ export default function OperationsClient({ operations }: OperationsClientProps) 
       <header className="header">
         <div className="header-left">
           <h2>Operations</h2>
-          <span className="season-badge">2025 Season</span>
+          <span className="season-badge">{operations.length} Total</span>
         </div>
         <div className="header-right">
+          <div className="search-box">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search operations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -108,7 +149,9 @@ export default function OperationsClient({ operations }: OperationsClientProps) 
       <div className="content">
         <div className="table-container">
           <div className="table-header">
-            <h3 className="table-title">All Operations ({operations.length})</h3>
+            <h3 className="table-title">
+              {searchQuery ? `Matching Operations (${filteredOperations.length})` : 'All Operations'}
+            </h3>
           </div>
           <table>
             <thead>
@@ -122,14 +165,14 @@ export default function OperationsClient({ operations }: OperationsClientProps) 
               </tr>
             </thead>
             <tbody>
-              {operations.length === 0 ? (
+              {filteredOperations.length === 0 ? (
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No operations found.
+                    {searchQuery ? 'No matching operations found.' : 'No operations found.'}
                   </td>
                 </tr>
               ) : (
-                operations.map((op) => (
+                filteredOperations.map((op) => (
                   <tr key={op.id}>
                     <td className="operation-name">{op.name}</td>
                     <td>
@@ -164,11 +207,18 @@ export default function OperationsClient({ operations }: OperationsClientProps) 
                       {op.notes || '—'}
                     </td>
                     <td>
-                      <button className="action-btn" onClick={() => openEditModal(op)}>
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button className="action-btn" title="Edit" onClick={() => openEditModal(op)}>
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button className="action-btn" title="Delete" onClick={() => handleDelete(op)}>
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
