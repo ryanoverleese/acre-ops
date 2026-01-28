@@ -24,6 +24,9 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
+    // Log what USDA returns so we can debug
+    console.log('USDA SDA Response:', JSON.stringify(data, null, 2));
+
     // SDA returns { Table: [ [col1, col2], [val1, val2], ... ] } - first row is headers
     if (data?.Table && data.Table.length > 1) {
       const row = data.Table[1];
@@ -33,7 +36,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ muname: null, musym: null });
+    // Return the raw data for debugging if Table format doesn't match
+    return NextResponse.json({ muname: null, musym: null, debug: data });
   } catch (error) {
     console.error('Error fetching soil data:', error);
     return NextResponse.json({ error: 'Failed to fetch soil data' }, { status: 500 });
