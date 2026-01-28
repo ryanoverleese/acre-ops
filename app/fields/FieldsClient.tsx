@@ -439,7 +439,8 @@ export default function FieldsClient({
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
     });
-    setIsEditing(false);
+    // Auto-enter edit mode when in permanent data view
+    setIsEditing(viewMode === 'permanent');
     setShowProbeAssign(false);
     setShowSeasonFieldsEdit(false);
     setSelectedProbeId(field.probeId?.toString() || '');
@@ -493,7 +494,41 @@ export default function FieldsClient({
         }),
       });
       if (response.ok) {
-        window.location.reload();
+        // Update local state instead of reloading to preserve viewMode
+        const updatedField: ProcessedField = {
+          ...selectedField,
+          name: editForm.name || selectedField.name,
+          acres: editForm.acres ?? selectedField.acres,
+          pivotAcres: editForm.pivotAcres,
+          billedAcres: editForm.billedAcres,
+          lat: lat ?? selectedField.lat,
+          lng: lng ?? selectedField.lng,
+          waterSource: editForm.waterSource,
+          fuelSource: editForm.fuelSource,
+          notes: editForm.notes,
+          elevation: editForm.elevation,
+          soilType: editForm.soilType,
+          placementNotes: editForm.placementNotes,
+          irrigationType: editForm.irrigationType,
+          rowDirection: editForm.rowDirection,
+          dripTubingDirection: editForm.dripTubingDirection,
+          dripTubingSpacing: editForm.dripTubingSpacing,
+          dripEmitterSpacing: editForm.dripEmitterSpacing,
+          dripZones: editForm.dripZones,
+          dripGpm: editForm.dripGpm,
+          dripDepth: editForm.dripDepth,
+        };
+
+        // Update fields array
+        setFields(prev => prev.map(f =>
+          f.id === selectedField.id && f.fieldSeasonId === selectedField.fieldSeasonId
+            ? updatedField
+            : f
+        ));
+
+        // Update selected field and close edit mode
+        setSelectedField(updatedField);
+        setIsEditing(false);
       } else {
         alert('Failed to save changes');
       }
@@ -692,6 +727,25 @@ export default function FieldsClient({
     } finally {
       setRollingOver(false);
     }
+  };
+
+  // Fetch elevation from coordinates using Open-Meteo API
+  const fetchElevation = async (lat: number, lng: number): Promise<number | null> => {
+    try {
+      const response = await fetch(
+        `https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        // API returns elevation in meters, convert to feet
+        if (data.elevation && data.elevation.length > 0) {
+          return Math.round(data.elevation[0] * 3.28084);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching elevation:', error);
+    }
+    return null;
   };
 
   const handleAddField = async () => {
@@ -2054,9 +2108,12 @@ export default function FieldsClient({
           <LocationPicker
             lat={locationPickerTarget === 'edit' ? (editForm.lat || null) : (addForm.lat ? parseFloat(addForm.lat) : null)}
             lng={locationPickerTarget === 'edit' ? (editForm.lng || null) : (addForm.lng ? parseFloat(addForm.lng) : null)}
-            onLocationChange={(lat, lng) => {
+            onLocationChange={async (lat, lng) => {
+              // Fetch elevation for the new location
+              const elevation = await fetchElevation(lat, lng);
+
               if (locationPickerTarget === 'edit') {
-                setEditForm({ ...editForm, lat, lng });
+                setEditForm({ ...editForm, lat, lng, elevation: elevation ?? editForm.elevation });
               } else {
                 setAddForm({ ...addForm, lat: lat.toString(), lng: lng.toString() });
               }
