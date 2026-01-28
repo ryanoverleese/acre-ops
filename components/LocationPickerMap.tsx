@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, WMSTileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -19,6 +19,7 @@ const defaultIcon = L.icon({
 interface LocationPickerMapProps {
   position: [number, number] | null;
   onPositionChange: (lat: number, lng: number) => void;
+  showSoilLayer?: boolean;
 }
 
 // Component to handle map clicks - must be a child of MapContainer
@@ -31,7 +32,7 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
   return null;
 }
 
-export default function LocationPickerMap({ position, onPositionChange }: LocationPickerMapProps) {
+export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false }: LocationPickerMapProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -58,6 +59,16 @@ export default function LocationPickerMap({ position, onPositionChange }: Locati
         attribution='&copy; Google'
         url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
       />
+      {showSoilLayer && (
+        <WMSTileLayer
+          url="https://sdmdataaccess.sc.egov.usda.gov/Spatial/SDM.wms"
+          layers="mapunitpoly"
+          format="image/png"
+          transparent={true}
+          opacity={0.6}
+          attribution="USDA-NRCS SSURGO"
+        />
+      )}
       <MapClickHandler onPositionChange={onPositionChange} />
       {position && <Marker position={position} icon={defaultIcon} />}
     </MapContainer>
