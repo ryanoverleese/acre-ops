@@ -90,7 +90,7 @@ export default function FieldsClient({
       // Show unique fields (dedupe by field ID, keep most recent season)
       const fieldMap = new Map<number, ProcessedField>();
       // Sort by season descending so we keep the most recent
-      const sorted = [...fields].sort((a, b) => b.season.localeCompare(a.season));
+      const sorted = [...fields].sort((a, b) => (b.season || '').localeCompare(a.season || ''));
       sorted.forEach((f) => {
         if (!fieldMap.has(f.id)) {
           fieldMap.set(f.id, f);
