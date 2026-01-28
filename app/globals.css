@@ -1395,7 +1395,7 @@ input[type="date"]:focus {
   background: var(--bg-secondary);
   border-radius: 12px;
   width: 100%;
-  max-width: 600px;
+  max-width: 900px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -1416,7 +1416,7 @@ input[type="date"]:focus {
 }
 
 .location-picker-map {
-  height: 350px;
+  height: 500px;
   width: 100%;
   background: var(--bg-card);
 }
