@@ -1,14 +1,15 @@
-import { getFields, getBillingEntities, getOperations } from '@/lib/baserow';
+import { getFields, getBillingEntities, getOperations, getFieldSeasons } from '@/lib/baserow';
 import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
 export const dynamic = 'force-dynamic';
 
 async function getFieldLocations(): Promise<FieldLocation[]> {
   try {
-    const [fields, billingEntities, operations] = await Promise.all([
+    const [fields, billingEntities, operations, fieldSeasons] = await Promise.all([
       getFields(),
       getBillingEntities(),
       getOperations(),
+      getFieldSeasons(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -18,6 +19,19 @@ async function getFieldLocations(): Promise<FieldLocation[]> {
     billingEntities.forEach((be) => {
       if (be.operation?.[0]?.id) {
         billingToOperationMap.set(be.id, be.operation[0].id);
+      }
+    });
+
+    // Build a map of field ID to most recent install location
+    const installLocationMap = new Map<number, { lat: number; lng: number }>();
+    fieldSeasons.forEach((fs) => {
+      const fieldId = fs.field?.[0]?.id;
+      if (fieldId && fs.install_lat && fs.install_lng) {
+        // Store install location (later seasons will overwrite earlier ones)
+        installLocationMap.set(fieldId, {
+          lat: fs.install_lat,
+          lng: fs.install_lng,
+        });
       }
     });
 
@@ -31,6 +45,8 @@ async function getFieldLocations(): Promise<FieldLocation[]> {
         }
       }
 
+      const installLocation = installLocationMap.get(field.id);
+
       return {
         id: field.id,
         name: field.name || 'Unnamed Field',
@@ -38,6 +54,9 @@ async function getFieldLocations(): Promise<FieldLocation[]> {
         acres: field.acres || 0,
         lat: field.lat || 0,
         lng: field.lng || 0,
+        // Installed location (from field_seasons)
+        installLat: installLocation?.lat,
+        installLng: installLocation?.lng,
         waterSource: field.water_source?.value,
         fuelSource: field.fuel_source?.value,
         notes: field.notes,

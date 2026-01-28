@@ -7,8 +7,12 @@ export interface FieldLocation {
   name: string;
   operation: string;
   acres: number;
+  // Planned location (from fields table)
   lat: number;
   lng: number;
+  // Installed location (from field_seasons table)
+  installLat?: number;
+  installLng?: number;
   waterSource?: string;
   fuelSource?: string;
   notes?: string;
@@ -154,38 +158,65 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
               >
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 500, marginBottom: '2px' }}>{field.name}</div>
                   <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                     {field.operation} {field.acres ? `• ${field.acres} ac` : ''}
                   </div>
                 </div>
-                {field.lat !== 0 && field.lng !== 0 && (
-                  <a
-                    href={`https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '8px 12px',
-                      background: 'var(--accent-blue)',
-                      color: 'white',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      textDecoration: 'none',
-                    }}
-                  >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Navigate
-                  </a>
-                )}
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                  {field.lat !== 0 && field.lng !== 0 && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Navigate to planned location"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '8px 10px',
+                        background: 'var(--accent-blue)',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Planned
+                    </a>
+                  )}
+                  {field.installLat && field.installLng && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${field.installLat},${field.installLng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Navigate to installed location"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '8px 10px',
+                        background: 'var(--accent-green)',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      Installed
+                    </a>
+                  )}
+                </div>
               </div>
             ))
           )}
@@ -339,7 +370,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                 )}
               </div>
             </div>
-            <div className="detail-panel-footer">
+            <div className="detail-panel-footer" style={{ flexWrap: 'wrap', gap: '8px' }}>
               <button className="btn btn-secondary" onClick={() => setSelectedField(null)}>
                 Close
               </button>
@@ -349,13 +380,34 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-primary"
-                  style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                  Navigate
+                  Planned
+                </a>
+              )}
+              {selectedField.installLat && selectedField.installLng && (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${selectedField.installLat},${selectedField.installLng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn"
+                  style={{
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'var(--accent-green)',
+                    color: 'white',
+                  }}
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Installed
                 </a>
               )}
             </div>
