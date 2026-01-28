@@ -70,11 +70,23 @@ async function baserowFetch<T>(
   return response.json();
 }
 
-// Generic get all rows for a table
+// Generic get all rows for a table (fetches ALL pages)
 export async function getRows<T>(tableName: TableName, options?: FetchOptions): Promise<T[]> {
   const tableId = TABLE_IDS[tableName];
-  const response = await baserowFetch<T>(tableId, options);
-  return response.results;
+  const allResults: T[] = [];
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await baserowFetch<T>(tableId, { ...options, page, size: 200 });
+    allResults.push(...response.results);
+
+    // Check if there are more pages
+    hasMore = response.next !== null;
+    page++;
+  }
+
+  return allResults;
 }
 
 // Get a single row by ID
