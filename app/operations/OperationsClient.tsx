@@ -311,25 +311,6 @@ export default function OperationsClient({ operations: initialOperations, allCon
           <h2>Operations</h2>
           <span className="season-badge">{operations.length} Total</span>
         </div>
-        <div className="header-right">
-          <div className="search-box">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search operations..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Operation
-          </button>
-        </div>
       </header>
 
       <div className="content">
@@ -338,6 +319,25 @@ export default function OperationsClient({ operations: initialOperations, allCon
             <h3 className="table-title">
               {searchQuery ? `Matching Operations (${filteredOperations.length})` : 'All Operations'}
             </h3>
+            <div className="table-actions">
+              <div className="search-box">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  placeholder="Search operations..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Operation
+              </button>
+            </div>
           </div>
           <table className="desktop-table">
             <thead>
