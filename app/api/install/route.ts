@@ -51,6 +51,8 @@ export async function POST(request: NextRequest) {
     const lat = parseFloat(formData.get('lat') as string);
     const lng = parseFloat(formData.get('lng') as string);
     const crop = formData.get('crop') as string;
+    const changedProbeIdStr = formData.get('changedProbeId') as string | null;
+    const changedProbeId = changedProbeIdStr ? parseInt(changedProbeIdStr, 10) : null;
     const cropxTelemetryId = formData.get('cropxTelemetryId') as string | null;
     const signalStrength = formData.get('signalStrength') as string | null;
     const installNotes = formData.get('installNotes') as string | null;
@@ -86,6 +88,10 @@ export async function POST(request: NextRequest) {
     const updateData: Record<string, unknown> = {};
 
     if (probeNum === 1) {
+      // If installer grabbed wrong probe, update the probe link
+      if (changedProbeId) {
+        updateData.probe = [changedProbeId];
+      }
       updateData.installer = installer;
       updateData.install_date = today;
       updateData.install_lat = Math.round(lat * 1000000) / 1000000;
@@ -111,6 +117,10 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Probe 2
+      // If installer grabbed wrong probe, update the probe_2 link
+      if (changedProbeId) {
+        updateData.probe_2 = [changedProbeId];
+      }
       updateData.probe_2_installer = installer;
       updateData.probe_2_install_date = today;
       updateData.probe_2_install_lat = Math.round(lat * 1000000) / 1000000;

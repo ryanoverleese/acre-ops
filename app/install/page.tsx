@@ -1,7 +1,14 @@
 import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations } from '@/lib/baserow';
 import InstallClient, { InstallableField } from './InstallClient';
 
-async function getInstallData(): Promise<InstallableField[]> {
+export interface ProbeOption {
+  id: number;
+  serialNumber: string;
+  brand: string;
+  rackLocation: string;
+}
+
+async function getInstallData(): Promise<{ fields: InstallableField[]; probes: ProbeOption[] }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations] = await Promise.all([
       getFields(),
@@ -91,15 +98,26 @@ async function getInstallData(): Promise<InstallableField[]> {
     // Sort by route_order ascending
     installableFields.sort((a, b) => a.routeOrder - b.routeOrder);
 
-    return installableFields;
+    // Build probe options list (available probes)
+    const probeOptions: ProbeOption[] = probes
+      .filter(p => p.status?.value?.toLowerCase() !== 'retired')
+      .map(p => ({
+        id: p.id,
+        serialNumber: p.serial_number || '',
+        brand: p.brand?.value || '',
+        rackLocation: p.rack_location || '',
+      }))
+      .sort((a, b) => a.serialNumber.localeCompare(b.serialNumber));
+
+    return { fields: installableFields, probes: probeOptions };
   } catch (error) {
     console.error('Error fetching install data:', error);
-    return [];
+    return { fields: [], probes: [] };
   }
 }
 
 export default async function InstallPage() {
-  const fields = await getInstallData();
+  const { fields, probes } = await getInstallData();
 
-  return <InstallClient fields={fields} />;
+  return <InstallClient fields={fields} probes={probes} />;
 }

@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import type { ProbeOption } from './page';
+
+// Max photo size: 5MB
+const MAX_PHOTO_SIZE_MB = 5;
+const MAX_PHOTO_SIZE_BYTES = MAX_PHOTO_SIZE_MB * 1024 * 1024;
 
 export interface InstallableField {
   id: number;
@@ -34,6 +39,8 @@ interface InstallFormData {
   installer: string;
   lat: number | null;
   lng: number | null;
+  accuracy: number | null; // GPS accuracy in meters
+  changedProbeId: number | null; // If installer grabbed wrong probe
   cropConfirmed: boolean;
   cropChanged: string;
   cropxTelemetryId: string;
@@ -47,6 +54,8 @@ const initialFormData: InstallFormData = {
   installer: '',
   lat: null,
   lng: null,
+  accuracy: null,
+  changedProbeId: null,
   cropConfirmed: false,
   cropChanged: '',
   cropxTelemetryId: '',
@@ -61,9 +70,10 @@ const CROPS = ['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum'];
 
 interface InstallClientProps {
   fields: InstallableField[];
+  probes: ProbeOption[];
 }
 
-export default function InstallClient({ fields: initialFields }: InstallClientProps) {
+export default function InstallClient({ fields: initialFields, probes }: InstallClientProps) {
   const [fields, setFields] = useState(initialFields);
   const [installerFilter, setInstallerFilter] = useState<string>('all');
   const [selectedField, setSelectedField] = useState<InstallableField | null>(null);
@@ -106,6 +116,7 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
           ...formData,
           lat: Math.round(position.coords.latitude * 1000000) / 1000000,
           lng: Math.round(position.coords.longitude * 1000000) / 1000000,
+          accuracy: position.coords.accuracy, // accuracy in meters
         });
         setGettingLocation(false);
       },
@@ -128,6 +139,10 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
   };
 
   const handleFileChange = (field: 'photoFieldEnd' | 'photoExtra', file: File | null) => {
+    if (file && file.size > MAX_PHOTO_SIZE_BYTES) {
+      alert(`Photo is too large. Maximum size is ${MAX_PHOTO_SIZE_MB}MB. Your photo is ${(file.size / 1024 / 1024).toFixed(1)}MB.`);
+      return;
+    }
     setFormData({ ...formData, [field]: file });
   };
 
@@ -161,6 +176,9 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
       submitData.append('crop', formData.cropChanged || selectedField.crop);
       submitData.append('cropConfirmed', 'true');
 
+      if (formData.changedProbeId) {
+        submitData.append('changedProbeId', formData.changedProbeId.toString());
+      }
       if (formData.cropxTelemetryId) {
         submitData.append('cropxTelemetryId', formData.cropxTelemetryId);
       }
@@ -473,6 +491,47 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
 
             <div className="detail-panel-content">
               <div className="edit-form">
+                {/* Probe - with option to change if wrong one grabbed */}
+                <div className="form-group">
+                  <label>Probe</label>
+                  {!formData.changedProbeId ? (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
+                        #{selectedProbe === 1 ? selectedField.probe1Serial : selectedField.probe2Serial}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, changedProbeId: -1 })}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', fontSize: '13px' }}
+                      >
+                        Wrong probe?
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <select
+                        value={formData.changedProbeId === -1 ? '' : formData.changedProbeId}
+                        onChange={(e) => setFormData({ ...formData, changedProbeId: e.target.value ? parseInt(e.target.value, 10) : null })}
+                        style={{ fontSize: '16px', padding: '12px', width: '100%' }}
+                      >
+                        <option value="">Select the actual probe...</option>
+                        {probes.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            #{p.serialNumber} {p.rackLocation ? `(${p.rackLocation})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, changedProbeId: null })}
+                        style={{ marginTop: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
+                      >
+                        Cancel - use original probe
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 {/* Installer */}
                 <div className="form-group">
                   <label>Installer *</label>
@@ -511,9 +570,15 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
                       borderRadius: '8px',
                       color: 'var(--accent-green)',
                       fontSize: '14px',
-                      fontFamily: "'JetBrains Mono', monospace",
                     }}>
-                      {formData.lat}, {formData.lng}
+                      <div style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                        {formData.lat}, {formData.lng}
+                      </div>
+                      {formData.accuracy && (
+                        <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>
+                          Accuracy: ±{Math.round(formData.accuracy * 3.28084)} feet ({Math.round(formData.accuracy)}m)
+                        </div>
+                      )}
                     </div>
                   )}
                   {locationError && (
@@ -630,8 +695,11 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
                     style={{ fontSize: '16px' }}
                   />
                   {formData.photoFieldEnd && (
-                    <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontSize: '14px' }}>
-                      Selected: {formData.photoFieldEnd.name}
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-green-dim)', borderRadius: '8px', color: 'var(--accent-green)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Photo ready ({(formData.photoFieldEnd.size / 1024 / 1024).toFixed(1)}MB)</span>
                     </div>
                   )}
                 </div>
@@ -647,8 +715,11 @@ export default function InstallClient({ fields: initialFields }: InstallClientPr
                     style={{ fontSize: '16px' }}
                   />
                   {formData.photoExtra && (
-                    <div style={{ marginTop: '8px', color: 'var(--accent-green)', fontSize: '14px' }}>
-                      Selected: {formData.photoExtra.name}
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-green-dim)', borderRadius: '8px', color: 'var(--accent-green)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Photo ready ({(formData.photoExtra.size / 1024 / 1024).toFixed(1)}MB)</span>
                     </div>
                   )}
                 </div>
