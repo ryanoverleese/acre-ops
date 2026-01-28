@@ -20,9 +20,16 @@ export interface OperationOption {
   name: string;
 }
 
+export interface BillingEntityOption {
+  id: number;
+  name: string;
+  operationName: string;
+}
+
 async function getFieldsData(): Promise<{
   fields: ProcessedField[];
   operations: OperationOption[];
+  billingEntities: BillingEntityOption[];
 }> {
   try {
     const [rawFields, operations, fieldSeasons, probes, billingEntities] = await Promise.all([
@@ -97,21 +104,33 @@ async function getFieldsData(): Promise<{
       name: op.name,
     }));
 
+    const billingEntityOptions: BillingEntityOption[] = billingEntities.map((be) => {
+      const opId = be.operation?.[0]?.id;
+      const operationName = opId ? operationMap.get(opId) || 'Unknown' : 'Unknown';
+      return {
+        id: be.id,
+        name: be.name,
+        operationName,
+      };
+    });
+
     return {
       fields: processedFields,
       operations: operationOptions,
+      billingEntities: billingEntityOptions,
     };
   } catch (error) {
     console.error('Error fetching fields data:', error);
     return {
       fields: [],
       operations: [],
+      billingEntities: [],
     };
   }
 }
 
 export default async function FieldsPage() {
-  const { fields, operations } = await getFieldsData();
+  const { fields, operations, billingEntities } = await getFieldsData();
 
   // Calculate stats
   const statusCounts = {
@@ -136,6 +155,7 @@ export default async function FieldsPage() {
         <FieldsClient
           initialFields={fields}
           operations={operations}
+          billingEntities={billingEntities}
           statusCounts={statusCounts}
         />
       </div>

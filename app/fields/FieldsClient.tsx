@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import type { ProcessedField, OperationOption } from './page';
+import type { ProcessedField, OperationOption, BillingEntityOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -12,6 +12,7 @@ const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
 interface FieldsClientProps {
   initialFields: ProcessedField[];
   operations: OperationOption[];
+  billingEntities: BillingEntityOption[];
   statusCounts: {
     all: number;
     'needs-probe': number;
@@ -21,9 +22,27 @@ interface FieldsClientProps {
   };
 }
 
+const initialAddForm = {
+  billing_entity: '',
+  name: '',
+  acres: '',
+  pivot_acres: '',
+  billed_acres: '',
+  lat: '',
+  lng: '',
+  water_source: '',
+  fuel_source: '',
+  notes: '',
+  season: '2026',
+  crop: '',
+  service_type: '',
+  antenna_type: '',
+};
+
 export default function FieldsClient({
   initialFields,
   operations,
+  billingEntities,
   statusCounts,
 }: FieldsClientProps) {
   const [currentFilter, setCurrentFilter] = useState<string>('all');
@@ -36,7 +55,7 @@ export default function FieldsClient({
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', acres: '', lat: '', lng: '' });
+  const [addForm, setAddForm] = useState(initialAddForm);
 
   const filteredFields = useMemo(() => {
     let filtered = initialFields;
@@ -136,6 +155,10 @@ export default function FieldsClient({
   };
 
   const handleAddField = async () => {
+    if (!addForm.billing_entity) {
+      alert('Billing Entity is required');
+      return;
+    }
     if (!addForm.name.trim()) {
       alert('Field name is required');
       return;
@@ -146,18 +169,29 @@ export default function FieldsClient({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          billing_entity: parseInt(addForm.billing_entity),
           name: addForm.name,
           acres: addForm.acres ? parseFloat(addForm.acres) : undefined,
+          pivot_acres: addForm.pivot_acres ? parseFloat(addForm.pivot_acres) : undefined,
+          billed_acres: addForm.billed_acres ? parseFloat(addForm.billed_acres) : undefined,
           lat: addForm.lat ? parseFloat(addForm.lat) : undefined,
           lng: addForm.lng ? parseFloat(addForm.lng) : undefined,
+          water_source: addForm.water_source || undefined,
+          fuel_source: addForm.fuel_source || undefined,
+          notes: addForm.notes || undefined,
+          season: parseInt(addForm.season),
+          crop: addForm.crop || undefined,
+          service_type: addForm.service_type || undefined,
+          antenna_type: addForm.antenna_type || undefined,
         }),
       });
       if (response.ok) {
         setShowAddModal(false);
-        setAddForm({ name: '', acres: '', lat: '', lng: '' });
+        setAddForm(initialAddForm);
         window.location.reload();
       } else {
-        alert('Failed to create field');
+        const error = await response.json();
+        alert(error.error || 'Failed to create field');
       }
     } catch (error) {
       console.error('Create error:', error);
@@ -398,7 +432,7 @@ export default function FieldsClient({
 
       {showAddModal && (
         <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="detail-panel" style={{ width: '500px' }} onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
               <h3>Add New Field</h3>
               <button className="close-btn" onClick={() => setShowAddModal(false)}>
@@ -409,6 +443,19 @@ export default function FieldsClient({
             </div>
             <div className="detail-panel-content">
               <div className="edit-form">
+                <div className="form-section-title">Field Information</div>
+                <div className="form-group">
+                  <label>Billing Entity *</label>
+                  <select
+                    value={addForm.billing_entity}
+                    onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}
+                  >
+                    <option value="">Select billing entity...</option>
+                    {billingEntities.map((be) => (
+                      <option key={be.id} value={be.id}>{be.name} ({be.operationName})</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="form-group">
                   <label>Field Name *</label>
                   <input
@@ -418,14 +465,34 @@ export default function FieldsClient({
                     placeholder="Enter field name"
                   />
                 </div>
-                <div className="form-group">
-                  <label>Acres</label>
-                  <input
-                    type="number"
-                    value={addForm.acres}
-                    onChange={(e) => setAddForm({ ...addForm, acres: e.target.value })}
-                    placeholder="0"
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Acres</label>
+                    <input
+                      type="number"
+                      value={addForm.acres}
+                      onChange={(e) => setAddForm({ ...addForm, acres: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Pivot Acres</label>
+                    <input
+                      type="number"
+                      value={addForm.pivot_acres}
+                      onChange={(e) => setAddForm({ ...addForm, pivot_acres: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Billed Acres</label>
+                    <input
+                      type="number"
+                      value={addForm.billed_acres}
+                      onChange={(e) => setAddForm({ ...addForm, billed_acres: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="form-row">
                   <div className="form-group">
@@ -447,6 +514,96 @@ export default function FieldsClient({
                       onChange={(e) => setAddForm({ ...addForm, lng: e.target.value })}
                       placeholder="-96.123456"
                     />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Water Source</label>
+                    <select
+                      value={addForm.water_source}
+                      onChange={(e) => setAddForm({ ...addForm, water_source: e.target.value })}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Well">Well</option>
+                      <option value="Canal">Canal</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Fuel Source</label>
+                    <select
+                      value={addForm.fuel_source}
+                      onChange={(e) => setAddForm({ ...addForm, fuel_source: e.target.value })}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Electric">Electric</option>
+                      <option value="Natural Gas">Natural Gas</option>
+                      <option value="Diesel">Diesel</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    value={addForm.notes}
+                    onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })}
+                    placeholder="Enter notes..."
+                    rows={2}
+                  />
+                </div>
+
+                <div className="form-section-title" style={{ marginTop: '16px' }}>Season Information</div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Season</label>
+                    <select
+                      value={addForm.season}
+                      onChange={(e) => setAddForm({ ...addForm, season: e.target.value })}
+                    >
+                      <option value="2025">2025</option>
+                      <option value="2026">2026</option>
+                      <option value="2027">2027</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Crop</label>
+                    <select
+                      value={addForm.crop}
+                      onChange={(e) => setAddForm({ ...addForm, crop: e.target.value })}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Corn">Corn</option>
+                      <option value="Soybeans">Soybeans</option>
+                      <option value="Wheat">Wheat</option>
+                      <option value="Seed Corn">Seed Corn</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Service Type</label>
+                    <select
+                      value={addForm.service_type}
+                      onChange={(e) => setAddForm({ ...addForm, service_type: e.target.value })}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Full Service">Full Service</option>
+                      <option value="DIY">DIY</option>
+                      <option value="VRS">VRS</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Antenna Type</label>
+                    <select
+                      value={addForm.antenna_type}
+                      onChange={(e) => setAddForm({ ...addForm, antenna_type: e.target.value })}
+                    >
+                      <option value="">Select...</option>
+                      <option value="Short">Short</option>
+                      <option value="Tall">Tall</option>
+                    </select>
                   </div>
                 </div>
               </div>
