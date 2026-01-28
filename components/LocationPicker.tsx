@@ -37,6 +37,32 @@ async function fetchElevation(lat: number, lng: number): Promise<number | null> 
   }
 }
 
+// Fetch soil type from USDA Soil Data Access
+async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
+  try {
+    const query = `
+      SELECT mu.muname, mu.musym
+      FROM mapunit mu
+      INNER JOIN SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lng} ${lat})') AS res ON mu.mukey = res.mukey
+      LIMIT 1
+    `;
+    const response = await fetch('https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `query=${encodeURIComponent(query)}&format=JSON`,
+    });
+    const data = await response.json();
+    if (data?.Table && data.Table.length > 0) {
+      const row = data.Table[0];
+      return `${row.muname} (${row.musym})`;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching soil type:', error);
+    return null;
+  }
+}
+
 export default function LocationPicker({ lat, lng, onLocationChange, onClose }: LocationPickerProps) {
   const [isClient, setIsClient] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(
@@ -44,22 +70,30 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   );
   const [elevation, setElevation] = useState<number | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
+  const [soilType, setSoilType] = useState<string | null>(null);
+  const [soilLoading, setSoilLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Fetch elevation when position changes
+  // Fetch elevation and soil type when position changes
   useEffect(() => {
     if (position) {
       setElevationLoading(true);
+      setSoilLoading(true);
       fetchElevation(position[0], position[1]).then((elev) => {
         setElevation(elev);
         setElevationLoading(false);
       });
+      fetchSoilType(position[0], position[1]).then((soil) => {
+        setSoilType(soil);
+        setSoilLoading(false);
+      });
     } else {
       setElevation(null);
+      setSoilType(null);
     }
   }, [position]);
 
@@ -126,6 +160,16 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
                   <span style={{ color: 'var(--text-muted)' }}>Loading...</span>
                 ) : elevation !== null ? (
                   `${elevation} ft`
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>N/A</span>
+                )}
+              </span>
+              <span>
+                <strong>Soil:</strong>{' '}
+                {soilLoading ? (
+                  <span style={{ color: 'var(--text-muted)' }}>Loading...</span>
+                ) : soilType ? (
+                  soilType
                 ) : (
                   <span style={{ color: 'var(--text-muted)' }}>N/A</span>
                 )}

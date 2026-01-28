@@ -60,14 +60,23 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
         url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
       />
       {showSoilLayer && (
-        <WMSTileLayer
-          url="https://sdmdataaccess.sc.egov.usda.gov/Spatial/SDM.wms"
-          layers="mapunitpoly"
-          format="image/png"
-          transparent={true}
-          opacity={0.6}
-          attribution="USDA-NRCS SSURGO"
-        />
+        <>
+          <WMSTileLayer
+            url="https://sdmdataaccess.sc.egov.usda.gov/Spatial/SDM.wms"
+            layers="mapunitpoly"
+            format="image/png"
+            transparent={true}
+            opacity={0.6}
+            attribution="USDA-NRCS SSURGO"
+          />
+          <WMSTileLayer
+            url="https://sdmdataaccess.sc.egov.usda.gov/Spatial/SDM.wms"
+            layers="mapunitlabel"
+            format="image/png"
+            transparent={true}
+            opacity={1}
+          />
+        </>
       )}
       <MapClickHandler onPositionChange={onPositionChange} />
       {position && <Marker position={position} icon={defaultIcon} />}
