@@ -9,6 +9,11 @@ const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   loading: () => <div className="fields-map" style={{ display: 'block' }}><div className="loading"><div className="loading-spinner"></div>Loading map...</div></div>,
 });
 
+const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
+  ssr: false,
+  loading: () => <div className="location-picker-overlay"><div className="location-picker-modal"><div className="loading">Loading map...</div></div></div>,
+});
+
 interface FieldsClientProps {
   initialFields: ProcessedField[];
   operations: OperationOption[];
@@ -66,6 +71,8 @@ export default function FieldsClient({
     antenna_type: '',
   });
   const [savingSeasonFields, setSavingSeasonFields] = useState(false);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add'>('edit');
   const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
   const [addSeasonForm, setAddSeasonForm] = useState({
     season: '2026',
@@ -771,6 +778,21 @@ export default function FieldsClient({
                         <input type="number" step="any" value={editForm.lng || ''} onChange={(e) => setEditForm({ ...editForm, lng: parseFloat(e.target.value) || 0 })} />
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="location-btn"
+                      onClick={() => {
+                        setLocationPickerTarget('edit');
+                        setShowLocationPicker(true);
+                      }}
+                      style={{ marginBottom: '16px' }}
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Pick Location on Map
+                    </button>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Water Source</label>
@@ -1056,6 +1078,21 @@ export default function FieldsClient({
                       <input type="number" step="any" value={addForm.lng} onChange={(e) => setAddForm({ ...addForm, lng: e.target.value })} />
                     </div>
                   </div>
+                  <button
+                    type="button"
+                    className="location-btn"
+                    onClick={() => {
+                      setLocationPickerTarget('add');
+                      setShowLocationPicker(true);
+                    }}
+                    style={{ marginBottom: '16px' }}
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Pick Location on Map
+                  </button>
                   <div className="form-row">
                     <div className="form-group">
                       <label>Water Source</label>
@@ -1302,6 +1339,22 @@ export default function FieldsClient({
               </div>
             </div>
           </div>
+        )}
+
+        {/* Location Picker */}
+        {showLocationPicker && (
+          <LocationPicker
+            lat={locationPickerTarget === 'edit' ? (editForm.lat || null) : (addForm.lat ? parseFloat(addForm.lat) : null)}
+            lng={locationPickerTarget === 'edit' ? (editForm.lng || null) : (addForm.lng ? parseFloat(addForm.lng) : null)}
+            onLocationChange={(lat, lng) => {
+              if (locationPickerTarget === 'edit') {
+                setEditForm({ ...editForm, lat, lng });
+              } else {
+                setAddForm({ ...addForm, lat: lat.toString(), lng: lng.toString() });
+              }
+            }}
+            onClose={() => setShowLocationPicker(false)}
+          />
         )}
       </div>
     </>
