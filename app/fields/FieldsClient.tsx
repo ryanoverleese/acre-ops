@@ -84,8 +84,20 @@ export default function FieldsClient({
     }
   };
 
-  // Filter fields by current season first
+  // Filter fields by current season first (or show all unique fields)
   const seasonFields = useMemo(() => {
+    if (currentSeason === 'all') {
+      // Show unique fields (dedupe by field ID, keep most recent season)
+      const fieldMap = new Map<number, ProcessedField>();
+      // Sort by season descending so we keep the most recent
+      const sorted = [...fields].sort((a, b) => b.season.localeCompare(a.season));
+      sorted.forEach((f) => {
+        if (!fieldMap.has(f.id)) {
+          fieldMap.set(f.id, f);
+        }
+      });
+      return Array.from(fieldMap.values());
+    }
     return fields.filter((f) => f.season === currentSeason || (!f.season && currentSeason === ''));
   }, [fields, currentSeason]);
 
@@ -487,6 +499,7 @@ export default function FieldsClient({
               cursor: 'pointer',
             }}
           >
+            <option value="all">All Seasons</option>
             {availableSeasons.map((s) => (
               <option key={s} value={s}>{s} Season</option>
             ))}
@@ -528,7 +541,7 @@ export default function FieldsClient({
           <div className="fields-list">
             <div className="table-container">
               <div className="table-header">
-                <h3 className="table-title">Fields — {currentSeason} Season</h3>
+                <h3 className="table-title">Fields — {currentSeason === 'all' ? 'All Seasons' : `${currentSeason} Season`}</h3>
                 <div className="table-actions">
                   <div className="search-box" style={{ width: '200px' }}>
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,7 +611,7 @@ export default function FieldsClient({
                   {filteredFields.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No fields found for {currentSeason} season.
+                        No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                       </td>
                     </tr>
                   ) : (
@@ -631,7 +644,7 @@ export default function FieldsClient({
 
               <div className="mobile-cards">
                 {filteredFields.length === 0 ? (
-                  <div className="empty-state">No fields found for {currentSeason} season.</div>
+                  <div className="empty-state">No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.</div>
                 ) : (
                   filteredFields.map((field) => (
                     <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>
