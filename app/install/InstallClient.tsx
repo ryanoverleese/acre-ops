@@ -754,6 +754,9 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                 {isCropX && (
                   <div className="form-group">
                     <label>CropX Telemetry ID</label>
+                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                      Only needed for CropX gateway boxes
+                    </p>
                     <input
                       type="text"
                       value={formData.cropxTelemetryId}
