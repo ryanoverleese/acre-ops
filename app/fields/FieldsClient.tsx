@@ -56,6 +56,9 @@ export default function FieldsClient({
   const [addForm, setAddForm] = useState({ ...initialAddForm, season: currentSeason });
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [showProbeAssign, setShowProbeAssign] = useState(false);
+  const [selectedProbeId, setSelectedProbeId] = useState<string>('');
+  const [savingProbe, setSavingProbe] = useState(false);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -141,6 +144,16 @@ export default function FieldsClient({
     }));
   }, [filteredFields]);
 
+  // Sort probes by owner operation for the dropdown
+  const sortedProbes = useMemo(() => {
+    return [...probes].sort((a, b) => {
+      // Sort by owner operation first, then by serial number
+      const opCompare = a.ownerOperation.localeCompare(b.ownerOperation);
+      if (opCompare !== 0) return opCompare;
+      return a.serialNumber.localeCompare(b.serialNumber);
+    });
+  }, [probes]);
+
   const handleRowClick = (field: ProcessedField) => {
     setSelectedField(field);
     setEditForm({
@@ -156,12 +169,16 @@ export default function FieldsClient({
       notes: field.notes,
     });
     setIsEditing(false);
+    setShowProbeAssign(false);
+    setSelectedProbeId(field.probeId?.toString() || '');
   };
 
   const handleClosePanel = () => {
     setSelectedField(null);
     setIsEditing(false);
     setEditForm({});
+    setShowProbeAssign(false);
+    setSelectedProbeId('');
   };
 
   const handleEdit = () => {
@@ -234,6 +251,37 @@ export default function FieldsClient({
     } catch (error) {
       console.error('Delete error:', error);
       alert('Failed to delete field');
+    }
+  };
+
+  const handleAssignProbe = async () => {
+    if (!selectedField || !selectedField.fieldSeasonId) {
+      alert('Cannot assign probe: No field season found');
+      return;
+    }
+    setSavingProbe(true);
+    try {
+      const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : null;
+      const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          probe: probeId,
+          probe_status: probeId ? 'Assigned' : 'Unassigned',
+        }),
+      });
+      if (response.ok) {
+        setShowProbeAssign(false);
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to assign probe');
+      }
+    } catch (error) {
+      console.error('Assign probe error:', error);
+      alert('Failed to assign probe');
+    } finally {
+      setSavingProbe(false);
     }
   };
 
@@ -595,7 +643,58 @@ export default function FieldsClient({
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Probe</span>
-                      <span className="detail-value">{selectedField.probe || '—'}</span>
+                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {showProbeAssign ? (
+                          <>
+                            <select
+                              value={selectedProbeId}
+                              onChange={(e) => setSelectedProbeId(e.target.value)}
+                              style={{ flex: 1 }}
+                            >
+                              <option value="">— Unassign Probe —</option>
+                              {sortedProbes.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  #{p.serialNumber} ({p.ownerOperation})
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: '12px' }}
+                              onClick={handleAssignProbe}
+                              disabled={savingProbe}
+                            >
+                              {savingProbe ? '...' : 'Save'}
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '12px' }}
+                              onClick={() => {
+                                setShowProbeAssign(false);
+                                setSelectedProbeId(selectedField.probeId?.toString() || '');
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {selectedField.probe || '—'}
+                            {selectedField.fieldSeasonId && (
+                              <button
+                                className="action-btn"
+                                title="Change probe"
+                                onClick={() => setShowProbeAssign(true)}
+                                style={{ marginLeft: '4px' }}
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Status</span>
