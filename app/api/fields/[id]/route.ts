@@ -55,6 +55,41 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.billing_entity !== undefined) {
       updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
     }
+    // Location/permanent data fields
+    if (body.elevation !== undefined) {
+      updateData.elevation = body.elevation;
+    }
+    if (body.soil_type !== undefined) {
+      updateData.soil_type = body.soil_type;
+    }
+    if (body.placement_notes !== undefined) {
+      updateData.placement_notes = body.placement_notes;
+    }
+    if (body.irrigation_type !== undefined) {
+      updateData.irrigation_type = body.irrigation_type;
+    }
+    if (body.row_direction !== undefined) {
+      updateData.row_direction = body.row_direction;
+    }
+    // Drip irrigation fields
+    if (body.drip_tubing_direction !== undefined) {
+      updateData.drip_tubing_direction = body.drip_tubing_direction;
+    }
+    if (body.drip_tubing_spacing !== undefined) {
+      updateData.drip_tubing_spacing = body.drip_tubing_spacing;
+    }
+    if (body.drip_emitter_spacing !== undefined) {
+      updateData.drip_emitter_spacing = body.drip_emitter_spacing;
+    }
+    if (body.drip_zones !== undefined) {
+      updateData.drip_zones = body.drip_zones;
+    }
+    if (body.drip_gpm !== undefined) {
+      updateData.drip_gpm = body.drip_gpm;
+    }
+    if (body.drip_depth !== undefined) {
+      updateData.drip_depth = body.drip_depth;
+    }
 
     // Make the PATCH request to Baserow
     const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/?user_field_names=true`;
