@@ -1657,14 +1657,6 @@ export default function FieldsClient({
                       </button>
                     )}
                     <button className="btn btn-primary" onClick={handleEdit}>Edit Field</button>
-                    {missingSeasonsForField.length > 0 && (
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => setShowAddSeasonModal(true)}
-                      >
-                        Add Season
-                      </button>
-                    )}
                   </>
                 )}
               </div>
