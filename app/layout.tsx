@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Sidebar from '@/components/Sidebar';
+import AppShell from '@/components/AppShell';
 
 export const metadata: Metadata = {
   title: 'Acre Insights - Probe Manager',
@@ -16,10 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="app">
-          <Sidebar />
-          <main className="main">
-            {children}
-          </main>
+          <AppShell>{children}</AppShell>
         </div>
       </body>
     </html>
