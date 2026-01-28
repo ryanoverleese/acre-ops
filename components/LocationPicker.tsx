@@ -31,7 +31,12 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   }, []);
 
   const handlePositionChange = useCallback((newLat: number, newLng: number) => {
-    setPosition([newLat, newLng]);
+    // Ensure we're storing plain numbers (Leaflet sometimes returns LatLng objects)
+    const lat = typeof newLat === 'number' ? newLat : Number(newLat);
+    const lng = typeof newLng === 'number' ? newLng : Number(newLng);
+    if (!isNaN(lat) && !isNaN(lng)) {
+      setPosition([lat, lng]);
+    }
   }, []);
 
   const handleSave = () => {
@@ -63,7 +68,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
           <LocationPickerMap position={position} onPositionChange={handlePositionChange} />
         </div>
         <div className="location-picker-coords">
-          {position ? (
+          {position && typeof position[0] === 'number' && typeof position[1] === 'number' ? (
             <span>
               <strong>Lat:</strong> {position[0].toFixed(6)} &nbsp; <strong>Lng:</strong> {position[1].toFixed(6)}
             </span>
