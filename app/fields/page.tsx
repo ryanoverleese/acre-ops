@@ -1,18 +1,23 @@
 import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
-// Define the shape of our processed field data
 export interface ProcessedField {
   id: number;
+  fieldSeasonId: number | null;
   name: string;
   operation: string;
   operationId: number | null;
+  billingEntityId: number | null;
   acres: number;
   pivotAcres?: number;
   billedAcres?: number;
+  season: string;
   crop: string;
+  serviceType: string;
+  antennaType: string;
   probe: string | null;
-  status: string;
+  probeId: number | null;
+  probeStatus: string;
   lat: number;
   lng: number;
   waterSource?: string;
@@ -31,10 +36,19 @@ export interface BillingEntityOption {
   operationName: string;
 }
 
+export interface ProbeOption {
+  id: number;
+  serialNumber: string;
+  ownerOperation: string;
+  status: string;
+}
+
 async function getFieldsData(): Promise<{
   fields: ProcessedField[];
   operations: OperationOption[];
   billingEntities: BillingEntityOption[];
+  probes: ProbeOption[];
+  availableSeasons: string[];
 }> {
   try {
     const [rawFields, operations, fieldSeasons, probes, billingEntities] = await Promise.all([
@@ -45,11 +59,9 @@ async function getFieldsData(): Promise<{
       getBillingEntities(),
     ]);
 
-    // Create lookup maps
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-    const probeMap = new Map(probes.map((p) => [p.id, p.serial_number]));
-    
-    // Map billing entity to operation
+    const probeMap = new Map(probes.map((p) => [p.id, p]));
+
     const billingToOperationMap = new Map<number, number>();
     billingEntities.forEach((be) => {
       if (be.operation?.[0]?.id) {
@@ -57,56 +69,101 @@ async function getFieldsData(): Promise<{
       }
     });
 
-    // Process fields with their related data
-    const processedFields: ProcessedField[] = rawFields.map((field) => {
-      // Get operation from billing_entity -> operation chain
+    // Get unique seasons
+    const seasons = new Set<string>();
+    fieldSeasons.forEach((fs) => {
+      if (fs.season) {
+        seasons.add(String(fs.season));
+      }
+    });
+    const availableSeasons = Array.from(seasons).sort((a, b) => b.localeCompare(a));
+
+    // Create field season lookup by field ID and season
+    const fieldSeasonLookup = new Map<string, typeof fieldSeasons[0]>();
+    fieldSeasons.forEach((fs) => {
+      const fieldId = fs.field?.[0]?.id;
+      const season = fs.season ? String(fs.season) : undefined;
+      if (fieldId && season) {
+        fieldSeasonLookup.set(`${fieldId}-${season}`, fs);
+      }
+    });
+
+    // Process fields - create one entry per field_season
+    const processedFields: ProcessedField[] = [];
+
+    rawFields.forEach((field) => {
       const billingEntityLink = field.billing_entity?.[0];
       let operationName = 'Unknown';
       let operationId: number | null = null;
-      
+
       if (billingEntityLink) {
         operationId = billingToOperationMap.get(billingEntityLink.id) || null;
         if (operationId) {
           operationName = operationMap.get(operationId) || 'Unknown';
         } else {
-          // Fallback to billing entity name
           operationName = billingEntityLink.value || 'Unknown';
         }
       }
 
-      // Find field season for this field to get probe and status
-      const season = fieldSeasons.find((fs) => fs.field?.[0]?.id === field.id);
-      const probeLink = season?.probe?.[0];
-      const probeName = probeLink ? probeMap.get(probeLink.id) || probeLink.value : null;
+      // Find all field seasons for this field
+      const fieldFieldSeasons = fieldSeasons.filter((fs) => fs.field?.[0]?.id === field.id);
 
-      // Determine status from field_season
-      let status = 'needs-probe';
-      if (season?.probe_status?.value) {
-        status = season.probe_status.value.toLowerCase().replace(' ', '-');
-      } else if (probeName) {
-        status = 'assigned';
+      if (fieldFieldSeasons.length === 0) {
+        // Field has no seasons - show it with empty season data
+        processedFields.push({
+          id: field.id,
+          fieldSeasonId: null,
+          name: field.name || 'Unnamed Field',
+          operation: operationName,
+          operationId,
+          billingEntityId: billingEntityLink?.id || null,
+          acres: field.acres || 0,
+          pivotAcres: field.pivot_acres,
+          billedAcres: field.billed_acres,
+          season: '',
+          crop: 'Unknown',
+          serviceType: '',
+          antennaType: '',
+          probe: null,
+          probeId: null,
+          probeStatus: 'Unassigned',
+          lat: field.lat || 0,
+          lng: field.lng || 0,
+          waterSource: field.water_source?.value,
+          fuelSource: field.fuel_source?.value,
+          notes: field.notes,
+        });
+      } else {
+        // Create entry for each season
+        fieldFieldSeasons.forEach((fs) => {
+          const probeLink = fs.probe?.[0];
+          const probeData = probeLink ? probeMap.get(probeLink.id) : null;
+
+          processedFields.push({
+            id: field.id,
+            fieldSeasonId: fs.id,
+            name: field.name || 'Unnamed Field',
+            operation: operationName,
+            operationId,
+            billingEntityId: billingEntityLink?.id || null,
+            acres: field.acres || 0,
+            pivotAcres: field.pivot_acres,
+            billedAcres: field.billed_acres,
+            season: fs.season ? String(fs.season) : '',
+            crop: fs.crop?.value || 'Unknown',
+            serviceType: fs.service_type?.value || '',
+            antennaType: fs.antenna_type?.value || '',
+            probe: probeData ? `#${probeData.serial_number}` : null,
+            probeId: probeLink?.id || null,
+            probeStatus: fs.probe_status?.value || 'Unassigned',
+            lat: field.lat || 0,
+            lng: field.lng || 0,
+            waterSource: field.water_source?.value,
+            fuelSource: field.fuel_source?.value,
+            notes: field.notes,
+          });
+        });
       }
-
-      // Get crop from field_season
-      const crop = season?.crop?.value || 'Unknown';
-
-      return {
-        id: field.id,
-        name: field.name || 'Unnamed Field',
-        operation: operationName,
-        operationId,
-        acres: field.acres || 0,
-        pivotAcres: field.pivot_acres,
-        billedAcres: field.billed_acres,
-        crop,
-        probe: probeName ? `#${probeName}` : null,
-        status,
-        lat: field.lat || 0,
-        lng: field.lng || 0,
-        waterSource: field.water_source?.value,
-        fuelSource: field.fuel_source?.value,
-        notes: field.notes,
-      };
     });
 
     const operationOptions: OperationOption[] = operations.map((op) => ({
@@ -116,11 +173,23 @@ async function getFieldsData(): Promise<{
 
     const billingEntityOptions: BillingEntityOption[] = billingEntities.map((be) => {
       const opId = be.operation?.[0]?.id;
-      const operationName = opId ? operationMap.get(opId) || 'Unknown' : 'Unknown';
+      const opName = opId ? operationMap.get(opId) || 'Unknown' : 'Unknown';
       return {
         id: be.id,
         name: be.name,
-        operationName,
+        operationName: opName,
+      };
+    });
+
+    // Probe options with owner operation
+    const probeOptions: ProbeOption[] = probes.map((p) => {
+      const ownerOpLink = p.owner_operation?.[0];
+      const ownerName = ownerOpLink ? operationMap.get(ownerOpLink.id) || ownerOpLink.value : 'Unassigned';
+      return {
+        id: p.id,
+        serialNumber: p.serial_number || '',
+        ownerOperation: ownerName,
+        status: p.status?.value || 'Unknown',
       };
     });
 
@@ -128,6 +197,8 @@ async function getFieldsData(): Promise<{
       fields: processedFields,
       operations: operationOptions,
       billingEntities: billingEntityOptions,
+      probes: probeOptions,
+      availableSeasons,
     };
   } catch (error) {
     console.error('Error fetching fields data:', error);
@@ -135,40 +206,22 @@ async function getFieldsData(): Promise<{
       fields: [],
       operations: [],
       billingEntities: [],
+      probes: [],
+      availableSeasons: ['2026', '2025'],
     };
   }
 }
 
 export default async function FieldsPage() {
-  const { fields, operations, billingEntities } = await getFieldsData();
-
-  // Calculate stats
-  const statusCounts = {
-    all: fields.length,
-    'needs-probe': fields.filter((f) => f.status === 'needs-probe').length,
-    pending: fields.filter((f) => f.status === 'pending' || f.status === 'assigned').length,
-    installed: fields.filter((f) => f.status === 'installed').length,
-    repair: fields.filter((f) => f.status === 'repair').length,
-  };
+  const { fields, operations, billingEntities, probes, availableSeasons } = await getFieldsData();
 
   return (
-    <>
-      <header className="header">
-        <div className="header-left">
-          <h2>Fields</h2>
-          <span className="season-badge">2025 Season</span>
-        </div>
-        <div className="header-right"></div>
-      </header>
-
-      <div className="content">
-        <FieldsClient
-          initialFields={fields}
-          operations={operations}
-          billingEntities={billingEntities}
-          statusCounts={statusCounts}
-        />
-      </div>
-    </>
+    <FieldsClient
+      initialFields={fields}
+      operations={operations}
+      billingEntities={billingEntities}
+      probes={probes}
+      availableSeasons={availableSeasons}
+    />
   );
 }
