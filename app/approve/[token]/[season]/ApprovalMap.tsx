@@ -78,7 +78,6 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
         dragging={false}
         touchZoom={false}
         doubleClickZoom={false}
-        zoomControl={false}
       >
         <TileLayer
           attribution="&copy; Google"
