@@ -40,11 +40,11 @@ async function fetchElevation(lat: number, lng: number): Promise<number | null> 
 // Fetch soil type from USDA Soil Data Access
 async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
   try {
+    // SQL Server syntax (TOP instead of LIMIT)
     const query = `
-      SELECT mu.muname, mu.musym
+      SELECT TOP 1 mu.muname, mu.musym
       FROM mapunit mu
       INNER JOIN SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lng} ${lat})') AS res ON mu.mukey = res.mukey
-      LIMIT 1
     `;
     const response = await fetch('https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest', {
       method: 'POST',
@@ -52,9 +52,12 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
       body: `query=${encodeURIComponent(query)}&format=JSON`,
     });
     const data = await response.json();
-    if (data?.Table && data.Table.length > 0) {
-      const row = data.Table[0];
-      return `${row.muname} (${row.musym})`;
+    // SDA returns { Table: [ [col1, col2], [val1, val2], ... ] } - first row is headers
+    if (data?.Table && data.Table.length > 1) {
+      const row = data.Table[1]; // Skip header row
+      const muname = row[0];
+      const musym = row[1];
+      return `${muname} (${musym})`;
     }
     return null;
   } catch (error) {
