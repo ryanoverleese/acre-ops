@@ -1,6 +1,9 @@
 import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
+// Force dynamic rendering to always get fresh data
+export const dynamic = 'force-dynamic';
+
 export interface ProcessedField {
   id: number;
   fieldSeasonId: number | null;

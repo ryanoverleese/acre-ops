@@ -60,7 +60,7 @@ async function baserowFetch<T>(
       'Authorization': `Token ${BASEROW_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    next: { revalidate: 60 }, // Cache for 60 seconds
+    cache: 'no-store', // Always fetch fresh data
   });
 
   if (!response.ok) {
