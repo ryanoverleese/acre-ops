@@ -55,17 +55,50 @@ export default function WaterRecsClient({ waterRecs: initialRecs, fieldSeasons }
   const [editForm, setEditForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortColumn, setSortColumn] = useState<string>('date');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === 'date' ? 'desc' : 'asc');
+    }
+  };
 
   const filteredRecs = useMemo(() => {
-    if (!searchQuery.trim()) return waterRecs;
-    const query = searchQuery.toLowerCase();
-    return waterRecs.filter(
-      (r) =>
-        r.fieldName.toLowerCase().includes(query) ||
-        r.operation.toLowerCase().includes(query) ||
-        r.recommendation.toLowerCase().includes(query)
-    );
-  }, [waterRecs, searchQuery]);
+    let filtered = waterRecs;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.fieldName.toLowerCase().includes(query) ||
+          r.operation.toLowerCase().includes(query) ||
+          r.recommendation.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    filtered = [...filtered].sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+
+      switch (sortColumn) {
+        case 'date': aVal = new Date(a.date).getTime(); bVal = new Date(b.date).getTime(); break;
+        case 'field': aVal = a.fieldName.toLowerCase(); bVal = b.fieldName.toLowerCase(); break;
+        case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
+        case 'crop': aVal = a.crop.toLowerCase(); bVal = b.crop.toLowerCase(); break;
+        default: aVal = new Date(a.date).getTime(); bVal = new Date(b.date).getTime();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [waterRecs, searchQuery, sortColumn, sortDirection]);
 
   const handleAdd = async () => {
     if (!addForm.field_season) {
@@ -199,10 +232,22 @@ export default function WaterRecsClient({ waterRecs: initialRecs, fieldSeasons }
           <table>
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Field</th>
-                <th>Operation</th>
-                <th>Crop</th>
+                <th className="sortable" onClick={() => handleSort('date')}>
+                  Date
+                  {sortColumn === 'date' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('field')}>
+                  Field
+                  {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('operation')}>
+                  Operation
+                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('crop')}>
+                  Crop
+                  {sortColumn === 'crop' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Recommendation</th>
                 <th>Suggested Water Day</th>
                 <th></th>

@@ -56,17 +56,50 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
   const [editForm, setEditForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortColumn, setSortColumn] = useState<string>('reportedAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection(column === 'reportedAt' ? 'desc' : 'asc');
+    }
+  };
 
   const filteredRepairs = useMemo(() => {
-    if (!searchQuery.trim()) return repairs;
-    const query = searchQuery.toLowerCase();
-    return repairs.filter(
-      (r) =>
-        r.fieldName.toLowerCase().includes(query) ||
-        r.operation.toLowerCase().includes(query) ||
-        r.problem.toLowerCase().includes(query)
-    );
-  }, [repairs, searchQuery]);
+    let filtered = repairs;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (r) =>
+          r.fieldName.toLowerCase().includes(query) ||
+          r.operation.toLowerCase().includes(query) ||
+          r.problem.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    filtered = [...filtered].sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+
+      switch (sortColumn) {
+        case 'status': aVal = a.status; bVal = b.status; break;
+        case 'field': aVal = a.fieldName.toLowerCase(); bVal = b.fieldName.toLowerCase(); break;
+        case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
+        case 'reportedAt': aVal = new Date(a.reportedAt).getTime(); bVal = new Date(b.reportedAt).getTime(); break;
+        default: aVal = new Date(a.reportedAt).getTime(); bVal = new Date(b.reportedAt).getTime();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [repairs, searchQuery, sortColumn, sortDirection]);
 
   const openCount = repairs.filter((r) => r.status === 'open').length;
   const resolvedCount = repairs.filter((r) => r.status === 'resolved').length;
@@ -250,11 +283,23 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
           <table>
             <thead>
               <tr>
-                <th>Status</th>
-                <th>Field</th>
-                <th>Operation</th>
+                <th className="sortable" onClick={() => handleSort('status')}>
+                  Status
+                  {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('field')}>
+                  Field
+                  {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('operation')}>
+                  Operation
+                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Problem</th>
-                <th>Reported</th>
+                <th className="sortable" onClick={() => handleSort('reportedAt')}>
+                  Reported
+                  {sortColumn === 'reportedAt' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Repaired</th>
                 <th>Notified</th>
                 <th></th>

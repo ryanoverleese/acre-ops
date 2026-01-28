@@ -58,17 +58,51 @@ export default function ProbesClient({ probes: initialProbes, operations, status
   const [addForm, setAddForm] = useState(initialAddForm);
   const [editForm, setEditForm] = useState(initialAddForm);
   const [saving, setSaving] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('serialNumber');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const filteredProbes = useMemo(() => {
-    if (!searchQuery.trim()) return probes;
-    const query = searchQuery.toLowerCase();
-    return probes.filter(
-      (probe) =>
-        probe.serialNumber.toLowerCase().includes(query) ||
-        probe.brand.toLowerCase().includes(query) ||
-        probe.ownerOperation.toLowerCase().includes(query)
-    );
-  }, [probes, searchQuery]);
+    let filtered = probes;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (probe) =>
+          probe.serialNumber.toLowerCase().includes(query) ||
+          probe.brand.toLowerCase().includes(query) ||
+          probe.ownerOperation.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    filtered = [...filtered].sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+
+      switch (sortColumn) {
+        case 'serialNumber': aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase(); break;
+        case 'brand': aVal = a.brand.toLowerCase(); bVal = b.brand.toLowerCase(); break;
+        case 'status': aVal = a.status.toLowerCase(); bVal = b.status.toLowerCase(); break;
+        case 'owner': aVal = a.ownerOperation.toLowerCase(); bVal = b.ownerOperation.toLowerCase(); break;
+        case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
+        default: aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [probes, searchQuery, sortColumn, sortDirection]);
 
   const handleAdd = async () => {
     if (!addForm.serial_number.trim()) {
@@ -270,12 +304,27 @@ export default function ProbesClient({ probes: initialProbes, operations, status
           <table>
             <thead>
               <tr>
-                <th>Serial Number</th>
-                <th>Brand</th>
-                <th>Status</th>
+                <th className="sortable" onClick={() => handleSort('serialNumber')}>
+                  Serial Number
+                  {sortColumn === 'serialNumber' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('brand')}>
+                  Brand
+                  {sortColumn === 'brand' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('status')}>
+                  Status
+                  {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Rack Location</th>
-                <th>Owner Operation</th>
-                <th>Year New</th>
+                <th className="sortable" onClick={() => handleSort('owner')}>
+                  Owner Operation
+                  {sortColumn === 'owner' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('year')}>
+                  Year New
+                  {sortColumn === 'year' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th></th>
               </tr>
             </thead>

@@ -57,6 +57,17 @@ export default function FieldsClient({
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState(initialAddForm);
+  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const filteredFields = useMemo(() => {
     let filtered = fields;
@@ -75,8 +86,28 @@ export default function FieldsClient({
     if (currentOperation !== 'all') {
       filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
     }
+
+    // Sort
+    filtered = [...filtered].sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+
+      switch (sortColumn) {
+        case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
+        case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
+        case 'acres': aVal = a.acres; bVal = b.acres; break;
+        case 'crop': aVal = a.crop.toLowerCase(); bVal = b.crop.toLowerCase(); break;
+        case 'status': aVal = a.status.toLowerCase(); bVal = b.status.toLowerCase(); break;
+        default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     return filtered;
-  }, [fields, searchQuery, currentFilter, currentOperation]);
+  }, [fields, searchQuery, currentFilter, currentOperation, sortColumn, sortDirection]);
 
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
@@ -329,12 +360,27 @@ export default function FieldsClient({
             <table>
               <thead>
                 <tr>
-                  <th>Field Name</th>
-                  <th>Operation</th>
-                  <th>Acres</th>
-                  <th>Crop</th>
+                  <th className="sortable" onClick={() => handleSort('name')}>
+                    Field Name
+                    {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </th>
+                  <th className="sortable" onClick={() => handleSort('operation')}>
+                    Operation
+                    {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </th>
+                  <th className="sortable" onClick={() => handleSort('acres')}>
+                    Acres
+                    {sortColumn === 'acres' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </th>
+                  <th className="sortable" onClick={() => handleSort('crop')}>
+                    Crop
+                    {sortColumn === 'crop' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </th>
                   <th>Probe</th>
-                  <th>Status</th>
+                  <th className="sortable" onClick={() => handleSort('status')}>
+                    Status
+                    {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </th>
                   <th></th>
                 </tr>
               </thead>

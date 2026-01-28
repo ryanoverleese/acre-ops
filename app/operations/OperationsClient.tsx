@@ -26,17 +26,48 @@ export default function OperationsClient({ operations: initialOperations }: Oper
   const [addForm, setAddForm] = useState(initialAddForm);
   const [editForm, setEditForm] = useState({ name: '', notes: '' });
   const [saving, setSaving] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const filteredOperations = useMemo(() => {
-    if (!searchQuery.trim()) return operations;
-    const query = searchQuery.toLowerCase();
-    return operations.filter(
-      (op) =>
-        op.name.toLowerCase().includes(query) ||
-        op.notes?.toLowerCase().includes(query) ||
-        op.contacts.some((c) => c.name.toLowerCase().includes(query))
-    );
-  }, [operations, searchQuery]);
+    let filtered = operations;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (op) =>
+          op.name.toLowerCase().includes(query) ||
+          op.notes?.toLowerCase().includes(query) ||
+          op.contacts.some((c) => c.name.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort
+    filtered = [...filtered].sort((a, b) => {
+      let aVal: string | number = '';
+      let bVal: string | number = '';
+
+      switch (sortColumn) {
+        case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
+        case 'fields': aVal = a.fieldCount; bVal = b.fieldCount; break;
+        default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtered;
+  }, [operations, searchQuery, sortColumn, sortDirection]);
 
   const handleAdd = async () => {
     if (!addForm.name.trim()) {
@@ -156,10 +187,16 @@ export default function OperationsClient({ operations: initialOperations }: Oper
           <table>
             <thead>
               <tr>
-                <th>Operation Name</th>
+                <th className="sortable" onClick={() => handleSort('name')}>
+                  Operation Name
+                  {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Contacts</th>
                 <th>Billing Entities</th>
-                <th>Fields</th>
+                <th className="sortable" onClick={() => handleSort('fields')}>
+                  Fields
+                  {sortColumn === 'fields' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Notes</th>
                 <th></th>
               </tr>

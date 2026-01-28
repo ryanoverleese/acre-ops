@@ -63,6 +63,33 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
   const [selectedEntity, setSelectedEntity] = useState<ProcessedBillingEntity | null>(null);
   const [addForm, setAddForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedEntities = [...billingEntities].sort((a, b) => {
+    let aVal: string | number = '';
+    let bVal: string | number = '';
+
+    switch (sortColumn) {
+      case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
+      case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
+      case 'totalBilled': aVal = a.totalBilled; bVal = b.totalBilled; break;
+      default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
+    }
+
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const totalBilled = billingEntities.reduce((sum, be) => sum + be.totalBilled, 0);
   const totalPaid = billingEntities.reduce((sum, be) => sum + be.totalPaid, 0);
@@ -227,24 +254,33 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
           <table>
             <thead>
               <tr>
-                <th>Billing Entity</th>
-                <th>Operation</th>
+                <th className="sortable" onClick={() => handleSort('name')}>
+                  Billing Entity
+                  {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+                <th className="sortable" onClick={() => handleSort('operation')}>
+                  Operation
+                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Invoice Contact</th>
                 <th>Invoices</th>
-                <th>Total Billed</th>
+                <th className="sortable" onClick={() => handleSort('totalBilled')}>
+                  Total Billed
+                  {sortColumn === 'totalBilled' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Status</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {billingEntities.length === 0 ? (
+              {sortedEntities.length === 0 ? (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                     No billing entities found.
                   </td>
                 </tr>
               ) : (
-                billingEntities.map((be) => {
+                sortedEntities.map((be) => {
                   const paidCount = be.invoices.filter((i) => i.status.toLowerCase() === 'paid').length;
                   const pendingCount = be.invoices.filter((i) => i.status.toLowerCase() !== 'paid').length;
 
