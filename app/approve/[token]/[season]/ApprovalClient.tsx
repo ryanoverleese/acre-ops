@@ -310,7 +310,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
 
         {/* Bottom Bulk Actions */}
         {pendingCount > 0 && (
-          <div className="bulk-actions">
+          <div className="bulk-actions" style={{ marginBottom: '24px' }}>
             <button
               className="btn btn-primary"
               onClick={handleBulkApprove}
