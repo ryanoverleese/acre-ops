@@ -163,8 +163,25 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Baserow API error updating field_season:', response.status, errorText);
+
+      // Try to parse error for more helpful message
+      let errorMessage = 'Failed to log install';
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error) {
+          errorMessage = `Failed to log install: ${errorJson.error}`;
+        } else if (errorJson.detail) {
+          errorMessage = `Failed to log install: ${errorJson.detail}`;
+        }
+      } catch {
+        // If we can't parse, include raw error
+        if (errorText && errorText.length < 200) {
+          errorMessage = `Failed to log install: ${errorText}`;
+        }
+      }
+
       return NextResponse.json(
-        { error: 'Failed to log install' },
+        { error: errorMessage },
         { status: response.status }
       );
     }
