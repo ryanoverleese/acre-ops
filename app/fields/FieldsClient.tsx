@@ -59,6 +59,13 @@ export default function FieldsClient({
   const [showProbeAssign, setShowProbeAssign] = useState(false);
   const [selectedProbeId, setSelectedProbeId] = useState<string>('');
   const [savingProbe, setSavingProbe] = useState(false);
+  const [showSeasonFieldsEdit, setShowSeasonFieldsEdit] = useState(false);
+  const [seasonFieldsForm, setSeasonFieldsForm] = useState({
+    crop: '',
+    service_type: '',
+    antenna_type: '',
+  });
+  const [savingSeasonFields, setSavingSeasonFields] = useState(false);
   const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
   const [addSeasonForm, setAddSeasonForm] = useState({
     season: '2026',
@@ -126,6 +133,15 @@ export default function FieldsClient({
       fieldsToRollover,
     };
   }, [fields, rolloverForm.fromSeason, rolloverForm.toSeason]);
+
+  // Calculate which seasons the selected field is missing
+  const missingSeasonsForField = useMemo(() => {
+    if (!selectedField) return [];
+    const existingSeasons = new Set(
+      fields.filter((f) => f.id === selectedField.id).map((f) => f.season)
+    );
+    return availableSeasons.filter((s) => !existingSeasons.has(s));
+  }, [selectedField, fields, availableSeasons]);
 
   const filteredFields = useMemo(() => {
     let filtered = seasonFields;
@@ -210,8 +226,14 @@ export default function FieldsClient({
       fuelSource: field.fuelSource,
       notes: field.notes,
     });
+    setSeasonFieldsForm({
+      crop: field.crop || '',
+      service_type: field.serviceType || '',
+      antenna_type: field.antennaType || '',
+    });
     setIsEditing(false);
     setShowProbeAssign(false);
+    setShowSeasonFieldsEdit(false);
     setSelectedProbeId(field.probeId?.toString() || '');
   };
 
@@ -220,6 +242,7 @@ export default function FieldsClient({
     setIsEditing(false);
     setEditForm({});
     setShowProbeAssign(false);
+    setShowSeasonFieldsEdit(false);
     setSelectedProbeId('');
   };
 
@@ -324,6 +347,37 @@ export default function FieldsClient({
       alert('Failed to assign probe');
     } finally {
       setSavingProbe(false);
+    }
+  };
+
+  const handleSaveSeasonFields = async () => {
+    if (!selectedField || !selectedField.fieldSeasonId) {
+      alert('Cannot update: No field season found');
+      return;
+    }
+    setSavingSeasonFields(true);
+    try {
+      const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          crop: seasonFieldsForm.crop || null,
+          service_type: seasonFieldsForm.service_type || null,
+          antenna_type: seasonFieldsForm.antenna_type || null,
+        }),
+      });
+      if (response.ok) {
+        setShowSeasonFieldsEdit(false);
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update season fields');
+      }
+    } catch (error) {
+      console.error('Save season fields error:', error);
+      alert('Failed to update season fields');
+    } finally {
+      setSavingSeasonFields(false);
     }
   };
 
@@ -765,11 +819,99 @@ export default function FieldsClient({
                     )}
                     <div className="detail-row">
                       <span className="detail-label">Crop</span>
-                      <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
+                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {showSeasonFieldsEdit ? (
+                          <select
+                            value={seasonFieldsForm.crop}
+                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, crop: e.target.value })}
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Select crop...</option>
+                            <option value="Corn">Corn</option>
+                            <option value="Soybeans">Soybeans</option>
+                            <option value="Wheat">Wheat</option>
+                            <option value="Seed Corn">Seed Corn</option>
+                            <option value="Other">Other</option>
+                          </select>
+                        ) : (
+                          <>
+                            {getCropBadge(selectedField.crop)}
+                            {selectedField.fieldSeasonId && (
+                              <button
+                                className="action-btn"
+                                title="Edit season fields"
+                                onClick={() => setShowSeasonFieldsEdit(true)}
+                                style={{ marginLeft: '4px' }}
+                              >
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Service Type</span>
-                      <span className="detail-value">{selectedField.serviceType || '—'}</span>
+                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {showSeasonFieldsEdit ? (
+                          <select
+                            value={seasonFieldsForm.service_type}
+                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, service_type: e.target.value })}
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Select...</option>
+                            <option value="Full Service">Full Service</option>
+                            <option value="DIY">DIY</option>
+                            <option value="VRS">VRS</option>
+                          </select>
+                        ) : (
+                          <>{selectedField.serviceType || '—'}</>
+                        )}
+                      </span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Antenna Type</span>
+                      <span className="detail-value" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {showSeasonFieldsEdit ? (
+                          <>
+                            <select
+                              value={seasonFieldsForm.antenna_type}
+                              onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, antenna_type: e.target.value })}
+                              style={{ flex: 1 }}
+                            >
+                              <option value="">Select...</option>
+                              <option value="Short">Short</option>
+                              <option value="Tall">Tall</option>
+                            </select>
+                            <button
+                              className="btn btn-primary"
+                              style={{ padding: '4px 8px', fontSize: '12px' }}
+                              onClick={handleSaveSeasonFields}
+                              disabled={savingSeasonFields}
+                            >
+                              {savingSeasonFields ? '...' : 'Save'}
+                            </button>
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '4px 8px', fontSize: '12px' }}
+                              onClick={() => {
+                                setShowSeasonFieldsEdit(false);
+                                setSeasonFieldsForm({
+                                  crop: selectedField.crop || '',
+                                  service_type: selectedField.serviceType || '',
+                                  antenna_type: selectedField.antennaType || '',
+                                });
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>{selectedField.antennaType || '—'}</>
+                        )}
+                      </span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Probe</span>
@@ -868,12 +1010,14 @@ export default function FieldsClient({
                 ) : (
                   <>
                     <button className="btn btn-secondary" style={{ color: 'var(--accent-red)' }} onClick={handleDelete}>Delete</button>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => setShowAddSeasonModal(true)}
-                    >
-                      Add Season
-                    </button>
+                    {missingSeasonsForField.length > 0 && (
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => setShowAddSeasonModal(true)}
+                      >
+                        Add Season
+                      </button>
+                    )}
                     <button className="btn btn-primary" onClick={handleEdit}>Edit</button>
                   </>
                 )}
@@ -1035,9 +1179,9 @@ export default function FieldsClient({
                     <div className="form-group">
                       <label>Season *</label>
                       <select value={addSeasonForm.season} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, season: e.target.value })}>
-                        <option value="2027">2027</option>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
+                        {missingSeasonsForField.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">
