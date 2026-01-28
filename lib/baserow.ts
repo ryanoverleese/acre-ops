@@ -178,6 +178,10 @@ export interface FieldSeason {
   crop_confirmed?: boolean;
   service_type?: { id: number; value: string };
   antenna_type?: { id: number; value: string };
+  // Install planning
+  route_order?: number;
+  planned_installer?: { id: number; value: string };
+  ready_to_install?: boolean;
   // Probe 1
   probe?: { id: number; value: string }[];
   probe_status?: { id: number; value: string };

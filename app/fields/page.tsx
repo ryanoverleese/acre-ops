@@ -34,6 +34,10 @@ export interface ProcessedField {
   dripZones?: number;
   dripGpm?: number;
   dripDepth?: number;
+  // Install planning fields
+  routeOrder?: number;
+  plannedInstaller?: string;
+  readyToInstall?: boolean;
 }
 
 export interface OperationOption {
@@ -194,6 +198,10 @@ async function getFieldsData(): Promise<{
             dripZones: field.drip_zones,
             dripGpm: field.drip_gpm,
             dripDepth: field.drip_depth,
+            // Install planning fields
+            routeOrder: fs.route_order,
+            plannedInstaller: fs.planned_installer?.value,
+            readyToInstall: fs.ready_to_install,
           });
         });
       }

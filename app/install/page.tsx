@@ -22,15 +22,22 @@ async function getInstallData(): Promise<InstallableField[]> {
       }
     });
 
-    // Find field seasons that have probe_status = 'Assigned' (ready to install)
-    const assignedSeasons = fieldSeasons.filter((fs) => {
-      const status = fs.probe_status?.value?.toLowerCase() || '';
+    // Filter: ready_to_install = true AND probe_status != 'Installed'
+    const readySeasons = fieldSeasons.filter((fs) => {
+      // Must be marked ready to install
+      if (!fs.ready_to_install) return false;
+
+      const status1 = fs.probe_status?.value?.toLowerCase() || '';
       const status2 = fs.probe_2_status?.value?.toLowerCase() || '';
-      // Include if probe 1 is assigned OR probe 2 is assigned
-      return (status === 'assigned' && fs.probe?.[0]) || (status2 === 'assigned' && fs.probe_2?.[0]);
+
+      // Include if probe 1 needs install OR probe 2 needs install
+      const probe1NeedsInstall = fs.probe?.[0] && status1 !== 'installed';
+      const probe2NeedsInstall = fs.probe_2?.[0] && status2 !== 'installed';
+
+      return probe1NeedsInstall || probe2NeedsInstall;
     });
 
-    const installableFields: InstallableField[] = assignedSeasons.map((fs) => {
+    const installableFields: InstallableField[] = readySeasons.map((fs) => {
       const fieldLink = fs.field?.[0];
       const field = fields.find((f) => f.id === fieldLink?.id);
 
@@ -62,28 +69,27 @@ async function getInstallData(): Promise<InstallableField[]> {
         lng: field?.lng || 0,
         crop: fs.crop?.value || '',
         antennaType: fs.antenna_type?.value || '',
+        // Install planning
+        routeOrder: fs.route_order || 999,
+        plannedInstaller: fs.planned_installer?.value || '',
         // Probe 1
         probe1Serial: probe1Data?.serial_number || '',
         probe1Brand: probe1Data?.brand?.value || '',
         probe1RackLocation: probe1Data?.rack_location || '',
         probe1Status: probe1Status,
-        probe1Assigned: probe1Status === 'assigned',
+        probe1NeedsInstall: !!probe1Link && probe1Status !== 'installed',
         // Probe 2
         probe2Serial: probe2Data?.serial_number || '',
         probe2Brand: probe2Data?.brand?.value || '',
         probe2RackLocation: probe2Data?.rack_location || '',
         probe2Status: probe2Status,
-        probe2Assigned: probe2Status === 'assigned',
+        probe2NeedsInstall: !!probe2Link && probe2Status !== 'installed',
         hasProbe2: !!probe2Link,
       };
     });
 
-    // Sort by operation name, then field name
-    installableFields.sort((a, b) => {
-      const opCompare = a.operation.localeCompare(b.operation);
-      if (opCompare !== 0) return opCompare;
-      return a.fieldName.localeCompare(b.fieldName);
-    });
+    // Sort by route_order ascending
+    installableFields.sort((a, b) => a.routeOrder - b.routeOrder);
 
     return installableFields;
   } catch (error) {

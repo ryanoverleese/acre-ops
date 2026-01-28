@@ -37,6 +37,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.probe !== undefined) {
       updateData.probe = body.probe ? [body.probe] : [];
     }
+    // Install planning fields
+    if (body.route_order !== undefined) updateData.route_order = body.route_order;
+    if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer;
+    if (body.ready_to_install !== undefined) updateData.ready_to_install = body.ready_to_install;
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
     const response = await fetch(url, {

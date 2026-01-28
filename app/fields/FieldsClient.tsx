@@ -70,6 +70,9 @@ export default function FieldsClient({
     crop: '',
     service_type: '',
     antenna_type: '',
+    route_order: '',
+    planned_installer: '',
+    ready_to_install: false,
   });
   const [savingSeasonFields, setSavingSeasonFields] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -253,6 +256,9 @@ export default function FieldsClient({
       crop: field.crop || '',
       service_type: field.serviceType || '',
       antenna_type: field.antennaType || '',
+      route_order: field.routeOrder?.toString() || '',
+      planned_installer: field.plannedInstaller || '',
+      ready_to_install: field.readyToInstall || false,
     });
     setIsEditing(false);
     setShowProbeAssign(false);
@@ -1100,6 +1106,37 @@ export default function FieldsClient({
                         )}
                       </div>
                     )}
+
+                    {/* Install Planning Section */}
+                    {(selectedField.routeOrder || selectedField.plannedInstaller || selectedField.readyToInstall) && (
+                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
+                        <div className="detail-row" style={{ marginBottom: '8px' }}>
+                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Install Planning</span>
+                        </div>
+                        {selectedField.routeOrder && (
+                          <div className="detail-row">
+                            <span className="detail-label">Route Order</span>
+                            <span className="detail-value">#{selectedField.routeOrder}</span>
+                          </div>
+                        )}
+                        {selectedField.plannedInstaller && (
+                          <div className="detail-row">
+                            <span className="detail-label">Planned Installer</span>
+                            <span className="detail-value">{selectedField.plannedInstaller}</span>
+                          </div>
+                        )}
+                        <div className="detail-row">
+                          <span className="detail-label">Ready to Install</span>
+                          <span className="detail-value">
+                            {selectedField.readyToInstall ? (
+                              <span style={{ color: 'var(--accent-green)' }}>Yes</span>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)' }}>No</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1195,6 +1232,47 @@ export default function FieldsClient({
                       </select>
                     </div>
                   </div>
+
+                  {/* Install Planning Section */}
+                  <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Install Planning</h4>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Route Order</label>
+                        <input
+                          type="number"
+                          value={seasonFieldsForm.route_order}
+                          onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, route_order: e.target.value })}
+                          placeholder="e.g., 1, 2, 3..."
+                          min="1"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label>Planned Installer</label>
+                        <select value={seasonFieldsForm.planned_installer} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, planned_installer: e.target.value })}>
+                          <option value="">Select...</option>
+                          <option value="Brian">Brian</option>
+                          <option value="Daine">Daine</option>
+                          <option value="Ryan">Ryan</option>
+                          <option value="Ryan and Kasen">Ryan and Kasen</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={seasonFieldsForm.ready_to_install}
+                          onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, ready_to_install: e.target.checked })}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        Ready to Install
+                      </label>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        Check this when the field is confirmed and ready for the installer to visit.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="detail-panel-footer">
@@ -1204,6 +1282,9 @@ export default function FieldsClient({
                     crop: selectedField.crop || '',
                     service_type: selectedField.serviceType || '',
                     antenna_type: selectedField.antennaType || '',
+                    route_order: selectedField.routeOrder?.toString() || '',
+                    planned_installer: selectedField.plannedInstaller || '',
+                    ready_to_install: selectedField.readyToInstall || false,
                   });
                   setSelectedProbeId(selectedField.probeId?.toString() || '');
                 }}>Cancel</button>
@@ -1221,6 +1302,9 @@ export default function FieldsClient({
                         antenna_type: seasonFieldsForm.antenna_type || null,
                         probe: probeId,
                         probe_status: probeId ? 'Assigned' : 'Unassigned',
+                        route_order: seasonFieldsForm.route_order ? parseInt(seasonFieldsForm.route_order, 10) : null,
+                        planned_installer: seasonFieldsForm.planned_installer || null,
+                        ready_to_install: seasonFieldsForm.ready_to_install,
                       }),
                     });
                     if (response.ok) {
