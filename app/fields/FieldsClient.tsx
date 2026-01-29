@@ -281,7 +281,16 @@ export default function FieldsClient({
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
-  const [viewMode, setViewMode] = useState<ViewMode>('seasonal');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    // Restore view mode from sessionStorage if available
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('fieldsViewMode');
+      if (saved === 'permanent' || saved === 'seasonal') {
+        return saved;
+      }
+    }
+    return 'seasonal';
+  });
   const [savingFields, setSavingFields] = useState<Set<string>>(new Set());
   const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -321,6 +330,11 @@ export default function FieldsClient({
     copyProbes: false,
   });
   const [rollingOver, setRollingOver] = useState(false);
+
+  // Persist viewMode to sessionStorage so it survives page reloads
+  useEffect(() => {
+    sessionStorage.setItem('fieldsViewMode', viewMode);
+  }, [viewMode]);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
