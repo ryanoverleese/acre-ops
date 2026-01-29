@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       }) => {
         const record: Record<string, unknown> = {
           field_season: [item.field_season],
-          probe_number: item.probe_number || 1,
+          probe_number: item.probe_number ?? 1,
           // Reset install/approval fields for new season
           probe_status: 'Unassigned',
         };

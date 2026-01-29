@@ -18,8 +18,10 @@ export async function POST(request: NextRequest) {
     // Start with minimal required data
     const createData: Record<string, unknown> = {
       field_season: [body.field_season],
-      probe_number: body.probe_number || 1,
+      probe_number: body.probe_number ?? 1,
     };
+
+    console.log('Creating probe assignment with probe_number:', body.probe_number, '->', createData.probe_number);
 
     // Try to fetch field defaults for placement data
     try {

@@ -1031,6 +1031,7 @@ export default function FieldsClient({
 
   // Add new probe assignment with defaults from field
   const handleAddProbeAssignment = async (fieldSeasonId: number, probeNumber: number) => {
+    console.log('Adding probe assignment:', { fieldSeasonId, probeNumber });
     setSavingProbeAssignment(true);
     try {
       const response = await fetch('/api/probe-assignments', {
@@ -1044,6 +1045,7 @@ export default function FieldsClient({
 
       if (response.ok) {
         const created = await response.json();
+        console.log('Created probe assignment:', created);
         // Process the created probe assignment
         const probeLink = created.probe?.[0];
         const probeData = probeLink ? probes.find(p => p.id === probeLink.id) : null;
@@ -1051,7 +1053,7 @@ export default function FieldsClient({
         const newProbeAssignment: ProcessedProbeAssignment = {
           id: created.id,
           fieldSeasonId: fieldSeasonId,
-          probeNumber: created.probe_number || probeNumber,
+          probeNumber: created.probe_number ?? probeNumber,
           probe: probeData ? `#${probeData.serialNumber}` : null,
           probeId: probeLink?.id || null,
           probeStatus: created.probe_status?.value || 'Unassigned',

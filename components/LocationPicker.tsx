@@ -16,7 +16,7 @@ const LocationPickerMap = dynamic(() => import('./LocationPickerMap'), {
 interface LocationPickerProps {
   lat: number | null;
   lng: number | null;
-  onLocationChange: (lat: number, lng: number, elevation?: number | null, soilType?: string | null) => void;
+  onLocationChange: (lat: number, lng: number, elevation?: number | null, soilType?: string | null) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -95,9 +95,9 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
     }
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (position) {
-      onLocationChange(position[0], position[1], elevation, soilType);
+      await onLocationChange(position[0], position[1], elevation, soilType);
       onClose();
     }
   };
