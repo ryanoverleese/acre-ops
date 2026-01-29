@@ -12,6 +12,7 @@ interface BulkCreateItem {
   antenna_type?: string;
   probe?: number;
   copy_probe?: boolean;
+  source_field_season_id?: number; // For rollover - to track which field_season this came from
 }
 
 export async function POST(request: NextRequest) {
@@ -28,8 +29,11 @@ export async function POST(request: NextRequest) {
 
     // Baserow batch API supports up to 200 items at a time
     const batchSize = 200;
-    const results: unknown[] = [];
+    const results: { id: number; source_field_season_id?: number }[] = [];
     const errors: string[] = [];
+
+    // Track source_field_season_id for each item so we can map back after creation
+    const itemSourceMap: (number | undefined)[] = items.map(item => item.source_field_season_id);
 
     for (let i = 0; i < items.length; i += batchSize) {
       const batch = items.slice(i, i + batchSize);
@@ -68,7 +72,15 @@ export async function POST(request: NextRequest) {
         errors.push(`Batch ${Math.floor(i / batchSize) + 1} failed: ${errorText}`);
       } else {
         const created = await response.json();
-        results.push(...(created.items || []));
+        // Map the created items back to their source field_season_ids
+        const createdItems = created.items || [];
+        createdItems.forEach((createdItem: { id: number }, idx: number) => {
+          const globalIdx = i + idx;
+          results.push({
+            id: createdItem.id,
+            source_field_season_id: itemSourceMap[globalIdx],
+          });
+        });
       }
     }
 
@@ -76,6 +88,7 @@ export async function POST(request: NextRequest) {
       success: true,
       created: results.length,
       total: items.length,
+      results, // Include the created field_season IDs with their source mapping
       errors: errors.length > 0 ? errors : undefined,
     }, { status: 201 });
   } catch (error) {

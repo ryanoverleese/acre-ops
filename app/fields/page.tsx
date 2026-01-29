@@ -1,8 +1,37 @@
-import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities } from '@/lib/baserow';
+import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
 // Force dynamic rendering to always get fresh data
 export const dynamic = 'force-dynamic';
+
+export interface ProcessedProbeAssignment {
+  id: number;
+  fieldSeasonId: number;
+  probeNumber: number;
+  probe: string | null;
+  probeId: number | null;
+  probeStatus: string;
+  // Placement data
+  placementLat?: number;
+  placementLng?: number;
+  elevation?: number | string;
+  soilType?: string;
+  placementNotes?: string;
+  // Install data
+  installer?: string;
+  installDate?: string;
+  installLat?: number;
+  installLng?: number;
+  installNotes?: string;
+  installPhotoFieldEndUrl?: string;
+  installPhotoExtraUrl?: string;
+  cropxTelemetryId?: string;
+  signalStrength?: string;
+  // Approval data
+  approvalStatus: string;
+  approvalNotes?: string;
+  approvalDate?: string;
+}
 
 export interface ProcessedField {
   id: number;
@@ -80,14 +109,16 @@ async function getFieldsData(): Promise<{
   billingEntities: BillingEntityOption[];
   probes: ProbeOption[];
   availableSeasons: string[];
+  probeAssignments: ProcessedProbeAssignment[];
 }> {
   try {
-    const [rawFields, operations, fieldSeasons, probes, billingEntities] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
       getProbes(),
       getBillingEntities(),
+      getProbeAssignments(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -271,12 +302,48 @@ async function getFieldsData(): Promise<{
       };
     });
 
+    // Process probe assignments
+    const probeAssignments: ProcessedProbeAssignment[] = rawProbeAssignments.map((pa) => {
+      const probeLink = pa.probe?.[0];
+      const probeData = probeLink ? probeMap.get(probeLink.id) : null;
+
+      return {
+        id: pa.id,
+        fieldSeasonId: pa.field_season?.[0]?.id || 0,
+        probeNumber: pa.probe_number || 1,
+        probe: probeData ? `#${probeData.serial_number}` : null,
+        probeId: probeLink?.id || null,
+        probeStatus: pa.probe_status?.value || 'Unassigned',
+        // Placement data
+        placementLat: pa.placement_lat,
+        placementLng: pa.placement_lng,
+        elevation: pa.elevation,
+        soilType: pa.soil_type,
+        placementNotes: pa.placement_notes,
+        // Install data
+        installer: pa.installer,
+        installDate: pa.install_date,
+        installLat: pa.install_lat,
+        installLng: pa.install_lng,
+        installNotes: pa.install_notes,
+        installPhotoFieldEndUrl: pa.install_photo_field_end_url?.[0]?.url,
+        installPhotoExtraUrl: pa.install_photo_extra_url?.[0]?.url,
+        cropxTelemetryId: pa.cropx_telemetry_id,
+        signalStrength: pa.signal_strength,
+        // Approval data
+        approvalStatus: pa.approval_status?.value || 'Pending',
+        approvalNotes: pa.approval_notes,
+        approvalDate: pa.approval_date,
+      };
+    });
+
     return {
       fields: processedFields,
       operations: operationOptions,
       billingEntities: billingEntityOptions,
       probes: probeOptions,
       availableSeasons,
+      probeAssignments,
     };
   } catch (error) {
     console.error('Error fetching fields data:', error);
@@ -286,12 +353,13 @@ async function getFieldsData(): Promise<{
       billingEntities: [],
       probes: [],
       availableSeasons: ['2026', '2025'],
+      probeAssignments: [],
     };
   }
 }
 
 export default async function FieldsPage() {
-  const { fields, operations, billingEntities, probes, availableSeasons } = await getFieldsData();
+  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments } = await getFieldsData();
 
   return (
     <FieldsClient
@@ -300,6 +368,7 @@ export default async function FieldsPage() {
       billingEntities={billingEntities}
       probes={probes}
       availableSeasons={availableSeasons}
+      initialProbeAssignments={probeAssignments}
     />
   );
 }

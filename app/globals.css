@@ -1652,6 +1652,19 @@ input[type="date"]:focus {
   gap: 12px;
 }
 
+.approval-field-group {
+  margin-bottom: 24px;
+}
+
+.field-group-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
 .approval-card {
   background: var(--bg-card);
   border-radius: 12px;

@@ -30,6 +30,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.field_season !== undefined) {
       updateData.field_season = body.field_season ? [body.field_season] : [];
     }
+    if (body.probe_assignment !== undefined) {
+      updateData.probe_assignment = body.probe_assignment ? [body.probe_assignment] : [];
+    }
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.repairs}/${repairId}/?user_field_names=true`;
     const response = await fetch(url, {

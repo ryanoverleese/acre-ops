@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import type { ProcessedField, OperationOption, BillingEntityOption, ProbeOption } from './page';
+import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -22,6 +22,7 @@ interface FieldsClientProps {
   billingEntities: BillingEntityOption[];
   probes: ProbeOption[];
   availableSeasons: string[];
+  initialProbeAssignments: ProcessedProbeAssignment[];
 }
 
 // Inline editable cell component for seasonal data
@@ -120,6 +121,126 @@ function InlineCell({ fieldSeasonId, field, value, type, options, onSave, saving
   return <span>{value?.toString() || '—'}</span>;
 }
 
+// Inline editable cell component for probe assignments
+interface InlineProbeCellProps {
+  probeAssignmentId: number;
+  field: string;
+  value: string | number | boolean | null | undefined;
+  type: 'text' | 'select' | 'number' | 'checkbox';
+  options?: { value: string; label: string }[];
+  onSave: (probeAssignmentId: number, field: string, value: unknown) => Promise<void>;
+  savingFields: Set<string>;
+  savedFields: Set<string>;
+}
+
+function InlineProbeCell({ probeAssignmentId, field, value, type, options, onSave, savingFields, savedFields }: InlineProbeCellProps) {
+  const cellKey = `pa-${probeAssignmentId}-${field}`;
+  const isSaving = savingFields.has(cellKey);
+  const justSaved = savedFields.has(cellKey);
+
+  const handleChange = async (newValue: unknown) => {
+    await onSave(probeAssignmentId, field, newValue);
+  };
+
+  if (type === 'checkbox') {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <input
+          type="checkbox"
+          checked={!!value}
+          onChange={(e) => handleChange(e.target.checked)}
+          disabled={isSaving}
+          style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+        />
+        {isSaving && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+        {justSaved && <span style={{ fontSize: '10px', color: 'var(--accent-green)' }}>✓</span>}
+      </div>
+    );
+  }
+
+  if (type === 'select') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <select
+          value={value as string || ''}
+          onChange={(e) => handleChange(e.target.value || null)}
+          disabled={isSaving}
+          style={{
+            width: '100%',
+            padding: '4px 6px',
+            fontSize: '12px',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            transition: 'background 0.3s',
+          }}
+        >
+          <option value="">—</option>
+          {options?.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        {isSaving && (
+          <span style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'number') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <input
+          type="number"
+          value={value as number || ''}
+          onChange={(e) => handleChange(e.target.value ? parseFloat(e.target.value) : null)}
+          disabled={isSaving}
+          step="any"
+          style={{
+            width: '80px',
+            padding: '4px 6px',
+            fontSize: '12px',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            transition: 'background 0.3s',
+          }}
+        />
+        {isSaving && (
+          <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
+        )}
+      </div>
+    );
+  }
+
+  if (type === 'text') {
+    return (
+      <div style={{ position: 'relative' }}>
+        <input
+          type="text"
+          value={value as string || ''}
+          onChange={(e) => handleChange(e.target.value || null)}
+          disabled={isSaving}
+          style={{
+            width: '100%',
+            padding: '4px 6px',
+            fontSize: '12px',
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            transition: 'background 0.3s',
+          }}
+        />
+        {isSaving && (
+          <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
+        )}
+      </div>
+    );
+  }
+
+  return <span>{value?.toString() || '—'}</span>;
+}
+
 const initialAddForm = {
   billing_entity: '',
   name: '',
@@ -143,8 +264,13 @@ export default function FieldsClient({
   billingEntities,
   probes,
   availableSeasons,
+  initialProbeAssignments,
 }: FieldsClientProps) {
   const [fields, setFields] = useState(initialFields);
+  const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
+  const [expandedFieldSeasons, setExpandedFieldSeasons] = useState<Set<number>>(new Set());
+  const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
+  const [savingProbeAssignment, setSavingProbeAssignment] = useState(false);
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
@@ -731,6 +857,7 @@ export default function FieldsClient({
         antenna_type: f.antennaType || undefined,
         probe: f.probeId || undefined,
         copy_probe: rolloverForm.copyProbes,
+        source_field_season_id: f.fieldSeasonId, // Track source for probe_assignment copying
       }));
 
       const response = await fetch('/api/field-seasons/bulk', {
@@ -741,6 +868,50 @@ export default function FieldsClient({
 
       if (response.ok) {
         const result = await response.json();
+
+        // Copy probe_assignments for each new field_season
+        if (result.results && result.results.length > 0) {
+          const probeAssignmentsToCopy: {
+            field_season: number;
+            probe_number: number;
+            placement_lat?: number;
+            placement_lng?: number;
+            elevation?: number | string;
+            soil_type?: string;
+            placement_notes?: string;
+          }[] = [];
+
+          // For each created field_season, find probe_assignments from the source
+          for (const createdFs of result.results) {
+            if (createdFs.source_field_season_id) {
+              const sourceProbeAssignments = probeAssignments.filter(
+                pa => pa.fieldSeasonId === createdFs.source_field_season_id
+              );
+
+              for (const sourcePa of sourceProbeAssignments) {
+                probeAssignmentsToCopy.push({
+                  field_season: createdFs.id,
+                  probe_number: sourcePa.probeNumber,
+                  placement_lat: sourcePa.placementLat,
+                  placement_lng: sourcePa.placementLng,
+                  elevation: sourcePa.elevation,
+                  soil_type: sourcePa.soilType,
+                  placement_notes: sourcePa.placementNotes,
+                });
+              }
+            }
+          }
+
+          // Create the new probe_assignments
+          if (probeAssignmentsToCopy.length > 0) {
+            await fetch('/api/probe-assignments/bulk', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ items: probeAssignmentsToCopy }),
+            });
+          }
+        }
+
         alert(`Successfully created ${result.created} field seasons for ${rolloverForm.toSeason}!`);
         setShowRolloverModal(false);
         window.location.reload();
@@ -753,6 +924,179 @@ export default function FieldsClient({
       alert('Failed to roll over fields');
     } finally {
       setRollingOver(false);
+    }
+  };
+
+  // Toggle expand/collapse for a field_season row
+  const toggleFieldSeasonExpand = (fieldSeasonId: number) => {
+    setExpandedFieldSeasons(prev => {
+      const next = new Set(prev);
+      if (next.has(fieldSeasonId)) {
+        next.delete(fieldSeasonId);
+      } else {
+        next.add(fieldSeasonId);
+      }
+      return next;
+    });
+  };
+
+  // Get probe assignments for a specific field_season
+  const getProbeAssignmentsForFieldSeason = useCallback((fieldSeasonId: number) => {
+    return probeAssignments
+      .filter(pa => pa.fieldSeasonId === fieldSeasonId)
+      .sort((a, b) => a.probeNumber - b.probeNumber);
+  }, [probeAssignments]);
+
+  // Handle inline save for probe assignment
+  const handleProbeAssignmentSave = useCallback(async (probeAssignmentId: number, field: string, value: unknown) => {
+    const cellKey = `pa-${probeAssignmentId}-${field}`;
+    setSavingFields(prev => new Set(prev).add(cellKey));
+
+    try {
+      const apiFieldMap: Record<string, string> = {
+        probeId: 'probe',
+        probeStatus: 'probe_status',
+        placementLat: 'placement_lat',
+        placementLng: 'placement_lng',
+        soilType: 'soil_type',
+        placementNotes: 'placement_notes',
+        installDate: 'install_date',
+        installLat: 'install_lat',
+        installLng: 'install_lng',
+        installNotes: 'install_notes',
+        cropxTelemetryId: 'cropx_telemetry_id',
+        signalStrength: 'signal_strength',
+        approvalStatus: 'approval_status',
+        approvalNotes: 'approval_notes',
+      };
+
+      const apiField = apiFieldMap[field] || field;
+      const body: Record<string, unknown> = {};
+
+      // Handle probe assignment specially
+      if (field === 'probeId') {
+        body.probe = value ? parseInt(value as string, 10) : null;
+        body.probe_status = value ? 'Assigned' : 'Unassigned';
+      } else {
+        body[apiField] = value;
+      }
+
+      const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        setProbeAssignments(prev => prev.map(pa => {
+          if (pa.id === probeAssignmentId) {
+            const updated = { ...pa };
+            if (field === 'probeId') {
+              const probe = probes.find(p => p.id === parseInt(value as string, 10));
+              updated.probeId = value ? parseInt(value as string, 10) : null;
+              updated.probe = probe ? `#${probe.serialNumber}` : null;
+              updated.probeStatus = value ? 'Assigned' : 'Unassigned';
+            } else {
+              (updated as Record<string, unknown>)[field] = value;
+            }
+            return updated;
+          }
+          return pa;
+        }));
+
+        setSavedFields(prev => new Set(prev).add(cellKey));
+        setTimeout(() => {
+          setSavedFields(prev => {
+            const next = new Set(prev);
+            next.delete(cellKey);
+            return next;
+          });
+        }, 1500);
+      } else {
+        console.error('Failed to save probe assignment:', await response.text());
+      }
+    } catch (error) {
+      console.error('Save probe assignment error:', error);
+    } finally {
+      setSavingFields(prev => {
+        const next = new Set(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    }
+  }, [probes]);
+
+  // Add new probe assignment with defaults from field
+  const handleAddProbeAssignment = async (fieldSeasonId: number, probeNumber: number) => {
+    setSavingProbeAssignment(true);
+    try {
+      const response = await fetch('/api/probe-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          field_season: fieldSeasonId,
+          probe_number: probeNumber,
+        }),
+      });
+
+      if (response.ok) {
+        const created = await response.json();
+        // Process the created probe assignment
+        const probeLink = created.probe?.[0];
+        const probeData = probeLink ? probes.find(p => p.id === probeLink.id) : null;
+
+        const newProbeAssignment: ProcessedProbeAssignment = {
+          id: created.id,
+          fieldSeasonId: fieldSeasonId,
+          probeNumber: created.probe_number || probeNumber,
+          probe: probeData ? `#${probeData.serialNumber}` : null,
+          probeId: probeLink?.id || null,
+          probeStatus: created.probe_status?.value || 'Unassigned',
+          placementLat: created.placement_lat,
+          placementLng: created.placement_lng,
+          elevation: created.elevation,
+          soilType: created.soil_type,
+          placementNotes: created.placement_notes,
+          approvalStatus: created.approval_status?.value || 'Pending',
+          approvalNotes: created.approval_notes,
+          approvalDate: created.approval_date,
+        };
+
+        setProbeAssignments(prev => [...prev, newProbeAssignment]);
+        setAddingProbeForFieldSeason(null);
+        // Make sure the row is expanded
+        setExpandedFieldSeasons(prev => new Set(prev).add(fieldSeasonId));
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create probe assignment');
+      }
+    } catch (error) {
+      console.error('Add probe assignment error:', error);
+      alert('Failed to create probe assignment');
+    } finally {
+      setSavingProbeAssignment(false);
+    }
+  };
+
+  // Delete probe assignment
+  const handleDeleteProbeAssignment = async (probeAssignmentId: number) => {
+    if (!confirm('Delete this probe assignment? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setProbeAssignments(prev => prev.filter(pa => pa.id !== probeAssignmentId));
+      } else {
+        alert('Failed to delete probe assignment');
+      }
+    } catch (error) {
+      console.error('Delete probe assignment error:', error);
+      alert('Failed to delete probe assignment');
     }
   };
 
@@ -987,15 +1331,53 @@ export default function FieldsClient({
                             </td>
                           </tr>
                         ) : (
-                          filteredFields.map((field) => (
-                            <tr key={`${field.id}-${field.fieldSeasonId}`}>
-                              <td
-                                style={{ fontWeight: 500, cursor: 'pointer' }}
-                                onClick={() => handleRowClick(field)}
-                                title="Click to view details"
-                              >
-                                {field.name}
-                              </td>
+                          filteredFields.map((field) => {
+                            const fieldSeasonProbeAssignments = field.fieldSeasonId ? getProbeAssignmentsForFieldSeason(field.fieldSeasonId) : [];
+                            const isExpanded = field.fieldSeasonId ? expandedFieldSeasons.has(field.fieldSeasonId) : false;
+                            const hasProbeAssignments = fieldSeasonProbeAssignments.length > 0;
+
+                            return (
+                              <React.Fragment key={`${field.id}-${field.fieldSeasonId}`}>
+                                <tr>
+                                  <td
+                                    style={{ fontWeight: 500, cursor: 'pointer' }}
+                                    title="Click to view details"
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                      {field.fieldSeasonId && (
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); toggleFieldSeasonExpand(field.fieldSeasonId!); }}
+                                          style={{
+                                            background: 'none',
+                                            border: 'none',
+                                            padding: '2px',
+                                            cursor: 'pointer',
+                                            color: hasProbeAssignments ? 'var(--accent-green)' : 'var(--text-muted)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                          }}
+                                          title={isExpanded ? 'Collapse probe assignments' : 'Expand probe assignments'}
+                                        >
+                                          <svg
+                                            width="14"
+                                            height="14"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                                          >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                          </svg>
+                                        </button>
+                                      )}
+                                      <span onClick={() => handleRowClick(field)}>{field.name}</span>
+                                      {hasProbeAssignments && (
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                                          ({fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''})
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
                               <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{field.season || '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
                               <td onClick={(e) => e.stopPropagation()}>
@@ -1159,8 +1541,122 @@ export default function FieldsClient({
                                   </button>
                                 )}
                               </td>
-                            </tr>
-                          ))
+                                </tr>
+                                {/* Expanded probe assignment sub-rows */}
+                                {isExpanded && field.fieldSeasonId && (
+                                  <>
+                                    {fieldSeasonProbeAssignments.map((pa) => (
+                                      <tr key={`pa-${pa.id}`} style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                                        <td style={{ paddingLeft: '32px' }}>
+                                          <span style={{ color: 'var(--accent-green)', fontWeight: 500 }}>
+                                            Probe {pa.probeNumber}
+                                          </span>
+                                        </td>
+                                        <td colSpan={2} style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                          {pa.placementLat && pa.placementLng ? (
+                                            <span>{Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}</span>
+                                          ) : (
+                                            <span>No location</span>
+                                          )}
+                                        </td>
+                                        <td colSpan={2} onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="probeId"
+                                            value={pa.probeId?.toString() || ''}
+                                            type="select"
+                                            options={sortedProbes.map(p => ({
+                                              value: p.id.toString(),
+                                              label: `#${p.serialNumber} (${p.ownerBillingEntity})`,
+                                            }))}
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="probeStatus"
+                                            value={pa.probeStatus}
+                                            type="select"
+                                            options={[
+                                              { value: 'Unassigned', label: 'Unassigned' },
+                                              { value: 'Assigned', label: 'Assigned' },
+                                              { value: 'Installed', label: 'Installed' },
+                                              { value: 'RMA', label: 'RMA' },
+                                            ]}
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td colSpan={3} onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="placementNotes"
+                                            value={pa.placementNotes}
+                                            type="text"
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="approvalStatus"
+                                            value={pa.approvalStatus}
+                                            type="select"
+                                            options={[
+                                              { value: 'Pending', label: 'Pending' },
+                                              { value: 'Approved', label: 'Approved' },
+                                              { value: 'Change Requested', label: 'Change Requested' },
+                                            ]}
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            className="action-btn"
+                                            title="Delete probe assignment"
+                                            onClick={() => handleDeleteProbeAssignment(pa.id)}
+                                            style={{ color: 'var(--text-muted)' }}
+                                          >
+                                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    {/* Add probe assignment row */}
+                                    <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                                      <td colSpan={13} style={{ paddingLeft: '32px' }}>
+                                        <button
+                                          onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
+                                          disabled={savingProbeAssignment}
+                                          style={{
+                                            background: 'none',
+                                            border: '1px dashed var(--border)',
+                                            padding: '4px 12px',
+                                            borderRadius: '4px',
+                                            color: 'var(--accent-green)',
+                                            cursor: 'pointer',
+                                            fontSize: '12px',
+                                          }}
+                                        >
+                                          {savingProbeAssignment ? 'Adding...' : `+ Add Probe ${fieldSeasonProbeAssignments.length + 1}`}
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  </>
+                                )}
+                              </React.Fragment>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>

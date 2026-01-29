@@ -14,6 +14,7 @@ export const TABLE_IDS = {
   water_recs: 817302,
   invoices: 817303,
   invoice_lines: 817304,
+  probe_assignments: 819350,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -217,11 +218,40 @@ export interface FieldSeason {
 export interface Repair {
   id: number;
   field_season?: { id: number; value: string }[];
+  probe_assignment?: { id: number; value: string }[];
   reported_at?: string;
   problem?: string;
   fix?: string;
   repaired_at?: string;
   notified_customer?: boolean;
+}
+
+export interface ProbeAssignment {
+  id: number;
+  field_season?: { id: number; value: string }[];
+  probe?: { id: number; value: string }[];
+  probe_number?: number; // 1 or 2
+  // Placement data (defaulted from field, can be overridden)
+  placement_lat?: number;
+  placement_lng?: number;
+  elevation?: number | string;
+  soil_type?: string;
+  placement_notes?: string;
+  // Install data
+  probe_status?: { id: number; value: string };
+  installer?: string;
+  install_date?: string;
+  install_lat?: number;
+  install_lng?: number;
+  install_photo_field_end_url?: { url: string; name: string }[];
+  install_photo_extra_url?: { url: string; name: string }[];
+  install_notes?: string;
+  cropx_telemetry_id?: string;
+  signal_strength?: string;
+  // Approval data
+  approval_status?: { id: number; value: string };
+  approval_notes?: string;
+  approval_date?: string;
 }
 
 export interface WaterRec {
@@ -270,3 +300,4 @@ export const getRepairs = (options?: FetchOptions) => getRows<Repair>('repairs',
 export const getWaterRecs = (options?: FetchOptions) => getRows<WaterRec>('water_recs', options);
 export const getInvoices = (options?: FetchOptions) => getRows<Invoice>('invoices', options);
 export const getInvoiceLines = (options?: FetchOptions) => getRows<InvoiceLine>('invoice_lines', options);
+export const getProbeAssignments = (options?: FetchOptions) => getRows<ProbeAssignment>('probe_assignments', options);

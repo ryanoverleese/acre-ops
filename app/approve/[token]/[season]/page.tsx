@@ -1,4 +1,4 @@
-import { getOperations, getFields, getFieldSeasons, getBillingEntities } from '@/lib/baserow';
+import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes } from '@/lib/baserow';
 import ApprovalClient from './ApprovalClient';
 
 interface PageProps {
@@ -25,17 +25,37 @@ export interface ApprovalField {
   approvalDate?: string;
 }
 
+export interface ApprovalProbeAssignment {
+  id: number;
+  fieldSeasonId: number;
+  fieldName: string;
+  probeNumber: number;
+  probeSerial?: string;
+  placementLat?: number;
+  placementLng?: number;
+  elevation?: number | string;
+  soilType?: string;
+  placementNotes?: string;
+  approvalStatus: string;
+  approvalNotes?: string;
+  approvalDate?: string;
+}
+
 export default async function ApprovePage({ params }: PageProps) {
   const { token, season } = await params;
   const seasonYear = parseInt(season, 10);
 
   // Fetch all data in parallel
-  const [operations, rawFields, fieldSeasons, billingEntities] = await Promise.all([
+  const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes] = await Promise.all([
     getOperations(),
     getFields(),
     getFieldSeasons(),
     getBillingEntities(),
+    getProbeAssignments(),
+    getProbes(),
   ]);
+
+  const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
 
   // Find operation by approval token
   const operation = operations.find((op) => op.approval_token === token);
@@ -95,11 +115,47 @@ export default async function ApprovePage({ params }: PageProps) {
   // Sort by name
   approvalFields.sort((a, b) => a.name.localeCompare(b.name));
 
+  // Get field season IDs for this operation
+  const fieldSeasonIds = new Set(operationFieldSeasons.map((fs) => fs.id));
+
+  // Build approval probe assignments
+  const approvalProbeAssignments: ApprovalProbeAssignment[] = probeAssignments
+    .filter((pa) => pa.field_season?.[0]?.id && fieldSeasonIds.has(pa.field_season[0].id))
+    .map((pa) => {
+      const fieldSeason = operationFieldSeasons.find((fs) => fs.id === pa.field_season?.[0]?.id);
+      const field = fieldSeason?.field?.[0]?.id
+        ? operationFields.find((f) => f.id === fieldSeason.field?.[0]?.id)
+        : null;
+      const probeSerial = pa.probe?.[0]?.id ? probeMap.get(pa.probe[0].id) : undefined;
+
+      return {
+        id: pa.id,
+        fieldSeasonId: pa.field_season?.[0]?.id || 0,
+        fieldName: field?.name || 'Unknown Field',
+        probeNumber: pa.probe_number || 1,
+        probeSerial,
+        placementLat: pa.placement_lat,
+        placementLng: pa.placement_lng,
+        elevation: pa.elevation,
+        soilType: pa.soil_type,
+        placementNotes: pa.placement_notes,
+        approvalStatus: pa.approval_status?.value || 'Pending',
+        approvalNotes: pa.approval_notes,
+        approvalDate: pa.approval_date,
+      };
+    })
+    .sort((a, b) => {
+      const nameCompare = a.fieldName.localeCompare(b.fieldName);
+      if (nameCompare !== 0) return nameCompare;
+      return a.probeNumber - b.probeNumber;
+    });
+
   return (
     <ApprovalClient
       operationName={operation.name}
       season={seasonYear}
       fields={approvalFields}
+      probeAssignments={approvalProbeAssignments}
     />
   );
 }

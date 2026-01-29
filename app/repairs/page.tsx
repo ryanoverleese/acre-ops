@@ -1,15 +1,20 @@
-import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes } from '@/lib/baserow';
-import RepairsClient, { ProcessedRepair, FieldSeasonOption } from './RepairsClient';
+import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes, getProbeAssignments } from '@/lib/baserow';
+import RepairsClient, { ProcessedRepair, FieldSeasonOption, ProbeAssignmentOption } from './RepairsClient';
 
-async function getRepairsData(): Promise<{ repairs: ProcessedRepair[]; fieldSeasons: FieldSeasonOption[] }> {
+async function getRepairsData(): Promise<{
+  repairs: ProcessedRepair[];
+  fieldSeasons: FieldSeasonOption[];
+  probeAssignmentOptions: ProbeAssignmentOption[];
+}> {
   try {
-    const [repairs, fieldSeasons, fields, billingEntities, operations, probes] = await Promise.all([
+    const [repairs, fieldSeasons, fields, billingEntities, operations, probes, probeAssignments] = await Promise.all([
       getRepairs(),
       getFieldSeasons(),
       getFields(),
       getBillingEntities(),
       getOperations(),
       getProbes(),
+      getProbeAssignments(),
     ]);
 
     const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
@@ -36,11 +41,21 @@ async function getRepairsData(): Promise<{ repairs: ProcessedRepair[]; fieldSeas
       return 'Unknown';
     };
 
+    // Create probe assignment map
+    const probeAssignmentMap = new Map(probeAssignments.map((pa) => [pa.id, pa]));
+
     const processedRepairs: ProcessedRepair[] = repairs.map((repair) => {
       const fsLink = repair.field_season?.[0];
       const fieldSeason = fsLink ? fieldSeasonMap.get(fsLink.id) : null;
       const fieldLink = fieldSeason?.field?.[0];
       const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
+
+      // Get probe assignment info
+      const paLink = repair.probe_assignment?.[0];
+      const probeAssignment = paLink ? probeAssignmentMap.get(paLink.id) : null;
+      const probeSerial = probeAssignment?.probe?.[0]?.id
+        ? probeMap.get(probeAssignment.probe[0].id)
+        : null;
 
       return {
         id: repair.id,
@@ -53,6 +68,9 @@ async function getRepairsData(): Promise<{ repairs: ProcessedRepair[]; fieldSeas
         repairedAt: repair.repaired_at,
         notifiedCustomer: repair.notified_customer || false,
         status: repair.repaired_at ? 'resolved' as const : 'open' as const,
+        probeAssignmentId: paLink?.id,
+        probeNumber: probeAssignment?.probe_number,
+        probeSerial,
       };
     }).sort((a, b) => {
       if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
@@ -74,14 +92,34 @@ async function getRepairsData(): Promise<{ repairs: ProcessedRepair[]; fieldSeas
       };
     }).sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 
-    return { repairs: processedRepairs, fieldSeasons: fieldSeasonOptions };
+    // Build probe assignment options for the dropdown
+    const probeAssignmentOptions: ProbeAssignmentOption[] = probeAssignments.map((pa) => {
+      const fieldSeason = pa.field_season?.[0]?.id ? fieldSeasonMap.get(pa.field_season[0].id) : null;
+      const fieldLink = fieldSeason?.field?.[0];
+      const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
+      const probeSerial = pa.probe?.[0]?.id ? probeMap.get(pa.probe[0].id) : undefined;
+
+      return {
+        id: pa.id,
+        fieldSeasonId: pa.field_season?.[0]?.id || 0,
+        fieldName: field?.name || 'Unknown Field',
+        probeNumber: pa.probe_number || 1,
+        probeSerial,
+      };
+    }).sort((a, b) => {
+      const nameCompare = a.fieldName.localeCompare(b.fieldName);
+      if (nameCompare !== 0) return nameCompare;
+      return a.probeNumber - b.probeNumber;
+    });
+
+    return { repairs: processedRepairs, fieldSeasons: fieldSeasonOptions, probeAssignmentOptions };
   } catch (error) {
     console.error('Error fetching repairs data:', error);
-    return { repairs: [], fieldSeasons: [] };
+    return { repairs: [], fieldSeasons: [], probeAssignmentOptions: [] };
   }
 }
 
 export default async function RepairsPage() {
-  const { repairs, fieldSeasons } = await getRepairsData();
-  return <RepairsClient repairs={repairs} fieldSeasons={fieldSeasons} />;
+  const { repairs, fieldSeasons, probeAssignmentOptions } = await getRepairsData();
+  return <RepairsClient repairs={repairs} fieldSeasons={fieldSeasons} probeAssignmentOptions={probeAssignmentOptions} />;
 }

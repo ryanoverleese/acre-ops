@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
       reported_at: body.reported_at || new Date().toISOString().split('T')[0],
     };
 
+    if (body.probe_assignment) createData.probe_assignment = [body.probe_assignment];
     if (body.problem) createData.problem = body.problem;
     if (body.fix) createData.fix = body.fix;
     if (body.repaired_at) createData.repaired_at = body.repaired_at;
