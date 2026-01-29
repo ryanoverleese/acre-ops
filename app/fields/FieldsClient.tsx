@@ -1682,6 +1682,22 @@ export default function FieldsClient({
                                           />
                                         </td>
                                         <td onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="approvalStatus"
+                                            value={pa.approvalStatus}
+                                            type="select"
+                                            options={[
+                                              { value: 'Pending', label: 'Pending' },
+                                              { value: 'Approved', label: 'Approved' },
+                                              { value: 'Change Requested', label: 'Change Requested' },
+                                            ]}
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
                                           <button
                                             className="action-btn"
                                             title="Delete probe assignment"
