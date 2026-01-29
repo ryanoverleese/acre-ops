@@ -1915,30 +1915,36 @@ export default function FieldsClient({
                                       {existingSeasons.join(', ')}
                                     </span>
                                   )}
-                                  {missingSeasons.length > 0 && (
-                                    <select
-                                      style={{
-                                        padding: '4px 8px',
-                                        fontSize: '11px',
-                                        borderRadius: '4px',
-                                        border: '1px solid var(--accent-green)',
-                                        background: 'var(--bg-secondary)',
-                                        color: 'var(--accent-green)',
-                                        cursor: 'pointer',
-                                      }}
-                                      value=""
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          handleQuickStartSeason(field.id, e.target.value);
+                                  <select
+                                    style={{
+                                      padding: '4px 8px',
+                                      fontSize: '11px',
+                                      borderRadius: '4px',
+                                      border: '1px solid var(--accent-green)',
+                                      background: 'var(--bg-secondary)',
+                                      color: 'var(--accent-green)',
+                                      cursor: 'pointer',
+                                    }}
+                                    value=""
+                                    onChange={(e) => {
+                                      if (e.target.value === 'custom') {
+                                        const customYear = prompt('Enter year (e.g., 2030):');
+                                        if (customYear && /^\d{4}$/.test(customYear.trim())) {
+                                          handleQuickStartSeason(field.id, customYear.trim());
+                                        } else if (customYear) {
+                                          alert('Please enter a valid 4-digit year');
                                         }
-                                      }}
-                                    >
-                                      <option value="">+ Start Season</option>
-                                      {missingSeasons.map((s) => (
-                                        <option key={s} value={s}>{s}</option>
-                                      ))}
-                                    </select>
-                                  )}
+                                      } else if (e.target.value) {
+                                        handleQuickStartSeason(field.id, e.target.value);
+                                      }
+                                    }}
+                                  >
+                                    <option value="">+ Start Season</option>
+                                    {missingSeasons.map((s) => (
+                                      <option key={s} value={s}>{s}</option>
+                                    ))}
+                                    <option value="custom">Other year...</option>
+                                  </select>
                                 </div>
                               </td>
                               <td className="field-count">{field.acres}</td>
@@ -2885,11 +2891,21 @@ export default function FieldsClient({
                       <label>To Season</label>
                       <select
                         value={rolloverForm.toSeason}
-                        onChange={(e) => setRolloverForm({ ...rolloverForm, toSeason: e.target.value })}
+                        onChange={(e) => {
+                          if (e.target.value === 'custom') {
+                            const customYear = prompt('Enter year (e.g., 2030):');
+                            if (customYear && /^\d{4}$/.test(customYear.trim())) {
+                              setRolloverForm({ ...rolloverForm, toSeason: customYear.trim() });
+                            }
+                          } else {
+                            setRolloverForm({ ...rolloverForm, toSeason: e.target.value });
+                          }
+                        }}
                       >
                         {availableSeasons.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
+                        <option value="custom">Other year...</option>
                       </select>
                     </div>
                   </div>
