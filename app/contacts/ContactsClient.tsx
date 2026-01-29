@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ProcessedContact, OperationOption } from './page';
+import { useRouter } from 'next/navigation';
+import type { ProcessedContact, OperationOption, BillingEntityOption } from './page';
 
 interface ContactsClientProps {
   initialContacts: ProcessedContact[];
   operations: OperationOption[];
+  billingEntities: BillingEntityOption[];
 }
 
 const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist'];
@@ -18,10 +20,12 @@ const initialForm = {
   customer_type: '',
   notes: '',
   operations: [] as string[],
+  billing_entity: '',
   is_main_contact: 'No',
 };
 
-export default function ContactsClient({ initialContacts, operations }: ContactsClientProps) {
+export default function ContactsClient({ initialContacts, operations, billingEntities }: ContactsClientProps) {
+  const router = useRouter();
   const [contacts, setContacts] = useState(initialContacts);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -41,6 +45,18 @@ export default function ContactsClient({ initialContacts, operations }: Contacts
       setSortDirection('asc');
     }
   };
+
+  // Sort operations alphabetically
+  const sortedOperations = useMemo(() => {
+    return [...operations].sort((a, b) => a.name.localeCompare(b.name));
+  }, [operations]);
+
+  // Filter billing entities by selected operation
+  const filteredBillingEntities = useMemo(() => {
+    const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
+    if (!selectedOpId) return billingEntities;
+    return billingEntities.filter((be) => be.operationId === selectedOpId);
+  }, [billingEntities, form.operations]);
 
   const filteredContacts = useMemo(() => {
     let filtered = contacts;
@@ -180,6 +196,7 @@ export default function ContactsClient({ initialContacts, operations }: Contacts
       customer_type: contact.customerType,
       notes: contact.notes,
       operations: contact.operationIds.map((id) => id.toString()),
+      billing_entity: '',
       is_main_contact: contact.isMainContact ? 'Yes' : 'No',
     });
     setShowEditModal(true);
@@ -365,13 +382,38 @@ export default function ContactsClient({ initialContacts, operations }: Contacts
                   <label>Operation</label>
                   <select
                     value={form.operations[0] || ''}
-                    onChange={(e) => setForm({ ...form, operations: e.target.value ? [e.target.value] : [] })}
+                    onChange={(e) => {
+                      if (e.target.value === 'add_new') {
+                        router.push('/operations');
+                      } else {
+                        setForm({ ...form, operations: e.target.value ? [e.target.value] : [], billing_entity: '' });
+                      }
+                    }}
                   >
                     <option value="">Select operation...</option>
-                    {operations.map((op) => (
+                    {sortedOperations.map((op) => (
                       <option key={op.id} value={op.id}>{op.name}</option>
                     ))}
+                    <option value="add_new">+ Add New Operation...</option>
                   </select>
+                </div>
+                <div className="form-group">
+                  <label>Billing Entity</label>
+                  <select
+                    value={form.billing_entity}
+                    onChange={(e) => setForm({ ...form, billing_entity: e.target.value })}
+                    disabled={!form.operations[0]}
+                  >
+                    <option value="">Select billing entity...</option>
+                    {filteredBillingEntities.map((be) => (
+                      <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                  {form.operations[0] && filteredBillingEntities.length === 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      No billing entities for this operation
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Main Contact?</label>
@@ -439,13 +481,38 @@ export default function ContactsClient({ initialContacts, operations }: Contacts
                   <label>Operation</label>
                   <select
                     value={form.operations[0] || ''}
-                    onChange={(e) => setForm({ ...form, operations: e.target.value ? [e.target.value] : [] })}
+                    onChange={(e) => {
+                      if (e.target.value === 'add_new') {
+                        router.push('/operations');
+                      } else {
+                        setForm({ ...form, operations: e.target.value ? [e.target.value] : [], billing_entity: '' });
+                      }
+                    }}
                   >
                     <option value="">Select operation...</option>
-                    {operations.map((op) => (
+                    {sortedOperations.map((op) => (
                       <option key={op.id} value={op.id}>{op.name}</option>
                     ))}
+                    <option value="add_new">+ Add New Operation...</option>
                   </select>
+                </div>
+                <div className="form-group">
+                  <label>Billing Entity</label>
+                  <select
+                    value={form.billing_entity}
+                    onChange={(e) => setForm({ ...form, billing_entity: e.target.value })}
+                    disabled={!form.operations[0]}
+                  >
+                    <option value="">Select billing entity...</option>
+                    {filteredBillingEntities.map((be) => (
+                      <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                  {form.operations[0] && filteredBillingEntities.length === 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      No billing entities for this operation
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Main Contact?</label>

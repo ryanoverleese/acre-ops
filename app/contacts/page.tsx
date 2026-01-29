@@ -20,7 +20,13 @@ export interface OperationOption {
   name: string;
 }
 
-async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operations: OperationOption[] }> {
+export interface BillingEntityOption {
+  id: number;
+  name: string;
+  operationId: number | null;
+}
+
+async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operations: OperationOption[]; billingEntities: BillingEntityOption[] }> {
   try {
     const [contacts, operations, billingEntities] = await Promise.all([
       getContacts(),
@@ -63,15 +69,21 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
       name: op.name,
     }));
 
-    return { contacts: processedContacts, operations: operationOptions };
+    const billingEntityOptions: BillingEntityOption[] = billingEntities.map((be) => ({
+      id: be.id,
+      name: be.name || '',
+      operationId: be.operation?.[0]?.id || null,
+    }));
+
+    return { contacts: processedContacts, operations: operationOptions, billingEntities: billingEntityOptions };
   } catch (error) {
     console.error('Error fetching contacts data:', error);
-    return { contacts: [], operations: [] };
+    return { contacts: [], operations: [], billingEntities: [] };
   }
 }
 
 export default async function ContactsPage() {
-  const { contacts, operations } = await getContactsData();
+  const { contacts, operations, billingEntities } = await getContactsData();
 
   return (
     <>
@@ -82,7 +94,7 @@ export default async function ContactsPage() {
       </header>
 
       <div className="content">
-        <ContactsClient initialContacts={contacts} operations={operations} />
+        <ContactsClient initialContacts={contacts} operations={operations} billingEntities={billingEntities} />
       </div>
     </>
   );
