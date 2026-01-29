@@ -25,8 +25,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (body.serial_number !== undefined) updateData.serial_number = body.serial_number;
     if (body.brand !== undefined) updateData.brand = body.brand;
-    if (body.owner_operation !== undefined) {
-      updateData.owner_operation = body.owner_operation ? [body.owner_operation] : [];
+    if (body.owner_billing_entity !== undefined) {
+      updateData.owner_billing_entity = body.owner_billing_entity ? [body.owner_billing_entity] : [];
     }
     if (body.year_new !== undefined) updateData.year_new = body.year_new;
     if (body.status !== undefined) updateData.status = body.status;

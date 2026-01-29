@@ -321,8 +321,8 @@ export default function FieldsClient({
   // Sort probes by owner operation for the dropdown
   const sortedProbes = useMemo(() => {
     return [...probes].sort((a, b) => {
-      // Sort by owner operation first, then by serial number
-      const opCompare = (a.ownerOperation || '').localeCompare(b.ownerOperation || '');
+      // Sort by owner billing entity first, then by serial number
+      const opCompare = (a.ownerBillingEntity || '').localeCompare(b.ownerBillingEntity || '');
       if (opCompare !== 0) return opCompare;
       return (a.serialNumber || '').localeCompare(b.serialNumber || '');
     });
@@ -1052,7 +1052,7 @@ export default function FieldsClient({
                                   type="select"
                                   options={sortedProbes.map(p => ({
                                     value: p.id.toString(),
-                                    label: `#${p.serialNumber} (${p.ownerOperation})`,
+                                    label: `#${p.serialNumber} (${p.ownerBillingEntity})`,
                                   }))}
                                   onSave={handleInlineSave}
                                   savingFields={savingFields}
@@ -1828,7 +1828,7 @@ export default function FieldsClient({
                         <option value="">— No Probe —</option>
                         {sortedProbes.map((p) => (
                           <option key={p.id} value={p.id}>
-                            #{p.serialNumber} ({p.ownerOperation})
+                            #{p.serialNumber} ({p.ownerBillingEntity})
                           </option>
                         ))}
                       </select>

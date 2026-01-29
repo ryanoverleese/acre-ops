@@ -163,7 +163,7 @@ export interface Probe {
   id: number;
   serial_number?: string;
   brand?: { id: number; value: string };
-  owner_operation?: { id: number; value: string }[];
+  owner_billing_entity?: { id: number; value: string }[];
   year_new?: number;
   status?: { id: number; value: string };
   rack_location?: string;

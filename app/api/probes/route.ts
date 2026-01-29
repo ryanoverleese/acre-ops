@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (body.brand) createData.brand = body.brand;
-    if (body.owner_operation) createData.owner_operation = [body.owner_operation];
+    if (body.owner_billing_entity) createData.owner_billing_entity = [body.owner_billing_entity];
     if (body.year_new) createData.year_new = body.year_new;
     if (body.status) createData.status = body.status;
     if (body.rack_location) createData.rack_location = body.rack_location;
