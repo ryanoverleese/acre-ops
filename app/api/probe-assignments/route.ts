@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, getRow, Field, FieldSeason } from '@/lib/baserow';
+import { TABLE_IDS } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -21,30 +21,9 @@ export async function POST(request: NextRequest) {
       probe_number: body.probe_number || 1,
     };
 
-    // Try to fetch field defaults, but don't fail if we can't
-    try {
-      const fieldSeason = await getRow<FieldSeason>('field_seasons', body.field_season);
-      const fieldId = fieldSeason.field?.[0]?.id;
-      if (fieldId) {
-        const field = await getRow<Field>('fields', fieldId);
-        // Set placement defaults from field if not provided
-        if (body.placement_lat === undefined && field.lat) createData.placement_lat = field.lat;
-        if (body.placement_lng === undefined && field.lng) createData.placement_lng = field.lng;
-        if (body.elevation === undefined && field.elevation) {
-          createData.elevation = typeof field.elevation === 'object' ? field.elevation?.value : field.elevation;
-        }
-        if (body.soil_type === undefined && field.soil_type) {
-          createData.soil_type = typeof field.soil_type === 'object' ? field.soil_type?.value : field.soil_type;
-        }
-        if (body.placement_notes === undefined && field.placement_notes) {
-          createData.placement_notes = field.placement_notes;
-        }
-      }
-    } catch (fetchError) {
-      console.log('Could not fetch field defaults (continuing anyway):', fetchError);
-    }
-
-    // Allow explicit overrides
+    // Only set optional fields if explicitly provided
+    // Note: We don't auto-populate from field because Baserow has validation constraints
+    // (e.g., placement_lng must be >= 0 which doesn't work for Western hemisphere)
     if (body.placement_lat !== undefined) createData.placement_lat = body.placement_lat;
     if (body.placement_lng !== undefined) createData.placement_lng = body.placement_lng;
     if (body.elevation !== undefined) createData.elevation = body.elevation;
