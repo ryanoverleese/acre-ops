@@ -15,32 +15,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch the field_season to get the field ID for defaults
-    const fieldSeason = await getRow<FieldSeason>('field_seasons', body.field_season);
-    const fieldId = fieldSeason.field?.[0]?.id;
-
-    if (!fieldId) {
-      return NextResponse.json(
-        { error: 'Field season has no linked field' },
-        { status: 400 }
-      );
-    }
-
-    // Fetch the field to get default placement values
-    const field = await getRow<Field>('fields', fieldId);
-
+    // Start with minimal required data
     const createData: Record<string, unknown> = {
       field_season: [body.field_season],
       probe_number: body.probe_number || 1,
-      probe_status: body.probe_status || 'Unassigned',
     };
 
-    // Set placement defaults from field, but allow overrides
-    createData.placement_lat = body.placement_lat ?? field.lat ?? null;
-    createData.placement_lng = body.placement_lng ?? field.lng ?? null;
-    createData.elevation = body.elevation ?? (typeof field.elevation === 'object' ? field.elevation?.value : field.elevation) ?? null;
-    createData.soil_type = body.soil_type ?? (typeof field.soil_type === 'object' ? field.soil_type?.value : field.soil_type) ?? null;
-    createData.placement_notes = body.placement_notes ?? field.placement_notes ?? null;
+    // Try to fetch field defaults, but don't fail if we can't
+    try {
+      const fieldSeason = await getRow<FieldSeason>('field_seasons', body.field_season);
+      const fieldId = fieldSeason.field?.[0]?.id;
+      if (fieldId) {
+        const field = await getRow<Field>('fields', fieldId);
+        // Set placement defaults from field if not provided
+        if (body.placement_lat === undefined && field.lat) createData.placement_lat = field.lat;
+        if (body.placement_lng === undefined && field.lng) createData.placement_lng = field.lng;
+        if (body.elevation === undefined && field.elevation) {
+          createData.elevation = typeof field.elevation === 'object' ? field.elevation?.value : field.elevation;
+        }
+        if (body.soil_type === undefined && field.soil_type) {
+          createData.soil_type = typeof field.soil_type === 'object' ? field.soil_type?.value : field.soil_type;
+        }
+        if (body.placement_notes === undefined && field.placement_notes) {
+          createData.placement_notes = field.placement_notes;
+        }
+      }
+    } catch (fetchError) {
+      console.log('Could not fetch field defaults (continuing anyway):', fetchError);
+    }
+
+    // Allow explicit overrides
+    if (body.placement_lat !== undefined) createData.placement_lat = body.placement_lat;
+    if (body.placement_lng !== undefined) createData.placement_lng = body.placement_lng;
+    if (body.elevation !== undefined) createData.elevation = body.elevation;
+    if (body.soil_type !== undefined) createData.soil_type = body.soil_type;
+    if (body.placement_notes !== undefined) createData.placement_notes = body.placement_notes;
 
     // Optional fields
     if (body.probe) createData.probe = [body.probe];
@@ -51,8 +60,6 @@ export async function POST(request: NextRequest) {
     if (body.install_notes) createData.install_notes = body.install_notes;
     if (body.cropx_telemetry_id) createData.cropx_telemetry_id = body.cropx_telemetry_id;
     if (body.signal_strength) createData.signal_strength = body.signal_strength;
-    if (body.approval_status) createData.approval_status = body.approval_status;
-    if (body.approval_notes) createData.approval_notes = body.approval_notes;
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/?user_field_names=true`;
     const response = await fetch(url, {
@@ -68,7 +75,7 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to create probe assignment' },
+        { error: `Failed to create probe assignment: ${errorText}` },
         { status: response.status }
       );
     }
@@ -78,7 +85,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error creating probe assignment:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: `Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }

@@ -1314,8 +1314,7 @@ export default function FieldsClient({
                           <th style={{ minWidth: '90px' }}>Crop</th>
                           <th style={{ minWidth: '90px' }}>Service</th>
                           <th style={{ minWidth: '80px' }}>Antenna</th>
-                          <th style={{ minWidth: '140px' }}>Probe</th>
-                          <th style={{ minWidth: '90px' }}>Status</th>
+                          <th style={{ minWidth: '100px' }}>Probes</th>
                           <th style={{ minWidth: '60px' }}>Route #</th>
                           <th style={{ minWidth: '110px' }}>Installer</th>
                           <th style={{ minWidth: '60px' }}>Ready</th>
@@ -1326,7 +1325,7 @@ export default function FieldsClient({
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={13} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={12} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                               No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                             </td>
                           </tr>
@@ -1342,41 +1341,9 @@ export default function FieldsClient({
                                   <td
                                     style={{ fontWeight: 500, cursor: 'pointer' }}
                                     title="Click to view details"
+                                    onClick={() => handleRowClick(field)}
                                   >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                      {field.fieldSeasonId && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); toggleFieldSeasonExpand(field.fieldSeasonId!); }}
-                                          style={{
-                                            background: 'none',
-                                            border: 'none',
-                                            padding: '2px',
-                                            cursor: 'pointer',
-                                            color: hasProbeAssignments ? 'var(--accent-green)' : 'var(--text-muted)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                          }}
-                                          title={isExpanded ? 'Collapse probe assignments' : 'Expand probe assignments'}
-                                        >
-                                          <svg
-                                            width="14"
-                                            height="14"
-                                            viewBox="0 0 24 24"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            style={{ transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
-                                          >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                          </svg>
-                                        </button>
-                                      )}
-                                      <span onClick={() => handleRowClick(field)}>{field.name}</span>
-                                      {hasProbeAssignments && (
-                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px' }}>
-                                          ({fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''})
-                                        </span>
-                                      )}
-                                    </div>
+                                    {field.name}
                                   </td>
                               <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{field.season || '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
@@ -1430,36 +1397,41 @@ export default function FieldsClient({
                                 />
                               </td>
                               <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="probeId"
-                                  value={field.probeId?.toString() || ''}
-                                  type="select"
-                                  options={sortedProbes.map(p => ({
-                                    value: p.id.toString(),
-                                    label: `#${p.serialNumber} (${p.ownerBillingEntity})`,
-                                  }))}
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="probeStatus"
-                                  value={field.probeStatus}
-                                  type="select"
-                                  options={[
-                                    { value: 'Unassigned', label: 'Unassigned' },
-                                    { value: 'Assigned', label: 'Assigned' },
-                                    { value: 'Installed', label: 'Installed' },
-                                    { value: 'RMA', label: 'RMA' },
-                                  ]}
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
+                                {field.fieldSeasonId ? (
+                                  <button
+                                    onClick={() => toggleFieldSeasonExpand(field.fieldSeasonId!)}
+                                    style={{
+                                      background: 'none',
+                                      border: '1px solid var(--border)',
+                                      padding: '4px 8px',
+                                      borderRadius: '4px',
+                                      cursor: 'pointer',
+                                      fontSize: '11px',
+                                      color: hasProbeAssignments ? 'var(--accent-green)' : 'var(--text-muted)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                    }}
+                                  >
+                                    {hasProbeAssignments ? (
+                                      <>{fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''}</>
+                                    ) : (
+                                      <>+ Add</>
+                                    )}
+                                    <svg
+                                      width="10"
+                                      height="10"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                                    >
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                  </button>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)' }}>—</span>
+                                )}
                               </td>
                               <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
@@ -1634,7 +1606,7 @@ export default function FieldsClient({
                                     ))}
                                     {/* Add probe assignment row */}
                                     <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                      <td colSpan={13} style={{ paddingLeft: '32px' }}>
+                                      <td colSpan={12} style={{ paddingLeft: '32px' }}>
                                         <button
                                           onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
                                           disabled={savingProbeAssignment}
