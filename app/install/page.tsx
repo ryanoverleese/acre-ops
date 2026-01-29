@@ -1,6 +1,9 @@
 import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations, getProbeAssignments } from '@/lib/baserow';
 import InstallClient, { InstallableProbeAssignment } from './InstallClient';
 
+// Force dynamic rendering - don't cache this page
+export const dynamic = 'force-dynamic';
+
 export interface ProbeOption {
   id: number;
   serialNumber: string;
