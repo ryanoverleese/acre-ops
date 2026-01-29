@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
 import type { ProcessedContact, OperationOption, BillingEntityOption } from './page';
 
 interface ContactsClientProps {
@@ -25,8 +24,9 @@ const initialForm = {
 };
 
 export default function ContactsClient({ initialContacts, operations, billingEntities }: ContactsClientProps) {
-  const router = useRouter();
   const [contacts, setContacts] = useState(initialContacts);
+  const [operationsList, setOperationsList] = useState(operations);
+  const [billingEntitiesList, setBillingEntitiesList] = useState(billingEntities);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -36,6 +36,16 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Nested modal state for creating new operation
+  const [showAddOperationModal, setShowAddOperationModal] = useState(false);
+  const [newOperationForm, setNewOperationForm] = useState({ name: '', notes: '' });
+  const [savingOperation, setSavingOperation] = useState(false);
+
+  // Nested modal state for creating new billing entity
+  const [showAddBillingEntityModal, setShowAddBillingEntityModal] = useState(false);
+  const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', notes: '' });
+  const [savingBillingEntity, setSavingBillingEntity] = useState(false);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -48,15 +58,15 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
   // Sort operations alphabetically
   const sortedOperations = useMemo(() => {
-    return [...operations].sort((a, b) => a.name.localeCompare(b.name));
-  }, [operations]);
+    return [...operationsList].sort((a, b) => a.name.localeCompare(b.name));
+  }, [operationsList]);
 
   // Filter billing entities by selected operation
   const filteredBillingEntities = useMemo(() => {
     const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
-    if (!selectedOpId) return billingEntities;
-    return billingEntities.filter((be) => be.operationId === selectedOpId);
-  }, [billingEntities, form.operations]);
+    if (!selectedOpId) return billingEntitiesList;
+    return billingEntitiesList.filter((be) => be.operationId === selectedOpId);
+  }, [billingEntitiesList, form.operations]);
 
   const filteredContacts = useMemo(() => {
     let filtered = contacts;
@@ -97,6 +107,87 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     return filtered;
   }, [contacts, searchQuery, filterType, sortColumn, sortDirection]);
+
+  // Handler to create a new operation inline
+  const handleAddOperation = async () => {
+    if (!newOperationForm.name.trim()) {
+      alert('Operation name is required');
+      return;
+    }
+    setSavingOperation(true);
+    try {
+      const response = await fetch('/api/operations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newOperationForm),
+      });
+      if (response.ok) {
+        const newOp = await response.json();
+        const newOperationOption: OperationOption = { id: newOp.id, name: newOp.name };
+        setOperationsList([...operationsList, newOperationOption]);
+        // Auto-select the new operation and reset billing entity
+        setForm({ ...form, operations: [newOp.id.toString()], billing_entity: '' });
+        setShowAddOperationModal(false);
+        setNewOperationForm({ name: '', notes: '' });
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create operation');
+      }
+    } catch (error) {
+      console.error('Create operation error:', error);
+      alert('Failed to create operation');
+    } finally {
+      setSavingOperation(false);
+    }
+  };
+
+  // Handler to create a new billing entity inline
+  const handleAddBillingEntity = async () => {
+    if (!newBillingEntityForm.name.trim()) {
+      alert('Billing entity name is required');
+      return;
+    }
+    const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
+    if (!selectedOpId) {
+      alert('Please select an operation first');
+      return;
+    }
+    setSavingBillingEntity(true);
+    try {
+      const payload: Record<string, unknown> = {
+        name: newBillingEntityForm.name,
+        operation: [selectedOpId],
+      };
+      if (newBillingEntityForm.notes) payload.notes = newBillingEntityForm.notes;
+
+      const response = await fetch('/api/billing-entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) {
+        const newBe = await response.json();
+        const newBillingEntityOption: BillingEntityOption = {
+          id: newBe.id,
+          name: newBe.name || '',
+          operationId: selectedOpId,
+        };
+        setBillingEntitiesList([...billingEntitiesList, newBillingEntityOption]);
+        // Auto-select the new billing entity
+        setForm({ ...form, billing_entity: newBe.id.toString() });
+        setShowAddBillingEntityModal(false);
+        setNewBillingEntityForm({ name: '', notes: '' });
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create billing entity');
+      }
+    } catch (error) {
+      console.error('Create billing entity error:', error);
+      alert('Failed to create billing entity');
+    } finally {
+      setSavingBillingEntity(false);
+    }
+  };
 
   const handleAddContact = async () => {
     if (!form.name.trim()) {
@@ -220,6 +311,57 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     );
   };
 
+  // Reusable form fields for operation and billing entity
+  const renderOperationField = () => (
+    <div className="form-group">
+      <label>Operation</label>
+      <select
+        value={form.operations[0] || ''}
+        onChange={(e) => {
+          if (e.target.value === 'add_new') {
+            setShowAddOperationModal(true);
+          } else {
+            setForm({ ...form, operations: e.target.value ? [e.target.value] : [], billing_entity: '' });
+          }
+        }}
+      >
+        <option value="">Select operation...</option>
+        {sortedOperations.map((op) => (
+          <option key={op.id} value={op.id}>{op.name}</option>
+        ))}
+        <option value="add_new">+ Add New Operation...</option>
+      </select>
+    </div>
+  );
+
+  const renderBillingEntityField = () => (
+    <div className="form-group">
+      <label>Billing Entity</label>
+      <select
+        value={form.billing_entity}
+        onChange={(e) => {
+          if (e.target.value === 'add_new') {
+            setShowAddBillingEntityModal(true);
+          } else {
+            setForm({ ...form, billing_entity: e.target.value });
+          }
+        }}
+        disabled={!form.operations[0]}
+      >
+        <option value="">Select billing entity...</option>
+        {filteredBillingEntities.map((be) => (
+          <option key={be.id} value={be.id}>{be.name}</option>
+        ))}
+        <option value="add_new">+ Add New Billing Entity...</option>
+      </select>
+      {form.operations[0] && filteredBillingEntities.length === 0 && (
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          No billing entities for this operation yet
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <>
       <div className="table-container">
@@ -243,7 +385,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
-            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            <button className="btn btn-primary" onClick={() => { setForm(initialForm); setShowAddModal(true); }}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -360,7 +502,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         </div>
       </div>
 
-      {/* Add Modal */}
+      {/* Add Contact Modal */}
       {showAddModal && (
         <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
@@ -378,43 +520,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   <label>Name *</label>
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Contact name" />
                 </div>
-                <div className="form-group">
-                  <label>Operation</label>
-                  <select
-                    value={form.operations[0] || ''}
-                    onChange={(e) => {
-                      if (e.target.value === 'add_new') {
-                        router.push('/operations');
-                      } else {
-                        setForm({ ...form, operations: e.target.value ? [e.target.value] : [], billing_entity: '' });
-                      }
-                    }}
-                  >
-                    <option value="">Select operation...</option>
-                    {sortedOperations.map((op) => (
-                      <option key={op.id} value={op.id}>{op.name}</option>
-                    ))}
-                    <option value="add_new">+ Add New Operation...</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Billing Entity</label>
-                  <select
-                    value={form.billing_entity}
-                    onChange={(e) => setForm({ ...form, billing_entity: e.target.value })}
-                    disabled={!form.operations[0]}
-                  >
-                    <option value="">Select billing entity...</option>
-                    {filteredBillingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
-                  {form.operations[0] && filteredBillingEntities.length === 0 && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      No billing entities for this operation
-                    </p>
-                  )}
-                </div>
+                {renderOperationField()}
+                {renderBillingEntityField()}
                 <div className="form-group">
                   <label>Main Contact?</label>
                   <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
@@ -459,7 +566,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Contact Modal */}
       {showEditModal && selectedContact && (
         <div className="detail-panel-overlay" onClick={() => setShowEditModal(false)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
@@ -477,43 +584,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   <label>Name *</label>
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
-                <div className="form-group">
-                  <label>Operation</label>
-                  <select
-                    value={form.operations[0] || ''}
-                    onChange={(e) => {
-                      if (e.target.value === 'add_new') {
-                        router.push('/operations');
-                      } else {
-                        setForm({ ...form, operations: e.target.value ? [e.target.value] : [], billing_entity: '' });
-                      }
-                    }}
-                  >
-                    <option value="">Select operation...</option>
-                    {sortedOperations.map((op) => (
-                      <option key={op.id} value={op.id}>{op.name}</option>
-                    ))}
-                    <option value="add_new">+ Add New Operation...</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Billing Entity</label>
-                  <select
-                    value={form.billing_entity}
-                    onChange={(e) => setForm({ ...form, billing_entity: e.target.value })}
-                    disabled={!form.operations[0]}
-                  >
-                    <option value="">Select billing entity...</option>
-                    {filteredBillingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
-                  {form.operations[0] && filteredBillingEntities.length === 0 && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      No billing entities for this operation
-                    </p>
-                  )}
-                </div>
+                {renderOperationField()}
+                {renderBillingEntityField()}
                 <div className="form-group">
                   <label>Main Contact?</label>
                   <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
@@ -552,6 +624,99 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleEditContact} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Operation Modal (nested) */}
+      {showAddOperationModal && (
+        <div className="detail-panel-overlay" style={{ zIndex: 1001 }} onClick={() => setShowAddOperationModal(false)}>
+          <div className="detail-panel" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Add New Operation</h3>
+              <button className="close-btn" onClick={() => setShowAddOperationModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>Operation Name *</label>
+                  <input
+                    type="text"
+                    value={newOperationForm.name}
+                    onChange={(e) => setNewOperationForm({ ...newOperationForm, name: e.target.value })}
+                    placeholder="e.g., Smith Farm"
+                    autoFocus
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    value={newOperationForm.notes}
+                    onChange={(e) => setNewOperationForm({ ...newOperationForm, notes: e.target.value })}
+                    placeholder="Optional notes..."
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowAddOperationModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAddOperation} disabled={savingOperation}>
+                {savingOperation ? 'Creating...' : 'Create Operation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Billing Entity Modal (nested) */}
+      {showAddBillingEntityModal && (
+        <div className="detail-panel-overlay" style={{ zIndex: 1001 }} onClick={() => setShowAddBillingEntityModal(false)}>
+          <div className="detail-panel" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Add New Billing Entity</h3>
+              <button className="close-btn" onClick={() => setShowAddBillingEntityModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  This billing entity will be linked to: <strong>{operationsList.find((op) => op.id.toString() === form.operations[0])?.name}</strong>
+                </p>
+                <div className="form-group">
+                  <label>Billing Entity Name *</label>
+                  <input
+                    type="text"
+                    value={newBillingEntityForm.name}
+                    onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, name: e.target.value })}
+                    placeholder="e.g., Smith Farm LLC"
+                    autoFocus
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    value={newBillingEntityForm.notes}
+                    onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, notes: e.target.value })}
+                    placeholder="Optional notes..."
+                    rows={2}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowAddBillingEntityModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleAddBillingEntity} disabled={savingBillingEntity}>
+                {savingBillingEntity ? 'Creating...' : 'Create Billing Entity'}
               </button>
             </div>
           </div>
