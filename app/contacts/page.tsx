@@ -7,6 +7,8 @@ export interface ProcessedContact {
   email: string;
   phone: string;
   address: string;
+  addressLat: number | null;
+  addressLng: number | null;
   customerType: string;
   notes: string;
   operationIds: number[];
@@ -55,6 +57,8 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
         email: contact.email || '',
         phone: contact.phone || '',
         address: contact.address || '',
+        addressLat: contact.address_lat ?? null,
+        addressLng: contact.address_lng ?? null,
         customerType: contact.customer_type?.value || '',
         notes: contact.notes || '',
         operationIds: opIds,

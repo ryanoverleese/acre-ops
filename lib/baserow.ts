@@ -115,6 +115,8 @@ export interface Contact {
   email?: string;
   phone?: string;
   address?: string;
+  address_lat?: number;
+  address_lng?: number;
   customer_type?: { id: number; value: string };
   notes?: string;
   operations?: { id: number; value: string }[];

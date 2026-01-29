@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import type { ProcessedContact, OperationOption, BillingEntityOption } from './page';
+
+// Dynamically import map components with SSR disabled
+const ContactsMap = dynamic(() => import('@/components/ContactsMap'), {
+  ssr: false,
+  loading: () => <div className="map-loading">Loading map...</div>,
+});
+
+const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
+  ssr: false,
+});
 
 interface ContactsClientProps {
   initialContacts: ProcessedContact[];
@@ -21,6 +32,8 @@ const initialForm = {
   email: '',
   phone: '',
   address: '',
+  address_lat: '' as string,
+  address_lng: '' as string,
   customer_type: '',
   notes: '',
   operations: [] as string[],
@@ -51,6 +64,13 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [showAddBillingEntityModal, setShowAddBillingEntityModal] = useState(false);
   const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', address: '', notes: '' });
   const [savingBillingEntity, setSavingBillingEntity] = useState(false);
+
+  // Map and location picker state
+  const [showMap, setShowMap] = useState(false);
+  const [mapColorBy, setMapColorBy] = useState<'none' | 'type' | 'operation'>('none');
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -116,6 +136,75 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     return filtered;
   }, [contacts, searchQuery, filterType, sortColumn, sortDirection]);
+
+  // Prepare contacts data for map
+  const mappableContacts = useMemo(() => {
+    return contacts
+      .filter((c) => c.addressLat != null && c.addressLng != null)
+      .map((c) => ({
+        id: c.id,
+        name: c.name,
+        address: c.address,
+        phone: c.phone,
+        email: c.email,
+        operationNames: c.operationNames,
+        customerType: c.customerType,
+        lat: c.addressLat!,
+        lng: c.addressLng!,
+      }));
+  }, [contacts]);
+
+  // Geocode address using Census Bureau API
+  const handleGeocode = async () => {
+    if (!form.address.trim()) {
+      setGeocodeError('Please enter an address first');
+      return;
+    }
+    setGeocoding(true);
+    setGeocodeError(null);
+    try {
+      const response = await fetch(`/api/geocode?address=${encodeURIComponent(form.address)}`);
+      const data = await response.json();
+      if (response.ok) {
+        setForm({
+          ...form,
+          address_lat: data.lat.toString(),
+          address_lng: data.lng.toString(),
+        });
+        setGeocodeError(null);
+      } else {
+        setGeocodeError(data.error || 'Geocoding failed');
+      }
+    } catch (error) {
+      console.error('Geocode error:', error);
+      setGeocodeError('Failed to geocode address');
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  // Handle location picker selection
+  const handleLocationSelect = (lat: number, lng: number) => {
+    // Round to 6 decimal places
+    const roundedLat = Math.round(lat * 1000000) / 1000000;
+    const roundedLng = Math.round(lng * 1000000) / 1000000;
+    setForm({
+      ...form,
+      address_lat: roundedLat.toString(),
+      address_lng: roundedLng.toString(),
+    });
+    setShowLocationPicker(false);
+    setGeocodeError(null);
+  };
+
+  // Clear lat/lng
+  const handleClearLocation = () => {
+    setForm({
+      ...form,
+      address_lat: '',
+      address_lng: '',
+    });
+  };
 
   // Handler to create a new operation inline
   const handleAddOperation = async () => {
@@ -228,6 +317,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       if (form.email) payload.email = form.email;
       if (form.phone) payload.phone = form.phone;
       if (form.address) payload.address = form.address;
+      if (form.address_lat) payload.address_lat = parseFloat(form.address_lat);
+      if (form.address_lng) payload.address_lng = parseFloat(form.address_lng);
       if (form.customer_type) payload.customer_type = form.customer_type;
       if (form.notes) payload.notes = form.notes;
       if (form.operations.length > 0) payload.operations = form.operations.map((id) => parseInt(id));
@@ -280,6 +371,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       payload.email = form.email || null;
       payload.phone = form.phone || null;
       payload.address = form.address || null;
+      payload.address_lat = form.address_lat ? parseFloat(form.address_lat) : null;
+      payload.address_lng = form.address_lng ? parseFloat(form.address_lng) : null;
       payload.customer_type = form.customer_type || null;
       payload.notes = form.notes || null;
       payload.operations = form.operations.map((id) => parseInt(id));
@@ -336,6 +429,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const openAddModal = () => {
     setForm(initialForm);
     setSelectedBillingEntities([]);
+    setGeocodeError(null);
     setShowAddModal(true);
   };
 
@@ -346,11 +440,14 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       email: contact.email,
       phone: contact.phone,
       address: contact.address,
+      address_lat: contact.addressLat?.toString() || '',
+      address_lng: contact.addressLng?.toString() || '',
       customer_type: contact.customerType,
       notes: contact.notes,
       operations: contact.operationIds.map((id) => id.toString()),
       is_main_contact: contact.isMainContact ? 'Yes' : 'No',
     });
+    setGeocodeError(null);
     // Pre-populate billing entities where this contact is the invoice contact
     const contactBillingEntities = billingEntitiesList
       .filter((be) => {
@@ -496,6 +593,30 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
+            {showMap && (
+              <select value={mapColorBy} onChange={(e) => setMapColorBy(e.target.value as 'none' | 'type' | 'operation')}>
+                <option value="none">Default Markers</option>
+                <option value="type">Color by Type</option>
+                <option value="operation">Color by Operation</option>
+              </select>
+            )}
+            <button
+              className={`btn ${showMap ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setShowMap(!showMap)}
+              title={showMap ? 'Show table' : 'Show map'}
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                {showMap ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                )}
+              </svg>
+              {showMap ? 'Table' : 'Map'}
+              {!showMap && mappableContacts.length > 0 && (
+                <span style={{ marginLeft: '4px', fontSize: '11px', opacity: 0.8 }}>({mappableContacts.length})</span>
+              )}
+            </button>
             <button className="btn btn-primary" onClick={openAddModal}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -505,8 +626,19 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           </div>
         </div>
 
+        {/* Map View */}
+        <ContactsMap
+          contacts={mappableContacts}
+          visible={showMap}
+          colorBy={mapColorBy}
+          onContactClick={(contactId) => {
+            const contact = contacts.find((c) => c.id === contactId);
+            if (contact) openEditModal(contact);
+          }}
+        />
+
         {/* Desktop Table */}
-        <table className="desktop-table">
+        <table className="desktop-table" style={{ display: showMap ? 'none' : undefined }}>
           <thead>
             <tr>
               <th className="sortable" onClick={() => handleSort('name')}>
@@ -579,7 +711,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         </table>
 
         {/* Mobile Cards */}
-        <div className="mobile-cards">
+        <div className="mobile-cards" style={{ display: showMap ? 'none' : undefined }}>
           {filteredContacts.length === 0 ? (
             <div className="empty-state">No contacts found.</div>
           ) : (
@@ -651,6 +783,45 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="form-group">
                   <label>Address</label>
                   <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter address..." rows={2} />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleGeocode}
+                      disabled={geocoding || !form.address.trim()}
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      {geocoding ? 'Geocoding...' : 'Convert to Lat/Lng'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowLocationPicker(true)}
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      Pick on Map
+                    </button>
+                    {form.address_lat && form.address_lng && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleClearLocation}
+                        style={{ fontSize: '12px', padding: '4px 8px' }}
+                      >
+                        Clear Location
+                      </button>
+                    )}
+                  </div>
+                  {geocodeError && (
+                    <p style={{ fontSize: '12px', color: 'var(--accent-red, #ef4444)', marginTop: '4px' }}>
+                      {geocodeError}
+                    </p>
+                  )}
+                  {form.address_lat && form.address_lng && (
+                    <p style={{ fontSize: '12px', color: 'var(--accent-green)', marginTop: '4px' }}>
+                      Location: {form.address_lat}, {form.address_lng}
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Customer Type</label>
@@ -715,6 +886,45 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="form-group">
                   <label>Address</label>
                   <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleGeocode}
+                      disabled={geocoding || !form.address.trim()}
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      {geocoding ? 'Geocoding...' : 'Convert to Lat/Lng'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowLocationPicker(true)}
+                      style={{ fontSize: '12px', padding: '4px 8px' }}
+                    >
+                      Pick on Map
+                    </button>
+                    {form.address_lat && form.address_lng && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleClearLocation}
+                        style={{ fontSize: '12px', padding: '4px 8px' }}
+                      >
+                        Clear Location
+                      </button>
+                    )}
+                  </div>
+                  {geocodeError && (
+                    <p style={{ fontSize: '12px', color: 'var(--accent-red, #ef4444)', marginTop: '4px' }}>
+                      {geocodeError}
+                    </p>
+                  )}
+                  {form.address_lat && form.address_lng && (
+                    <p style={{ fontSize: '12px', color: 'var(--accent-green)', marginTop: '4px' }}>
+                      Location: {form.address_lat}, {form.address_lng}
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Customer Type</label>
@@ -841,6 +1051,16 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
             </div>
           </div>
         </div>
+      )}
+
+      {/* Location Picker Modal */}
+      {showLocationPicker && (
+        <LocationPicker
+          lat={form.address_lat ? parseFloat(form.address_lat) : null}
+          lng={form.address_lng ? parseFloat(form.address_lng) : null}
+          onLocationChange={handleLocationSelect}
+          onClose={() => setShowLocationPicker(false)}
+        />
       )}
     </>
   );
