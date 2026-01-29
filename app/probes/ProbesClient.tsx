@@ -301,7 +301,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
               </button>
             </div>
           </div>
-          <table>
+          <table className="desktop-table">
             <thead>
               <tr>
                 <th className="sortable" onClick={() => handleSort('serialNumber')}>
@@ -367,6 +367,57 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
               )}
             </tbody>
           </table>
+          <div className="mobile-cards">
+            {filteredProbes.length === 0 ? (
+              <div className="empty-state">{searchQuery ? 'No matching probes found.' : 'No probes found.'}</div>
+            ) : (
+              filteredProbes.map((probe) => (
+                <div key={probe.id} className="mobile-card" onClick={() => openEditModal(probe)}>
+                  <div className="mobile-card-header">
+                    <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      #{probe.serialNumber}
+                    </span>
+                    {getStatusBadge(probe.status)}
+                  </div>
+                  <div className="mobile-card-body">
+                    <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                    <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
+                    <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
+                    <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
+                  </div>
+                  <div className="mobile-card-footer" style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ padding: '6px 12px', fontSize: '12px' }}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(probe); }}
+                    >
+                      Delete
+                    </button>
+                    <span style={{
+                      color: 'var(--accent-green)',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      Edit
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
