@@ -1410,14 +1410,13 @@ export default function FieldsClient({
                           <th style={{ minWidth: '60px' }}>Route #</th>
                           <th style={{ minWidth: '110px' }}>Installer</th>
                           <th style={{ minWidth: '60px' }}>Ready</th>
-                          <th style={{ minWidth: '100px' }}>Approval</th>
                           <th style={{ minWidth: '40px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                               No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                             </td>
                           </tr>
@@ -1544,22 +1543,6 @@ export default function FieldsClient({
                                   field="readyToInstall"
                                   value={field.readyToInstall}
                                   type="checkbox"
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="approvalStatus"
-                                  value={field.approvalStatus}
-                                  type="select"
-                                  options={[
-                                    { value: 'Pending', label: 'Pending' },
-                                    { value: 'Approved', label: 'Approved' },
-                                    { value: 'Change Requested', label: 'Change Requested' },
-                                  ]}
                                   onSave={handleInlineSave}
                                   savingFields={savingFields}
                                   savedFields={savedFields}
