@@ -21,6 +21,9 @@ export interface ProcessedField {
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
+  probe2: string | null;
+  probe2Id: number | null;
+  probe2Status: string;
   lat: number;
   lng: number;
   waterSource?: string;
@@ -155,6 +158,9 @@ async function getFieldsData(): Promise<{
           probe: null,
           probeId: null,
           probeStatus: 'Unassigned',
+          probe2: null,
+          probe2Id: null,
+          probe2Status: 'Unassigned',
           lat: field.lat || 0,
           lng: field.lng || 0,
           waterSource: field.water_source?.value,
@@ -179,6 +185,8 @@ async function getFieldsData(): Promise<{
         fieldFieldSeasons.forEach((fs) => {
           const probeLink = fs.probe?.[0];
           const probeData = probeLink ? probeMap.get(probeLink.id) : null;
+          const probe2Link = fs.probe_2?.[0];
+          const probe2Data = probe2Link ? probeMap.get(probe2Link.id) : null;
 
           processedFields.push({
             id: field.id,
@@ -197,6 +205,9 @@ async function getFieldsData(): Promise<{
             probe: probeData ? `#${probeData.serial_number}` : null,
             probeId: probeLink?.id || null,
             probeStatus: fs.probe_status?.value || 'Unassigned',
+            probe2: probe2Data ? `#${probe2Data.serial_number}` : null,
+            probe2Id: probe2Link?.id || null,
+            probe2Status: fs.probe_2_status?.value || 'Unassigned',
             lat: field.lat || 0,
             lng: field.lng || 0,
             waterSource: field.water_source?.value,

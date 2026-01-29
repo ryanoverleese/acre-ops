@@ -37,6 +37,10 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.probe !== undefined) {
       updateData.probe = body.probe ? [body.probe] : [];
     }
+    if (body.probe_2 !== undefined) {
+      updateData.probe_2 = body.probe_2 ? [body.probe_2] : [];
+    }
+    if (body.probe_2_status !== undefined) updateData.probe_2_status = body.probe_2_status;
     // Install planning fields
     if (body.route_order !== undefined) updateData.route_order = body.route_order;
     if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer;

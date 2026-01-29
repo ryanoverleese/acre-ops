@@ -165,6 +165,7 @@ export default function FieldsClient({
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showProbeAssign, setShowProbeAssign] = useState(false);
   const [selectedProbeId, setSelectedProbeId] = useState<string>('');
+  const [selectedProbe2Id, setSelectedProbe2Id] = useState<string>('');
   const [savingProbe, setSavingProbe] = useState(false);
   const [showSeasonFieldsEdit, setShowSeasonFieldsEdit] = useState(false);
   const [seasonFieldsForm, setSeasonFieldsForm] = useState({
@@ -468,6 +469,7 @@ export default function FieldsClient({
     setShowProbeAssign(false);
     setShowSeasonFieldsEdit(false);
     setSelectedProbeId(field.probeId?.toString() || '');
+    setSelectedProbe2Id(field.probe2Id?.toString() || '');
   };
 
   const handleClosePanel = () => {
@@ -477,6 +479,7 @@ export default function FieldsClient({
     setShowProbeAssign(false);
     setShowSeasonFieldsEdit(false);
     setSelectedProbeId('');
+    setSelectedProbe2Id('');
   };
 
   const handleEdit = () => {
@@ -1823,8 +1826,19 @@ export default function FieldsClient({
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Probe</label>
+                      <label>Probe 1</label>
                       <select value={selectedProbeId} onChange={(e) => setSelectedProbeId(e.target.value)}>
+                        <option value="">— No Probe —</option>
+                        {sortedProbes.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            #{p.serialNumber} ({p.ownerBillingEntity})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Probe 2 (Optional)</label>
+                      <select value={selectedProbe2Id} onChange={(e) => setSelectedProbe2Id(e.target.value)}>
                         <option value="">— No Probe —</option>
                         {sortedProbes.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -1889,12 +1903,14 @@ export default function FieldsClient({
                     ready_to_install: selectedField.readyToInstall || false,
                   });
                   setSelectedProbeId(selectedField.probeId?.toString() || '');
+                  setSelectedProbe2Id(selectedField.probe2Id?.toString() || '');
                 }}>Cancel</button>
                 <button className="btn btn-primary" onClick={async () => {
                   if (!selectedField.fieldSeasonId) return;
                   setSavingSeasonFields(true);
                   try {
                     const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : null;
+                    const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : null;
                     const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
                       method: 'PATCH',
                       headers: { 'Content-Type': 'application/json' },
@@ -1904,6 +1920,8 @@ export default function FieldsClient({
                         antenna_type: seasonFieldsForm.antenna_type || null,
                         probe: probeId,
                         probe_status: probeId ? 'Assigned' : 'Unassigned',
+                        probe_2: probe2Id,
+                        probe_2_status: probe2Id ? 'Assigned' : 'Unassigned',
                         route_order: seasonFieldsForm.route_order ? parseInt(seasonFieldsForm.route_order, 10) : null,
                         planned_installer: seasonFieldsForm.planned_installer || null,
                         ready_to_install: seasonFieldsForm.ready_to_install,
