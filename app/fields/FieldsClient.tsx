@@ -1943,7 +1943,7 @@ export default function FieldsClient({
                                     {missingSeasons.map((s) => (
                                       <option key={s} value={s}>{s}</option>
                                     ))}
-                                    <option value="custom">Other year...</option>
+                                    <option value="custom">New Year</option>
                                   </select>
                                 </div>
                               </td>
@@ -2905,7 +2905,7 @@ export default function FieldsClient({
                         {availableSeasons.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
-                        <option value="custom">Other year...</option>
+                        <option value="custom">New Year</option>
                       </select>
                     </div>
                   </div>

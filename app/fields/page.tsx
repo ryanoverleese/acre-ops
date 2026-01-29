@@ -132,16 +132,14 @@ async function getFieldsData(): Promise<{
       }
     });
 
-    // Get unique seasons - include current year and future years
+    // Get unique seasons from existing data plus current year
     const currentYear = new Date().getFullYear();
     const seasons = new Set<string>();
 
-    // Always include current year and next 5 years for planning ahead
-    for (let y = currentYear - 1; y <= currentYear + 5; y++) {
-      seasons.add(String(y));
-    }
+    // Always include current year
+    seasons.add(String(currentYear));
 
-    // Also include any seasons from existing field_seasons
+    // Include any seasons from existing field_seasons
     fieldSeasons.forEach((fs) => {
       if (fs.season) {
         seasons.add(String(fs.season));
@@ -362,7 +360,7 @@ async function getFieldsData(): Promise<{
       operations: [],
       billingEntities: [],
       probes: [],
-      availableSeasons: [String(new Date().getFullYear() + 5), String(new Date().getFullYear() + 4), String(new Date().getFullYear() + 3), String(new Date().getFullYear() + 2), String(new Date().getFullYear() + 1), String(new Date().getFullYear()), String(new Date().getFullYear() - 1)],
+      availableSeasons: [String(new Date().getFullYear())],
       probeAssignments: [],
     };
   }
