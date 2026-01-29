@@ -84,8 +84,6 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await response.json();
-    console.log('Created probe assignment response:', JSON.stringify(created));
-    console.log('probe_number in response:', created.probe_number);
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error('Error creating probe assignment:', error);

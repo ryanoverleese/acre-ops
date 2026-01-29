@@ -308,12 +308,6 @@ async function getFieldsData(): Promise<{
       const probeLink = pa.probe?.[0];
       const probeData = probeLink ? probeMap.get(probeLink.id) : null;
 
-      // Debug: log raw probe assignment data to see field names
-      if (rawProbeAssignments.indexOf(pa) === 0) {
-        console.log('Sample probe assignment raw data:', JSON.stringify(pa));
-        console.log('probe_number value:', pa.probe_number);
-      }
-
       return {
         id: pa.id,
         fieldSeasonId: pa.field_season?.[0]?.id || 0,
