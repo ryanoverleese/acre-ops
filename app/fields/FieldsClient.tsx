@@ -1206,6 +1206,27 @@ export default function FieldsClient({
                             <div className="mobile-card-row"><span>Installer:</span> {field.plannedInstaller || '—'}</div>
                             <div className="mobile-card-row"><span>Ready:</span> {field.readyToInstall ? 'Yes' : 'No'}</div>
                           </div>
+                          <div className="mobile-card-footer" style={{
+                            marginTop: '12px',
+                            paddingTop: '12px',
+                            borderTop: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'flex-end'
+                          }}>
+                            <span style={{
+                              color: 'var(--accent-green)',
+                              fontSize: '13px',
+                              fontWeight: 500,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              View Details
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </span>
+                          </div>
                         </div>
                       ))
                     )}
@@ -1287,6 +1308,27 @@ export default function FieldsClient({
                             <div className="mobile-card-row"><span>Row Direction:</span> {field.rowDirection || '—'}</div>
                             <div className="mobile-card-row"><span>Elevation:</span> {field.elevation ? `${field.elevation} ft` : '—'}</div>
                             <div className="mobile-card-row"><span>Soil Type:</span> {field.soilType || '—'}</div>
+                          </div>
+                          <div className="mobile-card-footer" style={{
+                            marginTop: '12px',
+                            paddingTop: '12px',
+                            borderTop: '1px solid var(--border)',
+                            display: 'flex',
+                            justifyContent: 'flex-end'
+                          }}>
+                            <span style={{
+                              color: 'var(--accent-green)',
+                              fontSize: '13px',
+                              fontWeight: 500,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              View Details
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </span>
                           </div>
                         </div>
                       ))
