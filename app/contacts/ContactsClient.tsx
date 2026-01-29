@@ -49,7 +49,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
   // Nested modal state for creating new billing entity
   const [showAddBillingEntityModal, setShowAddBillingEntityModal] = useState(false);
-  const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', notes: '' });
+  const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', address: '', notes: '' });
   const [savingBillingEntity, setSavingBillingEntity] = useState(false);
 
   const handleSort = (column: string) => {
@@ -168,6 +168,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         name: newBillingEntityForm.name,
         operation: [selectedOpId],
       };
+      if (newBillingEntityForm.address) payload.address = newBillingEntityForm.address;
       if (newBillingEntityForm.notes) payload.notes = newBillingEntityForm.notes;
 
       const response = await fetch('/api/billing-entities', {
@@ -186,7 +187,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         // Add to selected billing entities
         setSelectedBillingEntities([...selectedBillingEntities, { id: newBe.id, name: newBe.name || '' }]);
         setShowAddBillingEntityModal(false);
-        setNewBillingEntityForm({ name: '', notes: '' });
+        setNewBillingEntityForm({ name: '', address: '', notes: '' });
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to create billing entity');
@@ -810,6 +811,15 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, name: e.target.value })}
                     placeholder="e.g., Smith Farm LLC"
                     autoFocus
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Mailing Address</label>
+                  <textarea
+                    value={newBillingEntityForm.address}
+                    onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, address: e.target.value })}
+                    placeholder="Enter mailing address..."
+                    rows={2}
                   />
                 </div>
                 <div className="form-group">

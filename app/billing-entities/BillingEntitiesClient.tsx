@@ -13,6 +13,7 @@ const initialForm = {
   name: '',
   operation: '',
   invoice_contact: '',
+  address: '',
   notes: '',
 };
 
@@ -78,6 +79,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       const payload: Record<string, unknown> = { name: form.name };
       if (form.operation) payload.operation = [parseInt(form.operation)];
       if (form.invoice_contact) payload.invoice_contact = [parseInt(form.invoice_contact)];
+      if (form.address) payload.address = form.address;
       if (form.notes) payload.notes = form.notes;
 
       const response = await fetch('/api/billing-entities', {
@@ -127,6 +129,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       const payload: Record<string, unknown> = { name: form.name };
       payload.operation = form.operation ? [parseInt(form.operation)] : [];
       payload.invoice_contact = form.invoice_contact ? [parseInt(form.invoice_contact)] : [];
+      payload.address = form.address || null;
       payload.notes = form.notes || null;
 
       const response = await fetch(`/api/billing-entities/${selectedEntity.id}`, {
@@ -189,6 +192,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       name: entity.name,
       operation: entity.operationId?.toString() || '',
       invoice_contact: entity.invoiceContactId?.toString() || '',
+      address: entity.address || '',
       notes: entity.notes,
     });
     setShowEditModal(true);
@@ -338,6 +342,10 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                   )}
                 </div>
                 <div className="form-group">
+                  <label>Mailing Address</label>
+                  <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter mailing address..." rows={2} />
+                </div>
+                <div className="form-group">
                   <label>Notes</label>
                   <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Enter notes..." rows={3} />
                 </div>
@@ -395,6 +403,10 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                       No contacts linked to this operation yet
                     </p>
                   )}
+                </div>
+                <div className="form-group">
+                  <label>Mailing Address</label>
+                  <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter mailing address..." rows={2} />
                 </div>
                 <div className="form-group">
                   <label>Notes</label>

@@ -8,6 +8,7 @@ export interface ProcessedBillingEntity {
   operationName: string;
   invoiceContactId: number | null;
   invoiceContactName: string;
+  address: string;
   notes: string;
 }
 
@@ -44,6 +45,7 @@ async function getData() {
         operationName: opLink ? (operationMap.get(opLink.id) || opLink.value) : '',
         invoiceContactId: contactLink?.id || null,
         invoiceContactName: contactLink ? (contactMap.get(contactLink.id) || contactLink.value) : '',
+        address: be.address || '',
         notes: be.notes || '',
       };
     });

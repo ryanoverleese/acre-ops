@@ -133,6 +133,7 @@ export interface BillingEntity {
   name: string;
   operation?: { id: number; value: string }[];
   invoice_contact?: { id: number; value: string }[];
+  address?: string;
   notes?: string;
 }
 
