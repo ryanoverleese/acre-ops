@@ -1029,6 +1029,77 @@ export default function FieldsClient({
     }
   }, [probes]);
 
+  // Save probe assignment location (all location fields in single call)
+  const handleProbeAssignmentLocationSave = useCallback(async (
+    probeAssignmentId: number,
+    lat: number,
+    lng: number,
+    elevation?: number | null,
+    soilType?: string | null
+  ) => {
+    const cellKey = `pa-${probeAssignmentId}-location`;
+    setSavingFields(prev => new Set(prev).add(cellKey));
+
+    try {
+      const body: Record<string, unknown> = {
+        placement_lat: lat,
+        placement_lng: lng,
+      };
+
+      if (elevation !== undefined && elevation !== null) {
+        body.elevation = elevation;
+      }
+      if (soilType) {
+        body.soil_type = soilType;
+      }
+
+      console.log('Saving probe assignment location:', probeAssignmentId, body);
+
+      const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        setProbeAssignments(prev => prev.map(pa => {
+          if (pa.id === probeAssignmentId) {
+            return {
+              ...pa,
+              placementLat: lat,
+              placementLng: lng,
+              elevation: elevation ?? pa.elevation,
+              soilType: soilType ?? pa.soilType,
+            };
+          }
+          return pa;
+        }));
+
+        setSavedFields(prev => new Set(prev).add(cellKey));
+        setTimeout(() => {
+          setSavedFields(prev => {
+            const next = new Set(prev);
+            next.delete(cellKey);
+            return next;
+          });
+        }, 1500);
+      } else {
+        const errorText = await response.text();
+        console.error('Failed to save probe assignment location:', errorText);
+        alert('Failed to save location. See console for details.');
+      }
+    } catch (error) {
+      console.error('Save probe assignment location error:', error);
+      alert('Failed to save location. See console for details.');
+    } finally {
+      setSavingFields(prev => {
+        const next = new Set(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    }
+  }, []);
+
   // Add new probe assignment with defaults from field
   const handleAddProbeAssignment = async (fieldSeasonId: number, probeNumber: number) => {
     console.log('Adding probe assignment:', { fieldSeasonId, probeNumber });
@@ -2776,15 +2847,14 @@ export default function FieldsClient({
                   soilType: soilType ?? editForm.soilType,
                 });
               } else if (locationPickerTarget === 'probeAssignment' && editingProbeAssignmentLocation) {
-                // Save location directly to probe assignment
-                await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'placementLat', lat);
-                await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'placementLng', lng);
-                if (elevation !== undefined) {
-                  await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'elevation', elevation);
-                }
-                if (soilType) {
-                  await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'soilType', soilType);
-                }
+                // Save location directly to probe assignment (single API call)
+                await handleProbeAssignmentLocationSave(
+                  editingProbeAssignmentLocation.id,
+                  lat,
+                  lng,
+                  elevation,
+                  soilType
+                );
               } else {
                 setAddForm({ ...addForm, lat: lat.toString(), lng: lng.toString() });
               }

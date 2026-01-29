@@ -20,17 +20,12 @@ interface LocationPickerProps {
   onClose: () => void;
 }
 
-// Fetch elevation from USGS National Map API
+// Fetch elevation via our API proxy (avoids CORS issues with USGS)
 async function fetchElevation(lat: number, lng: number): Promise<number | null> {
   try {
-    const response = await fetch(
-      `https://epqs.nationalmap.gov/v1/json?x=${lng}&y=${lat}&units=Feet&wkid=4326`
-    );
+    const response = await fetch(`/api/elevation?lat=${lat}&lng=${lng}`);
     const data = await response.json();
-    if (data && data.value !== undefined && data.value !== -1000000) {
-      return Math.round(data.value);
-    }
-    return null;
+    return data.elevation ?? null;
   } catch (error) {
     console.error('Error fetching elevation:', error);
     return null;

@@ -53,6 +53,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.approval_date !== undefined) updateData.approval_date = body.approval_date;
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;
+    console.log('PATCH probe assignment:', probeAssignmentId, 'with data:', JSON.stringify(updateData));
+
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -65,8 +67,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
+      console.error('Request body was:', JSON.stringify(updateData));
       return NextResponse.json(
-        { error: 'Failed to update probe assignment' },
+        { error: 'Failed to update probe assignment', details: errorText },
         { status: response.status }
       );
     }
