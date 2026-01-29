@@ -283,6 +283,43 @@ body {
   margin-top: 4px;
 }
 
+/* Fields Filter Row */
+.fields-filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.view-mode-toggle {
+  display: flex;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 4px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.view-mode-toggle button {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.view-mode-toggle button.active {
+  background: var(--accent-green);
+  color: white;
+}
+
 /* Tabs */
 .tabs {
   display: flex;
@@ -290,8 +327,11 @@ body {
   background: var(--bg-card);
   padding: 4px;
   border-radius: var(--radius);
-  margin-bottom: 20px;
+  margin-bottom: 0;
   width: fit-content;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
 
 .tab {
@@ -1209,6 +1249,27 @@ tr.selected {
   .header-right {
     width: 100%;
     flex-wrap: wrap;
+  }
+
+  .fields-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fields-filter-row .tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fields-filter-row .view-mode-toggle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .view-mode-toggle button {
+    flex: 1;
+    text-align: center;
   }
 
   .tabs {

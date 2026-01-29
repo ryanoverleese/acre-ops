@@ -872,7 +872,7 @@ export default function FieldsClient({
 
       <div className="content">
         {/* View Mode Toggle */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div className="fields-filter-row">
           <div className="tabs">
             <button className={`tab ${currentFilter === 'all' ? 'active' : ''}`} onClick={() => setCurrentFilter('all')}>
               All Fields ({statusCounts.all})
@@ -887,42 +887,16 @@ export default function FieldsClient({
               Installed ({statusCounts['installed']})
             </button>
           </div>
-          <div style={{
-            display: 'flex',
-            background: 'var(--bg-tertiary)',
-            borderRadius: '8px',
-            padding: '4px',
-            gap: '4px',
-          }}>
+          <div className="view-mode-toggle">
             <button
               onClick={() => setViewMode('seasonal')}
-              style={{
-                padding: '6px 16px',
-                borderRadius: '6px',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                background: viewMode === 'seasonal' ? 'var(--accent-green)' : 'transparent',
-                color: viewMode === 'seasonal' ? 'white' : 'var(--text-secondary)',
-                transition: 'all 0.2s',
-              }}
+              className={viewMode === 'seasonal' ? 'active' : ''}
             >
               Seasonal Data
             </button>
             <button
               onClick={() => setViewMode('permanent')}
-              style={{
-                padding: '6px 16px',
-                borderRadius: '6px',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                background: viewMode === 'permanent' ? 'var(--accent-green)' : 'transparent',
-                color: viewMode === 'permanent' ? 'white' : 'var(--text-secondary)',
-                transition: 'all 0.2s',
-              }}
+              className={viewMode === 'permanent' ? 'active' : ''}
             >
               Permanent Data
             </button>
