@@ -102,6 +102,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
             operationName: opName,
             invoiceContactId: form.invoice_contact ? parseInt(form.invoice_contact) : null,
             invoiceContactName: contactName,
+            address: form.address || '',
             notes: newEntity.notes || '',
           },
         ]);
@@ -152,6 +153,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                   operationName: opName,
                   invoiceContactId: form.invoice_contact ? parseInt(form.invoice_contact) : null,
                   invoiceContactName: contactName,
+                  address: form.address,
                   notes: form.notes,
                 }
               : e
