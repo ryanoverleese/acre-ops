@@ -114,10 +114,11 @@ export async function POST(request: NextRequest) {
       probeAssignmentUpdate.install_photo_extra_url = [{ name: photoExtraFile.name }];
     }
 
-    console.log('Updating probe_assignment with install data:', JSON.stringify(probeAssignmentUpdate, null, 2));
+    console.log('Updating probe_assignment', probeAssignmentId, 'with install data:', JSON.stringify(probeAssignmentUpdate, null, 2));
 
     // Update the probe_assignment record
     const probeAssignmentUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;
+    console.log('PATCH URL:', probeAssignmentUrl);
     const probeAssignmentResponse = await fetch(probeAssignmentUrl, {
       method: 'PATCH',
       headers: {
@@ -146,6 +147,7 @@ export async function POST(request: NextRequest) {
     }
 
     const updatedProbeAssignment = await probeAssignmentResponse.json();
+    console.log('Baserow response for probe_assignment update:', JSON.stringify(updatedProbeAssignment, null, 2));
 
     // Also update field_season with crop (shared between all probes in field)
     if (fieldSeasonId && !isNaN(fieldSeasonId) && crop) {
