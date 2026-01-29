@@ -69,8 +69,9 @@ async function compressImage(file: File, maxSizeBytes: number): Promise<File> {
   });
 }
 
-export interface InstallableField {
-  id: number;
+export interface InstallableProbeAssignment {
+  id: number; // probe_assignment ID
+  fieldSeasonId: number;
   fieldId: number;
   fieldName: string;
   operation: string;
@@ -78,23 +79,14 @@ export interface InstallableField {
   lat: number;
   lng: number;
   crop: string;
-  antennaType: string;
-  // Install planning
   routeOrder: number;
   plannedInstaller: string;
-  // Probe 1
-  probe1Serial: string;
-  probe1Brand: string;
-  probe1RackLocation: string;
-  probe1Status: string;
-  probe1NeedsInstall: boolean;
-  // Probe 2
-  probe2Serial: string;
-  probe2Brand: string;
-  probe2RackLocation: string;
-  probe2Status: string;
-  probe2NeedsInstall: boolean;
-  hasProbe2: boolean;
+  probeNumber: number;
+  probeId: number | null;
+  probeSerial: string;
+  probeBrand: string;
+  probeRackLocation: string;
+  antennaType: string;
 }
 
 interface InstallFormData {
@@ -131,15 +123,14 @@ const INSTALLERS = ['Brian', 'Daine', 'Ryan', 'Ryan and Kasen'];
 const CROPS = ['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum'];
 
 interface InstallClientProps {
-  fields: InstallableField[];
+  probeAssignments: InstallableProbeAssignment[];
   probes: ProbeOption[];
 }
 
-export default function InstallClient({ fields: initialFields, probes }: InstallClientProps) {
-  const [fields, setFields] = useState(initialFields);
+export default function InstallClient({ probeAssignments: initialAssignments, probes }: InstallClientProps) {
+  const [probeAssignments, setProbeAssignments] = useState(initialAssignments);
   const [installerFilter, setInstallerFilter] = useState<string>('all');
-  const [selectedField, setSelectedField] = useState<InstallableField | null>(null);
-  const [selectedProbe, setSelectedProbe] = useState<1 | 2>(1);
+  const [selectedAssignment, setSelectedAssignment] = useState<InstallableProbeAssignment | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<InstallFormData>(initialFormData);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -149,16 +140,15 @@ export default function InstallClient({ fields: initialFields, probes }: Install
   const [compressing, setCompressing] = useState<'photoFieldEnd' | 'photoExtra' | null>(null);
 
   // Filter by planned installer
-  const filteredFields = useMemo(() => {
-    if (installerFilter === 'all') return fields;
-    return fields.filter(f => f.plannedInstaller === installerFilter);
-  }, [fields, installerFilter]);
+  const filteredAssignments = useMemo(() => {
+    if (installerFilter === 'all') return probeAssignments;
+    return probeAssignments.filter(pa => pa.plannedInstaller === installerFilter);
+  }, [probeAssignments, installerFilter]);
 
-  const handleLogInstall = (field: InstallableField, probeNum: 1 | 2) => {
-    setSelectedField(field);
-    setSelectedProbe(probeNum);
+  const handleLogInstall = (assignment: InstallableProbeAssignment) => {
+    setSelectedAssignment(assignment);
     // Pre-fill installer from planned_installer if set
-    setFormData({ ...initialFormData, installer: field.plannedInstaller || '' });
+    setFormData({ ...initialFormData, installer: assignment.plannedInstaller || '' });
     setShowCropChange(false);
     setLocationError(null);
     setShowForm(true);
@@ -244,7 +234,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
   };
 
   const handleSubmit = async () => {
-    if (!selectedField) return;
+    if (!selectedAssignment) return;
 
     if (!formData.installer) {
       alert('Please select an installer');
@@ -265,12 +255,12 @@ export default function InstallClient({ fields: initialFields, probes }: Install
 
     try {
       const submitData = new FormData();
-      submitData.append('fieldSeasonId', selectedField.id.toString());
-      submitData.append('probeNum', selectedProbe.toString());
+      submitData.append('probeAssignmentId', selectedAssignment.id.toString());
+      submitData.append('fieldSeasonId', selectedAssignment.fieldSeasonId.toString());
       submitData.append('installer', formData.installer);
       submitData.append('lat', String(formData.lat));
       submitData.append('lng', String(formData.lng));
-      submitData.append('crop', formData.cropChanged || selectedField.crop);
+      submitData.append('crop', formData.cropChanged || selectedAssignment.crop);
       submitData.append('cropConfirmed', 'true');
 
       if (formData.changedProbeId) {
@@ -298,35 +288,10 @@ export default function InstallClient({ fields: initialFields, probes }: Install
       });
 
       if (response.ok) {
-        // Remove or update the field from the list
-        if (selectedProbe === 1) {
-          if (selectedField.hasProbe2 && selectedField.probe2NeedsInstall) {
-            // Still has probe 2 to install
-            setFields(fields.map(f =>
-              f.id === selectedField.id
-                ? { ...f, probe1NeedsInstall: false, probe1Status: 'installed' }
-                : f
-            ));
-          } else {
-            // Remove from list
-            setFields(fields.filter(f => f.id !== selectedField.id));
-          }
-        } else {
-          if (selectedField.probe1NeedsInstall) {
-            // Still has probe 1 to install
-            setFields(fields.map(f =>
-              f.id === selectedField.id
-                ? { ...f, probe2NeedsInstall: false, probe2Status: 'installed' }
-                : f
-            ));
-          } else {
-            // Remove from list
-            setFields(fields.filter(f => f.id !== selectedField.id));
-          }
-        }
-
+        // Remove the installed assignment from the list
+        setProbeAssignments(probeAssignments.filter(pa => pa.id !== selectedAssignment.id));
         setShowForm(false);
-        setSelectedField(null);
+        setSelectedAssignment(null);
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to log install');
@@ -339,16 +304,15 @@ export default function InstallClient({ fields: initialFields, probes }: Install
     }
   };
 
-  const probeBrand = selectedProbe === 1 ? selectedField?.probe1Brand : selectedField?.probe2Brand;
-  const isCropX = probeBrand?.toLowerCase().includes('cropx');
-  const isSentek = probeBrand?.toLowerCase().includes('sentek');
+  const isCropX = selectedAssignment?.probeBrand?.toLowerCase().includes('cropx');
+  const isSentek = selectedAssignment?.probeBrand?.toLowerCase().includes('sentek');
 
   return (
     <>
       <header className="header">
         <div className="header-left">
           <h2>Install</h2>
-          <span className="season-badge">{filteredFields.length} Ready</span>
+          <span className="season-badge">{filteredAssignments.length} Ready</span>
         </div>
         <div className="header-right">
           <select
@@ -365,7 +329,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
       </header>
 
       <div className="content">
-        {filteredFields.length === 0 ? (
+        {filteredAssignments.length === 0 ? (
           <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: 48, height: 48, color: 'var(--text-muted)', marginBottom: 16 }}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -379,8 +343,8 @@ export default function InstallClient({ fields: initialFields, probes }: Install
           </div>
         ) : (
           <div className="install-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {filteredFields.map((field) => (
-              <div key={field.id} className="install-card" style={{
+            {filteredAssignments.map((assignment) => (
+              <div key={assignment.id} className="install-card" style={{
                 background: 'var(--bg-secondary)',
                 borderRadius: '12px',
                 overflow: 'hidden',
@@ -401,7 +365,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                 }}>
                   <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.8 }}>Stop</span>
                   <span style={{ fontSize: '28px', fontWeight: 700, lineHeight: 1 }}>
-                    {field.routeOrder < 999 ? field.routeOrder : '—'}
+                    {assignment.routeOrder < 999 ? assignment.routeOrder : '—'}
                   </span>
                 </div>
 
@@ -410,8 +374,15 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                   {/* Header */}
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>{field.fieldName}</h3>
-                      {field.plannedInstaller && (
+                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>
+                        {assignment.fieldName}
+                        {assignment.probeNumber > 1 && (
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '14px' }}>
+                            {' '}(Probe {assignment.probeNumber})
+                          </span>
+                        )}
+                      </h3>
+                      {assignment.plannedInstaller && (
                         <span style={{
                           fontSize: '11px',
                           padding: '2px 8px',
@@ -420,13 +391,13 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                           borderRadius: '4px',
                           fontWeight: 500,
                         }}>
-                          {field.plannedInstaller}
+                          {assignment.plannedInstaller}
                         </span>
                       )}
                     </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>{field.operation}</p>
+                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>{assignment.operation}</p>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-                      {field.crop && (
+                      {assignment.crop && (
                         <span style={{
                           fontSize: '12px',
                           padding: '2px 8px',
@@ -434,10 +405,10 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                           color: 'var(--accent-green)',
                           borderRadius: '4px',
                         }}>
-                          {field.crop}
+                          {assignment.crop}
                         </span>
                       )}
-                      {field.antennaType && (
+                      {assignment.antennaType && (
                         <span style={{
                           fontSize: '11px',
                           padding: '2px 8px',
@@ -445,98 +416,43 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                           borderRadius: '4px',
                           color: 'var(--text-secondary)',
                         }}>
-                          {field.antennaType}
+                          {assignment.antennaType}
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Probe 1 */}
-                  {field.probe1Serial && (
-                    <div style={{ padding: '12px 16px', borderBottom: field.hasProbe2 ? '1px solid var(--border)' : 'none' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
-                            {field.hasProbe2 ? 'Probe 1' : 'Probe'}
-                          </span>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '15px', fontWeight: 500 }}>
-                            #{field.probe1Serial}
-                          </div>
+                  {/* Probe Info */}
+                  <div style={{ padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div>
+                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                          Probe {assignment.probeNumber}
+                        </span>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '15px', fontWeight: 500 }}>
+                          #{assignment.probeSerial}
                         </div>
-                        {field.probe1RackLocation && (
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rack</span>
-                            <div style={{ fontSize: '14px', fontWeight: 500 }}>{field.probe1RackLocation}</div>
-                          </div>
-                        )}
                       </div>
-                      {field.probe1NeedsInstall ? (
-                        <button
-                          className="btn btn-primary"
-                          style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
-                          onClick={() => handleLogInstall(field, 1)}
-                        >
-                          Log Install
-                        </button>
-                      ) : (
-                        <div style={{
-                          padding: '8px',
-                          background: 'var(--accent-green-dim)',
-                          borderRadius: '8px',
-                          textAlign: 'center',
-                          color: 'var(--accent-green)',
-                          fontSize: '14px',
-                        }}>
-                          Installed
+                      {assignment.probeRackLocation && (
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rack</span>
+                          <div style={{ fontSize: '14px', fontWeight: 500 }}>{assignment.probeRackLocation}</div>
                         </div>
                       )}
                     </div>
-                  )}
-
-                  {/* Probe 2 */}
-                  {field.hasProbe2 && field.probe2Serial && (
-                    <div style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <div>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Probe 2</span>
-                          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '15px', fontWeight: 500 }}>
-                            #{field.probe2Serial}
-                          </div>
-                        </div>
-                        {field.probe2RackLocation && (
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rack</span>
-                            <div style={{ fontSize: '14px', fontWeight: 500 }}>{field.probe2RackLocation}</div>
-                          </div>
-                        )}
-                      </div>
-                      {field.probe2NeedsInstall ? (
-                        <button
-                          className="btn btn-primary"
-                          style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
-                          onClick={() => handleLogInstall(field, 2)}
-                        >
-                          Log Install
-                        </button>
-                      ) : (
-                        <div style={{
-                          padding: '8px',
-                          background: 'var(--accent-green-dim)',
-                          borderRadius: '8px',
-                          textAlign: 'center',
-                          color: 'var(--accent-green)',
-                          fontSize: '14px',
-                        }}>
-                          Installed
-                        </div>
-                      )}
-                    </div>
-                  )}
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+                      onClick={() => handleLogInstall(assignment)}
+                    >
+                      Log Install
+                    </button>
+                  </div>
 
                   {/* Navigate Button */}
-                  {field.lat !== 0 && field.lng !== 0 && (
+                  {assignment.lat !== 0 && assignment.lng !== 0 && (
                     <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`}
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${assignment.lat},${assignment.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn btn-secondary"
@@ -565,7 +481,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
       </div>
 
       {/* Install Form Modal */}
-      {showForm && selectedField && (
+      {showForm && selectedAssignment && (
         <div className="detail-panel-overlay" onClick={() => setShowForm(false)}>
           <div
             className="detail-panel"
@@ -576,7 +492,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
               <div>
                 <h3 style={{ marginBottom: '4px' }}>Log Install</h3>
                 <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
-                  {selectedField.fieldName} - #{selectedProbe === 1 ? selectedField.probe1Serial : selectedField.probe2Serial}
+                  {selectedAssignment.fieldName} - #{selectedAssignment.probeSerial}
                 </p>
               </div>
               <button className="close-btn" onClick={() => setShowForm(false)}>
@@ -594,7 +510,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                   {!formData.changedProbeId ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
-                        #{selectedProbe === 1 ? selectedField.probe1Serial : selectedField.probe2Serial}
+                        #{selectedAssignment.probeSerial}
                       </span>
                       <button
                         type="button"
@@ -702,7 +618,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                         onClick={handleConfirmCrop}
                         style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
                       >
-                        Confirm: {selectedField.crop || 'Unknown'}
+                        Confirm: {selectedAssignment.crop || 'Unknown'}
                       </button>
                       <button
                         type="button"
@@ -723,7 +639,7 @@ export default function InstallClient({ fields: initialFields, probes }: Install
                       justifyContent: 'space-between',
                       alignItems: 'center',
                     }}>
-                      <span>{formData.cropChanged || selectedField.crop}</span>
+                      <span>{formData.cropChanged || selectedAssignment.crop}</span>
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, cropConfirmed: false })}

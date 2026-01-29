@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
+    const probeAssignmentId = parseInt(formData.get('probeAssignmentId') as string, 10);
     const fieldSeasonId = parseInt(formData.get('fieldSeasonId') as string, 10);
-    const probeNum = parseInt(formData.get('probeNum') as string, 10);
     const installer = formData.get('installer') as string;
     const lat = parseFloat(formData.get('lat') as string);
     const lng = parseFloat(formData.get('lng') as string);
@@ -59,8 +59,8 @@ export async function POST(request: NextRequest) {
     const photoFieldEnd = formData.get('photoFieldEnd') as File | null;
     const photoExtra = formData.get('photoExtra') as File | null;
 
-    if (!fieldSeasonId || isNaN(fieldSeasonId)) {
-      return NextResponse.json({ error: 'Invalid field season ID' }, { status: 400 });
+    if (!probeAssignmentId || isNaN(probeAssignmentId)) {
+      return NextResponse.json({ error: 'Invalid probe assignment ID' }, { status: 400 });
     }
 
     if (!installer) {
@@ -83,110 +83,95 @@ export async function POST(request: NextRequest) {
       photoExtraFile = await uploadFileToBaserow(photoExtra);
     }
 
-    // Build the update data based on probe number
+    // Build the update data for probe_assignment
     const today = new Date().toISOString().split('T')[0];
-    const updateData: Record<string, unknown> = {};
+    const probeAssignmentUpdate: Record<string, unknown> = {
+      installer,
+      install_date: today,
+      install_lat: Math.round(lat * 1000000) / 1000000,
+      install_lng: Math.round(lng * 1000000) / 1000000,
+      probe_status: 'Installed',
+    };
 
-    if (probeNum === 1) {
-      // If installer grabbed wrong probe, update the probe link
-      if (changedProbeId) {
-        updateData.probe = [changedProbeId];
-      }
-      updateData.installer = installer;
-      updateData.install_date = today;
-      updateData.install_lat = Math.round(lat * 1000000) / 1000000;
-      updateData.install_lng = Math.round(lng * 1000000) / 1000000;
-      updateData.probe_status = 'Installed';
-      updateData.crop = crop;
-      updateData.crop_confirmed = true;
-
-      if (cropxTelemetryId) {
-        updateData.cropx_telemetry_id = cropxTelemetryId;
-      }
-      if (signalStrength) {
-        updateData.signal_strength = signalStrength;
-      }
-      if (installNotes) {
-        updateData.install_notes = installNotes;
-      }
-      if (photoFieldEndFile) {
-        updateData.install_photo_field_end_url = [{ name: photoFieldEndFile.name }];
-      }
-      if (photoExtraFile) {
-        updateData.install_photo_extra_url = [{ name: photoExtraFile.name }];
-      }
-    } else {
-      // Probe 2
-      // If installer grabbed wrong probe, update the probe_2 link
-      if (changedProbeId) {
-        updateData.probe_2 = [changedProbeId];
-      }
-      updateData.probe_2_installer = installer;
-      updateData.probe_2_install_date = today;
-      updateData.probe_2_install_lat = Math.round(lat * 1000000) / 1000000;
-      updateData.probe_2_install_lng = Math.round(lng * 1000000) / 1000000;
-      updateData.probe_2_status = 'Installed';
-      // Crop is shared between probes
-      updateData.crop = crop;
-      updateData.crop_confirmed = true;
-
-      if (cropxTelemetryId) {
-        updateData.probe_2_cropx_telemetry_id = cropxTelemetryId;
-      }
-      if (signalStrength) {
-        updateData.probe_2_signal_strength = signalStrength;
-      }
-      if (installNotes) {
-        updateData.probe_2_install_notes = installNotes;
-      }
-      if (photoFieldEndFile) {
-        updateData.probe_2_install_photo_field_end_url = [{ name: photoFieldEndFile.name }];
-      }
-      if (photoExtraFile) {
-        updateData.probe_2_install_photo_extra_url = [{ name: photoExtraFile.name }];
-      }
+    // If installer grabbed wrong probe, update the probe link
+    if (changedProbeId) {
+      probeAssignmentUpdate.probe = [changedProbeId];
     }
 
-    console.log('Updating field season with install data:', JSON.stringify(updateData, null, 2));
+    if (cropxTelemetryId) {
+      probeAssignmentUpdate.cropx_telemetry_id = cropxTelemetryId;
+    }
+    if (signalStrength) {
+      probeAssignmentUpdate.signal_strength = signalStrength;
+    }
+    if (installNotes) {
+      probeAssignmentUpdate.install_notes = installNotes;
+    }
+    if (photoFieldEndFile) {
+      probeAssignmentUpdate.install_photo_field_end_url = [{ name: photoFieldEndFile.name }];
+    }
+    if (photoExtraFile) {
+      probeAssignmentUpdate.install_photo_extra_url = [{ name: photoExtraFile.name }];
+    }
 
-    // Update the field_season record
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
-    const response = await fetch(url, {
+    console.log('Updating probe_assignment with install data:', JSON.stringify(probeAssignmentUpdate, null, 2));
+
+    // Update the probe_assignment record
+    const probeAssignmentUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;
+    const probeAssignmentResponse = await fetch(probeAssignmentUrl, {
       method: 'PATCH',
       headers: {
         'Authorization': `Token ${BASEROW_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(probeAssignmentUpdate),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Baserow API error updating field_season:', response.status, errorText);
-      console.error('Update data that was sent:', JSON.stringify(updateData, null, 2));
+    if (!probeAssignmentResponse.ok) {
+      const errorText = await probeAssignmentResponse.text();
+      console.error('Baserow API error updating probe_assignment:', probeAssignmentResponse.status, errorText);
 
-      // Try to parse error for more helpful message
       let errorMessage = 'Failed to log install';
       try {
         const errorJson = JSON.parse(errorText);
-        // Include full error details
         errorMessage = `Failed to log install: ${JSON.stringify(errorJson)}`;
       } catch {
-        // If we can't parse, include raw error
         errorMessage = `Failed to log install: ${errorText}`;
       }
 
       return NextResponse.json(
         { error: errorMessage },
-        { status: response.status }
+        { status: probeAssignmentResponse.status }
       );
     }
 
-    const updatedFieldSeason = await response.json();
+    const updatedProbeAssignment = await probeAssignmentResponse.json();
+
+    // Also update field_season with crop (shared between all probes in field)
+    if (fieldSeasonId && !isNaN(fieldSeasonId) && crop) {
+      const fieldSeasonUpdate: Record<string, unknown> = {
+        crop,
+        crop_confirmed: true,
+      };
+
+      const fieldSeasonUrl = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
+      const fieldSeasonResponse = await fetch(fieldSeasonUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fieldSeasonUpdate),
+      });
+
+      if (!fieldSeasonResponse.ok) {
+        console.error('Warning: Failed to update field_season crop, but install was recorded');
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      fieldSeason: updatedFieldSeason,
+      probeAssignment: updatedProbeAssignment,
     });
   } catch (error) {
     console.error('Error logging install:', error);

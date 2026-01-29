@@ -1,5 +1,5 @@
-import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations } from '@/lib/baserow';
-import InstallClient, { InstallableField } from './InstallClient';
+import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations, getProbeAssignments } from '@/lib/baserow';
+import InstallClient, { InstallableProbeAssignment } from './InstallClient';
 
 export interface ProbeOption {
   id: number;
@@ -8,18 +8,21 @@ export interface ProbeOption {
   rackLocation: string;
 }
 
-async function getInstallData(): Promise<{ fields: InstallableField[]; probes: ProbeOption[] }> {
+async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[] }> {
   try {
-    const [fields, fieldSeasons, probes, billingEntities, operations] = await Promise.all([
+    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments] = await Promise.all([
       getFields(),
       getFieldSeasons(),
       getProbes(),
       getBillingEntities(),
       getOperations(),
+      getProbeAssignments(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const probeMap = new Map(probes.map((p) => [p.id, p]));
+    const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
+    const fieldMap = new Map(fields.map((f) => [f.id, f]));
 
     // Map billing entity to operation
     const billingToOperationMap = new Map<number, number>();
@@ -29,74 +32,75 @@ async function getInstallData(): Promise<{ fields: InstallableField[]; probes: P
       }
     });
 
-    // Filter: ready_to_install = true AND probe_status != 'Installed'
-    const readySeasons = fieldSeasons.filter((fs) => {
-      // Must be marked ready to install
-      if (!fs.ready_to_install) return false;
+    // Filter probe_assignments:
+    // - probe_status = 'Assigned' (ready to install but not yet installed)
+    // - field_season.ready_to_install = true
+    const installableAssignments: InstallableProbeAssignment[] = probeAssignments
+      .filter((pa) => {
+        // Must have a field_season link
+        const fieldSeasonId = pa.field_season?.[0]?.id;
+        if (!fieldSeasonId) return false;
 
-      const status1 = fs.probe_status?.value?.toLowerCase() || '';
-      const status2 = fs.probe_2_status?.value?.toLowerCase() || '';
+        const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
+        if (!fieldSeason) return false;
 
-      // Include if probe 1 needs install OR probe 2 needs install
-      const probe1NeedsInstall = fs.probe?.[0] && status1 !== 'installed';
-      const probe2NeedsInstall = fs.probe_2?.[0] && status2 !== 'installed';
+        // Field season must be marked ready to install
+        if (!fieldSeason.ready_to_install) return false;
 
-      return probe1NeedsInstall || probe2NeedsInstall;
-    });
+        // Probe must be assigned (has a probe) but not yet installed
+        const status = pa.probe_status?.value?.toLowerCase() || 'unassigned';
+        return status === 'assigned';
+      })
+      .map((pa) => {
+        const fieldSeasonId = pa.field_season?.[0]?.id || 0;
+        const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
+        const fieldId = fieldSeason?.field?.[0]?.id;
+        const field = fieldId ? fieldMap.get(fieldId) : null;
 
-    const installableFields: InstallableField[] = readySeasons.map((fs) => {
-      const fieldLink = fs.field?.[0];
-      const field = fields.find((f) => f.id === fieldLink?.id);
-
-      // Probe 1 data
-      const probe1Link = fs.probe?.[0];
-      const probe1Data = probe1Link ? probeMap.get(probe1Link.id) : null;
-      const probe1Status = fs.probe_status?.value?.toLowerCase() || '';
-
-      // Probe 2 data
-      const probe2Link = fs.probe_2?.[0];
-      const probe2Data = probe2Link ? probeMap.get(probe2Link.id) : null;
-      const probe2Status = fs.probe_2_status?.value?.toLowerCase() || '';
-
-      let operationName = 'Unknown';
-      if (field?.billing_entity?.[0]) {
-        const opId = billingToOperationMap.get(field.billing_entity[0].id);
-        if (opId) {
-          operationName = operationMap.get(opId) || 'Unknown';
+        // Get operation name
+        let operationName = 'Unknown';
+        if (field?.billing_entity?.[0]) {
+          const opId = billingToOperationMap.get(field.billing_entity[0].id);
+          if (opId) {
+            operationName = operationMap.get(opId) || 'Unknown';
+          }
         }
-      }
 
-      return {
-        id: fs.id,
-        fieldId: field?.id || 0,
-        fieldName: field?.name || fieldLink?.value || 'Unknown Field',
-        operation: operationName,
-        season: fs.season ? String(fs.season) : '',
-        lat: field?.lat || 0,
-        lng: field?.lng || 0,
-        crop: fs.crop?.value || '',
-        antennaType: fs.antenna_type?.value || '',
-        // Install planning
-        routeOrder: fs.route_order || 999,
-        plannedInstaller: fs.planned_installer?.value || '',
-        // Probe 1
-        probe1Serial: probe1Data?.serial_number || '',
-        probe1Brand: probe1Data?.brand?.value || '',
-        probe1RackLocation: probe1Data?.rack_location || '',
-        probe1Status: probe1Status,
-        probe1NeedsInstall: !!probe1Link && probe1Status !== 'installed',
-        // Probe 2
-        probe2Serial: probe2Data?.serial_number || '',
-        probe2Brand: probe2Data?.brand?.value || '',
-        probe2RackLocation: probe2Data?.rack_location || '',
-        probe2Status: probe2Status,
-        probe2NeedsInstall: !!probe2Link && probe2Status !== 'installed',
-        hasProbe2: !!probe2Link,
-      };
-    });
+        // Get probe data
+        const probeId = pa.probe?.[0]?.id;
+        const probe = probeId ? probeMap.get(probeId) : null;
 
-    // Sort by route_order ascending
-    installableFields.sort((a, b) => a.routeOrder - b.routeOrder);
+        return {
+          id: pa.id,
+          fieldSeasonId,
+          fieldId: field?.id || 0,
+          fieldName: field?.name || 'Unknown Field',
+          operation: operationName,
+          season: fieldSeason?.season ? String(fieldSeason.season) : '',
+          // Location - use probe placement location, fall back to field location
+          lat: pa.placement_lat || field?.lat || 0,
+          lng: pa.placement_lng || field?.lng || 0,
+          // From field_season
+          crop: fieldSeason?.crop?.value || '',
+          routeOrder: fieldSeason?.route_order || 999,
+          plannedInstaller: fieldSeason?.planned_installer?.value || '',
+          // Probe info
+          probeNumber: pa.probe_number || 1,
+          probeId: probeId || null,
+          probeSerial: probe?.serial_number || '',
+          probeBrand: probe?.brand?.value || '',
+          probeRackLocation: probe?.rack_location || '',
+          // From probe_assignment
+          antennaType: pa.antenna_type?.value || '',
+        };
+      })
+      .sort((a, b) => {
+        // Sort by route_order, then by field name, then by probe number
+        if (a.routeOrder !== b.routeOrder) return a.routeOrder - b.routeOrder;
+        const nameCompare = a.fieldName.localeCompare(b.fieldName);
+        if (nameCompare !== 0) return nameCompare;
+        return a.probeNumber - b.probeNumber;
+      });
 
     // Build probe options list (available probes)
     const probeOptions: ProbeOption[] = probes
@@ -109,15 +113,15 @@ async function getInstallData(): Promise<{ fields: InstallableField[]; probes: P
       }))
       .sort((a, b) => a.serialNumber.localeCompare(b.serialNumber));
 
-    return { fields: installableFields, probes: probeOptions };
+    return { probeAssignments: installableAssignments, probes: probeOptions };
   } catch (error) {
     console.error('Error fetching install data:', error);
-    return { fields: [], probes: [] };
+    return { probeAssignments: [], probes: [] };
   }
 }
 
 export default async function InstallPage() {
-  const { fields, probes } = await getInstallData();
+  const { probeAssignments, probes } = await getInstallData();
 
-  return <InstallClient fields={fields} probes={probes} />;
+  return <InstallClient probeAssignments={probeAssignments} probes={probes} />;
 }

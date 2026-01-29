@@ -370,7 +370,14 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                         {repair.status === 'open' ? 'Open' : 'Resolved'}
                       </span>
                     </td>
-                    <td className="operation-name">{repair.fieldName}</td>
+                    <td className="operation-name">
+                      {repair.fieldName}
+                      {repair.probeNumber && (
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '12px' }}>
+                          {' '}(Probe {repair.probeNumber}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
+                        </span>
+                      )}
+                    </td>
                     <td style={{ fontSize: '13px' }}>{repair.operation}</td>
                     <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {repair.problem}
@@ -429,7 +436,14 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
               filteredRepairs.map((repair) => (
                 <div key={repair.id} className="mobile-card" onClick={() => openEditModal(repair)}>
                   <div className="mobile-card-header">
-                    <span className="mobile-card-title">{repair.fieldName}</span>
+                    <span className="mobile-card-title">
+                      {repair.fieldName}
+                      {repair.probeNumber && (
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '12px' }}>
+                          {' '}(Probe {repair.probeNumber}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
+                        </span>
+                      )}
+                    </span>
                     <span className={`status-badge ${repair.status === 'open' ? 'repair' : 'installed'}`}>
                       <span className="status-dot"></span>
                       {repair.status === 'open' ? 'Open' : 'Resolved'}
