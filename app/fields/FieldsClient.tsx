@@ -316,8 +316,8 @@ export default function FieldsClient({
   const [savingSeason, setSavingSeason] = useState(false);
   const [showRolloverModal, setShowRolloverModal] = useState(false);
   const [rolloverForm, setRolloverForm] = useState({
-    fromSeason: '2025',
-    toSeason: '2026',
+    fromSeason: availableSeasons[1] || String(new Date().getFullYear() - 1),
+    toSeason: availableSeasons[0] || String(new Date().getFullYear()),
     copyProbes: false,
   });
   const [rollingOver, setRollingOver] = useState(false);
@@ -1468,7 +1468,6 @@ export default function FieldsClient({
                       <thead>
                         <tr>
                           <th style={{ minWidth: '140px' }}>Field</th>
-                          <th style={{ minWidth: '70px' }}>Season</th>
                           <th style={{ minWidth: '100px' }}>Operation</th>
                           <th style={{ minWidth: '90px' }}>Crop</th>
                           <th style={{ minWidth: '90px' }}>Service</th>
@@ -1482,7 +1481,7 @@ export default function FieldsClient({
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                               No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                             </td>
                           </tr>
@@ -1505,7 +1504,7 @@ export default function FieldsClient({
                                   </td>
                               {needsSeasonStart ? (
                                 <>
-                                  <td colSpan={8} style={{ textAlign: 'left' }}>
+                                  <td colSpan={7} style={{ textAlign: 'left' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                       <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                                         No {currentSeason} season configured
@@ -1534,7 +1533,6 @@ export default function FieldsClient({
                                 </>
                               ) : (
                                 <>
-                              <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{field.season || '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
                               <td onClick={(e) => e.stopPropagation()}>
                                 <InlineCell
@@ -1883,13 +1881,13 @@ export default function FieldsClient({
                           Operation
                           {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                         </th>
+                        <th>Seasons</th>
                         <th className="sortable" onClick={() => handleSort('acres')}>
                           Acres
                           {sortColumn === 'acres' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                         </th>
                         <th>Irrigation</th>
                         <th>Row Dir</th>
-                        <th>Seasons</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -1910,9 +1908,6 @@ export default function FieldsClient({
                             <tr key={`${field.id}-${field.fieldSeasonId}`} onClick={() => handleRowClick(field)} style={{ cursor: 'pointer' }}>
                               <td className="operation-name">{field.name}</td>
                               <td style={{ fontSize: '13px' }}>{field.operation}</td>
-                              <td className="field-count">{field.acres}</td>
-                              <td>{field.irrigationType || '—'}</td>
-                              <td>{field.rowDirection || '—'}</td>
                               <td onClick={(e) => e.stopPropagation()}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   {existingSeasons.length > 0 && (
@@ -1946,6 +1941,9 @@ export default function FieldsClient({
                                   )}
                                 </div>
                               </td>
+                              <td className="field-count">{field.acres}</td>
+                              <td>{field.irrigationType || '—'}</td>
+                              <td>{field.rowDirection || '—'}</td>
                               <td onClick={(e) => e.stopPropagation()}>
                                 <button className="action-btn" title="Edit" onClick={() => handleRowClick(field)}>
                                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2889,9 +2887,9 @@ export default function FieldsClient({
                         value={rolloverForm.toSeason}
                         onChange={(e) => setRolloverForm({ ...rolloverForm, toSeason: e.target.value })}
                       >
-                        <option value="2027">2027</option>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
+                        {availableSeasons.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
                       </select>
                     </div>
                   </div>
