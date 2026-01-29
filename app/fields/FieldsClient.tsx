@@ -446,15 +446,31 @@ export default function FieldsClient({
     }));
   }, [filteredFields]);
 
-  // Sort probes by owner operation for the dropdown
-  const sortedProbes = useMemo(() => {
-    return [...probes].sort((a, b) => {
-      // Sort by owner billing entity first, then by serial number
-      const opCompare = (a.ownerBillingEntity || '').localeCompare(b.ownerBillingEntity || '');
-      if (opCompare !== 0) return opCompare;
-      return (a.serialNumber || '').localeCompare(b.serialNumber || '');
+  // Get set of probe IDs that are currently assigned (for the selected season)
+  const assignedProbeIds = useMemo(() => {
+    const ids = new Set<number>();
+    probeAssignments.forEach(pa => {
+      if (pa.probeId) {
+        ids.add(pa.probeId);
+      }
     });
-  }, [probes]);
+    return ids;
+  }, [probeAssignments]);
+
+  // Sort probes by owner operation for the dropdown, with assignment status
+  const sortedProbes = useMemo(() => {
+    return [...probes]
+      .map(p => ({
+        ...p,
+        isAssigned: assignedProbeIds.has(p.id),
+      }))
+      .sort((a, b) => {
+        // Sort by owner billing entity first, then by serial number
+        const opCompare = (a.ownerBillingEntity || '').localeCompare(b.ownerBillingEntity || '');
+        if (opCompare !== 0) return opCompare;
+        return (a.serialNumber || '').localeCompare(b.serialNumber || '');
+      });
+  }, [probes, assignedProbeIds]);
 
   // Inline save handler for seasonal data
   const handleInlineSave = useCallback(async (fieldSeasonId: number, field: string, value: unknown) => {
@@ -1615,7 +1631,7 @@ export default function FieldsClient({
                                             type="select"
                                             options={sortedProbes.map(p => ({
                                               value: p.id.toString(),
-                                              label: `#${p.serialNumber} (${p.ownerBillingEntity})`,
+                                              label: `#${p.serialNumber} (${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity})`,
                                             }))}
                                             onSave={handleProbeAssignmentSave}
                                             savingFields={savingFields}
@@ -2390,7 +2406,7 @@ export default function FieldsClient({
                         <option value="">— No Probe —</option>
                         {sortedProbes.map((p) => (
                           <option key={p.id} value={p.id}>
-                            #{p.serialNumber} ({p.ownerBillingEntity})
+                            #{p.serialNumber} ({p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity})
                           </option>
                         ))}
                       </select>
@@ -2401,7 +2417,7 @@ export default function FieldsClient({
                         <option value="">— No Probe —</option>
                         {sortedProbes.map((p) => (
                           <option key={p.id} value={p.id}>
-                            #{p.serialNumber} ({p.ownerBillingEntity})
+                            #{p.serialNumber} ({p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity})
                           </option>
                         ))}
                       </select>
