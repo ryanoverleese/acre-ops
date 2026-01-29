@@ -1,15 +1,18 @@
-import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations } from '@/lib/baserow';
+import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes } from '@/lib/baserow';
 import RepairsClient, { ProcessedRepair, FieldSeasonOption } from './RepairsClient';
 
 async function getRepairsData(): Promise<{ repairs: ProcessedRepair[]; fieldSeasons: FieldSeasonOption[] }> {
   try {
-    const [repairs, fieldSeasons, fields, billingEntities, operations] = await Promise.all([
+    const [repairs, fieldSeasons, fields, billingEntities, operations, probes] = await Promise.all([
       getRepairs(),
       getFieldSeasons(),
       getFields(),
       getBillingEntities(),
       getOperations(),
+      getProbes(),
     ]);
+
+    const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
@@ -60,10 +63,14 @@ async function getRepairsData(): Promise<{ repairs: ProcessedRepair[]; fieldSeas
     const fieldSeasonOptions: FieldSeasonOption[] = fieldSeasons.map((fs) => {
       const fieldLink = fs.field?.[0];
       const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
+      const probe1Id = fs.probe?.[0]?.id;
+      const probe2Id = fs.probe_2?.[0]?.id;
       return {
         id: fs.id,
         fieldName: field?.name || fieldLink?.value || 'Unknown Field',
         operation: getOperationName(field),
+        probe1Serial: probe1Id ? probeMap.get(probe1Id) : undefined,
+        probe2Serial: probe2Id ? probeMap.get(probe2Id) : undefined,
       };
     }).sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 

@@ -19,6 +19,8 @@ export interface FieldSeasonOption {
   id: number;
   fieldName: string;
   operation: string;
+  probe1Serial?: string;
+  probe2Serial?: string;
 }
 
 interface RepairsClientProps {
@@ -28,6 +30,7 @@ interface RepairsClientProps {
 
 const initialForm = {
   field_season: '',
+  probe_number: '' as '' | '1' | '2',
   reported_at: new Date().toISOString().split('T')[0],
   problem: '',
   fix: '',
@@ -59,6 +62,31 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string>('reportedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Get selected field's probe info
+  const selectedFieldSeason = useMemo(() => {
+    if (!addForm.field_season) return null;
+    return fieldSeasons.find((fs) => fs.id === parseInt(addForm.field_season, 10)) || null;
+  }, [addForm.field_season, fieldSeasons]);
+
+  const hasTwoProbes = selectedFieldSeason?.probe1Serial && selectedFieldSeason?.probe2Serial;
+
+  // Handle field selection - auto-select probe if only one exists
+  const handleFieldSelect = (fieldSeasonId: string) => {
+    const fs = fieldSeasons.find((f) => f.id === parseInt(fieldSeasonId, 10));
+    let probeNumber: '' | '1' | '2' = '';
+
+    if (fs) {
+      if (fs.probe1Serial && !fs.probe2Serial) {
+        probeNumber = '1';
+      } else if (fs.probe2Serial && !fs.probe1Serial) {
+        probeNumber = '2';
+      }
+      // If both exist, leave empty so user must choose
+    }
+
+    setAddForm({ ...addForm, field_season: fieldSeasonId, probe_number: probeNumber });
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -108,6 +136,12 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
   const handleAdd = async () => {
     if (!addForm.field_season) {
       alert('Field is required');
+      return;
+    }
+    // Require probe selection if field has two probes
+    const fs = fieldSeasons.find((f) => f.id === parseInt(addForm.field_season, 10));
+    if (fs?.probe1Serial && fs?.probe2Serial && !addForm.probe_number) {
+      alert('Please select which probe needs repair');
       return;
     }
     if (!addForm.problem.trim()) {
@@ -199,6 +233,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
     setSelectedRepair(repair);
     setEditForm({
       field_season: repair.fieldSeasonId.toString(),
+      probe_number: '',
       reported_at: repair.reportedAt || '',
       problem: repair.problem,
       fix: repair.fix || '',
@@ -466,7 +501,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
                   <label>Field *</label>
                   <select
                     value={addForm.field_season}
-                    onChange={(e) => setAddForm({ ...addForm, field_season: e.target.value })}
+                    onChange={(e) => handleFieldSelect(e.target.value)}
                   >
                     <option value="">Select field...</option>
                     {fieldSeasons.map((fs) => (
@@ -476,6 +511,25 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
                     ))}
                   </select>
                 </div>
+                {hasTwoProbes && (
+                  <div className="form-group">
+                    <label>Which Probe? *</label>
+                    <select
+                      value={addForm.probe_number}
+                      onChange={(e) => setAddForm({ ...addForm, probe_number: e.target.value as '1' | '2' })}
+                    >
+                      <option value="">Select probe...</option>
+                      <option value="1">Probe 1 - #{selectedFieldSeason?.probe1Serial}</option>
+                      <option value="2">Probe 2 - #{selectedFieldSeason?.probe2Serial}</option>
+                    </select>
+                  </div>
+                )}
+                {selectedFieldSeason && !hasTwoProbes && selectedFieldSeason.probe1Serial && (
+                  <div className="form-group">
+                    <label>Probe</label>
+                    <input type="text" value={`#${selectedFieldSeason.probe1Serial}`} disabled />
+                  </div>
+                )}
                 <div className="form-group">
                   <label>Reported Date *</label>
                   <input
