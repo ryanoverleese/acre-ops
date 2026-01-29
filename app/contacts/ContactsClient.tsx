@@ -9,6 +9,11 @@ interface ContactsClientProps {
   billingEntities: BillingEntityOption[];
 }
 
+interface SelectedBillingEntity {
+  id: number;
+  name: string;
+}
+
 const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist'];
 
 const initialForm = {
@@ -19,7 +24,6 @@ const initialForm = {
   customer_type: '',
   notes: '',
   operations: [] as string[],
-  billing_entity: '',
   is_main_contact: 'No',
 };
 
@@ -33,6 +37,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ProcessedContact | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [selectedBillingEntities, setSelectedBillingEntities] = useState<SelectedBillingEntity[]>([]);
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -61,12 +66,16 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     return [...operationsList].sort((a, b) => a.name.localeCompare(b.name));
   }, [operationsList]);
 
-  // Filter billing entities by selected operation
-  const filteredBillingEntities = useMemo(() => {
+  // Filter billing entities by selected operation, excluding already selected ones
+  const availableBillingEntities = useMemo(() => {
     const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
-    if (!selectedOpId) return billingEntitiesList;
-    return billingEntitiesList.filter((be) => be.operationId === selectedOpId);
-  }, [billingEntitiesList, form.operations]);
+    const selectedIds = new Set(selectedBillingEntities.map((be) => be.id));
+    let filtered = billingEntitiesList.filter((be) => !selectedIds.has(be.id));
+    if (selectedOpId) {
+      filtered = filtered.filter((be) => be.operationId === selectedOpId);
+    }
+    return filtered;
+  }, [billingEntitiesList, form.operations, selectedBillingEntities]);
 
   const filteredContacts = useMemo(() => {
     let filtered = contacts;
@@ -125,8 +134,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         const newOp = await response.json();
         const newOperationOption: OperationOption = { id: newOp.id, name: newOp.name };
         setOperationsList([...operationsList, newOperationOption]);
-        // Auto-select the new operation and reset billing entity
-        setForm({ ...form, operations: [newOp.id.toString()], billing_entity: '' });
+        // Auto-select the new operation and clear billing entities (new operation has none)
+        setForm({ ...form, operations: [newOp.id.toString()] });
+        setSelectedBillingEntities([]);
         setShowAddOperationModal(false);
         setNewOperationForm({ name: '', notes: '' });
       } else {
@@ -173,8 +183,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           operationId: selectedOpId,
         };
         setBillingEntitiesList([...billingEntitiesList, newBillingEntityOption]);
-        // Auto-select the new billing entity
-        setForm({ ...form, billing_entity: newBe.id.toString() });
+        // Add to selected billing entities
+        setSelectedBillingEntities([...selectedBillingEntities, { id: newBe.id, name: newBe.name || '' }]);
         setShowAddBillingEntityModal(false);
         setNewBillingEntityForm({ name: '', notes: '' });
       } else {
@@ -187,6 +197,23 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     } finally {
       setSavingBillingEntity(false);
     }
+  };
+
+  // Add existing billing entity to selection
+  const handleSelectBillingEntity = (beId: string) => {
+    if (beId === 'add_new') {
+      setShowAddBillingEntityModal(true);
+      return;
+    }
+    const be = billingEntitiesList.find((b) => b.id === parseInt(beId));
+    if (be && !selectedBillingEntities.some((s) => s.id === be.id)) {
+      setSelectedBillingEntities([...selectedBillingEntities, { id: be.id, name: be.name }]);
+    }
+  };
+
+  // Remove billing entity from selection
+  const handleRemoveBillingEntity = (beId: number) => {
+    setSelectedBillingEntities(selectedBillingEntities.filter((be) => be.id !== beId));
   };
 
   const handleAddContact = async () => {
@@ -212,6 +239,21 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       });
 
       if (response.ok) {
+        const newContact = await response.json();
+
+        // Link each selected billing entity to this contact as invoice_contact
+        if (selectedBillingEntities.length > 0) {
+          await Promise.all(
+            selectedBillingEntities.map((be) =>
+              fetch(`/api/billing-entities/${be.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoice_contact: [newContact.id] }),
+              })
+            )
+          );
+        }
+
         // Reload to get the updated data with operation names
         window.location.reload();
       } else {
@@ -249,6 +291,19 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       });
 
       if (response.ok) {
+        // Link each selected billing entity to this contact as invoice_contact
+        if (selectedBillingEntities.length > 0) {
+          await Promise.all(
+            selectedBillingEntities.map((be) =>
+              fetch(`/api/billing-entities/${be.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ invoice_contact: [selectedContact.id] }),
+              })
+            )
+          );
+        }
+
         // Reload to get the updated data with operation names
         window.location.reload();
       } else {
@@ -277,6 +332,12 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     }
   };
 
+  const openAddModal = () => {
+    setForm(initialForm);
+    setSelectedBillingEntities([]);
+    setShowAddModal(true);
+  };
+
   const openEditModal = (contact: ProcessedContact) => {
     setSelectedContact(contact);
     setForm({
@@ -287,9 +348,16 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       customer_type: contact.customerType,
       notes: contact.notes,
       operations: contact.operationIds.map((id) => id.toString()),
-      billing_entity: '',
       is_main_contact: contact.isMainContact ? 'Yes' : 'No',
     });
+    // Pre-populate billing entities where this contact is the invoice contact
+    const contactBillingEntities = billingEntitiesList
+      .filter((be) => {
+        // We'd need to know which billing entities have this contact as invoice_contact
+        // For now, start with empty - user can add if needed
+        return false;
+      });
+    setSelectedBillingEntities(contactBillingEntities.map((be) => ({ id: be.id, name: be.name })));
     setShowEditModal(true);
   };
 
@@ -321,7 +389,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           if (e.target.value === 'add_new') {
             setShowAddOperationModal(true);
           } else {
-            setForm({ ...form, operations: e.target.value ? [e.target.value] : [], billing_entity: '' });
+            setForm({ ...form, operations: e.target.value ? [e.target.value] : [] });
+            // Clear billing entities when operation changes
+            setSelectedBillingEntities([]);
           }
         }}
       >
@@ -334,27 +404,67 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     </div>
   );
 
-  const renderBillingEntityField = () => (
+  const renderBillingEntitiesField = () => (
     <div className="form-group">
-      <label>Billing Entity</label>
+      <label>Billing Entities (Invoice Contact)</label>
+
+      {/* Show selected billing entities as chips */}
+      {selectedBillingEntities.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+          {selectedBillingEntities.map((be) => (
+            <span
+              key={be.id}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 8px',
+                background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))',
+                color: 'var(--accent-blue, #3b82f6)',
+                borderRadius: '4px',
+                fontSize: '13px',
+              }}
+            >
+              {be.name}
+              <button
+                type="button"
+                onClick={() => handleRemoveBillingEntity(be.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '0',
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Remove"
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown to add more */}
       <select
-        value={form.billing_entity}
-        onChange={(e) => {
-          if (e.target.value === 'add_new') {
-            setShowAddBillingEntityModal(true);
-          } else {
-            setForm({ ...form, billing_entity: e.target.value });
-          }
-        }}
+        value=""
+        onChange={(e) => handleSelectBillingEntity(e.target.value)}
         disabled={!form.operations[0]}
       >
-        <option value="">Select billing entity...</option>
-        {filteredBillingEntities.map((be) => (
+        <option value="">
+          {selectedBillingEntities.length === 0 ? 'Select billing entity...' : '+ Add another billing entity...'}
+        </option>
+        {availableBillingEntities.map((be) => (
           <option key={be.id} value={be.id}>{be.name}</option>
         ))}
-        <option value="add_new">+ Add New Billing Entity...</option>
+        <option value="add_new">+ Create New Billing Entity...</option>
       </select>
-      {form.operations[0] && filteredBillingEntities.length === 0 && (
+
+      {form.operations[0] && availableBillingEntities.length === 0 && selectedBillingEntities.length === 0 && (
         <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
           No billing entities for this operation yet
         </p>
@@ -385,7 +495,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
-            <button className="btn btn-primary" onClick={() => { setForm(initialForm); setShowAddModal(true); }}>
+            <button className="btn btn-primary" onClick={openAddModal}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -521,7 +631,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Contact name" />
                 </div>
                 {renderOperationField()}
-                {renderBillingEntityField()}
+                {renderBillingEntitiesField()}
                 <div className="form-group">
                   <label>Main Contact?</label>
                   <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
@@ -585,7 +695,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
                 </div>
                 {renderOperationField()}
-                {renderBillingEntityField()}
+                {renderBillingEntitiesField()}
                 <div className="form-group">
                   <label>Main Contact?</label>
                   <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
