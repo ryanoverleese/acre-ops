@@ -416,18 +416,21 @@ export default function FieldsClient({
     };
   }, [fields, rolloverForm.fromSeason, rolloverForm.toSeason]);
 
-  // Calculate which seasons each field has and is missing
+  // Calculate which seasons each field has and is missing (with field_season IDs for deletion)
   const fieldSeasonsMap = useMemo(() => {
-    const map = new Map<number, { existing: Set<string>; missing: string[] }>();
+    const map = new Map<number, { existing: Map<string, number>; missing: string[] }>();
 
     // Get unique field IDs
     const fieldIds = new Set(fields.map((f) => f.id));
 
     fieldIds.forEach((fieldId) => {
-      const existingSeasons = new Set(
-        fields.filter((f) => f.id === fieldId && f.season).map((f) => f.season)
-      );
-      const missing = availableSeasons.filter((s) => !existingSeasons.has(s));
+      // Map season year to fieldSeasonId
+      const existingSeasons = new Map<string, number>();
+      fields
+        .filter((f) => f.id === fieldId && f.season && f.fieldSeasonId)
+        .forEach((f) => existingSeasons.set(f.season, f.fieldSeasonId!));
+      const existingYears = new Set(existingSeasons.keys());
+      const missing = availableSeasons.filter((s) => !existingYears.has(s));
       map.set(fieldId, { existing: existingSeasons, missing });
     });
 
@@ -932,6 +935,27 @@ export default function FieldsClient({
     } catch (error) {
       console.error('Quick start season error:', error);
       alert('Failed to start season');
+    }
+  };
+
+  // Delete a field_season
+  const handleDeleteSeason = async (fieldSeasonId: number, season: string) => {
+    if (!confirm(`Delete ${season} season? This will also remove any probe assignments for this season.`)) {
+      return;
+    }
+    try {
+      const response = await fetch(`/api/field-seasons/${fieldSeasonId}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to delete season');
+      }
+    } catch (error) {
+      console.error('Delete season error:', error);
+      alert('Failed to delete season');
     }
   };
 
@@ -1915,7 +1939,9 @@ export default function FieldsClient({
                       ) : (
                         filteredFields.map((field) => {
                           const seasonInfo = fieldSeasonsMap.get(field.id);
-                          const existingSeasons = seasonInfo ? Array.from(seasonInfo.existing).sort().reverse() : [];
+                          // existingSeasons is now a Map<season, fieldSeasonId>
+                          const existingSeasonsMap = seasonInfo?.existing || new Map();
+                          const existingSeasonsList = Array.from(existingSeasonsMap.entries()).sort((a, b) => b[0].localeCompare(a[0]));
                           const missingSeasons = seasonInfo?.missing || [];
 
                           return (
@@ -1923,12 +1949,27 @@ export default function FieldsClient({
                               <td className="operation-name">{field.name}</td>
                               <td style={{ fontSize: '13px' }}>{field.operation}</td>
                               <td onClick={(e) => e.stopPropagation()}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  {existingSeasons.length > 0 && (
-                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                      {existingSeasons.join(', ')}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  {existingSeasonsList.map(([season, fieldSeasonId]) => (
+                                    <span key={season} style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                      {season}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteSeason(fieldSeasonId, season); }}
+                                        title={`Delete ${season} season`}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: 'var(--text-muted)',
+                                          cursor: 'pointer',
+                                          padding: '0 2px',
+                                          fontSize: '14px',
+                                          lineHeight: 1,
+                                        }}
+                                      >
+                                        ×
+                                      </button>
                                     </span>
-                                  )}
+                                  ))}
                                   <select
                                     style={{
                                       padding: '4px 8px',
