@@ -52,6 +52,7 @@ const initialAddForm = {
 export default function ProbesClient({ probes: initialProbes, billingEntities, statusCounts }: ProbesClientProps) {
   const [probes, setProbes] = useState(initialProbes);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'all' | 'rack'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedProbe, setSelectedProbe] = useState<ProcessedProbe | null>(null);
@@ -72,37 +73,50 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
 
   const filteredProbes = useMemo(() => {
     let filtered = probes;
+
+    // For rack view, only show probes with rack locations and sort by rack
+    if (viewMode === 'rack') {
+      filtered = filtered.filter((probe) => probe.rackLocation && probe.rackLocation !== '—');
+      filtered = [...filtered].sort((a, b) => {
+        return (a.rackLocation || '').localeCompare(b.rackLocation || '');
+      });
+    }
+
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (probe) =>
           probe.serialNumber.toLowerCase().includes(query) ||
           probe.brand.toLowerCase().includes(query) ||
-          probe.ownerBillingEntity.toLowerCase().includes(query)
+          probe.ownerBillingEntity.toLowerCase().includes(query) ||
+          (probe.rackLocation || '').toLowerCase().includes(query)
       );
     }
 
-    // Sort
-    filtered = [...filtered].sort((a, b) => {
-      let aVal: string | number = '';
-      let bVal: string | number = '';
+    // Sort (only if not in rack view, which has its own sort)
+    if (viewMode !== 'rack') {
+      filtered = [...filtered].sort((a, b) => {
+        let aVal: string | number = '';
+        let bVal: string | number = '';
 
-      switch (sortColumn) {
-        case 'serialNumber': aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase(); break;
-        case 'brand': aVal = a.brand.toLowerCase(); bVal = b.brand.toLowerCase(); break;
-        case 'status': aVal = a.status.toLowerCase(); bVal = b.status.toLowerCase(); break;
-        case 'owner': aVal = a.ownerBillingEntity.toLowerCase(); bVal = b.ownerBillingEntity.toLowerCase(); break;
-        case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
-        default: aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase();
-      }
+        switch (sortColumn) {
+          case 'serialNumber': aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase(); break;
+          case 'brand': aVal = a.brand.toLowerCase(); bVal = b.brand.toLowerCase(); break;
+          case 'status': aVal = a.status.toLowerCase(); bVal = b.status.toLowerCase(); break;
+          case 'owner': aVal = a.ownerBillingEntity.toLowerCase(); bVal = b.ownerBillingEntity.toLowerCase(); break;
+          case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
+          case 'rack': aVal = a.rackLocation || ''; bVal = b.rackLocation || ''; break;
+          default: aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase();
+        }
 
-      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode]);
 
   const handleAdd = async () => {
     if (!addForm.serial_number.trim()) {
@@ -276,19 +290,41 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
           </div>
         </div>
 
+        {/* View Toggle */}
+        <div className="fields-filter-row">
+          <div className="view-mode-toggle">
+            <button
+              onClick={() => setViewMode('all')}
+              className={viewMode === 'all' ? 'active' : ''}
+            >
+              All Probes
+            </button>
+            <button
+              onClick={() => setViewMode('rack')}
+              className={viewMode === 'rack' ? 'active' : ''}
+            >
+              Probe Rack
+            </button>
+          </div>
+        </div>
+
         <div className="table-container">
           <div className="table-header">
             <h3 className="table-title">
-              {searchQuery ? `Matching Probes (${filteredProbes.length})` : 'All Probes'}
+              {searchQuery
+                ? `Matching Probes (${filteredProbes.length})`
+                : viewMode === 'rack'
+                  ? `Probe Rack (${filteredProbes.length})`
+                  : 'All Probes'}
             </h3>
             <div className="table-actions">
-              <div className="search-box">
+              <div className="search-box" style={{ minWidth: '200px' }}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
                   type="text"
-                  placeholder="Search by serial number..."
+                  placeholder={viewMode === 'rack' ? "Search rack or serial..." : "Search probes..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -369,21 +405,44 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
           </table>
           <div className="mobile-cards">
             {filteredProbes.length === 0 ? (
-              <div className="empty-state">{searchQuery ? 'No matching probes found.' : 'No probes found.'}</div>
+              <div className="empty-state">
+                {searchQuery ? 'No matching probes found.' : viewMode === 'rack' ? 'No probes with rack locations.' : 'No probes found.'}
+              </div>
             ) : (
               filteredProbes.map((probe) => (
                 <div key={probe.id} className="mobile-card" onClick={() => openEditModal(probe)}>
                   <div className="mobile-card-header">
-                    <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                      #{probe.serialNumber}
-                    </span>
-                    {getStatusBadge(probe.status)}
+                    {viewMode === 'rack' ? (
+                      <>
+                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                          {probe.rackLocation}
+                        </span>
+                        {getStatusBadge(probe.status)}
+                      </>
+                    ) : (
+                      <>
+                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                          #{probe.serialNumber}
+                        </span>
+                        {getStatusBadge(probe.status)}
+                      </>
+                    )}
                   </div>
                   <div className="mobile-card-body">
-                    <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
-                    <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
-                    <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
-                    <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
+                    {viewMode === 'rack' ? (
+                      <>
+                        <div className="mobile-card-row"><span>Serial:</span> #{probe.serialNumber}</div>
+                        <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                        <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                        <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
+                        <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
+                        <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
+                      </>
+                    )}
                   </div>
                   <div className="mobile-card-footer" style={{
                     marginTop: '12px',
