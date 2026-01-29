@@ -283,7 +283,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
               {searchQuery ? `Matching Repairs (${filteredRepairs.length})` : 'All Repairs'}
             </h3>
           </div>
-          <table>
+          <table className="desktop-table">
             <thead>
               <tr>
                 <th className="sortable" onClick={() => handleSort('status')}>
@@ -376,6 +376,76 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons }:
               )}
             </tbody>
           </table>
+          <div className="mobile-cards">
+            {filteredRepairs.length === 0 ? (
+              <div className="empty-state">{searchQuery ? 'No matching repairs found.' : 'No repairs found.'}</div>
+            ) : (
+              filteredRepairs.map((repair) => (
+                <div key={repair.id} className="mobile-card" onClick={() => openEditModal(repair)}>
+                  <div className="mobile-card-header">
+                    <span className="mobile-card-title">{repair.fieldName}</span>
+                    <span className={`status-badge ${repair.status === 'open' ? 'repair' : 'installed'}`}>
+                      <span className="status-dot"></span>
+                      {repair.status === 'open' ? 'Open' : 'Resolved'}
+                    </span>
+                  </div>
+                  <div className="mobile-card-body">
+                    <div className="mobile-card-row"><span>Operation:</span> {repair.operation}</div>
+                    <div className="mobile-card-row"><span>Problem:</span> {repair.problem}</div>
+                    <div className="mobile-card-row"><span>Reported:</span> {formatDate(repair.reportedAt)}</div>
+                    {repair.repairedAt && (
+                      <div className="mobile-card-row"><span>Repaired:</span> {formatDate(repair.repairedAt)}</div>
+                    )}
+                    {repair.fix && (
+                      <div className="mobile-card-row"><span>Fix:</span> {repair.fix}</div>
+                    )}
+                    <div className="mobile-card-row">
+                      <span>Notified:</span> {repair.notifiedCustomer ? 'Yes' : 'No'}
+                    </div>
+                  </div>
+                  <div className="mobile-card-footer" style={{
+                    marginTop: '12px',
+                    paddingTop: '12px',
+                    borderTop: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    {repair.status === 'open' ? (
+                      <button
+                        className="btn btn-primary"
+                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        onClick={(e) => { e.stopPropagation(); handleMarkResolved(repair); }}
+                      >
+                        Mark Resolved
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(repair); }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <span style={{
+                      color: 'var(--accent-green)',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      Edit
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
