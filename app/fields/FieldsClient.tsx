@@ -1041,9 +1041,10 @@ export default function FieldsClient({
     setSavingFields(prev => new Set(prev).add(cellKey));
 
     try {
+      // Round coordinates to 6 decimal places (Baserow field limit)
       const body: Record<string, unknown> = {
-        placement_lat: lat,
-        placement_lng: lng,
+        placement_lat: Math.round(lat * 1000000) / 1000000,
+        placement_lng: Math.round(lng * 1000000) / 1000000,
       };
 
       if (elevation !== undefined && elevation !== null) {
