@@ -304,7 +304,8 @@ export default function FieldsClient({
   });
   const [savingSeasonFields, setSavingSeasonFields] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add'>('edit');
+  const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add' | 'probeAssignment'>('edit');
+  const [editingProbeAssignmentLocation, setEditingProbeAssignmentLocation] = useState<ProcessedProbeAssignment | null>(null);
   const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
   const [addSeasonForm, setAddSeasonForm] = useState({
     season: '2026',
@@ -959,6 +960,7 @@ export default function FieldsClient({
         antennaType: 'antenna_type',
         placementLat: 'placement_lat',
         placementLng: 'placement_lng',
+        elevation: 'elevation',
         soilType: 'soil_type',
         placementNotes: 'placement_notes',
         installDate: 'install_date',
@@ -1509,11 +1511,26 @@ export default function FieldsClient({
                                             Probe {pa.probeNumber}
                                           </span>
                                         </td>
-                                        <td colSpan={2} style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                        <td
+                                          colSpan={2}
+                                          style={{ fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingProbeAssignmentLocation(pa);
+                                            setLocationPickerTarget('probeAssignment');
+                                            setShowLocationPicker(true);
+                                          }}
+                                          title="Click to edit location"
+                                        >
                                           {pa.placementLat && pa.placementLng ? (
-                                            <span>{Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                              {Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}
+                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" style={{ opacity: 0.6 }}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                              </svg>
+                                            </span>
                                           ) : (
-                                            <span>No location</span>
+                                            <span style={{ color: 'var(--accent-blue)' }}>Set location</span>
                                           )}
                                         </td>
                                         <td colSpan={2} onClick={(e) => e.stopPropagation()}>
@@ -2733,9 +2750,21 @@ export default function FieldsClient({
         {/* Location Picker */}
         {showLocationPicker && (
           <LocationPicker
-            lat={locationPickerTarget === 'edit' ? (editForm.lat ? Number(editForm.lat) : null) : (addForm.lat ? parseFloat(addForm.lat) : null)}
-            lng={locationPickerTarget === 'edit' ? (editForm.lng ? Number(editForm.lng) : null) : (addForm.lng ? parseFloat(addForm.lng) : null)}
-            onLocationChange={(lat, lng, elevation, soilType) => {
+            lat={
+              locationPickerTarget === 'edit'
+                ? (editForm.lat ? Number(editForm.lat) : null)
+                : locationPickerTarget === 'probeAssignment'
+                  ? (editingProbeAssignmentLocation?.placementLat ?? null)
+                  : (addForm.lat ? parseFloat(addForm.lat) : null)
+            }
+            lng={
+              locationPickerTarget === 'edit'
+                ? (editForm.lng ? Number(editForm.lng) : null)
+                : locationPickerTarget === 'probeAssignment'
+                  ? (editingProbeAssignmentLocation?.placementLng ?? null)
+                  : (addForm.lng ? parseFloat(addForm.lng) : null)
+            }
+            onLocationChange={async (lat, lng, elevation, soilType) => {
               if (locationPickerTarget === 'edit') {
                 setEditForm({
                   ...editForm,
@@ -2744,11 +2773,24 @@ export default function FieldsClient({
                   elevation: elevation ?? editForm.elevation,
                   soilType: soilType ?? editForm.soilType,
                 });
+              } else if (locationPickerTarget === 'probeAssignment' && editingProbeAssignmentLocation) {
+                // Save location directly to probe assignment
+                await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'placementLat', lat);
+                await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'placementLng', lng);
+                if (elevation !== undefined) {
+                  await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'elevation', elevation);
+                }
+                if (soilType) {
+                  await handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'soilType', soilType);
+                }
               } else {
                 setAddForm({ ...addForm, lat: lat.toString(), lng: lng.toString() });
               }
             }}
-            onClose={() => setShowLocationPicker(false)}
+            onClose={() => {
+              setShowLocationPicker(false);
+              setEditingProbeAssignmentLocation(null);
+            }}
           />
         )}
       </div>
