@@ -118,7 +118,7 @@ export interface Contact {
   customer_type?: { id: number; value: string };
   notes?: string;
   operations?: { id: number; value: string }[];
-  is_main_contact?: boolean;
+  is_main_contact?: { id: number; value: string };
 }
 
 export interface Operation {

@@ -46,7 +46,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       operations: currentOperationIds,
     };
     if (isMainContact !== undefined) {
-      updateData.is_main_contact = isMainContact;
+      // is_main_contact is a single select field with Yes/No options
+      updateData.is_main_contact = isMainContact ? 'Yes' : 'No';
     }
 
     const patchResponse = await fetch(

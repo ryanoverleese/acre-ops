@@ -46,7 +46,7 @@ async function getOperationsData(): Promise<{
           name: contact.name,
           email: contact.email,
           phone: contact.phone,
-          isMainContact: contact.is_main_contact || false,
+          isMainContact: contact.is_main_contact?.value === 'Yes',
         });
         linkedContactsMap.set(opLink.id, existing);
       });
