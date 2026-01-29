@@ -332,6 +332,7 @@ export default function FieldsClient({
   };
 
   // Filter fields by current season first (or show all unique fields)
+  // When filtering by a specific season, also include fields that DON'T have that season yet
   const seasonFields = useMemo(() => {
     if (currentSeason === 'all') {
       // Show unique fields (dedupe by field ID, keep most recent season)
@@ -345,7 +346,34 @@ export default function FieldsClient({
       });
       return Array.from(fieldMap.values());
     }
-    return fields.filter((f) => f.season === currentSeason || (!f.season && currentSeason === ''));
+
+    // Get fields that have the current season
+    const fieldsWithSeason = fields.filter((f) => f.season === currentSeason);
+    const fieldIdsWithSeason = new Set(fieldsWithSeason.map((f) => f.id));
+
+    // Get unique fields that DON'T have this season (need "Start Season")
+    const fieldsNeedingSeason: ProcessedField[] = [];
+    const seenFieldIds = new Set<number>();
+
+    // Look through all fields to find ones missing this season
+    fields.forEach((f) => {
+      if (!fieldIdsWithSeason.has(f.id) && !seenFieldIds.has(f.id)) {
+        seenFieldIds.add(f.id);
+        // Create a placeholder entry for this field with the target season
+        fieldsNeedingSeason.push({
+          ...f,
+          fieldSeasonId: null, // No field_season yet
+          season: currentSeason, // Target season
+          crop: '',
+          serviceType: '',
+          probeStatus: 'Unassigned',
+          probe: null,
+          probeId: null,
+        });
+      }
+    });
+
+    return [...fieldsWithSeason, ...fieldsNeedingSeason];
   }, [fields, currentSeason]);
 
   // Calculate status counts for current season
@@ -374,14 +402,29 @@ export default function FieldsClient({
     };
   }, [fields, rolloverForm.fromSeason, rolloverForm.toSeason]);
 
+  // Calculate which seasons each field has and is missing
+  const fieldSeasonsMap = useMemo(() => {
+    const map = new Map<number, { existing: Set<string>; missing: string[] }>();
+
+    // Get unique field IDs
+    const fieldIds = new Set(fields.map((f) => f.id));
+
+    fieldIds.forEach((fieldId) => {
+      const existingSeasons = new Set(
+        fields.filter((f) => f.id === fieldId && f.season).map((f) => f.season)
+      );
+      const missing = availableSeasons.filter((s) => !existingSeasons.has(s));
+      map.set(fieldId, { existing: existingSeasons, missing });
+    });
+
+    return map;
+  }, [fields, availableSeasons]);
+
   // Calculate which seasons the selected field is missing
   const missingSeasonsForField = useMemo(() => {
     if (!selectedField) return [];
-    const existingSeasons = new Set(
-      fields.filter((f) => f.id === selectedField.id).map((f) => f.season)
-    );
-    return availableSeasons.filter((s) => !existingSeasons.has(s));
-  }, [selectedField, fields, availableSeasons]);
+    return fieldSeasonsMap.get(selectedField.id)?.missing || [];
+  }, [selectedField, fieldSeasonsMap]);
 
   const filteredFields = useMemo(() => {
     let filtered = seasonFields;
@@ -852,6 +895,29 @@ export default function FieldsClient({
       alert('Failed to create season');
     } finally {
       setSavingSeason(false);
+    }
+  };
+
+  // Quick start season for a field (no modal)
+  const handleQuickStartSeason = async (fieldId: number, season: string) => {
+    try {
+      const response = await fetch('/api/field-seasons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          field: fieldId,
+          season: season,
+        }),
+      });
+      if (response.ok) {
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to start season');
+      }
+    } catch (error) {
+      console.error('Quick start season error:', error);
+      alert('Failed to start season');
     }
   };
 
@@ -1789,41 +1855,73 @@ export default function FieldsClient({
                         </th>
                         <th>Irrigation</th>
                         <th>Row Dir</th>
-                        <th>Lat/Lng</th>
-                        <th>Elevation</th>
-                        <th>Soil Type</th>
+                        <th>Seasons</th>
                         <th></th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredFields.length === 0 ? (
                         <tr>
-                          <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                          <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                             No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                           </td>
                         </tr>
                       ) : (
-                        filteredFields.map((field) => (
-                          <tr key={`${field.id}-${field.fieldSeasonId}`} onClick={() => handleRowClick(field)} style={{ cursor: 'pointer' }}>
-                            <td className="operation-name">{field.name}</td>
-                            <td style={{ fontSize: '13px' }}>{field.operation}</td>
-                            <td className="field-count">{field.acres}</td>
-                            <td>{field.irrigationType || '—'}</td>
-                            <td>{field.rowDirection || '—'}</td>
-                            <td style={{ fontSize: '11px', fontFamily: 'monospace' }}>
-                              {field.lat && field.lng ? `${Number(field.lat).toFixed(4)}, ${Number(field.lng).toFixed(4)}` : '—'}
-                            </td>
-                            <td>{field.elevation ? `${field.elevation} ft` : '—'}</td>
-                            <td>{field.soilType || '—'}</td>
-                            <td onClick={(e) => e.stopPropagation()}>
-                              <button className="action-btn" title="Edit" onClick={() => handleRowClick(field)}>
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                              </button>
-                            </td>
-                          </tr>
-                        ))
+                        filteredFields.map((field) => {
+                          const seasonInfo = fieldSeasonsMap.get(field.id);
+                          const existingSeasons = seasonInfo ? Array.from(seasonInfo.existing).sort().reverse() : [];
+                          const missingSeasons = seasonInfo?.missing || [];
+
+                          return (
+                            <tr key={`${field.id}-${field.fieldSeasonId}`} onClick={() => handleRowClick(field)} style={{ cursor: 'pointer' }}>
+                              <td className="operation-name">{field.name}</td>
+                              <td style={{ fontSize: '13px' }}>{field.operation}</td>
+                              <td className="field-count">{field.acres}</td>
+                              <td>{field.irrigationType || '—'}</td>
+                              <td>{field.rowDirection || '—'}</td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  {existingSeasons.length > 0 && (
+                                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                      {existingSeasons.join(', ')}
+                                    </span>
+                                  )}
+                                  {missingSeasons.length > 0 && (
+                                    <select
+                                      style={{
+                                        padding: '4px 8px',
+                                        fontSize: '11px',
+                                        borderRadius: '4px',
+                                        border: '1px solid var(--accent-green)',
+                                        background: 'var(--bg-secondary)',
+                                        color: 'var(--accent-green)',
+                                        cursor: 'pointer',
+                                      }}
+                                      value=""
+                                      onChange={(e) => {
+                                        if (e.target.value) {
+                                          handleQuickStartSeason(field.id, e.target.value);
+                                        }
+                                      }}
+                                    >
+                                      <option value="">+ Start Season</option>
+                                      {missingSeasons.map((s) => (
+                                        <option key={s} value={s}>{s}</option>
+                                      ))}
+                                    </select>
+                                  )}
+                                </div>
+                              </td>
+                              <td onClick={(e) => e.stopPropagation()}>
+                                <button className="action-btn" title="Edit" onClick={() => handleRowClick(field)}>
+                                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
