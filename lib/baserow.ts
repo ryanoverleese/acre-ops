@@ -230,7 +230,8 @@ export interface ProbeAssignment {
   id: number;
   field_season?: { id: number; value: string }[];
   probe?: { id: number; value: string }[];
-  probe_number?: number; // 1 or 2
+  probe_number?: number; // 1, 2, 3, etc.
+  antenna_type?: { id: number; value: string };
   // Placement data (defaulted from field, can be overridden)
   placement_lat?: number;
   placement_lng?: number;

@@ -956,6 +956,7 @@ export default function FieldsClient({
       const apiFieldMap: Record<string, string> = {
         probeId: 'probe',
         probeStatus: 'probe_status',
+        antennaType: 'antenna_type',
         placementLat: 'placement_lat',
         placementLng: 'placement_lng',
         soilType: 'soil_type',
@@ -1313,7 +1314,6 @@ export default function FieldsClient({
                           <th style={{ minWidth: '100px' }}>Operation</th>
                           <th style={{ minWidth: '90px' }}>Crop</th>
                           <th style={{ minWidth: '90px' }}>Service</th>
-                          <th style={{ minWidth: '80px' }}>Antenna</th>
                           <th style={{ minWidth: '100px' }}>Probes</th>
                           <th style={{ minWidth: '60px' }}>Route #</th>
                           <th style={{ minWidth: '110px' }}>Installer</th>
@@ -1325,7 +1325,7 @@ export default function FieldsClient({
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={12} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                            <td colSpan={11} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                               No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
                             </td>
                           </tr>
@@ -1375,21 +1375,6 @@ export default function FieldsClient({
                                     { value: 'Full Service', label: 'Full Service' },
                                     { value: 'DIY', label: 'DIY' },
                                     { value: 'VRS', label: 'VRS' },
-                                  ]}
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="antennaType"
-                                  value={field.antennaType}
-                                  type="select"
-                                  options={[
-                                    { value: 'Short', label: 'Short' },
-                                    { value: 'Tall', label: 'Tall' },
                                   ]}
                                   onSave={handleInlineSave}
                                   savingFields={savingFields}
@@ -1563,7 +1548,22 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td colSpan={3} onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="antennaType"
+                                            value={pa.antennaType}
+                                            type="select"
+                                            options={[
+                                              { value: 'Short', label: 'Short' },
+                                              { value: 'Tall', label: 'Tall' },
+                                            ]}
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td colSpan={2} onClick={(e) => e.stopPropagation()}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="placementNotes"
@@ -1606,7 +1606,7 @@ export default function FieldsClient({
                                     ))}
                                     {/* Add probe assignment row */}
                                     <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                      <td colSpan={12} style={{ paddingLeft: '32px' }}>
+                                      <td colSpan={11} style={{ paddingLeft: '32px' }}>
                                         <button
                                           onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
                                           disabled={savingProbeAssignment}

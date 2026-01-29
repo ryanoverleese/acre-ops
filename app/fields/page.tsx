@@ -11,6 +11,7 @@ export interface ProcessedProbeAssignment {
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
+  antennaType?: string;
   // Placement data
   placementLat?: number;
   placementLng?: number;
@@ -314,6 +315,7 @@ async function getFieldsData(): Promise<{
         probe: probeData ? `#${probeData.serial_number}` : null,
         probeId: probeLink?.id || null,
         probeStatus: pa.probe_status?.value || 'Unassigned',
+        antennaType: pa.antenna_type?.value,
         // Placement data
         placementLat: pa.placement_lat,
         placementLng: pa.placement_lng,

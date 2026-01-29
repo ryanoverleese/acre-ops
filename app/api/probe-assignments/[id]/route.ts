@@ -36,6 +36,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     if (body.probe_number !== undefined) updateData.probe_number = body.probe_number;
     if (body.probe_status !== undefined) updateData.probe_status = body.probe_status;
+    if (body.antenna_type !== undefined) updateData.antenna_type = body.antenna_type;
 
     // Install data
     if (body.installer !== undefined) updateData.installer = body.installer;
