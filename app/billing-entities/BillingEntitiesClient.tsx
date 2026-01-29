@@ -314,7 +314,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 </div>
                 <div className="form-group">
                   <label>Operation</label>
-                  <select value={form.operation} onChange={(e) => setForm({ ...form, operation: e.target.value })}>
+                  <select value={form.operation} onChange={(e) => setForm({ ...form, operation: e.target.value, invoice_contact: '' })}>
                     <option value="">Select operation...</option>
                     {operations.map((op) => (
                       <option key={op.id} value={op.id}>{op.name}</option>
@@ -325,10 +325,17 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                   <label>Invoice Contact</label>
                   <select value={form.invoice_contact} onChange={(e) => setForm({ ...form, invoice_contact: e.target.value })}>
                     <option value="">Select contact...</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {contacts
+                      .filter((c) => !form.operation || c.operationIds.includes(parseInt(form.operation)))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                   </select>
+                  {form.operation && contacts.filter((c) => c.operationIds.includes(parseInt(form.operation))).length === 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      No contacts linked to this operation yet
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Notes</label>
@@ -366,7 +373,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 </div>
                 <div className="form-group">
                   <label>Operation</label>
-                  <select value={form.operation} onChange={(e) => setForm({ ...form, operation: e.target.value })}>
+                  <select value={form.operation} onChange={(e) => setForm({ ...form, operation: e.target.value, invoice_contact: '' })}>
                     <option value="">Select operation...</option>
                     {operations.map((op) => (
                       <option key={op.id} value={op.id}>{op.name}</option>
@@ -377,10 +384,17 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                   <label>Invoice Contact</label>
                   <select value={form.invoice_contact} onChange={(e) => setForm({ ...form, invoice_contact: e.target.value })}>
                     <option value="">Select contact...</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {contacts
+                      .filter((c) => !form.operation || c.operationIds.includes(parseInt(form.operation)))
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                   </select>
+                  {form.operation && contacts.filter((c) => c.operationIds.includes(parseInt(form.operation))).length === 0 && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      No contacts linked to this operation yet
+                    </p>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Notes</label>

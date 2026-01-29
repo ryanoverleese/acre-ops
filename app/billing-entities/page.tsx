@@ -19,6 +19,7 @@ export interface OperationOption {
 export interface ContactOption {
   id: number;
   name: string;
+  operationIds: number[];
 }
 
 async function getData() {
@@ -52,9 +53,11 @@ async function getData() {
       name: op.name,
     }));
 
+    // Include operation IDs so we can filter contacts by operation
     const contactOptions: ContactOption[] = contacts.map((c) => ({
       id: c.id,
       name: c.name,
+      operationIds: c.operations?.map((op) => op.id) || [],
     }));
 
     return { billingEntities: processed, operations: operationOptions, contacts: contactOptions };

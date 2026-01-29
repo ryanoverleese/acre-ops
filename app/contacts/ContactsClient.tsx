@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ProcessedContact } from './page';
+import type { ProcessedContact, OperationOption } from './page';
 
 interface ContactsClientProps {
   initialContacts: ProcessedContact[];
+  operations: OperationOption[];
 }
 
 const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist'];
@@ -16,9 +17,11 @@ const initialForm = {
   address: '',
   customer_type: '',
   notes: '',
+  operations: [] as string[],
+  is_main_contact: 'No',
 };
 
-export default function ContactsClient({ initialContacts }: ContactsClientProps) {
+export default function ContactsClient({ initialContacts, operations }: ContactsClientProps) {
   const [contacts, setContacts] = useState(initialContacts);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
@@ -48,7 +51,8 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
         (c) =>
           c.name.toLowerCase().includes(query) ||
           c.email.toLowerCase().includes(query) ||
-          c.phone.toLowerCase().includes(query)
+          c.phone.toLowerCase().includes(query) ||
+          c.operationNames.some((op) => op.toLowerCase().includes(query))
       );
     }
 
@@ -65,6 +69,7 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
         case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
         case 'email': aVal = a.email.toLowerCase(); bVal = b.email.toLowerCase(); break;
         case 'phone': aVal = a.phone.toLowerCase(); bVal = b.phone.toLowerCase(); break;
+        case 'operation': aVal = a.operationNames.join(',').toLowerCase(); bVal = b.operationNames.join(',').toLowerCase(); break;
         case 'customerType': aVal = a.customerType.toLowerCase(); bVal = b.customerType.toLowerCase(); break;
         default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
       }
@@ -90,6 +95,8 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
       if (form.address) payload.address = form.address;
       if (form.customer_type) payload.customer_type = form.customer_type;
       if (form.notes) payload.notes = form.notes;
+      if (form.operations.length > 0) payload.operations = form.operations.map((id) => parseInt(id));
+      payload.is_main_contact = form.is_main_contact;
 
       const response = await fetch('/api/contacts', {
         method: 'POST',
@@ -98,21 +105,8 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
       });
 
       if (response.ok) {
-        const newContact = await response.json();
-        setContacts([
-          ...contacts,
-          {
-            id: newContact.id,
-            name: newContact.name || '',
-            email: newContact.email || '',
-            phone: newContact.phone || '',
-            address: newContact.address || '',
-            customerType: newContact.customer_type?.value || '',
-            notes: newContact.notes || '',
-          },
-        ]);
-        setShowAddModal(false);
-        setForm(initialForm);
+        // Reload to get the updated data with operation names
+        window.location.reload();
       } else {
         alert('Failed to create contact');
       }
@@ -138,6 +132,8 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
       payload.address = form.address || null;
       payload.customer_type = form.customer_type || null;
       payload.notes = form.notes || null;
+      payload.operations = form.operations.map((id) => parseInt(id));
+      payload.is_main_contact = form.is_main_contact;
 
       const response = await fetch(`/api/contacts/${selectedContact.id}`, {
         method: 'PATCH',
@@ -146,25 +142,8 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
       });
 
       if (response.ok) {
-        const updated = await response.json();
-        setContacts(
-          contacts.map((c) =>
-            c.id === selectedContact.id
-              ? {
-                  id: updated.id,
-                  name: updated.name || '',
-                  email: updated.email || '',
-                  phone: updated.phone || '',
-                  address: updated.address || '',
-                  customerType: updated.customer_type?.value || '',
-                  notes: updated.notes || '',
-                }
-              : c
-          )
-        );
-        setShowEditModal(false);
-        setSelectedContact(null);
-        setForm(initialForm);
+        // Reload to get the updated data with operation names
+        window.location.reload();
       } else {
         alert('Failed to update contact');
       }
@@ -200,6 +179,8 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
       address: contact.address,
       customer_type: contact.customerType,
       notes: contact.notes,
+      operations: contact.operationIds.map((id) => id.toString()),
+      is_main_contact: contact.isMainContact ? 'Yes' : 'No',
     });
     setShowEditModal(true);
   };
@@ -262,10 +243,11 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
                 Name
                 {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
               </th>
-              <th className="sortable" onClick={() => handleSort('email')}>
-                Email
-                {sortColumn === 'email' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable" onClick={() => handleSort('operation')}>
+                Operation
+                {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
               </th>
+              <th>Role</th>
               <th className="sortable" onClick={() => handleSort('phone')}>
                 Phone
                 {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
@@ -280,7 +262,7 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
           <tbody>
             {filteredContacts.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                   No contacts found.
                 </td>
               </tr>
@@ -288,7 +270,22 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
               filteredContacts.map((contact) => (
                 <tr key={contact.id}>
                   <td className="operation-name">{contact.name}</td>
-                  <td style={{ fontSize: '13px' }}>{contact.email || '—'}</td>
+                  <td style={{ fontSize: '13px' }}>
+                    {contact.operationNames.length > 0 ? contact.operationNames.join(', ') : '—'}
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {contact.isMainContact && (
+                        <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                      )}
+                      {contact.isInvoiceContact && (
+                        <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
+                      )}
+                      {!contact.isMainContact && !contact.isInvoiceContact && (
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                      )}
+                    </div>
+                  </td>
                   <td style={{ fontSize: '13px' }}>{contact.phone || '—'}</td>
                   <td>{getTypeBadge(contact.customerType)}</td>
                   <td>
@@ -320,11 +317,21 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
               <div key={contact.id} className="mobile-card">
                 <div className="mobile-card-header">
                   <span className="mobile-card-title">{contact.name}</span>
-                  {getTypeBadge(contact.customerType)}
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {contact.isMainContact && (
+                      <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                    )}
+                    {contact.isInvoiceContact && (
+                      <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
+                    )}
+                  </div>
                 </div>
                 <div className="mobile-card-body">
-                  {contact.email && <div className="mobile-card-row"><span>Email:</span> {contact.email}</div>}
+                  {contact.operationNames.length > 0 && (
+                    <div className="mobile-card-row"><span>Operation:</span> {contact.operationNames.join(', ')}</div>
+                  )}
                   {contact.phone && <div className="mobile-card-row"><span>Phone:</span> {contact.phone}</div>}
+                  {contact.email && <div className="mobile-card-row"><span>Email:</span> {contact.email}</div>}
                 </div>
                 <div className="mobile-card-actions">
                   <button className="btn btn-secondary" onClick={() => openEditModal(contact)}>Edit</button>
@@ -353,6 +360,25 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
                 <div className="form-group">
                   <label>Name *</label>
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Contact name" />
+                </div>
+                <div className="form-group">
+                  <label>Operation</label>
+                  <select
+                    value={form.operations[0] || ''}
+                    onChange={(e) => setForm({ ...form, operations: e.target.value ? [e.target.value] : [] })}
+                  >
+                    <option value="">Select operation...</option>
+                    {operations.map((op) => (
+                      <option key={op.id} value={op.id}>{op.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Main Contact?</label>
+                  <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Email</label>
@@ -408,6 +434,25 @@ export default function ContactsClient({ initialContacts }: ContactsClientProps)
                 <div className="form-group">
                   <label>Name *</label>
                   <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label>Operation</label>
+                  <select
+                    value={form.operations[0] || ''}
+                    onChange={(e) => setForm({ ...form, operations: e.target.value ? [e.target.value] : [] })}
+                  >
+                    <option value="">Select operation...</option>
+                    {operations.map((op) => (
+                      <option key={op.id} value={op.id}>{op.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Main Contact?</label>
+                  <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Email</label>

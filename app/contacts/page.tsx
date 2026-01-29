@@ -1,4 +1,4 @@
-import { getContacts } from '@/lib/baserow';
+import { getContacts, getOperations, getBillingEntities } from '@/lib/baserow';
 import ContactsClient from './ContactsClient';
 
 export interface ProcessedContact {
@@ -9,29 +9,69 @@ export interface ProcessedContact {
   address: string;
   customerType: string;
   notes: string;
+  operationIds: number[];
+  operationNames: string[];
+  isMainContact: boolean;
+  isInvoiceContact: boolean;
 }
 
-async function getContactsData(): Promise<ProcessedContact[]> {
-  try {
-    const contacts = await getContacts();
+export interface OperationOption {
+  id: number;
+  name: string;
+}
 
-    return contacts.map((contact) => ({
-      id: contact.id,
-      name: contact.name || '',
-      email: contact.email || '',
-      phone: contact.phone || '',
-      address: contact.address || '',
-      customerType: contact.customer_type?.value || '',
-      notes: contact.notes || '',
+async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operations: OperationOption[] }> {
+  try {
+    const [contacts, operations, billingEntities] = await Promise.all([
+      getContacts(),
+      getOperations(),
+      getBillingEntities(),
+    ]);
+
+    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+
+    // Build a set of contact IDs that are invoice contacts
+    const invoiceContactIds = new Set<number>();
+    billingEntities.forEach((be) => {
+      const contactLink = be.invoice_contact?.[0];
+      if (contactLink) {
+        invoiceContactIds.add(contactLink.id);
+      }
+    });
+
+    const processedContacts: ProcessedContact[] = contacts.map((contact) => {
+      const opIds = contact.operations?.map((op) => op.id) || [];
+      const opNames = opIds.map((id) => operationMap.get(id) || 'Unknown');
+
+      return {
+        id: contact.id,
+        name: contact.name || '',
+        email: contact.email || '',
+        phone: contact.phone || '',
+        address: contact.address || '',
+        customerType: contact.customer_type?.value || '',
+        notes: contact.notes || '',
+        operationIds: opIds,
+        operationNames: opNames,
+        isMainContact: contact.is_main_contact?.value === 'Yes',
+        isInvoiceContact: invoiceContactIds.has(contact.id),
+      };
+    });
+
+    const operationOptions: OperationOption[] = operations.map((op) => ({
+      id: op.id,
+      name: op.name,
     }));
+
+    return { contacts: processedContacts, operations: operationOptions };
   } catch (error) {
     console.error('Error fetching contacts data:', error);
-    return [];
+    return { contacts: [], operations: [] };
   }
 }
 
 export default async function ContactsPage() {
-  const contacts = await getContactsData();
+  const { contacts, operations } = await getContactsData();
 
   return (
     <>
@@ -42,7 +82,7 @@ export default async function ContactsPage() {
       </header>
 
       <div className="content">
-        <ContactsClient initialContacts={contacts} />
+        <ContactsClient initialContacts={contacts} operations={operations} />
       </div>
     </>
   );
