@@ -5,7 +5,6 @@ const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 export const TABLE_IDS = {
   contacts: 817294,
   operations: 817295,
-  operation_contacts: 817296,
   billing_entities: 817297,
   fields: 817298,
   probes: 817299,
@@ -118,6 +117,8 @@ export interface Contact {
   address?: string;
   customer_type?: { id: number; value: string };
   notes?: string;
+  operations?: { id: number; value: string }[];
+  is_main_contact?: boolean;
 }
 
 export interface Operation {
@@ -282,17 +283,9 @@ export interface InvoiceLine {
   rate?: number;
 }
 
-export interface OperationContact {
-  id: number;
-  operation?: { id: number; value: string }[];
-  contact?: { id: number; value: string }[];
-  is_main_contact?: boolean;
-}
-
 // Convenience functions for each table
 export const getContacts = (options?: FetchOptions) => getRows<Contact>('contacts', options);
 export const getOperations = (options?: FetchOptions) => getRows<Operation>('operations', options);
-export const getOperationContacts = (options?: FetchOptions) => getRows<OperationContact>('operation_contacts', options);
 export const getBillingEntities = (options?: FetchOptions) => getRows<BillingEntity>('billing_entities', options);
 export const getFields = (options?: FetchOptions) => getRows<Field>('fields', options);
 export const getProbes = (options?: FetchOptions) => getRows<Probe>('probes', options);

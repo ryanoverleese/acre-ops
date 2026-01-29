@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 
 export interface LinkedContact {
-  operationContactId: number;
   contactId: number;
   name: string;
   email?: string;
@@ -197,21 +196,18 @@ export default function OperationsClient({ operations: initialOperations, allCon
     if (!newContactId || !selectedOperation) return;
     setSaving(true);
     try {
-      const response = await fetch('/api/operation-contacts', {
+      const response = await fetch(`/api/contacts/${newContactId}/operations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          operation: [selectedOperation.id],
-          contact: [parseInt(newContactId)],
-          is_main_contact: newContactIsMain,
+          operationId: selectedOperation.id,
+          isMainContact: newContactIsMain,
         }),
       });
       if (response.ok) {
-        const newOC = await response.json();
         const contact = allContacts.find((c) => c.id === parseInt(newContactId));
         if (contact) {
           setLinkedContacts([...linkedContacts, {
-            operationContactId: newOC.id,
             contactId: contact.id,
             name: contact.name,
             email: contact.email,
@@ -235,12 +231,13 @@ export default function OperationsClient({ operations: initialOperations, allCon
 
   const handleRemoveContact = async (lc: LinkedContact) => {
     if (!confirm(`Remove ${lc.name} from this operation?`)) return;
+    if (!selectedOperation) return;
     try {
-      const response = await fetch(`/api/operation-contacts/${lc.operationContactId}`, {
+      const response = await fetch(`/api/contacts/${lc.contactId}/operations?operationId=${selectedOperation.id}`, {
         method: 'DELETE',
       });
       if (response.ok) {
-        setLinkedContacts(linkedContacts.filter((c) => c.operationContactId !== lc.operationContactId));
+        setLinkedContacts(linkedContacts.filter((c) => c.contactId !== lc.contactId));
       } else {
         alert('Failed to remove contact');
       }
@@ -371,7 +368,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                       {op.linkedContacts.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           {op.linkedContacts.map((c) => (
-                            <div key={c.operationContactId} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div key={c.contactId} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>{c.name}</span>
                               {c.isMainContact && (
                                 <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
@@ -531,7 +528,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                   {linkedContacts.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
                       {linkedContacts.map((lc) => (
-                        <div key={lc.operationContactId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                        <div key={lc.contactId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontWeight: 500 }}>{lc.name}</span>
                             {lc.isMainContact && (

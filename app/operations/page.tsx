@@ -1,4 +1,4 @@
-import { getOperations, getContacts, getBillingEntities, getFields, getOperationContacts } from '@/lib/baserow';
+import { getOperations, getContacts, getBillingEntities, getFields } from '@/lib/baserow';
 import OperationsClient, { ProcessedOperation, ContactOption, LinkedContact } from './OperationsClient';
 
 async function getOperationsData(): Promise<{
@@ -6,15 +6,12 @@ async function getOperationsData(): Promise<{
   allContacts: ContactOption[];
 }> {
   try {
-    const [operations, contacts, billingEntities, fields, operationContacts] = await Promise.all([
+    const [operations, contacts, billingEntities, fields] = await Promise.all([
       getOperations(),
       getContacts(),
       getBillingEntities(),
       getFields(),
-      getOperationContacts(),
     ]);
-
-    const contactMap = new Map(contacts.map((c) => [c.id, c]));
 
     const operationBillingMap = new Map<number, { id: number; name: string }[]>();
     billingEntities.forEach((be) => {
@@ -38,26 +35,21 @@ async function getOperationsData(): Promise<{
       }
     });
 
-    // Build linked contacts from operation_contacts table
+    // Build linked contacts directly from contacts table (contacts have operations link)
     const linkedContactsMap = new Map<number, LinkedContact[]>();
-    operationContacts.forEach((oc) => {
-      const opLink = oc.operation?.[0];
-      const contactLink = oc.contact?.[0];
-      if (opLink && contactLink) {
-        const contact = contactMap.get(contactLink.id);
-        if (contact) {
-          const existing = linkedContactsMap.get(opLink.id) || [];
-          existing.push({
-            operationContactId: oc.id,
-            contactId: contact.id,
-            name: contact.name,
-            email: contact.email,
-            phone: contact.phone,
-            isMainContact: oc.is_main_contact || false,
-          });
-          linkedContactsMap.set(opLink.id, existing);
-        }
-      }
+    contacts.forEach((contact) => {
+      // A contact can be linked to multiple operations
+      contact.operations?.forEach((opLink) => {
+        const existing = linkedContactsMap.get(opLink.id) || [];
+        existing.push({
+          contactId: contact.id,
+          name: contact.name,
+          email: contact.email,
+          phone: contact.phone,
+          isMainContact: contact.is_main_contact || false,
+        });
+        linkedContactsMap.set(opLink.id, existing);
+      });
     });
 
     const allContacts: ContactOption[] = contacts.map((c) => ({
