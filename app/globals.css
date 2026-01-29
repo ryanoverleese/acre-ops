@@ -919,7 +919,7 @@ select:focus {
   }
 }
 
-/* Detail Panel */
+/* Detail Panel - Centered Modal */
 .detail-panel-overlay {
   position: fixed;
   top: 0;
@@ -928,18 +928,22 @@ select:focus {
   bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
+  align-items: center;
   z-index: 1000;
+  padding: 20px;
 }
 
 .detail-panel {
-  width: 400px;
+  width: 600px;
   max-width: 100%;
+  max-height: 90vh;
   background: var(--bg-secondary);
-  height: 100%;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .detail-panel-header {

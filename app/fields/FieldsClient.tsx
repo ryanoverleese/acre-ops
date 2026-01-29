@@ -1491,9 +1491,10 @@ export default function FieldsClient({
                             const fieldSeasonProbeAssignments = field.fieldSeasonId ? getProbeAssignmentsForFieldSeason(field.fieldSeasonId) : [];
                             const isExpanded = field.fieldSeasonId ? expandedFieldSeasons.has(field.fieldSeasonId) : false;
                             const hasProbeAssignments = fieldSeasonProbeAssignments.length > 0;
+                            const needsSeasonStart = !field.fieldSeasonId && currentSeason !== 'all';
 
                             return (
-                              <React.Fragment key={`${field.id}-${field.fieldSeasonId}`}>
+                              <React.Fragment key={`${field.id}-${field.fieldSeasonId || 'no-season'}`}>
                                 <tr>
                                   <td
                                     style={{ fontWeight: 500, cursor: 'pointer' }}
@@ -1502,6 +1503,37 @@ export default function FieldsClient({
                                   >
                                     {field.name}
                                   </td>
+                              {needsSeasonStart ? (
+                                <>
+                                  <td colSpan={8} style={{ textAlign: 'left' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                      <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
+                                        No {currentSeason} season configured
+                                      </span>
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleQuickStartSeason(field.id, currentSeason);
+                                        }}
+                                        style={{
+                                          padding: '6px 12px',
+                                          fontSize: '12px',
+                                          fontWeight: 500,
+                                          borderRadius: '4px',
+                                          border: 'none',
+                                          background: 'var(--accent-green)',
+                                          color: 'white',
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        Start {currentSeason} Season
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td></td>
+                                </>
+                              ) : (
+                                <>
                               <td style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{field.season || '—'}</td>
                               <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
                               <td onClick={(e) => e.stopPropagation()}>
@@ -1639,6 +1671,8 @@ export default function FieldsClient({
                                   </button>
                                 )}
                               </td>
+                                </>
+                              )}
                                 </tr>
                                 {/* Expanded probe assignment sub-rows */}
                                 {isExpanded && field.fieldSeasonId && (
