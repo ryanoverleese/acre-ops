@@ -1379,6 +1379,20 @@ export default function FieldsClient({
       <div className="content">
         {/* View Mode Toggle */}
         <div className="fields-filter-row">
+          <div className="view-mode-toggle">
+            <button
+              onClick={() => setViewMode('permanent')}
+              className={viewMode === 'permanent' ? 'active' : ''}
+            >
+              Permanent Data
+            </button>
+            <button
+              onClick={() => setViewMode('seasonal')}
+              className={viewMode === 'seasonal' ? 'active' : ''}
+            >
+              Seasonal Data
+            </button>
+          </div>
           <div className="tabs">
             <button className={`tab ${currentFilter === 'all' ? 'active' : ''}`} onClick={() => setCurrentFilter('all')}>
               All Fields ({statusCounts.all})
@@ -1391,20 +1405,6 @@ export default function FieldsClient({
             </button>
             <button className={`tab ${currentFilter === 'installed' ? 'active' : ''}`} onClick={() => setCurrentFilter('installed')}>
               Installed ({statusCounts['installed']})
-            </button>
-          </div>
-          <div className="view-mode-toggle">
-            <button
-              onClick={() => setViewMode('seasonal')}
-              className={viewMode === 'seasonal' ? 'active' : ''}
-            >
-              Seasonal Data
-            </button>
-            <button
-              onClick={() => setViewMode('permanent')}
-              className={viewMode === 'permanent' ? 'active' : ''}
-            >
-              Permanent Data
             </button>
           </div>
         </div>
