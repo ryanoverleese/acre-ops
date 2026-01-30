@@ -50,6 +50,22 @@ type ColumnKey = 'name' | 'operation' | 'role' | 'email' | 'phone' | 'address' |
 
 const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = ['name', 'operation', 'role', 'phone', 'customerType'];
 const LOCAL_STORAGE_KEY = 'contacts-visible-columns';
+const COLUMN_WIDTHS_STORAGE_KEY = 'contacts-column-widths';
+
+// Default column widths in pixels
+const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
+  name: 180,
+  operation: 150,
+  role: 100,
+  email: 180,
+  phone: 130,
+  address: 200,
+  customerType: 140,
+  notes: 150,
+};
+
+const MIN_COLUMN_WIDTH = 60;
+const ACTIONS_COLUMN_WIDTH = 80;
 
 const initialForm = {
   name: '',
@@ -105,6 +121,12 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
 
+  // Column width state for resizable columns
+  const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(DEFAULT_COLUMN_WIDTHS);
+  const [resizingColumn, setResizingColumn] = useState<ColumnKey | null>(null);
+  const resizeStartX = useRef<number>(0);
+  const resizeStartWidth = useRef<number>(0);
+
   // Load column preferences from localStorage on mount
   useEffect(() => {
     try {
@@ -120,6 +142,17 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     } catch (e) {
       console.error('Failed to load column preferences:', e);
     }
+
+    // Load column widths
+    try {
+      const savedWidths = localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
+      if (savedWidths) {
+        const parsed = JSON.parse(savedWidths) as Record<string, number>;
+        setColumnWidths((prev) => ({ ...prev, ...parsed }));
+      }
+    } catch (e) {
+      console.error('Failed to load column widths:', e);
+    }
   }, []);
 
   // Save column preferences to localStorage when they change
@@ -130,6 +163,15 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       console.error('Failed to save column preferences:', e);
     }
   }, [visibleColumns]);
+
+  // Save column widths to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
+    } catch (e) {
+      console.error('Failed to save column widths:', e);
+    }
+  }, [columnWidths]);
 
   // Close column picker when clicking outside
   useEffect(() => {
@@ -154,6 +196,43 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   };
 
   const isColumnVisible = (columnKey: ColumnKey) => visibleColumns.includes(columnKey);
+
+  // Column resize handlers
+  const handleResizeStart = (columnKey: ColumnKey, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizingColumn(columnKey);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = columnWidths[columnKey];
+  };
+
+  // Handle mouse move and mouse up for resize
+  useEffect(() => {
+    if (!resizingColumn) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const diff = e.clientX - resizeStartX.current;
+      const newWidth = Math.max(MIN_COLUMN_WIDTH, resizeStartWidth.current + diff);
+      setColumnWidths((prev) => ({ ...prev, [resizingColumn]: newWidth }));
+    };
+
+    const handleMouseUp = () => {
+      setResizingColumn(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingColumn]);
+
+  // Reset column width to default on double-click
+  const handleResetColumnWidth = (columnKey: ColumnKey) => {
+    setColumnWidths((prev) => ({ ...prev, [columnKey]: DEFAULT_COLUMN_WIDTHS[columnKey] }));
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -897,48 +976,199 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         />
 
         {/* Desktop Table */}
-        <table className="desktop-table" style={{ display: showMap ? 'none' : undefined }}>
+        <table
+          className="desktop-table"
+          style={{
+            display: showMap ? 'none' : undefined,
+            tableLayout: 'fixed',
+            width: '100%',
+            userSelect: resizingColumn ? 'none' : undefined,
+          }}
+        >
+          <colgroup>
+            {isColumnVisible('name') && <col style={{ width: columnWidths.name }} />}
+            {isColumnVisible('operation') && <col style={{ width: columnWidths.operation }} />}
+            {isColumnVisible('role') && <col style={{ width: columnWidths.role }} />}
+            {isColumnVisible('email') && <col style={{ width: columnWidths.email }} />}
+            {isColumnVisible('phone') && <col style={{ width: columnWidths.phone }} />}
+            {isColumnVisible('address') && <col style={{ width: columnWidths.address }} />}
+            {isColumnVisible('customerType') && <col style={{ width: columnWidths.customerType }} />}
+            {isColumnVisible('notes') && <col style={{ width: columnWidths.notes }} />}
+            <col style={{ width: ACTIONS_COLUMN_WIDTH }} />
+          </colgroup>
           <thead>
             <tr>
               {isColumnVisible('name') && (
-                <th className="sortable" onClick={() => handleSort('name')}>
-                  Name
-                  {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('name')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Name
+                    {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('name', e)}
+                    onDoubleClick={() => handleResetColumnWidth('name')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'name' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
               )}
               {isColumnVisible('operation') && (
-                <th className="sortable" onClick={() => handleSort('operation')}>
-                  Operation
-                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('operation')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Operation
+                    {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('operation', e)}
+                    onDoubleClick={() => handleResetColumnWidth('operation')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'operation' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
               )}
-              {isColumnVisible('role') && <th>Role</th>}
+              {isColumnVisible('role') && (
+                <th style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>Role</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('role', e)}
+                    onDoubleClick={() => handleResetColumnWidth('role')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'role' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+              )}
               {isColumnVisible('email') && (
-                <th className="sortable" onClick={() => handleSort('email')}>
-                  Email
-                  {sortColumn === 'email' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('email')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Email
+                    {sortColumn === 'email' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('email', e)}
+                    onDoubleClick={() => handleResetColumnWidth('email')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'email' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
               )}
               {isColumnVisible('phone') && (
-                <th className="sortable" onClick={() => handleSort('phone')}>
-                  Phone
-                  {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('phone')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Phone
+                    {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('phone', e)}
+                    onDoubleClick={() => handleResetColumnWidth('phone')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'phone' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
               )}
               {isColumnVisible('address') && (
-                <th className="sortable" onClick={() => handleSort('address')}>
-                  Address
-                  {sortColumn === 'address' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('address')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Address
+                    {sortColumn === 'address' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('address', e)}
+                    onDoubleClick={() => handleResetColumnWidth('address')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'address' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
               )}
               {isColumnVisible('customerType') && (
-                <th className="sortable" onClick={() => handleSort('customerType')}>
-                  Type
-                  {sortColumn === 'customerType' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('customerType')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Type
+                    {sortColumn === 'customerType' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('customerType', e)}
+                    onDoubleClick={() => handleResetColumnWidth('customerType')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'customerType' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
               )}
-              {isColumnVisible('notes') && <th>Notes</th>}
-              <th></th>
+              {isColumnVisible('notes') && (
+                <th style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>Notes</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('notes', e)}
+                    onDoubleClick={() => handleResetColumnWidth('notes')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'notes' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+              )}
+              <th style={{ width: ACTIONS_COLUMN_WIDTH }}></th>
             </tr>
           </thead>
           <tbody>
@@ -951,9 +1181,13 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
             ) : (
               filteredContacts.map((contact) => (
                 <tr key={contact.id}>
-                  {isColumnVisible('name') && <td className="operation-name">{contact.name}</td>}
+                  {isColumnVisible('name') && (
+                    <td className="operation-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.name}>
+                      {contact.name}
+                    </td>
+                  )}
                   {isColumnVisible('operation') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.operationNames.join(', ')}>
                       {contact.operationNames.length > 0 ? contact.operationNames.join(', ') : '—'}
                     </td>
                   )}
@@ -972,16 +1206,24 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                       </div>
                     </td>
                   )}
-                  {isColumnVisible('email') && <td style={{ fontSize: '13px' }}>{contact.email || '—'}</td>}
-                  {isColumnVisible('phone') && <td style={{ fontSize: '13px' }}>{contact.phone || '—'}</td>}
+                  {isColumnVisible('email') && (
+                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.email || ''}>
+                      {contact.email || '—'}
+                    </td>
+                  )}
+                  {isColumnVisible('phone') && (
+                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.phone || ''}>
+                      {contact.phone || '—'}
+                    </td>
+                  )}
                   {isColumnVisible('address') && (
-                    <td style={{ fontSize: '13px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.address || ''}>
+                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.address || ''}>
                       {contact.address || '—'}
                     </td>
                   )}
                   {isColumnVisible('customerType') && <td>{getTypeBadge(contact.customerType)}</td>}
                   {isColumnVisible('notes') && (
-                    <td style={{ fontSize: '13px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.notes || ''}>
+                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.notes || ''}>
                       {contact.notes || '—'}
                     </td>
                   )}
