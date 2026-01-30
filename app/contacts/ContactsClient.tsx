@@ -104,7 +104,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
   // Nested modal state for creating new billing entity
   const [showAddBillingEntityModal, setShowAddBillingEntityModal] = useState(false);
-  const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', address: '', notes: '' });
+  const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', address: '', notes: '', sameAddressAsContact: true });
   const [savingBillingEntity, setSavingBillingEntity] = useState(false);
 
   // Map and location picker state
@@ -512,7 +512,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         name: newBillingEntityForm.name,
         operation: [selectedOpId],
       };
-      if (newBillingEntityForm.address) payload.address = newBillingEntityForm.address;
+      // Use contact's address if "same address" is selected, otherwise use the manually entered address
+      const billingAddress = newBillingEntityForm.sameAddressAsContact ? form.address : newBillingEntityForm.address;
+      if (billingAddress) payload.address = billingAddress;
       if (newBillingEntityForm.notes) payload.notes = newBillingEntityForm.notes;
 
       const response = await fetch('/api/billing-entities', {
@@ -531,7 +533,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         // Add to selected billing entities
         setSelectedBillingEntities([...selectedBillingEntities, { id: newBe.id, name: newBe.name || '' }]);
         setShowAddBillingEntityModal(false);
-        setNewBillingEntityForm({ name: '', address: '', notes: '' });
+        setNewBillingEntityForm({ name: '', address: '', notes: '', sameAddressAsContact: true });
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to create billing entity');
@@ -1864,12 +1866,33 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 </div>
                 <div className="form-group">
                   <label>Mailing Address</label>
-                  <textarea
-                    value={newBillingEntityForm.address}
-                    onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, address: e.target.value })}
-                    placeholder="Enter mailing address..."
-                    rows={2}
-                  />
+                  <div style={{ marginBottom: '8px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 'normal' }}>
+                      <input
+                        type="checkbox"
+                        checked={newBillingEntityForm.sameAddressAsContact}
+                        onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, sameAddressAsContact: e.target.checked, address: '' })}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                      />
+                      Same address as contact
+                    </label>
+                  </div>
+                  {newBillingEntityForm.sameAddressAsContact ? (
+                    <div style={{ padding: '8px 12px', backgroundColor: 'var(--background-secondary)', borderRadius: '6px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                      {form.address ? (
+                        <span>Will use: <strong style={{ color: 'var(--text-primary)' }}>{form.address}</strong></span>
+                      ) : (
+                        <span style={{ fontStyle: 'italic' }}>No address entered for contact yet</span>
+                      )}
+                    </div>
+                  ) : (
+                    <textarea
+                      value={newBillingEntityForm.address}
+                      onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, address: e.target.value })}
+                      placeholder="Enter mailing address..."
+                      rows={2}
+                    />
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Notes</label>
