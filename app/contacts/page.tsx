@@ -15,6 +15,7 @@ export interface ProcessedContact {
   operationNames: string[];
   isMainContact: boolean;
   isInvoiceContact: boolean;
+  billingEntityNames: string[];
 }
 
 export interface OperationOption {
@@ -38,18 +39,21 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
 
-    // Build a set of contact IDs that are invoice contacts
-    const invoiceContactIds = new Set<number>();
+    // Build a map of contact IDs to billing entity names (for contacts that are invoice contacts)
+    const contactBillingEntityMap = new Map<number, string[]>();
     billingEntities.forEach((be) => {
       const contactLink = be.invoice_contact?.[0];
       if (contactLink) {
-        invoiceContactIds.add(contactLink.id);
+        const existing = contactBillingEntityMap.get(contactLink.id) || [];
+        existing.push(be.name || 'Unnamed');
+        contactBillingEntityMap.set(contactLink.id, existing);
       }
     });
 
     const processedContacts: ProcessedContact[] = contacts.map((contact) => {
       const opIds = contact.operations?.map((op) => op.id) || [];
       const opNames = opIds.map((id) => operationMap.get(id) || 'Unknown');
+      const billingEntityNames = contactBillingEntityMap.get(contact.id) || [];
 
       return {
         id: contact.id,
@@ -64,7 +68,8 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
         operationIds: opIds,
         operationNames: opNames,
         isMainContact: contact.is_main_contact?.value === 'Yes',
-        isInvoiceContact: invoiceContactIds.has(contact.id),
+        isInvoiceContact: billingEntityNames.length > 0,
+        billingEntityNames,
       };
     });
 

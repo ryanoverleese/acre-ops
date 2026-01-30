@@ -38,6 +38,7 @@ interface ColumnDefinition {
 const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: 'name', label: 'Name', sortable: true, alwaysVisible: true },
   { key: 'operation', label: 'Operation', sortable: true },
+  { key: 'billingEntity', label: 'Billing Entity', sortable: true },
   { key: 'role', label: 'Role', sortable: false },
   { key: 'email', label: 'Email', sortable: true },
   { key: 'phone', label: 'Phone', sortable: true },
@@ -46,7 +47,7 @@ const COLUMN_DEFINITIONS: ColumnDefinition[] = [
   { key: 'notes', label: 'Notes', sortable: false },
 ];
 
-type ColumnKey = 'name' | 'operation' | 'role' | 'email' | 'phone' | 'address' | 'customerType' | 'notes';
+type ColumnKey = 'name' | 'operation' | 'billingEntity' | 'role' | 'email' | 'phone' | 'address' | 'customerType' | 'notes';
 
 const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = ['name', 'operation', 'role', 'phone', 'customerType'];
 const LOCAL_STORAGE_KEY = 'contacts-visible-columns';
@@ -56,6 +57,7 @@ const COLUMN_WIDTHS_STORAGE_KEY = 'contacts-column-widths';
 const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
   name: 180,
   operation: 150,
+  billingEntity: 150,
   role: 100,
   email: 180,
   phone: 130,
@@ -292,6 +294,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         case 'phone': aVal = a.phone.toLowerCase(); bVal = b.phone.toLowerCase(); break;
         case 'address': aVal = a.address.toLowerCase(); bVal = b.address.toLowerCase(); break;
         case 'operation': aVal = a.operationNames.join(',').toLowerCase(); bVal = b.operationNames.join(',').toLowerCase(); break;
+        case 'billingEntity': aVal = a.billingEntityNames.join(',').toLowerCase(); bVal = b.billingEntityNames.join(',').toLowerCase(); break;
         case 'customerType': aVal = a.customerType.toLowerCase(); bVal = b.customerType.toLowerCase(); break;
         default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
       }
@@ -1230,6 +1233,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           <colgroup>
             {isColumnVisible('name') && <col style={{ width: columnWidths.name }} />}
             {isColumnVisible('operation') && <col style={{ width: columnWidths.operation }} />}
+            {isColumnVisible('billingEntity') && <col style={{ width: columnWidths.billingEntity }} />}
             {isColumnVisible('role') && <col style={{ width: columnWidths.role }} />}
             {isColumnVisible('email') && <col style={{ width: columnWidths.email }} />}
             {isColumnVisible('phone') && <col style={{ width: columnWidths.phone }} />}
@@ -1279,6 +1283,28 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                       width: '6px',
                       cursor: 'col-resize',
                       background: resizingColumn === 'operation' ? 'var(--accent-blue)' : 'transparent',
+                    }}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+              )}
+              {isColumnVisible('billingEntity') && (
+                <th className="sortable" onClick={() => handleSort('billingEntity')} style={{ position: 'relative' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                    Billing Entity
+                    {sortColumn === 'billingEntity' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('billingEntity', e)}
+                    onDoubleClick={() => handleResetColumnWidth('billingEntity')}
+                    style={{
+                      position: 'absolute',
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '6px',
+                      cursor: 'col-resize',
+                      background: resizingColumn === 'billingEntity' ? 'var(--accent-blue)' : 'transparent',
                     }}
                     title="Drag to resize, double-click to reset"
                   />
@@ -1433,6 +1459,24 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                       {renderEditableOperationCell(contact)}
                     </td>
                   )}
+                  {isColumnVisible('billingEntity') && (
+                    <td style={{ fontSize: '13px' }}>
+                      <div
+                        style={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title={contact.billingEntityNames.join(', ') || undefined}
+                      >
+                        {contact.billingEntityNames.length > 0 ? (
+                          contact.billingEntityNames.join(', ')
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </div>
+                    </td>
+                  )}
                   {isColumnVisible('role') && (
                     <td>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -1516,6 +1560,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="mobile-card-body">
                   {isColumnVisible('operation') && contact.operationNames.length > 0 && (
                     <div className="mobile-card-row"><span>Operation:</span> {contact.operationNames.join(', ')}</div>
+                  )}
+                  {isColumnVisible('billingEntity') && contact.billingEntityNames.length > 0 && (
+                    <div className="mobile-card-row"><span>Billing Entity:</span> {contact.billingEntityNames.join(', ')}</div>
                   )}
                   {isColumnVisible('phone') && contact.phone && <div className="mobile-card-row"><span>Phone:</span> {contact.phone}</div>}
                   {isColumnVisible('email') && contact.email && <div className="mobile-card-row"><span>Email:</span> {contact.email}</div>}
