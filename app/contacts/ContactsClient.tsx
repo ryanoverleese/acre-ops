@@ -72,6 +72,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [geocoding, setGeocoding] = useState(false);
   const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
+  // Bulk geocoding state
+  const [bulkGeocoding, setBulkGeocoding] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -204,6 +208,76 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       address_lat: '',
       address_lng: '',
     });
+  };
+
+  // Bulk geocode all contacts that have an address but no lat/lng
+  const handleBulkGeocode = async () => {
+    const contactsToGeocode = contacts.filter(
+      (c) => c.address && c.address.trim() && (c.addressLat == null || c.addressLng == null)
+    );
+
+    if (contactsToGeocode.length === 0) {
+      alert('No contacts need geocoding. All contacts with addresses already have coordinates.');
+      return;
+    }
+
+    if (!confirm(`Geocode ${contactsToGeocode.length} contacts? This may take a while.`)) {
+      return;
+    }
+
+    setBulkGeocoding(true);
+    setBulkProgress({ current: 0, total: contactsToGeocode.length, success: 0, failed: 0 });
+
+    let success = 0;
+    let failed = 0;
+
+    for (let i = 0; i < contactsToGeocode.length; i++) {
+      const contact = contactsToGeocode[i];
+      setBulkProgress({ current: i + 1, total: contactsToGeocode.length, success, failed });
+
+      try {
+        // Geocode the address
+        const geoResponse = await fetch(`/api/geocode?address=${encodeURIComponent(contact.address)}`);
+        const geoData = await geoResponse.json();
+
+        if (geoResponse.ok && geoData.lat && geoData.lng) {
+          // Round to 6 decimal places
+          const lat = Math.round(geoData.lat * 1000000) / 1000000;
+          const lng = Math.round(geoData.lng * 1000000) / 1000000;
+
+          // Update the contact in Baserow
+          const updateResponse = await fetch(`/api/contacts/${contact.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ address_lat: lat, address_lng: lng }),
+          });
+
+          if (updateResponse.ok) {
+            // Update local state
+            setContacts((prev) =>
+              prev.map((c) =>
+                c.id === contact.id ? { ...c, addressLat: lat, addressLng: lng } : c
+              )
+            );
+            success++;
+          } else {
+            failed++;
+          }
+        } else {
+          failed++;
+        }
+      } catch (error) {
+        console.error(`Failed to geocode contact ${contact.name}:`, error);
+        failed++;
+      }
+
+      // Small delay to avoid rate limiting
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+
+    setBulkProgress({ current: contactsToGeocode.length, total: contactsToGeocode.length, success, failed });
+    setBulkGeocoding(false);
+    alert(`Geocoding complete!\n\nSuccess: ${success}\nFailed: ${failed}`);
   };
 
   // Handler to create a new operation inline
@@ -600,6 +674,27 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <option value="operation">Color by Operation</option>
               </select>
             )}
+            {/* Temporary bulk geocode button */}
+            {(() => {
+              const needsGeocode = contacts.filter(
+                (c) => c.address && c.address.trim() && (c.addressLat == null || c.addressLng == null)
+              ).length;
+              return needsGeocode > 0 ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleBulkGeocode}
+                  disabled={bulkGeocoding}
+                  title={`Geocode ${needsGeocode} contacts with addresses but no coordinates`}
+                  style={{ fontSize: '12px' }}
+                >
+                  {bulkGeocoding ? (
+                    `Geocoding ${bulkProgress.current}/${bulkProgress.total}...`
+                  ) : (
+                    `Geocode All (${needsGeocode})`
+                  )}
+                </button>
+              ) : null;
+            })()}
             <button
               className={`btn ${showMap ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setShowMap(!showMap)}
