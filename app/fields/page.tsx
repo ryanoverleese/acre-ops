@@ -43,7 +43,6 @@ export interface ProcessedField {
   billingEntityId: number | null;
   acres: number;
   pivotAcres?: number;
-  billedAcres?: number;
   season: string;
   crop: string;
   serviceType: string;
@@ -206,7 +205,6 @@ async function getFieldsData(): Promise<{
           billingEntityId: billingEntityLink?.id || null,
           acres: field.acres || 0,
           pivotAcres: field.pivot_acres,
-          billedAcres: field.billed_acres,
           season: '',
           crop: 'Unknown',
           serviceType: '',
@@ -253,7 +251,6 @@ async function getFieldsData(): Promise<{
             billingEntityId: billingEntityLink?.id || null,
             acres: field.acres || 0,
             pivotAcres: field.pivot_acres,
-            billedAcres: field.billed_acres,
             season: fs.season ? String(fs.season) : '',
             crop: fs.crop?.value || 'Unknown',
             serviceType: fs.service_type?.value || '',

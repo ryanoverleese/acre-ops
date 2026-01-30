@@ -40,9 +40,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.pivot_acres !== undefined) {
       updateData.pivot_acres = body.pivot_acres;
     }
-    if (body.billed_acres !== undefined) {
-      updateData.billed_acres = body.billed_acres;
-    }
     if (body.water_source !== undefined) {
       updateData.water_source = body.water_source;
     }

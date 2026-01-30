@@ -37,9 +37,6 @@ export async function POST(request: NextRequest) {
     if (body.pivot_acres !== undefined && body.pivot_acres !== null && body.pivot_acres !== '') {
       createData.pivot_acres = Number(body.pivot_acres);
     }
-    if (body.billed_acres !== undefined && body.billed_acres !== null && body.billed_acres !== '') {
-      createData.billed_acres = Number(body.billed_acres);
-    }
     if (body.lat !== undefined && body.lat !== null && body.lat !== '') {
       // Round to 6 decimal places (Baserow limit)
       createData.lat = Math.round(Number(body.lat) * 1000000) / 1000000;

@@ -246,7 +246,6 @@ const initialAddForm = {
   name: '',
   acres: '',
   pivot_acres: '',
-  billed_acres: '',
   lat: '',
   lng: '',
   water_source: '',
@@ -640,7 +639,6 @@ export default function FieldsClient({
       name: field.name,
       acres: field.acres,
       pivotAcres: field.pivotAcres,
-      billedAcres: field.billedAcres,
       crop: field.crop,
       lat: field.lat,
       lng: field.lng,
@@ -704,7 +702,6 @@ export default function FieldsClient({
           name: editForm.name,
           acres: editForm.acres,
           pivot_acres: editForm.pivotAcres,
-          billed_acres: editForm.billedAcres,
           lat,
           lng,
           water_source: editForm.waterSource || null,
@@ -730,7 +727,6 @@ export default function FieldsClient({
           name: editForm.name || selectedField.name,
           acres: editForm.acres ?? selectedField.acres,
           pivotAcres: editForm.pivotAcres,
-          billedAcres: editForm.billedAcres,
           lat: lat ?? selectedField.lat,
           lng: lng ?? selectedField.lng,
           waterSource: editForm.waterSource,
@@ -776,7 +772,6 @@ export default function FieldsClient({
         name: selectedField.name,
         acres: selectedField.acres,
         pivotAcres: selectedField.pivotAcres,
-        billedAcres: selectedField.billedAcres,
         crop: selectedField.crop,
         lat: selectedField.lat,
         lng: selectedField.lng,
@@ -1316,7 +1311,6 @@ export default function FieldsClient({
           name: addForm.name,
           acres: addForm.acres ? parseFloat(addForm.acres) : undefined,
           pivot_acres: addForm.pivot_acres ? parseFloat(addForm.pivot_acres) : undefined,
-          billed_acres: addForm.billed_acres ? parseFloat(addForm.billed_acres) : undefined,
           lat: addForm.lat ? parseFloat(addForm.lat) : undefined,
           lng: addForm.lng ? parseFloat(addForm.lng) : undefined,
           water_source: addForm.water_source || undefined,
@@ -2098,10 +2092,6 @@ export default function FieldsClient({
                         <label>Pivot Acres</label>
                         <input type="number" value={editForm.pivotAcres || ''} onChange={(e) => setEditForm({ ...editForm, pivotAcres: parseFloat(e.target.value) || undefined })} />
                       </div>
-                      <div className="form-group">
-                        <label>Billed Acres</label>
-                        <input type="number" value={editForm.billedAcres || ''} onChange={(e) => setEditForm({ ...editForm, billedAcres: parseFloat(e.target.value) || undefined })} />
-                      </div>
                     </div>
                     <div className="form-row">
                       <div className="form-group">
@@ -2732,10 +2722,6 @@ export default function FieldsClient({
                     <div className="form-group">
                       <label>Pivot Acres</label>
                       <input type="number" value={addForm.pivot_acres} onChange={(e) => setAddForm({ ...addForm, pivot_acres: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Billed Acres</label>
-                      <input type="number" value={addForm.billed_acres} onChange={(e) => setAddForm({ ...addForm, billed_acres: e.target.value })} />
                     </div>
                   </div>
                   <div className="form-row">

@@ -142,7 +142,6 @@ export interface Field {
   billing_entity?: { id: number; value: string }[];
   acres?: number;
   pivot_acres?: number;
-  billed_acres?: number;
   lat?: number;
   lng?: number;
   water_source?: { id: number; value: string };
