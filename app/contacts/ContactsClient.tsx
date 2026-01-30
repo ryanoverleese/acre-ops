@@ -230,6 +230,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     let success = 0;
     let failed = 0;
+    const failedContacts: string[] = [];
 
     for (let i = 0; i < contactsToGeocode.length; i++) {
       const contact = contactsToGeocode[i];
@@ -260,15 +261,22 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               )
             );
             success++;
+            console.log(`✓ Geocoded: ${contact.name}`);
           } else {
             failed++;
+            failedContacts.push(`${contact.name}: Failed to save to database`);
+            console.error(`✗ Failed to save: ${contact.name}`, await updateResponse.text());
           }
         } else {
           failed++;
+          const reason = geoData.error || 'No match found';
+          failedContacts.push(`${contact.name}: ${reason}`);
+          console.error(`✗ Geocode failed: ${contact.name} - ${reason}`);
         }
       } catch (error) {
-        console.error(`Failed to geocode contact ${contact.name}:`, error);
+        console.error(`✗ Error geocoding ${contact.name}:`, error);
         failed++;
+        failedContacts.push(`${contact.name}: Network error`);
       }
 
       // Small delay to avoid rate limiting
@@ -277,7 +285,14 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     setBulkProgress({ current: contactsToGeocode.length, total: contactsToGeocode.length, success, failed });
     setBulkGeocoding(false);
-    alert(`Geocoding complete!\n\nSuccess: ${success}\nFailed: ${failed}`);
+
+    let message = `Geocoding complete!\n\nSuccess: ${success}\nFailed: ${failed}`;
+    if (failedContacts.length > 0 && failedContacts.length <= 10) {
+      message += `\n\nFailed contacts:\n${failedContacts.join('\n')}`;
+    } else if (failedContacts.length > 10) {
+      message += `\n\nFirst 10 failed:\n${failedContacts.slice(0, 10).join('\n')}\n...and ${failedContacts.length - 10} more (check browser console)`;
+    }
+    alert(message);
   };
 
   // Handler to create a new operation inline
