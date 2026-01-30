@@ -213,7 +213,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   // Bulk geocode all contacts that have an address but no lat/lng
   const handleBulkGeocode = async () => {
     const contactsToGeocode = contacts.filter(
-      (c) => c.address && c.address.trim() && (c.addressLat == null || c.addressLng == null)
+      (c) => c.address && c.address.trim().length > 5 && (c.addressLat == null || c.addressLng == null)
     );
 
     if (contactsToGeocode.length === 0) {
@@ -692,7 +692,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
             {/* Temporary bulk geocode button */}
             {(() => {
               const needsGeocode = contacts.filter(
-                (c) => c.address && c.address.trim() && (c.addressLat == null || c.addressLng == null)
+                (c) => c.address && c.address.trim().length > 5 && (c.addressLat == null || c.addressLng == null)
               ).length;
               return needsGeocode > 0 ? (
                 <button
