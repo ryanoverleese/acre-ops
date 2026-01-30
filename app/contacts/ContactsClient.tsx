@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProcessedContact, OperationOption, BillingEntityOption } from './page';
 
@@ -26,6 +26,30 @@ interface SelectedBillingEntity {
 }
 
 const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist', 'Landlord', 'Retired', 'Prospect'];
+
+// Column definitions for the table
+interface ColumnDefinition {
+  key: string;
+  label: string;
+  sortable: boolean;
+  alwaysVisible?: boolean;
+}
+
+const COLUMN_DEFINITIONS: ColumnDefinition[] = [
+  { key: 'name', label: 'Name', sortable: true, alwaysVisible: true },
+  { key: 'operation', label: 'Operation', sortable: true },
+  { key: 'role', label: 'Role', sortable: false },
+  { key: 'email', label: 'Email', sortable: true },
+  { key: 'phone', label: 'Phone', sortable: true },
+  { key: 'address', label: 'Address', sortable: true },
+  { key: 'customerType', label: 'Type', sortable: true },
+  { key: 'notes', label: 'Notes', sortable: false },
+];
+
+type ColumnKey = 'name' | 'operation' | 'role' | 'email' | 'phone' | 'address' | 'customerType' | 'notes';
+
+const DEFAULT_VISIBLE_COLUMNS: ColumnKey[] = ['name', 'operation', 'role', 'phone', 'customerType'];
+const LOCAL_STORAGE_KEY = 'contacts-visible-columns';
 
 const initialForm = {
   name: '',
@@ -75,6 +99,61 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   // Bulk geocoding state
   const [bulkGeocoding, setBulkGeocoding] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, success: 0, failed: 0 });
+
+  // Column visibility state
+  const [visibleColumns, setVisibleColumns] = useState<ColumnKey[]>(DEFAULT_VISIBLE_COLUMNS);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const columnPickerRef = useRef<HTMLDivElement>(null);
+
+  // Load column preferences from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ColumnKey[];
+        // Validate that all saved columns are valid
+        const valid = parsed.filter((col) => COLUMN_DEFINITIONS.some((def) => def.key === col));
+        // Always include 'name' column
+        if (!valid.includes('name')) valid.unshift('name');
+        setVisibleColumns(valid);
+      }
+    } catch (e) {
+      console.error('Failed to load column preferences:', e);
+    }
+  }, []);
+
+  // Save column preferences to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch (e) {
+      console.error('Failed to save column preferences:', e);
+    }
+  }, [visibleColumns]);
+
+  // Close column picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnPickerRef.current && !columnPickerRef.current.contains(event.target as Node)) {
+        setShowColumnPicker(false);
+      }
+    };
+    if (showColumnPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColumnPicker]);
+
+  const toggleColumn = (columnKey: ColumnKey) => {
+    const column = COLUMN_DEFINITIONS.find((col) => col.key === columnKey);
+    if (column?.alwaysVisible) return; // Can't toggle always-visible columns
+
+    setVisibleColumns((prev) =>
+      prev.includes(columnKey) ? prev.filter((c) => c !== columnKey) : [...prev, columnKey]
+    );
+  };
+
+  const isColumnVisible = (columnKey: ColumnKey) => visibleColumns.includes(columnKey);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -128,6 +207,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
         case 'email': aVal = a.email.toLowerCase(); bVal = b.email.toLowerCase(); break;
         case 'phone': aVal = a.phone.toLowerCase(); bVal = b.phone.toLowerCase(); break;
+        case 'address': aVal = a.address.toLowerCase(); bVal = b.address.toLowerCase(); break;
         case 'operation': aVal = a.operationNames.join(',').toLowerCase(); bVal = b.operationNames.join(',').toLowerCase(); break;
         case 'customerType': aVal = a.customerType.toLowerCase(); bVal = b.customerType.toLowerCase(); break;
         default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
@@ -692,6 +772,72 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <option value="operation">Color by Operation</option>
               </select>
             )}
+            {/* Column Picker Dropdown */}
+            {!showMap && (
+              <div ref={columnPickerRef} style={{ position: 'relative' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowColumnPicker(!showColumnPicker)}
+                  title="Select columns to display"
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                  </svg>
+                  Columns
+                </button>
+                {showColumnPicker && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '100%',
+                      right: 0,
+                      marginTop: '4px',
+                      background: 'var(--bg-card)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius)',
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                      zIndex: 100,
+                      minWidth: '180px',
+                      padding: '8px 0',
+                    }}
+                  >
+                    <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Show Columns</span>
+                    </div>
+                    {COLUMN_DEFINITIONS.map((col) => (
+                      <label
+                        key={col.key}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 12px',
+                          cursor: col.alwaysVisible ? 'not-allowed' : 'pointer',
+                          opacity: col.alwaysVisible ? 0.6 : 1,
+                          fontSize: '13px',
+                        }}
+                        onClick={(e) => {
+                          if (!col.alwaysVisible) {
+                            e.preventDefault();
+                            toggleColumn(col.key as ColumnKey);
+                          }
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isColumnVisible(col.key as ColumnKey)}
+                          disabled={col.alwaysVisible}
+                          onChange={() => {}}
+                          style={{ cursor: col.alwaysVisible ? 'not-allowed' : 'pointer' }}
+                        />
+                        {col.label}
+                        {col.alwaysVisible && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>(required)</span>}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             {/* Temporary bulk geocode button */}
             {(() => {
               const needsGeocode = contacts.filter(
@@ -754,55 +900,91 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         <table className="desktop-table" style={{ display: showMap ? 'none' : undefined }}>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => handleSort('name')}>
-                Name
-                {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-              </th>
-              <th className="sortable" onClick={() => handleSort('operation')}>
-                Operation
-                {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-              </th>
-              <th>Role</th>
-              <th className="sortable" onClick={() => handleSort('phone')}>
-                Phone
-                {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-              </th>
-              <th className="sortable" onClick={() => handleSort('customerType')}>
-                Type
-                {sortColumn === 'customerType' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-              </th>
+              {isColumnVisible('name') && (
+                <th className="sortable" onClick={() => handleSort('name')}>
+                  Name
+                  {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+              )}
+              {isColumnVisible('operation') && (
+                <th className="sortable" onClick={() => handleSort('operation')}>
+                  Operation
+                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+              )}
+              {isColumnVisible('role') && <th>Role</th>}
+              {isColumnVisible('email') && (
+                <th className="sortable" onClick={() => handleSort('email')}>
+                  Email
+                  {sortColumn === 'email' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+              )}
+              {isColumnVisible('phone') && (
+                <th className="sortable" onClick={() => handleSort('phone')}>
+                  Phone
+                  {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+              )}
+              {isColumnVisible('address') && (
+                <th className="sortable" onClick={() => handleSort('address')}>
+                  Address
+                  {sortColumn === 'address' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+              )}
+              {isColumnVisible('customerType') && (
+                <th className="sortable" onClick={() => handleSort('customerType')}>
+                  Type
+                  {sortColumn === 'customerType' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
+              )}
+              {isColumnVisible('notes') && <th>Notes</th>}
               <th></th>
             </tr>
           </thead>
           <tbody>
             {filteredContacts.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={visibleColumns.length + 1} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                   No contacts found.
                 </td>
               </tr>
             ) : (
               filteredContacts.map((contact) => (
                 <tr key={contact.id}>
-                  <td className="operation-name">{contact.name}</td>
-                  <td style={{ fontSize: '13px' }}>
-                    {contact.operationNames.length > 0 ? contact.operationNames.join(', ') : '—'}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      {contact.isMainContact && (
-                        <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
-                      )}
-                      {contact.isInvoiceContact && (
-                        <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
-                      )}
-                      {!contact.isMainContact && !contact.isInvoiceContact && (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td style={{ fontSize: '13px' }}>{contact.phone || '—'}</td>
-                  <td>{getTypeBadge(contact.customerType)}</td>
+                  {isColumnVisible('name') && <td className="operation-name">{contact.name}</td>}
+                  {isColumnVisible('operation') && (
+                    <td style={{ fontSize: '13px' }}>
+                      {contact.operationNames.length > 0 ? contact.operationNames.join(', ') : '—'}
+                    </td>
+                  )}
+                  {isColumnVisible('role') && (
+                    <td>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {contact.isMainContact && (
+                          <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                        )}
+                        {contact.isInvoiceContact && (
+                          <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
+                        )}
+                        {!contact.isMainContact && !contact.isInvoiceContact && (
+                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        )}
+                      </div>
+                    </td>
+                  )}
+                  {isColumnVisible('email') && <td style={{ fontSize: '13px' }}>{contact.email || '—'}</td>}
+                  {isColumnVisible('phone') && <td style={{ fontSize: '13px' }}>{contact.phone || '—'}</td>}
+                  {isColumnVisible('address') && (
+                    <td style={{ fontSize: '13px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.address || ''}>
+                      {contact.address || '—'}
+                    </td>
+                  )}
+                  {isColumnVisible('customerType') && <td>{getTypeBadge(contact.customerType)}</td>}
+                  {isColumnVisible('notes') && (
+                    <td style={{ fontSize: '13px', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.notes || ''}>
+                      {contact.notes || '—'}
+                    </td>
+                  )}
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button className="action-btn" title="Edit" onClick={() => openEditModal(contact)}>
@@ -832,21 +1014,30 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               <div key={contact.id} className="mobile-card">
                 <div className="mobile-card-header">
                   <span className="mobile-card-title">{contact.name}</span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {contact.isMainContact && (
-                      <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
-                    )}
-                    {contact.isInvoiceContact && (
-                      <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
-                    )}
-                  </div>
+                  {isColumnVisible('role') && (
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {contact.isMainContact && (
+                        <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                      )}
+                      {contact.isInvoiceContact && (
+                        <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="mobile-card-body">
-                  {contact.operationNames.length > 0 && (
+                  {isColumnVisible('operation') && contact.operationNames.length > 0 && (
                     <div className="mobile-card-row"><span>Operation:</span> {contact.operationNames.join(', ')}</div>
                   )}
-                  {contact.phone && <div className="mobile-card-row"><span>Phone:</span> {contact.phone}</div>}
-                  {contact.email && <div className="mobile-card-row"><span>Email:</span> {contact.email}</div>}
+                  {isColumnVisible('phone') && contact.phone && <div className="mobile-card-row"><span>Phone:</span> {contact.phone}</div>}
+                  {isColumnVisible('email') && contact.email && <div className="mobile-card-row"><span>Email:</span> {contact.email}</div>}
+                  {isColumnVisible('address') && contact.address && <div className="mobile-card-row"><span>Address:</span> {contact.address}</div>}
+                  {isColumnVisible('customerType') && contact.customerType && (
+                    <div className="mobile-card-row"><span>Type:</span> {getTypeBadge(contact.customerType)}</div>
+                  )}
+                  {isColumnVisible('notes') && contact.notes && (
+                    <div className="mobile-card-row"><span>Notes:</span> {contact.notes}</div>
+                  )}
                 </div>
                 <div className="mobile-card-actions">
                   <button className="btn btn-secondary" onClick={() => openEditModal(contact)}>Edit</button>
