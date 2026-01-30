@@ -107,6 +107,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [newBillingEntityForm, setNewBillingEntityForm] = useState({ name: '', address: '', notes: '', sameAddressAsContact: true });
   const [savingBillingEntity, setSavingBillingEntity] = useState(false);
 
+  // Billing entity creation options
+  type BillingEntityChoiceType = 'none' | 'use_contact_name' | 'different_name' | 'existing';
+  const [billingEntityChoice, setBillingEntityChoice] = useState<BillingEntityChoiceType>('none');
+
   // Map and location picker state
   const [showMap, setShowMap] = useState(false);
   const [mapColorBy, setMapColorBy] = useState<'none' | 'type' | 'operation'>('none');
@@ -568,6 +572,13 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       alert('Name is required');
       return;
     }
+
+    // Validate billing entity name if creating with different name
+    if (billingEntityChoice === 'different_name' && !newBillingEntityForm.name.trim()) {
+      alert('Please enter a billing entity name');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { name: form.name };
@@ -589,11 +600,40 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
       if (response.ok) {
         const newContact = await response.json();
+        let billingEntitiesToLink = [...selectedBillingEntities];
 
-        // Link each selected billing entity to this contact as invoice_contact
-        if (selectedBillingEntities.length > 0) {
+        // Create new billing entity if needed
+        if (billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') {
+          const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
+          if (selectedOpId) {
+            const beName = billingEntityChoice === 'use_contact_name' ? form.name : newBillingEntityForm.name;
+            const beAddress = newBillingEntityForm.sameAddressAsContact ? form.address : newBillingEntityForm.address;
+
+            const bePayload: Record<string, unknown> = {
+              name: beName,
+              operation: [selectedOpId],
+            };
+            if (beAddress) bePayload.address = beAddress;
+
+            const beResponse = await fetch('/api/billing-entities', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(bePayload),
+            });
+
+            if (beResponse.ok) {
+              const newBe = await beResponse.json();
+              billingEntitiesToLink.push({ id: newBe.id, name: newBe.name || beName });
+            } else {
+              console.error('Failed to create billing entity');
+            }
+          }
+        }
+
+        // Link each billing entity to this contact as invoice_contact
+        if (billingEntitiesToLink.length > 0) {
           await Promise.all(
-            selectedBillingEntities.map((be) =>
+            billingEntitiesToLink.map((be) =>
               fetch(`/api/billing-entities/${be.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -622,6 +662,13 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       alert('Name is required');
       return;
     }
+
+    // Validate billing entity name if creating with different name
+    if (billingEntityChoice === 'different_name' && !newBillingEntityForm.name.trim()) {
+      alert('Please enter a billing entity name');
+      return;
+    }
+
     setSaving(true);
     try {
       const payload: Record<string, unknown> = { name: form.name };
@@ -642,10 +689,40 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       });
 
       if (response.ok) {
-        // Link each selected billing entity to this contact as invoice_contact
-        if (selectedBillingEntities.length > 0) {
+        let billingEntitiesToLink = [...selectedBillingEntities];
+
+        // Create new billing entity if needed
+        if (billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') {
+          const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
+          if (selectedOpId) {
+            const beName = billingEntityChoice === 'use_contact_name' ? form.name : newBillingEntityForm.name;
+            const beAddress = newBillingEntityForm.sameAddressAsContact ? form.address : newBillingEntityForm.address;
+
+            const bePayload: Record<string, unknown> = {
+              name: beName,
+              operation: [selectedOpId],
+            };
+            if (beAddress) bePayload.address = beAddress;
+
+            const beResponse = await fetch('/api/billing-entities', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(bePayload),
+            });
+
+            if (beResponse.ok) {
+              const newBe = await beResponse.json();
+              billingEntitiesToLink.push({ id: newBe.id, name: newBe.name || beName });
+            } else {
+              console.error('Failed to create billing entity');
+            }
+          }
+        }
+
+        // Link each billing entity to this contact as invoice_contact
+        if (billingEntitiesToLink.length > 0) {
           await Promise.all(
-            selectedBillingEntities.map((be) =>
+            billingEntitiesToLink.map((be) =>
               fetch(`/api/billing-entities/${be.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
@@ -784,6 +861,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const openAddModal = () => {
     setForm(initialForm);
     setSelectedBillingEntities([]);
+    setBillingEntityChoice('none');
+    setNewBillingEntityForm({ name: '', address: '', notes: '', sameAddressAsContact: true });
     setGeocodeError(null);
     setShowAddModal(true);
   };
@@ -811,6 +890,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         return false;
       });
     setSelectedBillingEntities(contactBillingEntities.map((be) => ({ id: be.id, name: be.name })));
+    // Set billing entity choice based on existing billing entities
+    setBillingEntityChoice(contactBillingEntities.length > 0 ? 'existing' : 'none');
+    setNewBillingEntityForm({ name: '', address: '', notes: '', sameAddressAsContact: true });
     setShowEditModal(true);
   };
 
@@ -986,8 +1068,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
             setShowAddOperationModal(true);
           } else {
             setForm({ ...form, operations: e.target.value ? [e.target.value] : [] });
-            // Clear billing entities when operation changes
+            // Clear billing entities and reset choice when operation changes
             setSelectedBillingEntities([]);
+            setBillingEntityChoice('none');
+            setNewBillingEntityForm({ name: '', address: '', notes: '', sameAddressAsContact: true });
           }
         }}
       >
@@ -1000,73 +1084,308 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     </div>
   );
 
-  const renderBillingEntitiesField = () => (
-    <div className="form-group">
-      <label>Billing Entities (Invoice Contact)</label>
+  const renderBillingEntitiesField = () => {
+    const selectedOp = operationsList.find((op) => op.id.toString() === form.operations[0]);
+    const hasExistingEntities = availableBillingEntities.length > 0 || selectedBillingEntities.length > 0;
 
-      {/* Show selected billing entities as chips */}
-      {selectedBillingEntities.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-          {selectedBillingEntities.map((be) => (
-            <span
-              key={be.id}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 8px',
-                background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))',
-                color: 'var(--accent-blue, #3b82f6)',
-                borderRadius: '4px',
-                fontSize: '13px',
-              }}
-            >
-              {be.name}
-              <button
-                type="button"
-                onClick={() => handleRemoveBillingEntity(be.id)}
+    return (
+      <div className="form-group">
+        <label>Billing Entity</label>
+
+        {/* Show question: How would you like to handle billing? */}
+        {!form.operations[0] ? (
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+            Select an operation first
+          </p>
+        ) : (
+          <>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+              For billing, would you like to:
+            </p>
+
+            {/* Radio options */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+              {/* Option 1: Use contact's name */}
+              <label
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  padding: '0',
-                  cursor: 'pointer',
-                  color: 'inherit',
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: billingEntityChoice === 'use_contact_name' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
+                  background: billingEntityChoice === 'use_contact_name' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
                 }}
-                title="Remove"
+                onClick={() => {
+                  setBillingEntityChoice('use_contact_name');
+                  setSelectedBillingEntities([]);
+                }}
               >
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+                <input
+                  type="radio"
+                  name="billingEntityChoice"
+                  checked={billingEntityChoice === 'use_contact_name'}
+                  onChange={() => {
+                    setBillingEntityChoice('use_contact_name');
+                    setSelectedBillingEntities([]);
+                  }}
+                  style={{ marginTop: '2px' }}
+                />
+                <div>
+                  <span style={{ fontWeight: 500 }}>Use contact&apos;s name</span>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    Create a billing entity named &quot;{form.name || 'Contact Name'}&quot;
+                  </p>
+                </div>
+              </label>
 
-      {/* Dropdown to add more */}
-      <select
-        value=""
-        onChange={(e) => handleSelectBillingEntity(e.target.value)}
-        disabled={!form.operations[0]}
-      >
-        <option value="">
-          {selectedBillingEntities.length === 0 ? 'Select billing entity...' : '+ Add another billing entity...'}
-        </option>
-        {availableBillingEntities.map((be) => (
-          <option key={be.id} value={be.id}>{be.name}</option>
-        ))}
-        <option value="add_new">+ Create New Billing Entity...</option>
-      </select>
+              {/* Option 2: Different name */}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: billingEntityChoice === 'different_name' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
+                  background: billingEntityChoice === 'different_name' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
+                }}
+                onClick={() => {
+                  setBillingEntityChoice('different_name');
+                  setSelectedBillingEntities([]);
+                }}
+              >
+                <input
+                  type="radio"
+                  name="billingEntityChoice"
+                  checked={billingEntityChoice === 'different_name'}
+                  onChange={() => {
+                    setBillingEntityChoice('different_name');
+                    setSelectedBillingEntities([]);
+                  }}
+                  style={{ marginTop: '2px' }}
+                />
+                <div>
+                  <span style={{ fontWeight: 500 }}>Create with a different name</span>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    Specify a custom name for the billing entity (e.g., LLC name)
+                  </p>
+                </div>
+              </label>
 
-      {form.operations[0] && availableBillingEntities.length === 0 && selectedBillingEntities.length === 0 && (
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-          No billing entities for this operation yet
-        </p>
-      )}
-    </div>
-  );
+              {/* Option 3: Connect to existing (only show if there are existing entities) */}
+              {hasExistingEntities && (
+                <label
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    padding: '10px 12px',
+                    borderRadius: '6px',
+                    border: billingEntityChoice === 'existing' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
+                    background: billingEntityChoice === 'existing' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
+                  }}
+                  onClick={() => setBillingEntityChoice('existing')}
+                >
+                  <input
+                    type="radio"
+                    name="billingEntityChoice"
+                    checked={billingEntityChoice === 'existing'}
+                    onChange={() => setBillingEntityChoice('existing')}
+                    style={{ marginTop: '2px' }}
+                  />
+                  <div>
+                    <span style={{ fontWeight: 500 }}>Connect to an existing billing entity</span>
+                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                      Link this contact to a billing entity that already exists
+                    </p>
+                  </div>
+                </label>
+              )}
+
+              {/* Option: No billing entity */}
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: billingEntityChoice === 'none' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
+                  background: billingEntityChoice === 'none' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
+                }}
+                onClick={() => {
+                  setBillingEntityChoice('none');
+                  setSelectedBillingEntities([]);
+                }}
+              >
+                <input
+                  type="radio"
+                  name="billingEntityChoice"
+                  checked={billingEntityChoice === 'none'}
+                  onChange={() => {
+                    setBillingEntityChoice('none');
+                    setSelectedBillingEntities([]);
+                  }}
+                  style={{ marginTop: '2px' }}
+                />
+                <div>
+                  <span style={{ fontWeight: 500 }}>Skip for now</span>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    Don&apos;t create or link a billing entity
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            {/* Show address option when creating new billing entity */}
+            {(billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') && (
+              <div style={{ marginLeft: '24px', padding: '12px', background: 'var(--background-secondary)', borderRadius: '6px' }}>
+                {billingEntityChoice === 'different_name' && (
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>
+                      Billing Entity Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newBillingEntityForm.name}
+                      onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, name: e.target.value })}
+                      placeholder="e.g., Smith Farm LLC"
+                      style={{ width: '100%' }}
+                    />
+                  </div>
+                )}
+
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '8px' }}>
+                  Billing Address
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="billingAddress"
+                      checked={newBillingEntityForm.sameAddressAsContact}
+                      onChange={() => setNewBillingEntityForm({ ...newBillingEntityForm, sameAddressAsContact: true, address: '' })}
+                    />
+                    Same address as contact
+                    {form.address && (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                        ({form.address.substring(0, 30)}{form.address.length > 30 ? '...' : ''})
+                      </span>
+                    )}
+                  </label>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="billingAddress"
+                      checked={!newBillingEntityForm.sameAddressAsContact}
+                      onChange={() => setNewBillingEntityForm({ ...newBillingEntityForm, sameAddressAsContact: false })}
+                    />
+                    Different address
+                  </label>
+                  {!newBillingEntityForm.sameAddressAsContact && (
+                    <textarea
+                      value={newBillingEntityForm.address}
+                      onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, address: e.target.value })}
+                      placeholder="Enter billing address..."
+                      rows={2}
+                      style={{ marginLeft: '24px' }}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Show existing entities dropdown when that option is selected */}
+            {billingEntityChoice === 'existing' && (
+              <div style={{ marginLeft: '24px' }}>
+                {/* Show selected billing entities as chips */}
+                {selectedBillingEntities.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                    {selectedBillingEntities.map((be) => (
+                      <span
+                        key={be.id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          padding: '4px 8px',
+                          background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))',
+                          color: 'var(--accent-blue, #3b82f6)',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                        }}
+                      >
+                        {be.name}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBillingEntity(be.id)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: '0',
+                            cursor: 'pointer',
+                            color: 'inherit',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                          title="Remove"
+                        >
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Dropdown to select existing */}
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      const be = billingEntitiesList.find((b) => b.id === parseInt(e.target.value));
+                      if (be && !selectedBillingEntities.some((s) => s.id === be.id)) {
+                        setSelectedBillingEntities([...selectedBillingEntities, { id: be.id, name: be.name }]);
+                      }
+                    }
+                  }}
+                >
+                  <option value="">
+                    {selectedBillingEntities.length === 0 ? 'Select billing entity...' : '+ Add another...'}
+                  </option>
+                  {availableBillingEntities.map((be) => (
+                    <option key={be.id} value={be.id}>{be.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
