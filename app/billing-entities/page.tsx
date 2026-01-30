@@ -6,8 +6,8 @@ export interface ProcessedBillingEntity {
   name: string;
   operationId: number | null;
   operationName: string;
-  invoiceContactId: number | null;
-  invoiceContactName: string;
+  invoiceContactIds: number[];
+  invoiceContactNames: string[];
   address: string;
   notes: string;
 }
@@ -36,15 +36,15 @@ async function getData() {
 
     const processed: ProcessedBillingEntity[] = billingEntities.map((be) => {
       const opLink = be.operation?.[0];
-      const contactLink = be.invoice_contact?.[0];
+      const contactLinks = be.invoice_contact || [];
 
       return {
         id: be.id,
         name: be.name || '',
         operationId: opLink?.id || null,
         operationName: opLink ? (operationMap.get(opLink.id) || opLink.value) : '',
-        invoiceContactId: contactLink?.id || null,
-        invoiceContactName: contactLink ? (contactMap.get(contactLink.id) || contactLink.value) : '',
+        invoiceContactIds: contactLinks.map((c: { id: number }) => c.id),
+        invoiceContactNames: contactLinks.map((c: { id: number; value: string }) => contactMap.get(c.id) || c.value),
         address: be.address || '',
         notes: be.notes || '',
       };

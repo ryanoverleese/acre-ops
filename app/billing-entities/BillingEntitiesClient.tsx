@@ -9,10 +9,14 @@ interface Props {
   contacts: ContactOption[];
 }
 
+interface SelectedContact {
+  id: number;
+  name: string;
+}
+
 const initialForm = {
   name: '',
   operation: '',
-  invoice_contact: '',
   address: '',
   notes: '',
 };
@@ -24,6 +28,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<ProcessedBillingEntity | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [selectedContacts, setSelectedContacts] = useState<SelectedContact[]>([]);
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -37,6 +42,16 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
     }
   };
 
+  // Filter contacts by operation and exclude already selected
+  const availableContacts = useMemo(() => {
+    const selectedIds = new Set(selectedContacts.map((c) => c.id));
+    let filtered = contacts.filter((c) => !selectedIds.has(c.id));
+    if (form.operation) {
+      filtered = filtered.filter((c) => c.operationIds.includes(parseInt(form.operation)));
+    }
+    return filtered;
+  }, [contacts, form.operation, selectedContacts]);
+
   const filteredEntities = useMemo(() => {
     let filtered = entities;
 
@@ -46,7 +61,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
         (e) =>
           e.name.toLowerCase().includes(query) ||
           e.operationName.toLowerCase().includes(query) ||
-          e.invoiceContactName.toLowerCase().includes(query)
+          e.invoiceContactNames.some((name) => name.toLowerCase().includes(query))
       );
     }
 
@@ -57,7 +72,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       switch (sortColumn) {
         case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
         case 'operation': aVal = a.operationName.toLowerCase(); bVal = b.operationName.toLowerCase(); break;
-        case 'contact': aVal = a.invoiceContactName.toLowerCase(); bVal = b.invoiceContactName.toLowerCase(); break;
+        case 'contact': aVal = a.invoiceContactNames.join(',').toLowerCase(); bVal = b.invoiceContactNames.join(',').toLowerCase(); break;
         default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
       }
 
@@ -69,6 +84,18 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
     return filtered;
   }, [entities, searchQuery, sortColumn, sortDirection]);
 
+  const handleSelectContact = (contactId: string) => {
+    if (!contactId) return;
+    const contact = contacts.find((c) => c.id === parseInt(contactId));
+    if (contact && !selectedContacts.some((sc) => sc.id === contact.id)) {
+      setSelectedContacts([...selectedContacts, { id: contact.id, name: contact.name }]);
+    }
+  };
+
+  const handleRemoveContact = (contactId: number) => {
+    setSelectedContacts(selectedContacts.filter((c) => c.id !== contactId));
+  };
+
   const handleAdd = async () => {
     if (!form.name.trim()) {
       alert('Name is required');
@@ -78,7 +105,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
     try {
       const payload: Record<string, unknown> = { name: form.name };
       if (form.operation) payload.operation = [parseInt(form.operation)];
-      if (form.invoice_contact) payload.invoice_contact = [parseInt(form.invoice_contact)];
+      if (selectedContacts.length > 0) payload.invoice_contact = selectedContacts.map((c) => c.id);
       if (form.address) payload.address = form.address;
       if (form.notes) payload.notes = form.notes;
 
@@ -91,7 +118,6 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       if (response.ok) {
         const newEntity = await response.json();
         const opName = form.operation ? operations.find((o) => o.id === parseInt(form.operation))?.name || '' : '';
-        const contactName = form.invoice_contact ? contacts.find((c) => c.id === parseInt(form.invoice_contact))?.name || '' : '';
 
         setEntities([
           ...entities,
@@ -100,14 +126,15 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
             name: newEntity.name || '',
             operationId: form.operation ? parseInt(form.operation) : null,
             operationName: opName,
-            invoiceContactId: form.invoice_contact ? parseInt(form.invoice_contact) : null,
-            invoiceContactName: contactName,
+            invoiceContactIds: selectedContacts.map((c) => c.id),
+            invoiceContactNames: selectedContacts.map((c) => c.name),
             address: form.address || '',
             notes: newEntity.notes || '',
           },
         ]);
         setShowAddModal(false);
         setForm(initialForm);
+        setSelectedContacts([]);
       } else {
         alert('Failed to create billing entity');
       }
@@ -129,7 +156,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
     try {
       const payload: Record<string, unknown> = { name: form.name };
       payload.operation = form.operation ? [parseInt(form.operation)] : [];
-      payload.invoice_contact = form.invoice_contact ? [parseInt(form.invoice_contact)] : [];
+      payload.invoice_contact = selectedContacts.map((c) => c.id);
       payload.address = form.address || null;
       payload.notes = form.notes || null;
 
@@ -141,7 +168,6 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
 
       if (response.ok) {
         const opName = form.operation ? operations.find((o) => o.id === parseInt(form.operation))?.name || '' : '';
-        const contactName = form.invoice_contact ? contacts.find((c) => c.id === parseInt(form.invoice_contact))?.name || '' : '';
 
         setEntities(
           entities.map((e) =>
@@ -151,8 +177,8 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                   name: form.name,
                   operationId: form.operation ? parseInt(form.operation) : null,
                   operationName: opName,
-                  invoiceContactId: form.invoice_contact ? parseInt(form.invoice_contact) : null,
-                  invoiceContactName: contactName,
+                  invoiceContactIds: selectedContacts.map((c) => c.id),
+                  invoiceContactNames: selectedContacts.map((c) => c.name),
                   address: form.address,
                   notes: form.notes,
                 }
@@ -162,6 +188,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
         setShowEditModal(false);
         setSelectedEntity(null);
         setForm(initialForm);
+        setSelectedContacts([]);
       } else {
         alert('Failed to update billing entity');
       }
@@ -188,17 +215,94 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
     }
   };
 
+  const openAddModal = () => {
+    setForm(initialForm);
+    setSelectedContacts([]);
+    setShowAddModal(true);
+  };
+
   const openEditModal = (entity: ProcessedBillingEntity) => {
     setSelectedEntity(entity);
     setForm({
       name: entity.name,
       operation: entity.operationId?.toString() || '',
-      invoice_contact: entity.invoiceContactId?.toString() || '',
       address: entity.address || '',
       notes: entity.notes,
     });
+    // Pre-populate selected contacts
+    const entityContacts: SelectedContact[] = entity.invoiceContactIds.map((id, idx) => ({
+      id,
+      name: entity.invoiceContactNames[idx] || '',
+    }));
+    setSelectedContacts(entityContacts);
     setShowEditModal(true);
   };
+
+  const renderContactsField = () => (
+    <div className="form-group">
+      <label>Invoice Contacts</label>
+
+      {/* Show selected contacts as chips */}
+      {selectedContacts.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+          {selectedContacts.map((contact) => (
+            <span
+              key={contact.id}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 8px',
+                background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))',
+                color: 'var(--accent-blue, #3b82f6)',
+                borderRadius: '4px',
+                fontSize: '13px',
+              }}
+            >
+              {contact.name}
+              <button
+                type="button"
+                onClick={() => handleRemoveContact(contact.id)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  padding: '0',
+                  cursor: 'pointer',
+                  color: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                title="Remove"
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown to add more */}
+      <select
+        value=""
+        onChange={(e) => handleSelectContact(e.target.value)}
+      >
+        <option value="">
+          {selectedContacts.length === 0 ? 'Select contact...' : '+ Add another contact...'}
+        </option>
+        {availableContacts.map((c) => (
+          <option key={c.id} value={c.id}>{c.name}</option>
+        ))}
+      </select>
+
+      {form.operation && availableContacts.length === 0 && selectedContacts.length === 0 && (
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+          No contacts linked to this operation yet
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -217,7 +321,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            <button className="btn btn-primary" onClick={openAddModal}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -238,7 +342,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
               </th>
               <th className="sortable" onClick={() => handleSort('contact')}>
-                Invoice Contact
+                Invoice Contacts
                 {sortColumn === 'contact' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
               </th>
               <th></th>
@@ -256,7 +360,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 <tr key={entity.id}>
                   <td className="operation-name">{entity.name}</td>
                   <td style={{ fontSize: '13px' }}>{entity.operationName || '—'}</td>
-                  <td style={{ fontSize: '13px' }}>{entity.invoiceContactName || '—'}</td>
+                  <td style={{ fontSize: '13px' }}>{entity.invoiceContactNames.length > 0 ? entity.invoiceContactNames.join(', ') : '—'}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button className="action-btn" title="Edit" onClick={() => openEditModal(entity)}>
@@ -288,7 +392,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 </div>
                 <div className="mobile-card-body">
                   {entity.operationName && <div className="mobile-card-row"><span>Operation:</span> {entity.operationName}</div>}
-                  {entity.invoiceContactName && <div className="mobile-card-row"><span>Contact:</span> {entity.invoiceContactName}</div>}
+                  {entity.invoiceContactNames.length > 0 && <div className="mobile-card-row"><span>Contacts:</span> {entity.invoiceContactNames.join(', ')}</div>}
                 </div>
                 <div className="mobile-card-actions">
                   <button className="btn btn-secondary" onClick={() => openEditModal(entity)}>Edit</button>
@@ -320,29 +424,14 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 </div>
                 <div className="form-group">
                   <label>Operation</label>
-                  <select value={form.operation} onChange={(e) => setForm({ ...form, operation: e.target.value, invoice_contact: '' })}>
+                  <select value={form.operation} onChange={(e) => { setForm({ ...form, operation: e.target.value }); setSelectedContacts([]); }}>
                     <option value="">Select operation...</option>
                     {operations.map((op) => (
                       <option key={op.id} value={op.id}>{op.name}</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-group">
-                  <label>Invoice Contact</label>
-                  <select value={form.invoice_contact} onChange={(e) => setForm({ ...form, invoice_contact: e.target.value })}>
-                    <option value="">Select contact...</option>
-                    {contacts
-                      .filter((c) => !form.operation || c.operationIds.includes(parseInt(form.operation)))
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                  </select>
-                  {form.operation && contacts.filter((c) => c.operationIds.includes(parseInt(form.operation))).length === 0 && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      No contacts linked to this operation yet
-                    </p>
-                  )}
-                </div>
+                {renderContactsField()}
                 <div className="form-group">
                   <label>Mailing Address</label>
                   <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter mailing address..." rows={2} />
@@ -383,29 +472,14 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                 </div>
                 <div className="form-group">
                   <label>Operation</label>
-                  <select value={form.operation} onChange={(e) => setForm({ ...form, operation: e.target.value, invoice_contact: '' })}>
+                  <select value={form.operation} onChange={(e) => { setForm({ ...form, operation: e.target.value }); setSelectedContacts([]); }}>
                     <option value="">Select operation...</option>
                     {operations.map((op) => (
                       <option key={op.id} value={op.id}>{op.name}</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-group">
-                  <label>Invoice Contact</label>
-                  <select value={form.invoice_contact} onChange={(e) => setForm({ ...form, invoice_contact: e.target.value })}>
-                    <option value="">Select contact...</option>
-                    {contacts
-                      .filter((c) => !form.operation || c.operationIds.includes(parseInt(form.operation)))
-                      .map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                  </select>
-                  {form.operation && contacts.filter((c) => c.operationIds.includes(parseInt(form.operation))).length === 0 && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                      No contacts linked to this operation yet
-                    </p>
-                  )}
-                </div>
+                {renderContactsField()}
                 <div className="form-group">
                   <label>Mailing Address</label>
                   <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter mailing address..." rows={2} />
