@@ -127,6 +127,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const resizeStartX = useRef<number>(0);
   const resizeStartWidth = useRef<number>(0);
 
+  // Inline editing state
+  const [editingCell, setEditingCell] = useState<{ contactId: number; field: string } | null>(null);
+  const [editingValue, setEditingValue] = useState<string>('');
+
   // Load column preferences from localStorage on mount
   useEffect(() => {
     try {
@@ -674,6 +678,104 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     }
   };
 
+  // Inline editing handlers
+  const startEditing = (contact: ProcessedContact, field: string) => {
+    let value = '';
+    switch (field) {
+      case 'name': value = contact.name; break;
+      case 'email': value = contact.email; break;
+      case 'phone': value = contact.phone; break;
+      case 'address': value = contact.address; break;
+      case 'notes': value = contact.notes; break;
+      case 'customerType': value = contact.customerType; break;
+      case 'operation': value = contact.operationIds[0]?.toString() || ''; break;
+    }
+    setEditingCell({ contactId: contact.id, field });
+    setEditingValue(value);
+  };
+
+  const cancelEditing = () => {
+    setEditingCell(null);
+    setEditingValue('');
+  };
+
+  const saveInlineEdit = async (contactId: number, field: string, value: string) => {
+    const contact = contacts.find((c) => c.id === contactId);
+    if (!contact) return;
+
+    // Map field names to API field names
+    const fieldMap: Record<string, string> = {
+      name: 'name',
+      email: 'email',
+      phone: 'phone',
+      address: 'address',
+      notes: 'notes',
+      customerType: 'customer_type',
+      operation: 'operations',
+    };
+
+    const apiField = fieldMap[field];
+    if (!apiField) return;
+
+    // Prepare the payload
+    let payload: Record<string, unknown> = {};
+    if (field === 'operation') {
+      payload[apiField] = value ? [parseInt(value)] : [];
+    } else {
+      payload[apiField] = value || null;
+    }
+
+    try {
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.ok) {
+        // Update local state
+        setContacts((prev) =>
+          prev.map((c) => {
+            if (c.id !== contactId) return c;
+            const updated = { ...c };
+            switch (field) {
+              case 'name': updated.name = value; break;
+              case 'email': updated.email = value; break;
+              case 'phone': updated.phone = value; break;
+              case 'address': updated.address = value; break;
+              case 'notes': updated.notes = value; break;
+              case 'customerType': updated.customerType = value; break;
+              case 'operation':
+                const opId = value ? parseInt(value) : null;
+                updated.operationIds = opId ? [opId] : [];
+                const op = operationsList.find((o) => o.id === opId);
+                updated.operationNames = op ? [op.name] : [];
+                break;
+            }
+            return updated;
+          })
+        );
+      } else {
+        alert('Failed to save changes');
+      }
+    } catch (error) {
+      console.error('Error saving:', error);
+      alert('Failed to save changes');
+    }
+
+    setEditingCell(null);
+    setEditingValue('');
+  };
+
+  const handleInlineKeyDown = (e: React.KeyboardEvent, contactId: number, field: string) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveInlineEdit(contactId, field, editingValue);
+    } else if (e.key === 'Escape') {
+      cancelEditing();
+    }
+  };
+
   const openAddModal = () => {
     setForm(initialForm);
     setSelectedBillingEntities([]);
@@ -725,6 +827,146 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       </span>
     ) : (
       <span style={{ color: 'var(--text-muted)' }}>—</span>
+    );
+  };
+
+  // Render an editable text cell
+  const renderEditableCell = (contact: ProcessedContact, field: string, displayValue: string) => {
+    const isEditing = editingCell?.contactId === contact.id && editingCell?.field === field;
+
+    if (isEditing) {
+      return (
+        <input
+          type="text"
+          value={editingValue}
+          onChange={(e) => setEditingValue(e.target.value)}
+          onBlur={() => saveInlineEdit(contact.id, field, editingValue)}
+          onKeyDown={(e) => handleInlineKeyDown(e, contact.id, field)}
+          autoFocus
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1px solid var(--accent-blue)',
+            borderRadius: '4px',
+            background: 'var(--bg-card)',
+            color: 'var(--text)',
+            fontSize: '13px',
+            outline: 'none',
+          }}
+        />
+      );
+    }
+
+    return (
+      <div
+        onClick={() => startEditing(contact, field)}
+        style={{
+          cursor: 'pointer',
+          padding: '4px 0',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+        title={displayValue || 'Click to edit'}
+      >
+        {displayValue || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+      </div>
+    );
+  };
+
+  // Render an editable select cell for customer type
+  const renderEditableTypeCell = (contact: ProcessedContact) => {
+    const isEditing = editingCell?.contactId === contact.id && editingCell?.field === 'customerType';
+
+    if (isEditing) {
+      return (
+        <select
+          value={editingValue}
+          onChange={(e) => {
+            setEditingValue(e.target.value);
+            saveInlineEdit(contact.id, 'customerType', e.target.value);
+          }}
+          onBlur={() => cancelEditing()}
+          autoFocus
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1px solid var(--accent-blue)',
+            borderRadius: '4px',
+            background: 'var(--bg-card)',
+            color: 'var(--text)',
+            fontSize: '13px',
+            outline: 'none',
+          }}
+        >
+          <option value="">Select type...</option>
+          {CUSTOMER_TYPE_OPTIONS.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      );
+    }
+
+    return (
+      <div
+        onClick={() => startEditing(contact, 'customerType')}
+        style={{ cursor: 'pointer' }}
+        title="Click to edit"
+      >
+        {getTypeBadge(contact.customerType)}
+      </div>
+    );
+  };
+
+  // Render an editable select cell for operation
+  const renderEditableOperationCell = (contact: ProcessedContact) => {
+    const isEditing = editingCell?.contactId === contact.id && editingCell?.field === 'operation';
+
+    if (isEditing) {
+      return (
+        <select
+          value={editingValue}
+          onChange={(e) => {
+            setEditingValue(e.target.value);
+            saveInlineEdit(contact.id, 'operation', e.target.value);
+          }}
+          onBlur={() => cancelEditing()}
+          autoFocus
+          style={{
+            width: '100%',
+            padding: '4px 8px',
+            border: '1px solid var(--accent-blue)',
+            borderRadius: '4px',
+            background: 'var(--bg-card)',
+            color: 'var(--text)',
+            fontSize: '13px',
+            outline: 'none',
+          }}
+        >
+          <option value="">Select operation...</option>
+          {sortedOperations.map((op) => (
+            <option key={op.id} value={op.id}>{op.name}</option>
+          ))}
+        </select>
+      );
+    }
+
+    const displayValue = contact.operationNames.length > 0 ? contact.operationNames.join(', ') : '';
+
+    return (
+      <div
+        onClick={() => startEditing(contact, 'operation')}
+        style={{
+          cursor: 'pointer',
+          padding: '4px 0',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+        title={displayValue || 'Click to edit'}
+      >
+        {displayValue || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+      </div>
     );
   };
 
@@ -1182,13 +1424,13 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               filteredContacts.map((contact) => (
                 <tr key={contact.id}>
                   {isColumnVisible('name') && (
-                    <td className="operation-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.name}>
-                      {contact.name}
+                    <td className="operation-name" style={{ fontSize: '13px' }}>
+                      {renderEditableCell(contact, 'name', contact.name)}
                     </td>
                   )}
                   {isColumnVisible('operation') && (
-                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.operationNames.join(', ')}>
-                      {contact.operationNames.length > 0 ? contact.operationNames.join(', ') : '—'}
+                    <td style={{ fontSize: '13px' }}>
+                      {renderEditableOperationCell(contact)}
                     </td>
                   )}
                   {isColumnVisible('role') && (
@@ -1207,31 +1449,35 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     </td>
                   )}
                   {isColumnVisible('email') && (
-                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.email || ''}>
-                      {contact.email || '—'}
+                    <td style={{ fontSize: '13px' }}>
+                      {renderEditableCell(contact, 'email', contact.email)}
                     </td>
                   )}
                   {isColumnVisible('phone') && (
-                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.phone || ''}>
-                      {contact.phone || '—'}
+                    <td style={{ fontSize: '13px' }}>
+                      {renderEditableCell(contact, 'phone', contact.phone)}
                     </td>
                   )}
                   {isColumnVisible('address') && (
-                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.address || ''}>
-                      {contact.address || '—'}
+                    <td style={{ fontSize: '13px' }}>
+                      {renderEditableCell(contact, 'address', contact.address)}
                     </td>
                   )}
-                  {isColumnVisible('customerType') && <td>{getTypeBadge(contact.customerType)}</td>}
+                  {isColumnVisible('customerType') && (
+                    <td style={{ fontSize: '13px' }}>
+                      {renderEditableTypeCell(contact)}
+                    </td>
+                  )}
                   {isColumnVisible('notes') && (
-                    <td style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={contact.notes || ''}>
-                      {contact.notes || '—'}
+                    <td style={{ fontSize: '13px' }}>
+                      {renderEditableCell(contact, 'notes', contact.notes)}
                     </td>
                   )}
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
-                      <button className="action-btn" title="Edit" onClick={() => openEditModal(contact)}>
+                      <button className="action-btn" title="More options" onClick={() => openEditModal(contact)}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
                         </svg>
                       </button>
                       <button className="action-btn" title="Delete" onClick={() => handleDelete(contact)}>
