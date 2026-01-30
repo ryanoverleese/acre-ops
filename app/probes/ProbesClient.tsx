@@ -19,10 +19,18 @@ export interface BillingEntityOption {
   name: string;
 }
 
+export interface ProbeFieldAssignment {
+  probeId: number;
+  season: string;
+  fieldName: string;
+}
+
 interface ProbesClientProps {
   probes: ProcessedProbe[];
   billingEntities: BillingEntityOption[];
   statusCounts: Record<string, number>;
+  availableSeasons: string[];
+  probeFieldAssignments: ProbeFieldAssignment[];
 }
 
 const BRAND_OPTIONS = [
@@ -49,7 +57,7 @@ const initialAddForm = {
   notes: '',
 };
 
-export default function ProbesClient({ probes: initialProbes, billingEntities, statusCounts }: ProbesClientProps) {
+export default function ProbesClient({ probes: initialProbes, billingEntities, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
   const [probes, setProbes] = useState(initialProbes);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'all' | 'rack'>('all');
@@ -61,6 +69,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('serialNumber');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
+
+  // Build a lookup map for probe field assignments: key = "probeId-season", value = fieldName
+  const probeFieldMap = useMemo(() => {
+    const map = new Map<string, string>();
+    probeFieldAssignments.forEach((pfa) => {
+      map.set(`${pfa.probeId}-${pfa.season}`, pfa.fieldName);
+    });
+    return map;
+  }, [probeFieldAssignments]);
+
+  // Helper function to get field name for a probe in the current season
+  const getFieldForProbe = (probeId: number): string | null => {
+    return probeFieldMap.get(`${probeId}-${currentSeason}`) || null;
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -103,6 +126,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
           case 'serialNumber': aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase(); break;
           case 'brand': aVal = a.brand.toLowerCase(); bVal = b.brand.toLowerCase(); break;
           case 'status': aVal = a.status.toLowerCase(); bVal = b.status.toLowerCase(); break;
+          case 'field': aVal = (getFieldForProbe(a.id) || '').toLowerCase(); bVal = (getFieldForProbe(b.id) || '').toLowerCase(); break;
           case 'owner': aVal = a.ownerBillingEntity.toLowerCase(); bVal = b.ownerBillingEntity.toLowerCase(); break;
           case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
           case 'rack': aVal = a.rackLocation || ''; bVal = b.rackLocation || ''; break;
@@ -116,7 +140,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason]);
 
   const handleAdd = async () => {
     if (!addForm.serial_number.trim()) {
@@ -266,6 +290,25 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
       <header className="header">
         <div className="header-left">
           <h2>Probe Inventory</h2>
+          <select
+            value={currentSeason}
+            onChange={(e) => setCurrentSeason(e.target.value)}
+            className="season-selector"
+            style={{
+              background: 'var(--accent-green-dim)',
+              color: 'var(--accent-green)',
+              border: 'none',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            {availableSeasons.map((s) => (
+              <option key={s} value={s}>{s} Season</option>
+            ))}
+          </select>
           <span className="season-badge">{statusCounts.all} Total</span>
         </div>
       </header>
@@ -352,6 +395,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
                   Status
                   {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                 </th>
+                <th className="sortable" onClick={() => handleSort('field')}>
+                  Field
+                  {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Rack Location</th>
                 <th className="sortable" onClick={() => handleSort('owner')}>
                   Owner
@@ -367,7 +414,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
             <tbody>
               {filteredProbes.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                     {searchQuery ? 'No matching probes found.' : 'No probes found.'}
                   </td>
                 </tr>
@@ -379,6 +426,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
                     </td>
                     <td>{getBrandBadge(probe.brand)}</td>
                     <td>{getStatusBadge(probe.status)}</td>
+                    <td style={{ fontSize: '13px' }}>
+                      {getFieldForProbe(probe.id) || '—'}
+                    </td>
                     <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
                       {probe.rackLocation}
                     </td>
@@ -433,11 +483,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
                       <>
                         <div className="mobile-card-row"><span>Serial:</span> #{probe.serialNumber}</div>
                         <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                        <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
                         <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
                       </>
                     ) : (
                       <>
                         <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                        <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
                         <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
                         <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
                         <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
