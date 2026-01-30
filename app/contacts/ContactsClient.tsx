@@ -25,7 +25,7 @@ interface SelectedBillingEntity {
   name: string;
 }
 
-const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist'];
+const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist', 'Landlord', 'Retired', 'Prospect'];
 
 const initialForm = {
   name: '',
@@ -554,6 +554,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       'Past Customer': 'needs-probe',
       'Weather Station Only': 'pending',
       'Agronomist': 'in-stock',
+      'Landlord': 'assigned',
+      'Retired': 'needs-probe',
+      'Prospect': 'pending',
     };
     const badgeClass = colorMap[type] || 'needs-probe';
     return type ? (
