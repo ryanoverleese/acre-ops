@@ -14,7 +14,7 @@ export interface ProcessedContact {
   operationIds: number[];
   operationNames: string[];
   isMainContact: boolean;
-  isInvoiceContact: boolean;
+  billingEntityIds: number[];
   billingEntityNames: string[];
 }
 
@@ -26,7 +26,6 @@ export interface OperationOption {
 export interface BillingEntityOption {
   id: number;
   name: string;
-  operationId: number | null;
 }
 
 async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operations: OperationOption[]; billingEntities: BillingEntityOption[] }> {
@@ -38,22 +37,15 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-
-    // Build a map of contact IDs to billing entity names (for contacts that are invoice contacts)
-    const contactBillingEntityMap = new Map<number, string[]>();
-    billingEntities.forEach((be) => {
-      const contactLink = be.invoice_contact?.[0];
-      if (contactLink) {
-        const existing = contactBillingEntityMap.get(contactLink.id) || [];
-        existing.push(be.name || 'Unnamed');
-        contactBillingEntityMap.set(contactLink.id, existing);
-      }
-    });
+    const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
 
     const processedContacts: ProcessedContact[] = contacts.map((contact) => {
       const opIds = contact.operations?.map((op) => op.id) || [];
       const opNames = opIds.map((id) => operationMap.get(id) || 'Unknown');
-      const billingEntityNames = contactBillingEntityMap.get(contact.id) || [];
+
+      // Get billing entity IDs and names directly from contact's billing_entity link
+      const beIds = contact.billing_entity?.map((be) => be.id) || [];
+      const beNames = beIds.map((id) => billingEntityMap.get(id) || 'Unknown');
 
       return {
         id: contact.id,
@@ -68,8 +60,8 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
         operationIds: opIds,
         operationNames: opNames,
         isMainContact: contact.is_main_contact?.value === 'Yes',
-        isInvoiceContact: billingEntityNames.length > 0,
-        billingEntityNames,
+        billingEntityIds: beIds,
+        billingEntityNames: beNames,
       };
     });
 
@@ -81,7 +73,6 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
     const billingEntityOptions: BillingEntityOption[] = billingEntities.map((be) => ({
       id: be.id,
       name: be.name || '',
-      operationId: be.operation?.[0]?.id || null,
     }));
 
     return { contacts: processedContacts, operations: operationOptions, billingEntities: billingEntityOptions };

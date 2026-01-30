@@ -11,7 +11,32 @@ async function getBillingData(): Promise<ProcessedBillingEntity[]> {
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-    const contactMap = new Map(contacts.map((c) => [c.id, c]));
+
+    // Build maps from contacts: billing entity -> operations and billing entity -> contacts
+    const beToOperations = new Map<number, string[]>();
+    const beToContacts = new Map<number, { name: string; email?: string }[]>();
+
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactOpNames = contactOpIds.map((id) => operationMap.get(id) || 'Unknown');
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        // Add operation names for this billing entity
+        const existingOps = beToOperations.get(beId) || [];
+        contactOpNames.forEach((name) => {
+          if (!existingOps.includes(name)) existingOps.push(name);
+        });
+        beToOperations.set(beId, existingOps);
+
+        // Add contact for this billing entity
+        const existingContacts = beToContacts.get(beId) || [];
+        if (!existingContacts.some((c) => c.name === contact.name)) {
+          existingContacts.push({ name: contact.name, email: contact.email });
+        }
+        beToContacts.set(beId, existingContacts);
+      });
+    });
 
     // Group invoices by billing entity
     const invoicesByBE = new Map<number, typeof invoices>();
@@ -25,9 +50,8 @@ async function getBillingData(): Promise<ProcessedBillingEntity[]> {
     });
 
     return billingEntities.map((be) => {
-      const opLink = be.operation?.[0];
-      const contactLink = be.invoice_contact?.[0];
-      const contact = contactLink ? contactMap.get(contactLink.id) : null;
+      const opNames = beToOperations.get(be.id) || [];
+      const linkedContacts = beToContacts.get(be.id) || [];
       const beInvoices = invoicesByBE.get(be.id) || [];
 
       const processedInvoices = beInvoices.map((inv) => ({
@@ -47,9 +71,9 @@ async function getBillingData(): Promise<ProcessedBillingEntity[]> {
       return {
         id: be.id,
         name: be.name,
-        operation: opLink ? operationMap.get(opLink.id) || opLink.value : 'Unknown',
-        invoiceContact: contact?.name || contactLink?.value || '—',
-        invoiceContactEmail: contact?.email,
+        operation: opNames.length > 0 ? opNames.join(', ') : '—',
+        invoiceContact: linkedContacts.length > 0 ? linkedContacts.map((c) => c.name).join(', ') : '—',
+        invoiceContactEmail: linkedContacts[0]?.email,
         invoices: processedInvoices,
         totalBilled,
         totalPaid,

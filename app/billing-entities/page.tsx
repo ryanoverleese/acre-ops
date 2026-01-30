@@ -4,12 +4,9 @@ import BillingEntitiesClient from './BillingEntitiesClient';
 export interface ProcessedBillingEntity {
   id: number;
   name: string;
-  operationId: number | null;
-  operationName: string;
-  invoiceContactIds: number[];
-  invoiceContactNames: string[];
-  address: string;
-  notes: string;
+  operationNames: string[];
+  contactIds: number[];
+  contactNames: string[];
 }
 
 export interface OperationOption {
@@ -21,6 +18,7 @@ export interface ContactOption {
   id: number;
   name: string;
   operationIds: number[];
+  billingEntityIds: number[];
 }
 
 async function getData() {
@@ -32,21 +30,41 @@ async function getData() {
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-    const contactMap = new Map(contacts.map((c) => [c.id, c.name]));
+
+    // Build maps from contacts: billing entity -> operations and billing entity -> contacts
+    const beToOperations = new Map<number, Set<number>>();
+    const beToContacts = new Map<number, { id: number; name: string }[]>();
+
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        // Map billing entity to operations through this contact
+        const existingOps = beToOperations.get(beId) || new Set();
+        contactOpIds.forEach((opId) => existingOps.add(opId));
+        beToOperations.set(beId, existingOps);
+
+        // Map billing entity to contacts
+        const existingContacts = beToContacts.get(beId) || [];
+        if (!existingContacts.some((c) => c.id === contact.id)) {
+          existingContacts.push({ id: contact.id, name: contact.name });
+        }
+        beToContacts.set(beId, existingContacts);
+      });
+    });
 
     const processed: ProcessedBillingEntity[] = billingEntities.map((be) => {
-      const opLink = be.operation?.[0];
-      const contactLinks = be.invoice_contact || [];
+      const opIds = beToOperations.get(be.id) || new Set();
+      const opNames = Array.from(opIds).map((id) => operationMap.get(id) || 'Unknown');
+      const linkedContacts = beToContacts.get(be.id) || [];
 
       return {
         id: be.id,
         name: be.name || '',
-        operationId: opLink?.id || null,
-        operationName: opLink ? (operationMap.get(opLink.id) || opLink.value) : '',
-        invoiceContactIds: contactLinks.map((c: { id: number }) => c.id),
-        invoiceContactNames: contactLinks.map((c: { id: number; value: string }) => contactMap.get(c.id) || c.value),
-        address: be.address || '',
-        notes: be.notes || '',
+        operationNames: opNames,
+        contactIds: linkedContacts.map((c) => c.id),
+        contactNames: linkedContacts.map((c) => c.name),
       };
     });
 
@@ -55,11 +73,12 @@ async function getData() {
       name: op.name,
     }));
 
-    // Include operation IDs so we can filter contacts by operation
+    // Include operation IDs and billing entity IDs so we can manage links
     const contactOptions: ContactOption[] = contacts.map((c) => ({
       id: c.id,
       name: c.name,
       operationIds: c.operations?.map((op) => op.id) || [],
+      billingEntityIds: c.billing_entity?.map((be) => be.id) || [],
     }));
 
     return { billingEntities: processed, operations: operationOptions, contacts: contactOptions };

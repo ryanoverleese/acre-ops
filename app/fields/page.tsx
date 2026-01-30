@@ -1,4 +1,4 @@
-import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments } from '@/lib/baserow';
+import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
 // Force dynamic rendering to always get fresh data
@@ -113,23 +113,41 @@ async function getFieldsData(): Promise<{
   probeAssignments: ProcessedProbeAssignment[];
 }> {
   try {
-    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
       getProbes(),
       getBillingEntities(),
       getProbeAssignments(),
+      getContacts(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const probeMap = new Map(probes.map((p) => [p.id, p]));
 
+    // Build billing entity to operation mapping through contacts
     const billingToOperationMap = new Map<number, number>();
-    billingEntities.forEach((be) => {
-      if (be.operation?.[0]?.id) {
-        billingToOperationMap.set(be.id, be.operation[0].id);
-      }
+    const billingToOperationNames = new Map<number, string[]>();
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        contactOpIds.forEach((opId) => {
+          // Store first operation ID for each billing entity
+          if (!billingToOperationMap.has(beId)) {
+            billingToOperationMap.set(beId, opId);
+          }
+          // Collect all operation names
+          const existingNames = billingToOperationNames.get(beId) || [];
+          const opName = operationMap.get(opId) || 'Unknown';
+          if (!existingNames.includes(opName)) {
+            existingNames.push(opName);
+          }
+          billingToOperationNames.set(beId, existingNames);
+        });
+      });
     });
 
     // Get unique seasons from existing data plus current year
@@ -287,12 +305,11 @@ async function getFieldsData(): Promise<{
     }));
 
     const billingEntityOptions: BillingEntityOption[] = billingEntities.map((be) => {
-      const opId = be.operation?.[0]?.id;
-      const opName = opId ? operationMap.get(opId) || 'Unknown' : 'Unknown';
+      const opNames = billingToOperationNames.get(be.id) || [];
       return {
         id: be.id,
         name: be.name,
-        operationName: opName,
+        operationName: opNames.length > 0 ? opNames.join(', ') : '—',
       };
     });
 

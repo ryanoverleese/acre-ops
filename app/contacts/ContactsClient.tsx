@@ -258,16 +258,11 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     return [...operationsList].sort((a, b) => a.name.localeCompare(b.name));
   }, [operationsList]);
 
-  // Filter billing entities by selected operation, excluding already selected ones
+  // Filter billing entities to exclude already selected ones
   const availableBillingEntities = useMemo(() => {
-    const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
     const selectedIds = new Set(selectedBillingEntities.map((be) => be.id));
-    let filtered = billingEntitiesList.filter((be) => !selectedIds.has(be.id));
-    if (selectedOpId) {
-      filtered = filtered.filter((be) => be.operationId === selectedOpId);
-    }
-    return filtered;
-  }, [billingEntitiesList, form.operations, selectedBillingEntities]);
+    return billingEntitiesList.filter((be) => !selectedIds.has(be.id));
+  }, [billingEntitiesList, selectedBillingEntities]);
 
   const filteredContacts = useMemo(() => {
     let filtered = contacts;
@@ -505,33 +500,18 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       alert('Billing entity name is required');
       return;
     }
-    const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
-    if (!selectedOpId) {
-      alert('Please select an operation first');
-      return;
-    }
     setSavingBillingEntity(true);
     try {
-      const payload: Record<string, unknown> = {
-        name: newBillingEntityForm.name,
-        operation: [selectedOpId],
-      };
-      // Use contact's address if "same address" is selected, otherwise use the manually entered address
-      const billingAddress = newBillingEntityForm.sameAddressAsContact ? form.address : newBillingEntityForm.address;
-      if (billingAddress) payload.address = billingAddress;
-      if (newBillingEntityForm.notes) payload.notes = newBillingEntityForm.notes;
-
       const response = await fetch('/api/billing-entities', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ name: newBillingEntityForm.name }),
       });
       if (response.ok) {
         const newBe = await response.json();
         const newBillingEntityOption: BillingEntityOption = {
           id: newBe.id,
           name: newBe.name || '',
-          operationId: selectedOpId,
         };
         setBillingEntitiesList([...billingEntitiesList, newBillingEntityOption]);
         // Add to selected billing entities
@@ -581,6 +561,29 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     setSaving(true);
     try {
+      // Build list of billing entity IDs to link
+      let billingEntityIds = selectedBillingEntities.map((be) => be.id);
+
+      // Create new billing entity if needed
+      if (billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') {
+        const beName = billingEntityChoice === 'use_contact_name' ? form.name : newBillingEntityForm.name;
+
+        const beResponse = await fetch('/api/billing-entities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: beName }),
+        });
+
+        if (beResponse.ok) {
+          const newBe = await beResponse.json();
+          billingEntityIds.push(newBe.id);
+          // Also add to the list so it's available
+          setBillingEntitiesList([...billingEntitiesList, { id: newBe.id, name: newBe.name || beName }]);
+        } else {
+          console.error('Failed to create billing entity');
+        }
+      }
+
       const payload: Record<string, unknown> = { name: form.name };
       if (form.email) payload.email = form.email;
       if (form.phone) payload.phone = form.phone;
@@ -591,6 +594,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       if (form.notes) payload.notes = form.notes;
       if (form.operations.length > 0) payload.operations = form.operations.map((id) => parseInt(id));
       payload.is_main_contact = form.is_main_contact;
+      if (billingEntityIds.length > 0) payload.billing_entity = billingEntityIds;
 
       const response = await fetch('/api/contacts', {
         method: 'POST',
@@ -599,50 +603,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       });
 
       if (response.ok) {
-        const newContact = await response.json();
-        let billingEntitiesToLink = [...selectedBillingEntities];
-
-        // Create new billing entity if needed
-        if (billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') {
-          const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
-          if (selectedOpId) {
-            const beName = billingEntityChoice === 'use_contact_name' ? form.name : newBillingEntityForm.name;
-            const beAddress = newBillingEntityForm.sameAddressAsContact ? form.address : newBillingEntityForm.address;
-
-            const bePayload: Record<string, unknown> = {
-              name: beName,
-              operation: [selectedOpId],
-            };
-            if (beAddress) bePayload.address = beAddress;
-
-            const beResponse = await fetch('/api/billing-entities', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(bePayload),
-            });
-
-            if (beResponse.ok) {
-              const newBe = await beResponse.json();
-              billingEntitiesToLink.push({ id: newBe.id, name: newBe.name || beName });
-            } else {
-              console.error('Failed to create billing entity');
-            }
-          }
-        }
-
-        // Link each billing entity to this contact as invoice_contact
-        if (billingEntitiesToLink.length > 0) {
-          await Promise.all(
-            billingEntitiesToLink.map((be) =>
-              fetch(`/api/billing-entities/${be.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invoice_contact: [newContact.id] }),
-              })
-            )
-          );
-        }
-
         // Reload to get the updated data with operation names
         window.location.reload();
       } else {
@@ -671,6 +631,29 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     setSaving(true);
     try {
+      // Build list of billing entity IDs to link
+      let billingEntityIds = selectedBillingEntities.map((be) => be.id);
+
+      // Create new billing entity if needed
+      if (billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') {
+        const beName = billingEntityChoice === 'use_contact_name' ? form.name : newBillingEntityForm.name;
+
+        const beResponse = await fetch('/api/billing-entities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: beName }),
+        });
+
+        if (beResponse.ok) {
+          const newBe = await beResponse.json();
+          billingEntityIds.push(newBe.id);
+          // Also add to the list so it's available
+          setBillingEntitiesList([...billingEntitiesList, { id: newBe.id, name: newBe.name || beName }]);
+        } else {
+          console.error('Failed to create billing entity');
+        }
+      }
+
       const payload: Record<string, unknown> = { name: form.name };
       payload.email = form.email || null;
       payload.phone = form.phone || null;
@@ -681,6 +664,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       payload.notes = form.notes || null;
       payload.operations = form.operations.map((id) => parseInt(id));
       payload.is_main_contact = form.is_main_contact;
+      payload.billing_entity = billingEntityIds;
 
       const response = await fetch(`/api/contacts/${selectedContact.id}`, {
         method: 'PATCH',
@@ -689,49 +673,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       });
 
       if (response.ok) {
-        let billingEntitiesToLink = [...selectedBillingEntities];
-
-        // Create new billing entity if needed
-        if (billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') {
-          const selectedOpId = form.operations[0] ? parseInt(form.operations[0]) : null;
-          if (selectedOpId) {
-            const beName = billingEntityChoice === 'use_contact_name' ? form.name : newBillingEntityForm.name;
-            const beAddress = newBillingEntityForm.sameAddressAsContact ? form.address : newBillingEntityForm.address;
-
-            const bePayload: Record<string, unknown> = {
-              name: beName,
-              operation: [selectedOpId],
-            };
-            if (beAddress) bePayload.address = beAddress;
-
-            const beResponse = await fetch('/api/billing-entities', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(bePayload),
-            });
-
-            if (beResponse.ok) {
-              const newBe = await beResponse.json();
-              billingEntitiesToLink.push({ id: newBe.id, name: newBe.name || beName });
-            } else {
-              console.error('Failed to create billing entity');
-            }
-          }
-        }
-
-        // Link each billing entity to this contact as invoice_contact
-        if (billingEntitiesToLink.length > 0) {
-          await Promise.all(
-            billingEntitiesToLink.map((be) =>
-              fetch(`/api/billing-entities/${be.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ invoice_contact: [selectedContact.id] }),
-              })
-            )
-          );
-        }
-
         // Reload to get the updated data with operation names
         window.location.reload();
       } else {
@@ -882,14 +823,12 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       is_main_contact: contact.isMainContact ? 'Yes' : 'No',
     });
     setGeocodeError(null);
-    // Pre-populate billing entities where this contact is the invoice contact
-    const contactBillingEntities = billingEntitiesList
-      .filter((be) => {
-        // We'd need to know which billing entities have this contact as invoice_contact
-        // For now, start with empty - user can add if needed
-        return false;
-      });
-    setSelectedBillingEntities(contactBillingEntities.map((be) => ({ id: be.id, name: be.name })));
+    // Pre-populate billing entities from contact's linked billing entities
+    const contactBillingEntities = contact.billingEntityIds.map((id, idx) => ({
+      id,
+      name: contact.billingEntityNames[idx] || '',
+    }));
+    setSelectedBillingEntities(contactBillingEntities);
     // Set billing entity choice based on existing billing entities
     setBillingEntityChoice(contactBillingEntities.length > 0 ? 'existing' : 'none');
     setNewBillingEntityForm({ name: '', address: '', notes: '', sameAddressAsContact: true });
@@ -1804,10 +1743,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                         {contact.isMainContact && (
                           <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
                         )}
-                        {contact.isInvoiceContact && (
-                          <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
+                        {contact.billingEntityIds.length > 0 && (
+                          <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Billing</span>
                         )}
-                        {!contact.isMainContact && !contact.isInvoiceContact && (
+                        {!contact.isMainContact && contact.billingEntityIds.length === 0 && (
                           <span style={{ color: 'var(--text-muted)' }}>—</span>
                         )}
                       </div>
@@ -1872,8 +1811,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                       {contact.isMainContact && (
                         <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
                       )}
-                      {contact.isInvoiceContact && (
-                        <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Invoice</span>
+                      {contact.billingEntityIds.length > 0 && (
+                        <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Billing</span>
                       )}
                     </div>
                   )}

@@ -13,34 +13,20 @@ async function getOperationsData(): Promise<{
       getFields(),
     ]);
 
-    const operationBillingMap = new Map<number, { id: number; name: string }[]>();
-    billingEntities.forEach((be) => {
-      const opLink = be.operation?.[0];
-      if (opLink) {
-        const existing = operationBillingMap.get(opLink.id) || [];
-        existing.push({ id: be.id, name: be.name });
-        operationBillingMap.set(opLink.id, existing);
-      }
-    });
+    // Build a map of billing entity ID to name
+    const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
 
-    const operationFieldCount = new Map<number, number>();
-    fields.forEach((field) => {
-      const beLink = field.billing_entity?.[0];
-      if (beLink) {
-        const be = billingEntities.find((b) => b.id === beLink.id);
-        const opLink = be?.operation?.[0];
-        if (opLink) {
-          operationFieldCount.set(opLink.id, (operationFieldCount.get(opLink.id) || 0) + 1);
-        }
-      }
-    });
-
-    // Build linked contacts directly from contacts table (contacts have operations link)
+    // Build linked contacts and billing entities for each operation through contacts
     const linkedContactsMap = new Map<number, LinkedContact[]>();
+    const operationBillingMap = new Map<number, Set<number>>(); // operation ID -> set of billing entity IDs
+
     contacts.forEach((contact) => {
-      // A contact can be linked to multiple operations
-      contact.operations?.forEach((opLink) => {
-        const existing = linkedContactsMap.get(opLink.id) || [];
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      // Link contacts to operations
+      contactOpIds.forEach((opId) => {
+        const existing = linkedContactsMap.get(opId) || [];
         existing.push({
           contactId: contact.id,
           name: contact.name,
@@ -48,8 +34,42 @@ async function getOperationsData(): Promise<{
           phone: contact.phone,
           isMainContact: contact.is_main_contact?.value === 'Yes',
         });
-        linkedContactsMap.set(opLink.id, existing);
+        linkedContactsMap.set(opId, existing);
+
+        // Link billing entities to operations through this contact
+        contactBeIds.forEach((beId) => {
+          const existingBEs = operationBillingMap.get(opId) || new Set();
+          existingBEs.add(beId);
+          operationBillingMap.set(opId, existingBEs);
+        });
       });
+    });
+
+    // Count fields per operation (field -> billing_entity -> contact -> operation)
+    // First, build a map of billing entity ID to operation IDs
+    const beToOperations = new Map<number, Set<number>>();
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        const existingOps = beToOperations.get(beId) || new Set();
+        contactOpIds.forEach((opId) => existingOps.add(opId));
+        beToOperations.set(beId, existingOps);
+      });
+    });
+
+    const operationFieldCount = new Map<number, number>();
+    fields.forEach((field) => {
+      const beLink = field.billing_entity?.[0];
+      if (beLink) {
+        const opIds = beToOperations.get(beLink.id);
+        if (opIds) {
+          opIds.forEach((opId) => {
+            operationFieldCount.set(opId, (operationFieldCount.get(opId) || 0) + 1);
+          });
+        }
+      }
     });
 
     const allContacts: ContactOption[] = contacts.map((c) => ({
@@ -59,14 +79,22 @@ async function getOperationsData(): Promise<{
       phone: c.phone,
     }));
 
-    const processedOperations: ProcessedOperation[] = operations.map((op) => ({
-      id: op.id,
-      name: op.name,
-      linkedContacts: linkedContactsMap.get(op.id) || [],
-      billingEntities: operationBillingMap.get(op.id) || [],
-      fieldCount: operationFieldCount.get(op.id) || 0,
-      notes: op.notes,
-    }));
+    const processedOperations: ProcessedOperation[] = operations.map((op) => {
+      const beIds = operationBillingMap.get(op.id) || new Set();
+      const billingEntitiesForOp = Array.from(beIds).map((beId) => ({
+        id: beId,
+        name: billingEntityMap.get(beId) || 'Unknown',
+      }));
+
+      return {
+        id: op.id,
+        name: op.name,
+        linkedContacts: linkedContactsMap.get(op.id) || [],
+        billingEntities: billingEntitiesForOp,
+        fieldCount: operationFieldCount.get(op.id) || 0,
+        notes: op.notes,
+      };
+    });
 
     return { operations: processedOperations, allContacts };
   } catch (error) {

@@ -120,6 +120,7 @@ export interface Contact {
   customer_type?: { id: number; value: string };
   notes?: string;
   operations?: { id: number; value: string }[];
+  billing_entity?: { id: number; value: string }[];
   is_main_contact?: { id: number; value: string };
 }
 
@@ -133,10 +134,6 @@ export interface Operation {
 export interface BillingEntity {
   id: number;
   name: string;
-  operation?: { id: number; value: string }[];
-  invoice_contact?: { id: number; value: string }[];
-  address?: string;
-  notes?: string;
 }
 
 export interface Field {

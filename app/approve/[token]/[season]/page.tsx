@@ -1,4 +1,4 @@
-import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes } from '@/lib/baserow';
+import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes, getContacts } from '@/lib/baserow';
 import ApprovalClient from './ApprovalClient';
 
 interface PageProps {
@@ -46,13 +46,14 @@ export default async function ApprovePage({ params }: PageProps) {
   const seasonYear = parseInt(season, 10);
 
   // Fetch all data in parallel
-  const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes] = await Promise.all([
+  const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes, contacts] = await Promise.all([
     getOperations(),
     getFields(),
     getFieldSeasons(),
     getBillingEntities(),
     getProbeAssignments(),
     getProbes(),
+    getContacts(),
   ]);
 
   const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
@@ -73,11 +74,15 @@ export default async function ApprovePage({ params }: PageProps) {
     );
   }
 
-  // Get billing entities for this operation
-  const operationBillingEntities = billingEntities.filter(
-    (be) => be.operation?.[0]?.id === operation.id
-  );
-  const billingEntityIds = new Set(operationBillingEntities.map((be) => be.id));
+  // Get billing entities for this operation through contacts
+  // Find contacts linked to this operation, then get their billing entities
+  const billingEntityIds = new Set<number>();
+  contacts.forEach((contact) => {
+    const hasOperation = contact.operations?.some((op) => op.id === operation.id);
+    if (hasOperation) {
+      contact.billing_entity?.forEach((be) => billingEntityIds.add(be.id));
+    }
+  });
 
   // Get fields belonging to this operation (via billing entity)
   const operationFields = rawFields.filter(

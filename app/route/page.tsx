@@ -1,25 +1,33 @@
-import { getFields, getBillingEntities, getOperations, getFieldSeasons } from '@/lib/baserow';
+import { getFields, getBillingEntities, getOperations, getFieldSeasons, getContacts } from '@/lib/baserow';
 import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
 export const dynamic = 'force-dynamic';
 
 async function getFieldLocations(): Promise<FieldLocation[]> {
   try {
-    const [fields, billingEntities, operations, fieldSeasons] = await Promise.all([
+    const [fields, billingEntities, operations, fieldSeasons, contacts] = await Promise.all([
       getFields(),
       getBillingEntities(),
       getOperations(),
       getFieldSeasons(),
+      getContacts(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
 
-    // Map billing entity to operation
+    // Map billing entity to operation through contacts
     const billingToOperationMap = new Map<number, number>();
-    billingEntities.forEach((be) => {
-      if (be.operation?.[0]?.id) {
-        billingToOperationMap.set(be.id, be.operation[0].id);
-      }
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        contactOpIds.forEach((opId) => {
+          if (!billingToOperationMap.has(beId)) {
+            billingToOperationMap.set(beId, opId);
+          }
+        });
+      });
     });
 
     // Build a map of field ID to most recent install location

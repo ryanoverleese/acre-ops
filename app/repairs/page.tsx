@@ -1,4 +1,4 @@
-import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes, getProbeAssignments } from '@/lib/baserow';
+import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes, getProbeAssignments, getContacts } from '@/lib/baserow';
 import RepairsClient, { ProcessedRepair, FieldSeasonOption, ProbeAssignmentOption } from './RepairsClient';
 
 async function getRepairsData(): Promise<{
@@ -7,7 +7,7 @@ async function getRepairsData(): Promise<{
   probeAssignmentOptions: ProbeAssignmentOption[];
 }> {
   try {
-    const [repairs, fieldSeasons, fields, billingEntities, operations, probes, probeAssignments] = await Promise.all([
+    const [repairs, fieldSeasons, fields, billingEntities, operations, probes, probeAssignments, contacts] = await Promise.all([
       getRepairs(),
       getFieldSeasons(),
       getFields(),
@@ -15,6 +15,7 @@ async function getRepairsData(): Promise<{
       getOperations(),
       getProbes(),
       getProbeAssignments(),
+      getContacts(),
     ]);
 
     const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
@@ -23,12 +24,19 @@ async function getRepairsData(): Promise<{
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
 
-    // Map billing entity to operation
+    // Map billing entity to operation through contacts
     const billingToOperationMap = new Map<number, number>();
-    billingEntities.forEach((be) => {
-      if (be.operation?.[0]?.id) {
-        billingToOperationMap.set(be.id, be.operation[0].id);
-      }
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        contactOpIds.forEach((opId) => {
+          if (!billingToOperationMap.has(beId)) {
+            billingToOperationMap.set(beId, opId);
+          }
+        });
+      });
     });
 
     const getOperationName = (field: typeof fields[0] | null | undefined): string => {

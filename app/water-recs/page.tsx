@@ -1,26 +1,34 @@
-import { getWaterRecs, getFieldSeasons, getFields, getBillingEntities, getOperations } from '@/lib/baserow';
+import { getWaterRecs, getFieldSeasons, getFields, getBillingEntities, getOperations, getContacts } from '@/lib/baserow';
 import WaterRecsClient, { ProcessedWaterRec, FieldSeasonOption } from './WaterRecsClient';
 
 async function getWaterRecsData(): Promise<{ waterRecs: ProcessedWaterRec[]; fieldSeasons: FieldSeasonOption[] }> {
   try {
-    const [waterRecs, fieldSeasons, fields, billingEntities, operations] = await Promise.all([
+    const [waterRecs, fieldSeasons, fields, billingEntities, operations, contacts] = await Promise.all([
       getWaterRecs(),
       getFieldSeasons(),
       getFields(),
       getBillingEntities(),
       getOperations(),
+      getContacts(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
 
-    // Map billing entity to operation
+    // Map billing entity to operation through contacts
     const billingToOperationMap = new Map<number, number>();
-    billingEntities.forEach((be) => {
-      if (be.operation?.[0]?.id) {
-        billingToOperationMap.set(be.id, be.operation[0].id);
-      }
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        contactOpIds.forEach((opId) => {
+          if (!billingToOperationMap.has(beId)) {
+            billingToOperationMap.set(beId, opId);
+          }
+        });
+      });
     });
 
     const getOperationName = (field: typeof fields[0] | null | undefined): string => {

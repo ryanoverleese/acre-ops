@@ -1,4 +1,4 @@
-import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations, getProbeAssignments } from '@/lib/baserow';
+import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations, getProbeAssignments, getContacts } from '@/lib/baserow';
 import InstallClient, { InstallableProbeAssignment } from './InstallClient';
 
 // Force dynamic rendering - don't cache this page
@@ -13,13 +13,14 @@ export interface ProbeOption {
 
 async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[] }> {
   try {
-    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments] = await Promise.all([
+    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getFields(),
       getFieldSeasons(),
       getProbes(),
       getBillingEntities(),
       getOperations(),
       getProbeAssignments(),
+      getContacts(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -27,12 +28,19 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
 
-    // Map billing entity to operation
+    // Map billing entity to operation through contacts
     const billingToOperationMap = new Map<number, number>();
-    billingEntities.forEach((be) => {
-      if (be.operation?.[0]?.id) {
-        billingToOperationMap.set(be.id, be.operation[0].id);
-      }
+    contacts.forEach((contact) => {
+      const contactOpIds = contact.operations?.map((op) => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+
+      contactBeIds.forEach((beId) => {
+        contactOpIds.forEach((opId) => {
+          if (!billingToOperationMap.has(beId)) {
+            billingToOperationMap.set(beId, opId);
+          }
+        });
+      });
     });
 
     // Filter probe_assignments:
