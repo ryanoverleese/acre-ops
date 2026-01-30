@@ -915,7 +915,7 @@ select:focus {
   }
 
   .search-box {
-    display: none;
+    width: 100%;
   }
 }
 
