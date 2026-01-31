@@ -7,7 +7,8 @@ export interface ProcessedProbe {
   serialNumber: string;
   brand: string;
   status: string;
-  rackLocation: string;
+  rack: string;
+  rackSlot: string;
   yearNew?: number;
   notes?: string;
   damagesRepairs?: string;
@@ -61,7 +62,8 @@ const initialAddForm = {
   contact: '',
   year_new: '',
   status: 'In Stock',
-  rack_location: '',
+  rack: '',
+  rack_slot: '',
   notes: '',
   damages_repairs: '',
 };
@@ -106,11 +108,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const filteredProbes = useMemo(() => {
     let filtered = probes;
 
-    // For rack view, only show probes with rack locations and sort by rack
+    // For rack view, only show probes with rack and sort by rack then slot
     if (viewMode === 'rack') {
-      filtered = filtered.filter((probe) => probe.rackLocation && probe.rackLocation !== '—');
+      filtered = filtered.filter((probe) => probe.rack && probe.rack !== '—');
       filtered = [...filtered].sort((a, b) => {
-        return (a.rackLocation || '').localeCompare(b.rackLocation || '');
+        const rackCompare = (a.rack || '').localeCompare(b.rack || '');
+        if (rackCompare !== 0) return rackCompare;
+        return (a.rackSlot || '').localeCompare(b.rackSlot || '');
       });
     }
 
@@ -121,7 +125,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           probe.serialNumber.toLowerCase().includes(query) ||
           probe.brand.toLowerCase().includes(query) ||
           probe.operation.toLowerCase().includes(query) ||
-          (probe.rackLocation || '').toLowerCase().includes(query)
+          (probe.rack || '').toLowerCase().includes(query) ||
+          (probe.rackSlot || '').toLowerCase().includes(query)
       );
     }
 
@@ -138,7 +143,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           case 'field': aVal = (getFieldForProbe(a.id) || '').toLowerCase(); bVal = (getFieldForProbe(b.id) || '').toLowerCase(); break;
           case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
           case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
-          case 'rack': aVal = a.rackLocation || ''; bVal = b.rackLocation || ''; break;
+          case 'rack': aVal = `${a.rack || ''}-${a.rackSlot || ''}`; bVal = `${b.rack || ''}-${b.rackSlot || ''}`; break;
           default: aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase();
         }
 
@@ -166,7 +171,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       if (addForm.contact) payload.contact = parseInt(addForm.contact, 10);
       if (addForm.year_new) payload.year_new = parseInt(addForm.year_new, 10);
       if (addForm.status) payload.status = addForm.status;
-      if (addForm.rack_location) payload.rack_location = addForm.rack_location;
+      if (addForm.rack) payload.rack = addForm.rack;
+      if (addForm.rack_slot) payload.rack_slot = addForm.rack_slot;
       if (addForm.notes) payload.notes = addForm.notes;
       if (addForm.damages_repairs) payload.damages_repairs = addForm.damages_repairs;
 
@@ -206,7 +212,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         contact: editForm.contact ? parseInt(editForm.contact, 10) : null,
         year_new: editForm.year_new ? parseInt(editForm.year_new, 10) : null,
         status: editForm.status || null,
-        rack_location: editForm.rack_location || null,
+        rack: editForm.rack || null,
+        rack_slot: editForm.rack_slot || null,
         notes: editForm.notes || null,
         damages_repairs: editForm.damages_repairs || null,
       };
@@ -258,7 +265,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       contact: probe.contactId?.toString() || '',
       year_new: probe.yearNew?.toString() || '',
       status: probe.status,
-      rack_location: probe.rackLocation === '—' ? '' : probe.rackLocation,
+      rack: probe.rack === '—' ? '' : probe.rack,
+      rack_slot: probe.rackSlot === '—' ? '' : probe.rackSlot,
       notes: probe.notes || '',
       damages_repairs: probe.damagesRepairs || '',
     });
@@ -445,7 +453,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       {getFieldForProbe(probe.id) || '—'}
                     </td>
                     <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
-                      {probe.rackLocation}
+                      {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}
                     </td>
                     <td style={{ fontSize: '13px' }}>{probe.operation}</td>
                     <td className="field-count">{probe.yearNew || '—'}</td>
@@ -480,7 +488,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     {viewMode === 'rack' ? (
                       <>
                         <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
-                          {probe.rackLocation}
+                          {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
                         </span>
                         {getStatusBadge(probe.status)}
                       </>
@@ -508,7 +516,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
                         <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
                         <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
-                        <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
+                        <div className="mobile-card-row"><span>Rack:</span> {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}</div>
                         <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
                       </>
                     )}
@@ -628,12 +636,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Rack Location</label>
+                  <label>Rack</label>
                   <input
                     type="text"
-                    value={addForm.rack_location}
-                    onChange={(e) => setAddForm({ ...addForm, rack_location: e.target.value })}
-                    placeholder="e.g. A1-03"
+                    value={addForm.rack}
+                    onChange={(e) => setAddForm({ ...addForm, rack: e.target.value })}
+                    placeholder="e.g. A"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Rack Slot</label>
+                  <input
+                    type="text"
+                    value={addForm.rack_slot}
+                    onChange={(e) => setAddForm({ ...addForm, rack_slot: e.target.value })}
+                    placeholder="e.g. 03"
                   />
                 </div>
                 <div className="form-group">
@@ -745,12 +762,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Rack Location</label>
+                  <label>Rack</label>
                   <input
                     type="text"
-                    value={editForm.rack_location}
-                    onChange={(e) => setEditForm({ ...editForm, rack_location: e.target.value })}
-                    placeholder="e.g. A1-03"
+                    value={editForm.rack}
+                    onChange={(e) => setEditForm({ ...editForm, rack: e.target.value })}
+                    placeholder="e.g. A"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Rack Slot</label>
+                  <input
+                    type="text"
+                    value={editForm.rack_slot}
+                    onChange={(e) => setEditForm({ ...editForm, rack_slot: e.target.value })}
+                    placeholder="e.g. 03"
                   />
                 </div>
                 <div className="form-group">

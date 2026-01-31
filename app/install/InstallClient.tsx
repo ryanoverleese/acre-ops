@@ -85,7 +85,8 @@ export interface InstallableProbeAssignment {
   probeId: number | null;
   probeSerial: string;
   probeBrand: string;
-  probeRackLocation: string;
+  probeRack: string;
+  probeRackSlot: string;
   antennaType: string;
 }
 
@@ -433,10 +434,10 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           #{assignment.probeSerial}
                         </div>
                       </div>
-                      {assignment.probeRackLocation && (
+                      {assignment.probeRack && (
                         <div style={{ textAlign: 'right' }}>
                           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rack</span>
-                          <div style={{ fontSize: '14px', fontWeight: 500 }}>{assignment.probeRackLocation}</div>
+                          <div style={{ fontSize: '14px', fontWeight: 500 }}>{assignment.probeRack}{assignment.probeRackSlot ? `-${assignment.probeRackSlot}` : ''}</div>
                         </div>
                       )}
                     </div>
@@ -530,7 +531,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         <option value="">Select the actual probe...</option>
                         {probes.map((p) => (
                           <option key={p.id} value={p.id}>
-                            #{p.serialNumber} {p.rackLocation ? `(${p.rackLocation})` : ''}
+                            #{p.serialNumber} {p.rack ? `(${p.rack}${p.rackSlot ? `-${p.rackSlot}` : ''})` : ''}
                           </option>
                         ))}
                       </select>

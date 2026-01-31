@@ -8,7 +8,8 @@ export interface ProbeOption {
   id: number;
   serialNumber: string;
   brand: string;
-  rackLocation: string;
+  rack: string;
+  rackSlot: string;
 }
 
 async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[] }> {
@@ -100,7 +101,8 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           probeId: probeId || null,
           probeSerial: probe?.serial_number || '',
           probeBrand: probe?.brand?.value || '',
-          probeRackLocation: probe?.rack_location || '',
+          probeRack: probe?.rack || '',
+          probeRackSlot: probe?.rack_slot || '',
           // From probe_assignment
           antennaType: pa.antenna_type?.value || '',
         };
@@ -120,7 +122,8 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         id: p.id,
         serialNumber: p.serial_number || '',
         brand: p.brand?.value || '',
-        rackLocation: p.rack_location || '',
+        rack: p.rack || '',
+        rackSlot: p.rack_slot || '',
       }))
       .sort((a, b) => a.serialNumber.localeCompare(b.serialNumber));
 

@@ -33,7 +33,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
     if (body.year_new !== undefined) updateData.year_new = body.year_new;
     if (body.status !== undefined) updateData.status = body.status;
-    if (body.rack_location !== undefined) updateData.rack_location = body.rack_location;
+    if (body.rack !== undefined) updateData.rack = body.rack;
+    if (body.rack_slot !== undefined) updateData.rack_slot = body.rack_slot;
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.damages_repairs !== undefined) updateData.damages_repairs = body.damages_repairs;
 
