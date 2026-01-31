@@ -89,7 +89,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
-  const [showEmptySlots, setShowEmptySlots] = useState(false);
+  const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
   const mobileCardsRef = useRef<HTMLDivElement>(null);
 
   // Rack numbers for the scrubber (1-15)
@@ -207,7 +207,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     | { type: 'empty'; rack: string; slot: number };
 
   const rackDisplayItems = useMemo((): RackDisplayItem[] => {
-    if (viewMode !== 'rack' || !showEmptySlots || rackSortBy !== 'rack') {
+    // Only show empty slots when in rack view sorted by rack
+    if (viewMode !== 'rack' || rackSortBy !== 'rack') {
       return filteredProbes.map(probe => ({ type: 'probe' as const, probe }));
     }
 
@@ -243,7 +244,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
 
       for (let slot = 1; slot <= maxSlot; slot++) {
         if (slotsMap.has(slot)) {
-          items.push({ type: 'probe', probe: slotsMap.get(slot)! });
+          // If filtering for empty only, skip occupied slots
+          if (rackFilter !== 'empty') {
+            items.push({ type: 'probe', probe: slotsMap.get(slot)! });
+          }
         } else {
           items.push({ type: 'empty', rack, slot });
         }
@@ -251,7 +255,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     });
 
     return items;
-  }, [filteredProbes, viewMode, showEmptySlots, rackSortBy]);
+  }, [filteredProbes, viewMode, rackSortBy, rackFilter]);
 
   // Count empty slots for display
   const emptySlotCount = useMemo(() => {
@@ -492,18 +496,27 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </button>
           </div>
           {viewMode === 'rack' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={showEmptySlots}
-                  onChange={(e) => setShowEmptySlots(e.target.checked)}
-                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent-green)' }}
-                />
-                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                  Show empty slots {showEmptySlots && emptySlotCount > 0 && `(${emptySlotCount})`}
-                </span>
-              </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Show:</span>
+                <select
+                  value={rackFilter}
+                  onChange={(e) => setRackFilter(e.target.value as 'all' | 'empty')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border)',
+                    background: rackFilter === 'empty' ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+                    color: rackFilter === 'empty' ? 'var(--accent-green)' : 'var(--text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    fontWeight: rackFilter === 'empty' ? 600 : 400,
+                  }}
+                >
+                  <option value="all">All Slots</option>
+                  <option value="empty">Empty Only ({emptySlotCount})</option>
+                </select>
+              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort:</span>
                 <select
@@ -636,7 +649,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 <div className="empty-state">
                   {searchQuery ? 'No matching probes found.' : viewMode === 'rack' ? 'No probes with rack locations.' : 'No probes found.'}
                 </div>
-              ) : viewMode === 'rack' && showEmptySlots && rackSortBy === 'rack' ? (
+              ) : viewMode === 'rack' && rackSortBy === 'rack' ? (
                 rackDisplayItems.map((item, index) =>
                   item.type === 'empty' ? (
                     <div
