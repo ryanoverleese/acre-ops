@@ -344,8 +344,7 @@ export default function FieldsClient({
     }
   };
 
-  // Filter fields by current season first (or show all unique fields)
-  // When filtering by a specific season, also include fields that DON'T have that season yet
+  // Filter fields by current season - only show fields that have actual season data
   const seasonFields = useMemo(() => {
     if (currentSeason === 'all') {
       // Show unique fields (dedupe by field ID, keep most recent season)
@@ -360,33 +359,8 @@ export default function FieldsClient({
       return Array.from(fieldMap.values());
     }
 
-    // Get fields that have the current season
-    const fieldsWithSeason = fields.filter((f) => f.season === currentSeason);
-    const fieldIdsWithSeason = new Set(fieldsWithSeason.map((f) => f.id));
-
-    // Get unique fields that DON'T have this season (need "Start Season")
-    const fieldsNeedingSeason: ProcessedField[] = [];
-    const seenFieldIds = new Set<number>();
-
-    // Look through all fields to find ones missing this season
-    fields.forEach((f) => {
-      if (!fieldIdsWithSeason.has(f.id) && !seenFieldIds.has(f.id)) {
-        seenFieldIds.add(f.id);
-        // Create a placeholder entry for this field with the target season
-        fieldsNeedingSeason.push({
-          ...f,
-          fieldSeasonId: null, // No field_season yet
-          season: currentSeason, // Target season
-          crop: '',
-          serviceType: '',
-          probeStatus: 'Unassigned',
-          probe: null,
-          probeId: null,
-        });
-      }
-    });
-
-    return [...fieldsWithSeason, ...fieldsNeedingSeason];
+    // Only show fields that have an actual field_season record for this season
+    return fields.filter((f) => f.season === currentSeason && f.fieldSeasonId !== null);
   }, [fields, currentSeason]);
 
   // Calculate status counts for current season
