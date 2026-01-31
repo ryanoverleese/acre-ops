@@ -641,7 +641,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     type="text"
                     value={addForm.rack}
                     onChange={(e) => setAddForm({ ...addForm, rack: e.target.value })}
-                    placeholder="e.g. A"
+                    placeholder="e.g. 1A, 2B, 15"
                   />
                 </div>
                 <div className="form-group">
@@ -650,7 +650,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     type="text"
                     value={addForm.rack_slot}
                     onChange={(e) => setAddForm({ ...addForm, rack_slot: e.target.value })}
-                    placeholder="e.g. 03"
+                    placeholder="e.g. 01"
                   />
                 </div>
                 <div className="form-group">
@@ -767,7 +767,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     type="text"
                     value={editForm.rack}
                     onChange={(e) => setEditForm({ ...editForm, rack: e.target.value })}
-                    placeholder="e.g. A"
+                    placeholder="e.g. 1A, 2B, 15"
                   />
                 </div>
                 <div className="form-group">
@@ -776,7 +776,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     type="text"
                     value={editForm.rack_slot}
                     onChange={(e) => setEditForm({ ...editForm, rack_slot: e.target.value })}
-                    placeholder="e.g. 03"
+                    placeholder="e.g. 01"
                   />
                 </div>
                 <div className="form-group">
