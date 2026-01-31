@@ -89,6 +89,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
+  const [showEmptySlots, setShowEmptySlots] = useState(false);
   const mobileCardsRef = useRef<HTMLDivElement>(null);
 
   // Rack numbers for the scrubber (1-15)
@@ -199,6 +200,63 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     });
     return numbers;
   }, [filteredProbes, viewMode]);
+
+  // Compute display items with empty slots when enabled
+  type RackDisplayItem =
+    | { type: 'probe'; probe: ProcessedProbe }
+    | { type: 'empty'; rack: string; slot: number };
+
+  const rackDisplayItems = useMemo((): RackDisplayItem[] => {
+    if (viewMode !== 'rack' || !showEmptySlots || rackSortBy !== 'rack') {
+      return filteredProbes.map(probe => ({ type: 'probe' as const, probe }));
+    }
+
+    // Group probes by rack
+    const probesByRack = new Map<string, Map<number, ProcessedProbe>>();
+    let globalMaxSlot = 0;
+
+    filteredProbes.forEach(probe => {
+      const rack = probe.rack || '';
+      const slot = parseInt(probe.rackSlot) || 0;
+      if (!rack || rack === '—') return;
+
+      if (!probesByRack.has(rack)) {
+        probesByRack.set(rack, new Map());
+      }
+      probesByRack.get(rack)!.set(slot, probe);
+      if (slot > globalMaxSlot) globalMaxSlot = slot;
+    });
+
+    // Build display items with empty slots
+    const items: RackDisplayItem[] = [];
+    const sortedRacks = Array.from(probesByRack.keys()).sort((a, b) => {
+      const numA = parseInt(a) || 0;
+      const numB = parseInt(b) || 0;
+      if (numA !== numB) return numA - numB;
+      return a.replace(/\d+/, '').localeCompare(b.replace(/\d+/, ''));
+    });
+
+    sortedRacks.forEach(rack => {
+      const slotsMap = probesByRack.get(rack)!;
+      const maxSlotInRack = Math.max(...Array.from(slotsMap.keys()), 0);
+      const maxSlot = Math.max(maxSlotInRack, globalMaxSlot > 30 ? maxSlotInRack : Math.min(globalMaxSlot + 2, 30));
+
+      for (let slot = 1; slot <= maxSlot; slot++) {
+        if (slotsMap.has(slot)) {
+          items.push({ type: 'probe', probe: slotsMap.get(slot)! });
+        } else {
+          items.push({ type: 'empty', rack, slot });
+        }
+      }
+    });
+
+    return items;
+  }, [filteredProbes, viewMode, showEmptySlots, rackSortBy]);
+
+  // Count empty slots for display
+  const emptySlotCount = useMemo(() => {
+    return rackDisplayItems.filter(item => item.type === 'empty').length;
+  }, [rackDisplayItems]);
 
   // Scroll to a specific rack number
   const scrollToRack = useCallback((rackNum: number) => {
@@ -434,25 +492,38 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </button>
           </div>
           {viewMode === 'rack' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort by:</span>
-              <select
-                value={rackSortBy}
-                onChange={(e) => setRackSortBy(e.target.value as 'rack' | 'slot' | 'serial')}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '13px',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="rack">Rack</option>
-                <option value="slot">Slot</option>
-                <option value="serial">Serial Number</option>
-              </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={showEmptySlots}
+                  onChange={(e) => setShowEmptySlots(e.target.checked)}
+                  style={{ width: '16px', height: '16px', accentColor: 'var(--accent-green)' }}
+                />
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                  Show empty slots {showEmptySlots && emptySlotCount > 0 && `(${emptySlotCount})`}
+                </span>
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort:</span>
+                <select
+                  value={rackSortBy}
+                  onChange={(e) => setRackSortBy(e.target.value as 'rack' | 'slot' | 'serial')}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <option value="rack">Rack</option>
+                  <option value="slot">Slot</option>
+                  <option value="serial">Serial Number</option>
+                </select>
+              </div>
             </div>
           )}
         </div>
@@ -565,77 +636,154 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 <div className="empty-state">
                   {searchQuery ? 'No matching probes found.' : viewMode === 'rack' ? 'No probes with rack locations.' : 'No probes found.'}
                 </div>
+              ) : viewMode === 'rack' && showEmptySlots && rackSortBy === 'rack' ? (
+                rackDisplayItems.map((item, index) =>
+                  item.type === 'empty' ? (
+                    <div
+                      key={`empty-${item.rack}-${item.slot}`}
+                      className="mobile-card"
+                      style={{
+                        background: 'var(--bg-tertiary)',
+                        border: '2px dashed var(--border)',
+                        opacity: 0.6,
+                      }}
+                    >
+                      <div className="mobile-card-header">
+                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>
+                          {item.rack}-{item.slot}
+                        </span>
+                        <span style={{
+                          fontSize: '11px',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: 'var(--bg-secondary)',
+                          color: 'var(--text-muted)',
+                        }}>
+                          EMPTY
+                        </span>
+                      </div>
+                      <div className="mobile-card-body" style={{ padding: '12px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
+                        Slot available
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={item.probe.id} className="mobile-card" onClick={() => openEditModal(item.probe)}>
+                      <div className="mobile-card-header">
+                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                          {item.probe.rack}{item.probe.rackSlot ? `-${item.probe.rackSlot}` : ''}
+                        </span>
+                        {getStatusBadge(item.probe.status)}
+                      </div>
+                      <div className="mobile-card-body">
+                        <div className="mobile-card-row"><span>Serial:</span> #{item.probe.serialNumber}</div>
+                        <div className="mobile-card-row"><span>Brand:</span> {item.probe.brand}</div>
+                        <div className="mobile-card-row"><span>Billing Entity:</span> {item.probe.billingEntity}</div>
+                        <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(item.probe.id) || '—'}</div>
+                        <div className="mobile-card-row"><span>Operation:</span> {item.probe.operation}</div>
+                      </div>
+                      <div className="mobile-card-footer" style={{
+                        marginTop: '12px',
+                        paddingTop: '12px',
+                        borderTop: '1px solid var(--border)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <button
+                          className="btn btn-secondary"
+                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                          onClick={(e) => { e.stopPropagation(); handleDelete(item.probe); }}
+                        >
+                          Delete
+                        </button>
+                        <span style={{
+                          color: 'var(--accent-green)',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
+                          Edit
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </span>
+                      </div>
+                    </div>
+                  )
+                )
               ) : (
                 filteredProbes.map((probe) => (
                   <div key={probe.id} className="mobile-card" onClick={() => openEditModal(probe)}>
                     <div className="mobile-card-header">
                       {viewMode === 'rack' ? (
                         <>
-                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
-                          {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
-                        </span>
-                        {getStatusBadge(probe.status)}
-                      </>
-                    ) : (
-                      <>
-                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                          #{probe.serialNumber}
-                        </span>
-                        {getStatusBadge(probe.status)}
-                      </>
-                    )}
-                  </div>
-                  <div className="mobile-card-body">
-                    {viewMode === 'rack' ? (
-                      <>
-                        <div className="mobile-card-row"><span>Serial:</span> #{probe.serialNumber}</div>
-                        <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
-                        <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
-                        <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
-                        <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
-                        <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
-                        <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
-                        <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
-                        <div className="mobile-card-row"><span>Rack:</span> {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}</div>
-                        <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
-                      </>
-                    )}
-                  </div>
-                  <div className="mobile-card-footer" style={{
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: '1px solid var(--border)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <button
-                      className="btn btn-secondary"
-                      style={{ padding: '6px 12px', fontSize: '12px' }}
-                      onClick={(e) => { e.stopPropagation(); handleDelete(probe); }}
-                    >
-                      Delete
-                    </button>
-                    <span style={{
-                      color: 'var(--accent-green)',
-                      fontSize: '13px',
-                      fontWeight: 500,
+                          <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                            {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
+                          </span>
+                          {getStatusBadge(probe.status)}
+                        </>
+                      ) : (
+                        <>
+                          <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                            #{probe.serialNumber}
+                          </span>
+                          {getStatusBadge(probe.status)}
+                        </>
+                      )}
+                    </div>
+                    <div className="mobile-card-body">
+                      {viewMode === 'rack' ? (
+                        <>
+                          <div className="mobile-card-row"><span>Serial:</span> #{probe.serialNumber}</div>
+                          <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                          <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
+                          <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
+                          <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                          <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
+                          <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
+                          <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
+                          <div className="mobile-card-row"><span>Rack:</span> {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}</div>
+                          <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
+                        </>
+                      )}
+                    </div>
+                    <div className="mobile-card-footer" style={{
+                      marginTop: '12px',
+                      paddingTop: '12px',
+                      borderTop: '1px solid var(--border)',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      Edit
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </span>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        onClick={(e) => { e.stopPropagation(); handleDelete(probe); }}
+                      >
+                        Delete
+                      </button>
+                      <span style={{
+                        color: 'var(--accent-green)',
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        Edit
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))
             )}
             </div>
             {/* Rack Index Scrubber - only show in rack view on mobile */}
