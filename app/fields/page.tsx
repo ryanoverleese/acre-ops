@@ -69,6 +69,7 @@ export interface ProcessedField {
   dripZones?: number;
   dripGpm?: number;
   dripDepth?: number;
+  fieldDirections?: string;
   // Install planning fields
   routeOrder?: number;
   plannedInstaller?: string;
@@ -231,6 +232,7 @@ async function getFieldsData(): Promise<{
           dripZones: field.drip_zones,
           dripGpm: field.drip_gpm,
           dripDepth: field.drip_depth,
+          fieldDirections: field.field_directions,
           // No season = no approval status
           approvalStatus: undefined,
         });
@@ -277,6 +279,7 @@ async function getFieldsData(): Promise<{
             dripZones: field.drip_zones,
             dripGpm: field.drip_gpm,
             dripDepth: field.drip_depth,
+            fieldDirections: field.field_directions,
             // Install planning fields
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,

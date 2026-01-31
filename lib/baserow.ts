@@ -158,6 +158,7 @@ export interface Field {
   drip_zones?: number;
   drip_gpm?: number;
   drip_depth?: number;
+  field_directions?: string;
 }
 
 export interface Probe {
@@ -169,6 +170,10 @@ export interface Probe {
   status?: { id: number; value: string };
   rack_location?: string;
   notes?: string;
+  damages_repairs?: string;
+  billing_entity?: { id: number; value: string }[];
+  date_created?: string;
+  contact?: { id: number; value: string }[];
 }
 
 export interface FieldSeason {

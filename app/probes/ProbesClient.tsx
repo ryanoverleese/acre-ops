@@ -12,9 +12,20 @@ export interface ProcessedProbe {
   ownerBillingEntityId?: number;
   yearNew?: number;
   notes?: string;
+  damagesRepairs?: string;
+  billingEntity: string;
+  billingEntityId?: number;
+  dateCreated?: string;
+  contact: string;
+  contactId?: number;
 }
 
 export interface BillingEntityOption {
+  id: number;
+  name: string;
+}
+
+export interface ContactOption {
   id: number;
   name: string;
 }
@@ -28,6 +39,7 @@ export interface ProbeFieldAssignment {
 interface ProbesClientProps {
   probes: ProcessedProbe[];
   billingEntities: BillingEntityOption[];
+  contacts: ContactOption[];
   statusCounts: Record<string, number>;
   availableSeasons: string[];
   probeFieldAssignments: ProbeFieldAssignment[];
@@ -55,9 +67,12 @@ const initialAddForm = {
   status: 'In Stock',
   rack_location: '',
   notes: '',
+  damages_repairs: '',
+  billing_entity: '',
+  contact: '',
 };
 
-export default function ProbesClient({ probes: initialProbes, billingEntities, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
+export default function ProbesClient({ probes: initialProbes, billingEntities, contacts, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
   const [probes, setProbes] = useState(initialProbes);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'all' | 'rack'>('all');
@@ -158,6 +173,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
       if (addForm.status) payload.status = addForm.status;
       if (addForm.rack_location) payload.rack_location = addForm.rack_location;
       if (addForm.notes) payload.notes = addForm.notes;
+      if (addForm.damages_repairs) payload.damages_repairs = addForm.damages_repairs;
+      if (addForm.billing_entity) payload.billing_entity = parseInt(addForm.billing_entity, 10);
+      if (addForm.contact) payload.contact = parseInt(addForm.contact, 10);
 
       const response = await fetch('/api/probes', {
         method: 'POST',
@@ -196,6 +214,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
         status: editForm.status || null,
         rack_location: editForm.rack_location || null,
         notes: editForm.notes || null,
+        damages_repairs: editForm.damages_repairs || null,
+        billing_entity: editForm.billing_entity ? parseInt(editForm.billing_entity, 10) : null,
+        contact: editForm.contact ? parseInt(editForm.contact, 10) : null,
       };
 
       const response = await fetch(`/api/probes/${selectedProbe.id}`, {
@@ -246,6 +267,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
       status: probe.status,
       rack_location: probe.rackLocation === '—' ? '' : probe.rackLocation,
       notes: probe.notes || '',
+      damages_repairs: probe.damagesRepairs || '',
+      billing_entity: probe.billingEntityId?.toString() || '',
+      contact: probe.contactId?.toString() || '',
     });
     setShowEditModal(true);
   };
@@ -616,6 +640,39 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
                     rows={3}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Damages/Repairs</label>
+                  <textarea
+                    value={addForm.damages_repairs}
+                    onChange={(e) => setAddForm({ ...addForm, damages_repairs: e.target.value })}
+                    placeholder="Enter damages or repairs..."
+                    rows={2}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Billing Entity</label>
+                  <select
+                    value={addForm.billing_entity}
+                    onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}
+                  >
+                    <option value="">Select billing entity...</option>
+                    {billingEntities.map((be) => (
+                      <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Contact</label>
+                  <select
+                    value={addForm.contact}
+                    onChange={(e) => setAddForm({ ...addForm, contact: e.target.value })}
+                  >
+                    <option value="">Select contact...</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
             <div className="detail-panel-footer">
@@ -712,6 +769,50 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, s
                     rows={3}
                   />
                 </div>
+                <div className="form-group">
+                  <label>Damages/Repairs</label>
+                  <textarea
+                    value={editForm.damages_repairs}
+                    onChange={(e) => setEditForm({ ...editForm, damages_repairs: e.target.value })}
+                    placeholder="Enter damages or repairs..."
+                    rows={2}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Billing Entity</label>
+                  <select
+                    value={editForm.billing_entity}
+                    onChange={(e) => setEditForm({ ...editForm, billing_entity: e.target.value })}
+                  >
+                    <option value="">Select billing entity...</option>
+                    {billingEntities.map((be) => (
+                      <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Contact</label>
+                  <select
+                    value={editForm.contact}
+                    onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
+                  >
+                    <option value="">Select contact...</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedProbe.dateCreated && (
+                  <div className="form-group">
+                    <label>Date Created</label>
+                    <input
+                      type="text"
+                      value={selectedProbe.dateCreated}
+                      disabled
+                      style={{ opacity: 0.6 }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
             <div className="detail-panel-footer">

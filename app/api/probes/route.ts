@@ -25,6 +25,11 @@ export async function POST(request: NextRequest) {
     if (body.status) createData.status = body.status;
     if (body.rack_location) createData.rack_location = body.rack_location;
     if (body.notes) createData.notes = body.notes;
+    if (body.damages_repairs) createData.damages_repairs = body.damages_repairs;
+    if (body.billing_entity) createData.billing_entity = [body.billing_entity];
+    if (body.contact) createData.contact = [body.contact];
+    // Auto-fill date_created with current date
+    createData.date_created = new Date().toISOString().split('T')[0];
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probes}/?user_field_names=true`;
     const response = await fetch(url, {

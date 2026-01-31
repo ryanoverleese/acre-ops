@@ -2292,11 +2292,17 @@ export default function FieldsClient({
                     )}
 
                     {/* Irrigation Details Section */}
-                    {(selectedField.irrigationType || selectedField.rowDirection) && (
+                    {(selectedField.irrigationType || selectedField.rowDirection || selectedField.fieldDirections) && (
                       <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
                         <div className="detail-row" style={{ marginBottom: '8px' }}>
                           <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Irrigation Details</span>
                         </div>
+                        {selectedField.fieldDirections && (
+                          <div className="detail-row">
+                            <span className="detail-label">Field Directions</span>
+                            <span className="detail-value">{selectedField.fieldDirections}</span>
+                          </div>
+                        )}
                         {selectedField.irrigationType && (
                           <div className="detail-row">
                             <span className="detail-label">Irrigation Type</span>

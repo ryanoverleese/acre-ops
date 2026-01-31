@@ -1,26 +1,31 @@
-import { getProbes, getBillingEntities, getFieldSeasons, getFields } from '@/lib/baserow';
-import ProbesClient, { ProcessedProbe, BillingEntityOption, ProbeFieldAssignment } from './ProbesClient';
+import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts } from '@/lib/baserow';
+import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
 async function getProbesData(): Promise<{
   probes: ProcessedProbe[];
   billingEntities: BillingEntityOption[];
+  contacts: ContactOption[];
   statusCounts: Record<string, number>;
   availableSeasons: string[];
   probeFieldAssignments: ProbeFieldAssignment[];
 }> {
   try {
-    const [probes, billingEntities, fieldSeasons, fields] = await Promise.all([
+    const [probes, billingEntities, fieldSeasons, fields, contacts] = await Promise.all([
       getProbes(),
       getBillingEntities(),
       getFieldSeasons(),
       getFields(),
+      getContacts(),
     ]);
 
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
+    const contactMap = new Map(contacts.map((c) => [c.id, c.name]));
     const fieldMap = new Map(fields.map((f) => [f.id, f.name]));
 
     const processedProbes: ProcessedProbe[] = probes.map((probe) => {
       const ownerLink = probe.owner_billing_entity?.[0];
+      const billingEntityLink = probe.billing_entity?.[0];
+      const contactLink = probe.contact?.[0];
       return {
         id: probe.id,
         serialNumber: probe.serial_number || 'Unknown',
@@ -31,12 +36,23 @@ async function getProbesData(): Promise<{
         ownerBillingEntityId: ownerLink?.id,
         yearNew: probe.year_new,
         notes: probe.notes,
+        damagesRepairs: probe.damages_repairs,
+        billingEntity: billingEntityLink ? billingEntityMap.get(billingEntityLink.id) || billingEntityLink.value : '—',
+        billingEntityId: billingEntityLink?.id,
+        dateCreated: probe.date_created,
+        contact: contactLink ? contactMap.get(contactLink.id) || contactLink.value : '—',
+        contactId: contactLink?.id,
       };
     });
 
     const billingEntityOptions: BillingEntityOption[] = billingEntities.map((be) => ({
       id: be.id,
       name: be.name,
+    }));
+
+    const contactOptions: ContactOption[] = contacts.map((c) => ({
+      id: c.id,
+      name: c.name,
     }));
 
     const statusCounts: Record<string, number> = {
@@ -92,22 +108,24 @@ async function getProbesData(): Promise<{
     return {
       probes: processedProbes,
       billingEntities: billingEntityOptions,
+      contacts: contactOptions,
       statusCounts,
       availableSeasons,
       probeFieldAssignments,
     };
   } catch (error) {
     console.error('Error fetching probes data:', error);
-    return { probes: [], billingEntities: [], statusCounts: { all: 0 }, availableSeasons: [String(new Date().getFullYear())], probeFieldAssignments: [] };
+    return { probes: [], billingEntities: [], contacts: [], statusCounts: { all: 0 }, availableSeasons: [String(new Date().getFullYear())], probeFieldAssignments: [] };
   }
 }
 
 export default async function ProbesPage() {
-  const { probes, billingEntities, statusCounts, availableSeasons, probeFieldAssignments } = await getProbesData();
+  const { probes, billingEntities, contacts, statusCounts, availableSeasons, probeFieldAssignments } = await getProbesData();
   return (
     <ProbesClient
       probes={probes}
       billingEntities={billingEntities}
+      contacts={contacts}
       statusCounts={statusCounts}
       availableSeasons={availableSeasons}
       probeFieldAssignments={probeFieldAssignments}
