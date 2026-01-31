@@ -150,12 +150,15 @@ async function getFieldsData(): Promise<{
       });
     });
 
-    // Get unique seasons from existing data plus current year
+    // Get unique seasons from existing data plus default years
     const currentYear = new Date().getFullYear();
     const seasons = new Set<string>();
 
-    // Always include current year
+    // Always include current year, next year, and previous 2 years as defaults
+    seasons.add(String(currentYear + 1));
     seasons.add(String(currentYear));
+    seasons.add(String(currentYear - 1));
+    seasons.add(String(currentYear - 2));
 
     // Include any seasons from existing field_seasons
     fieldSeasons.forEach((fs) => {
