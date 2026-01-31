@@ -5,6 +5,7 @@ async function getProbesData(): Promise<{
   probes: ProcessedProbe[];
   billingEntities: BillingEntityOption[];
   contacts: ContactOption[];
+  brandOptions: string[];
   statusCounts: Record<string, number>;
   availableSeasons: string[];
   probeFieldAssignments: ProbeFieldAssignment[];
@@ -65,6 +66,15 @@ async function getProbesData(): Promise<{
       operationName: contactOperationMap.get(c.id) || '—',
     }));
 
+    // Extract unique brand options from probes
+    const brandSet = new Set<string>();
+    probes.forEach((p) => {
+      if (p.brand?.value) {
+        brandSet.add(p.brand.value);
+      }
+    });
+    const brandOptions = Array.from(brandSet).sort();
+
     const statusCounts: Record<string, number> = {
       all: processedProbes.length,
     };
@@ -119,23 +129,25 @@ async function getProbesData(): Promise<{
       probes: processedProbes,
       billingEntities: billingEntityOptions,
       contacts: contactOptions,
+      brandOptions,
       statusCounts,
       availableSeasons,
       probeFieldAssignments,
     };
   } catch (error) {
     console.error('Error fetching probes data:', error);
-    return { probes: [], billingEntities: [], contacts: [], statusCounts: { all: 0 }, availableSeasons: [String(new Date().getFullYear())], probeFieldAssignments: [] };
+    return { probes: [], billingEntities: [], contacts: [], brandOptions: [], statusCounts: { all: 0 }, availableSeasons: [String(new Date().getFullYear())], probeFieldAssignments: [] };
   }
 }
 
 export default async function ProbesPage() {
-  const { probes, billingEntities, contacts, statusCounts, availableSeasons, probeFieldAssignments } = await getProbesData();
+  const { probes, billingEntities, contacts, brandOptions, statusCounts, availableSeasons, probeFieldAssignments } = await getProbesData();
   return (
     <ProbesClient
       probes={probes}
       billingEntities={billingEntities}
       contacts={contacts}
+      brandOptions={brandOptions}
       statusCounts={statusCounts}
       availableSeasons={availableSeasons}
       probeFieldAssignments={probeFieldAssignments}

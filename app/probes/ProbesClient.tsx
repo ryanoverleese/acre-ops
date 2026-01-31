@@ -40,16 +40,11 @@ interface ProbesClientProps {
   probes: ProcessedProbe[];
   billingEntities: BillingEntityOption[];
   contacts: ContactOption[];
+  brandOptions: string[];
   statusCounts: Record<string, number>;
   availableSeasons: string[];
   probeFieldAssignments: ProbeFieldAssignment[];
 }
-
-const BRAND_OPTIONS = [
-  'CropX V4',
-  'Sentek 36"/CropX Gateway',
-  'Sentek 48" Blue/Sentek Rocket',
-];
 
 const STATUS_OPTIONS = [
   'In Stock',
@@ -71,7 +66,7 @@ const initialAddForm = {
   damages_repairs: '',
 };
 
-export default function ProbesClient({ probes: initialProbes, billingEntities, contacts, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
+export default function ProbesClient({ probes: initialProbes, billingEntities, contacts, brandOptions, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
   const [probes, setProbes] = useState(initialProbes);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'all' | 'rack'>('all');
@@ -583,7 +578,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     onChange={(e) => setAddForm({ ...addForm, brand: e.target.value })}
                   >
                     <option value="">Select brand...</option>
-                    {BRAND_OPTIONS.map((brand) => (
+                    {brandOptions.map((brand) => (
                       <option key={brand} value={brand}>{brand}</option>
                     ))}
                   </select>
@@ -700,7 +695,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
                   >
                     <option value="">Select brand...</option>
-                    {BRAND_OPTIONS.map((brand) => (
+                    {brandOptions.map((brand) => (
                       <option key={brand} value={brand}>{brand}</option>
                     ))}
                   </select>
