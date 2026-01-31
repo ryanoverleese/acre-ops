@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 
 export interface ProcessedProbe {
   id: number;
@@ -89,6 +89,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
+  const mobileCardsRef = useRef<HTMLDivElement>(null);
+
+  // Rack numbers for the scrubber (1-15)
+  const rackNumbers = Array.from({ length: 15 }, (_, i) => i + 1);
 
   // Build a lookup map for probe field assignments: key = "probeId-season", value = fieldName
   const probeFieldMap = useMemo(() => {
@@ -184,6 +188,34 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
 
     return filtered;
   }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy]);
+
+  // Get unique rack prefixes (numbers) from filtered probes for highlighting active ones
+  const activeRackNumbers = useMemo(() => {
+    if (viewMode !== 'rack') return new Set<number>();
+    const numbers = new Set<number>();
+    filteredProbes.forEach(probe => {
+      const num = parseInt(probe.rack || '');
+      if (!isNaN(num)) numbers.add(num);
+    });
+    return numbers;
+  }, [filteredProbes, viewMode]);
+
+  // Scroll to a specific rack number
+  const scrollToRack = useCallback((rackNum: number) => {
+    if (!mobileCardsRef.current) return;
+    const cards = mobileCardsRef.current.querySelectorAll('.mobile-card');
+    for (const card of cards) {
+      const titleEl = card.querySelector('.mobile-card-title');
+      if (titleEl) {
+        const rackText = titleEl.textContent || '';
+        const cardRackNum = parseInt(rackText);
+        if (cardRackNum === rackNum) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          break;
+        }
+      }
+    }
+  }, []);
 
   const handleAdd = async () => {
     if (!addForm.serial_number.trim()) {
@@ -527,17 +559,18 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               )}
             </tbody>
           </table>
-          <div className="mobile-cards">
-            {filteredProbes.length === 0 ? (
-              <div className="empty-state">
-                {searchQuery ? 'No matching probes found.' : viewMode === 'rack' ? 'No probes with rack locations.' : 'No probes found.'}
-              </div>
-            ) : (
-              filteredProbes.map((probe) => (
-                <div key={probe.id} className="mobile-card" onClick={() => openEditModal(probe)}>
-                  <div className="mobile-card-header">
-                    {viewMode === 'rack' ? (
-                      <>
+          <div style={{ position: 'relative' }}>
+            <div className="mobile-cards" ref={mobileCardsRef}>
+              {filteredProbes.length === 0 ? (
+                <div className="empty-state">
+                  {searchQuery ? 'No matching probes found.' : viewMode === 'rack' ? 'No probes with rack locations.' : 'No probes found.'}
+                </div>
+              ) : (
+                filteredProbes.map((probe) => (
+                  <div key={probe.id} className="mobile-card" onClick={() => openEditModal(probe)}>
+                    <div className="mobile-card-header">
+                      {viewMode === 'rack' ? (
+                        <>
                         <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
                           {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
                         </span>
@@ -603,6 +636,50 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   </div>
                 </div>
               ))
+            )}
+            </div>
+            {/* Rack Index Scrubber - only show in rack view on mobile */}
+            {viewMode === 'rack' && filteredProbes.length > 0 && (
+              <div
+                className="rack-scrubber"
+                style={{
+                  position: 'fixed',
+                  right: '4px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  padding: '8px 4px',
+                  background: 'var(--bg-tertiary)',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  zIndex: 100,
+                }}
+              >
+                {rackNumbers.map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => scrollToRack(num)}
+                    disabled={!activeRackNumbers.has(num)}
+                    style={{
+                      width: '28px',
+                      height: '24px',
+                      border: 'none',
+                      borderRadius: '4px',
+                      background: activeRackNumbers.has(num) ? 'var(--accent-green-dim)' : 'transparent',
+                      color: activeRackNumbers.has(num) ? 'var(--accent-green)' : 'var(--text-muted)',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: activeRackNumbers.has(num) ? 'pointer' : 'default',
+                      opacity: activeRackNumbers.has(num) ? 1 : 0.4,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </div>
