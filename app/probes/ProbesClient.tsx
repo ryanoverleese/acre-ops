@@ -503,12 +503,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       <>
                         <div className="mobile-card-row"><span>Serial:</span> #{probe.serialNumber}</div>
                         <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                        <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
                         <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
                         <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
                       </>
                     ) : (
                       <>
                         <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
+                        <div className="mobile-card-row"><span>Billing Entity:</span> {probe.billingEntity}</div>
                         <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
                         <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
                         <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
