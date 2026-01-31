@@ -55,6 +55,13 @@ const STATUS_OPTIONS = [
   'Retired',
 ];
 
+// Rack options: 1A, 1B, 2A, 2B, ... 15A, 15B
+const RACK_OPTIONS = [
+  '1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B',
+  '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B',
+  '11A', '11B', '12A', '12B', '13A', '13B', '14A', '14B', '15A', '15B',
+];
+
 const initialAddForm = {
   serial_number: '',
   brand: '',
@@ -81,6 +88,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [sortColumn, setSortColumn] = useState<string>('serialNumber');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
+  const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
 
   // Build a lookup map for probe field assignments: key = "probeId-season", value = fieldName
   const probeFieldMap = useMemo(() => {
@@ -108,13 +116,34 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const filteredProbes = useMemo(() => {
     let filtered = probes;
 
-    // For rack view, only show probes with rack and sort by rack then slot
+    // For rack view, only show probes with rack and sort based on rackSortBy
     if (viewMode === 'rack') {
       filtered = filtered.filter((probe) => probe.rack && probe.rack !== '—');
       filtered = [...filtered].sort((a, b) => {
-        const rackCompare = (a.rack || '').localeCompare(b.rack || '');
-        if (rackCompare !== 0) return rackCompare;
-        return (a.rackSlot || '').localeCompare(b.rackSlot || '');
+        if (rackSortBy === 'rack') {
+          // Sort by rack number first (numeric), then letter, then slot
+          const rackA = a.rack || '';
+          const rackB = b.rack || '';
+          const numA = parseInt(rackA) || 0;
+          const numB = parseInt(rackB) || 0;
+          if (numA !== numB) return numA - numB;
+          const letterA = rackA.replace(/\d+/, '');
+          const letterB = rackB.replace(/\d+/, '');
+          if (letterA !== letterB) return letterA.localeCompare(letterB);
+          // Then by slot number
+          const slotA = parseInt(a.rackSlot) || 0;
+          const slotB = parseInt(b.rackSlot) || 0;
+          return slotA - slotB;
+        } else if (rackSortBy === 'slot') {
+          // Sort by slot number first, then rack
+          const slotA = parseInt(a.rackSlot) || 0;
+          const slotB = parseInt(b.rackSlot) || 0;
+          if (slotA !== slotB) return slotA - slotB;
+          return (a.rack || '').localeCompare(b.rack || '');
+        } else {
+          // Sort by serial number
+          return (a.serialNumber || '').localeCompare(b.serialNumber || '');
+        }
       });
     }
 
@@ -154,7 +183,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy]);
 
   const handleAdd = async () => {
     if (!addForm.serial_number.trim()) {
@@ -357,7 +386,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         </div>
 
         {/* View Toggle */}
-        <div className="fields-filter-row">
+        <div className="fields-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="view-mode-toggle">
             <button
               onClick={() => setViewMode('all')}
@@ -372,6 +401,28 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               Probe Rack
             </button>
           </div>
+          {viewMode === 'rack' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort by:</span>
+              <select
+                value={rackSortBy}
+                onChange={(e) => setRackSortBy(e.target.value as 'rack' | 'slot' | 'serial')}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="rack">Rack</option>
+                <option value="slot">Slot</option>
+                <option value="serial">Serial Number</option>
+              </select>
+            </div>
+          )}
         </div>
 
         <div className="table-container">
@@ -637,20 +688,24 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Rack</label>
-                  <input
-                    type="text"
+                  <select
                     value={addForm.rack}
                     onChange={(e) => setAddForm({ ...addForm, rack: e.target.value })}
-                    placeholder="e.g. 1A, 2B, 15"
-                  />
+                  >
+                    <option value="">Select rack...</option>
+                    {RACK_OPTIONS.map((rack) => (
+                      <option key={rack} value={rack}>{rack}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Rack Slot</label>
                   <input
-                    type="text"
+                    type="number"
                     value={addForm.rack_slot}
                     onChange={(e) => setAddForm({ ...addForm, rack_slot: e.target.value })}
-                    placeholder="e.g. 01"
+                    placeholder="e.g. 1, 2, 3"
+                    min="1"
                   />
                 </div>
                 <div className="form-group">
@@ -763,20 +818,24 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Rack</label>
-                  <input
-                    type="text"
+                  <select
                     value={editForm.rack}
                     onChange={(e) => setEditForm({ ...editForm, rack: e.target.value })}
-                    placeholder="e.g. 1A, 2B, 15"
-                  />
+                  >
+                    <option value="">Select rack...</option>
+                    {RACK_OPTIONS.map((rack) => (
+                      <option key={rack} value={rack}>{rack}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Rack Slot</label>
                   <input
-                    type="text"
+                    type="number"
                     value={editForm.rack_slot}
                     onChange={(e) => setEditForm({ ...editForm, rack_slot: e.target.value })}
-                    placeholder="e.g. 01"
+                    placeholder="e.g. 1, 2, 3"
+                    min="1"
                   />
                 </div>
                 <div className="form-group">
