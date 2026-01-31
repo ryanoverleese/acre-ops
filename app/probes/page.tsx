@@ -84,10 +84,12 @@ async function getProbesData(): Promise<{
       statusCounts[status] = (statusCounts[status] || 0) + 1;
     });
 
-    // Get unique seasons from field_seasons plus current year
+    // Get unique seasons from field_seasons plus default years
     const currentYear = new Date().getFullYear();
     const seasons = new Set<string>();
     seasons.add(String(currentYear));
+    seasons.add(String(currentYear - 1));
+    seasons.add(String(currentYear - 2));
     fieldSeasons.forEach((fs) => {
       if (fs.season) {
         seasons.add(String(fs.season));

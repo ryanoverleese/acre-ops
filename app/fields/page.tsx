@@ -154,8 +154,7 @@ async function getFieldsData(): Promise<{
     const currentYear = new Date().getFullYear();
     const seasons = new Set<string>();
 
-    // Always include current year, next year, and previous 2 years as defaults
-    seasons.add(String(currentYear + 1));
+    // Always include current year and previous 2 years as defaults
     seasons.add(String(currentYear));
     seasons.add(String(currentYear - 1));
     seasons.add(String(currentYear - 2));

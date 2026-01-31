@@ -88,12 +88,19 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [sortColumn, setSortColumn] = useState<string>('serialNumber');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
+  const [customYears, setCustomYears] = useState<string[]>([]);
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
   const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
   const mobileCardsRef = useRef<HTMLDivElement>(null);
 
   // Rack numbers for the scrubber (1-15)
   const rackNumbers = Array.from({ length: 15 }, (_, i) => i + 1);
+
+  // Combine available seasons with any custom years added by user
+  const allSeasons = useMemo(() => {
+    const combined = new Set([...availableSeasons, ...customYears]);
+    return Array.from(combined).sort((a, b) => b.localeCompare(a));
+  }, [availableSeasons, customYears]);
 
   // Build a lookup map for probe field assignments: key = "probeId-season", value = fieldName
   const probeFieldMap = useMemo(() => {
@@ -438,22 +445,36 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           <h2>Probe Inventory</h2>
           <select
             value={currentSeason}
-            onChange={(e) => setCurrentSeason(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value === '__add_year__') {
+                const year = prompt('Enter year (e.g., 2028):');
+                if (year && /^\d{4}$/.test(year.trim())) {
+                  const newYear = year.trim();
+                  if (!allSeasons.includes(newYear)) {
+                    setCustomYears(prev => [...prev, newYear]);
+                  }
+                  setCurrentSeason(newYear);
+                }
+              } else {
+                setCurrentSeason(e.target.value);
+              }
+            }}
             className="season-selector"
             style={{
               background: 'var(--accent-green-dim)',
               color: 'var(--accent-green)',
               border: 'none',
-              borderRadius: '4px',
-              padding: '4px 8px',
+              borderRadius: '16px',
+              padding: '4px 12px',
               fontWeight: 600,
               fontSize: '13px',
               cursor: 'pointer',
             }}
           >
-            {availableSeasons.map((s) => (
+            {allSeasons.map((s) => (
               <option key={s} value={s}>{s} Season</option>
             ))}
+            <option value="__add_year__">+ Add Year...</option>
           </select>
           <span className="season-badge">{statusCounts.all} Total</span>
         </div>
