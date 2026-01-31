@@ -8,8 +8,6 @@ export interface ProcessedProbe {
   brand: string;
   status: string;
   rackLocation: string;
-  ownerBillingEntity: string;
-  ownerBillingEntityId?: number;
   yearNew?: number;
   notes?: string;
   damagesRepairs?: string;
@@ -18,6 +16,7 @@ export interface ProcessedProbe {
   dateCreated?: string;
   contact: string;
   contactId?: number;
+  operation: string;
 }
 
 export interface BillingEntityOption {
@@ -28,6 +27,7 @@ export interface BillingEntityOption {
 export interface ContactOption {
   id: number;
   name: string;
+  operationName: string;
 }
 
 export interface ProbeFieldAssignment {
@@ -62,14 +62,13 @@ const STATUS_OPTIONS = [
 const initialAddForm = {
   serial_number: '',
   brand: '',
-  owner_billing_entity: '',
+  billing_entity: '',
+  contact: '',
   year_new: '',
   status: 'In Stock',
   rack_location: '',
   notes: '',
   damages_repairs: '',
-  billing_entity: '',
-  contact: '',
 };
 
 export default function ProbesClient({ probes: initialProbes, billingEntities, contacts, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
@@ -126,7 +125,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         (probe) =>
           probe.serialNumber.toLowerCase().includes(query) ||
           probe.brand.toLowerCase().includes(query) ||
-          probe.ownerBillingEntity.toLowerCase().includes(query) ||
+          probe.operation.toLowerCase().includes(query) ||
           (probe.rackLocation || '').toLowerCase().includes(query)
       );
     }
@@ -142,7 +141,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           case 'brand': aVal = a.brand.toLowerCase(); bVal = b.brand.toLowerCase(); break;
           case 'status': aVal = a.status.toLowerCase(); bVal = b.status.toLowerCase(); break;
           case 'field': aVal = (getFieldForProbe(a.id) || '').toLowerCase(); bVal = (getFieldForProbe(b.id) || '').toLowerCase(); break;
-          case 'owner': aVal = a.ownerBillingEntity.toLowerCase(); bVal = b.ownerBillingEntity.toLowerCase(); break;
+          case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
           case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
           case 'rack': aVal = a.rackLocation || ''; bVal = b.rackLocation || ''; break;
           default: aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase();
@@ -168,14 +167,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         serial_number: addForm.serial_number,
       };
       if (addForm.brand) payload.brand = addForm.brand;
-      if (addForm.owner_billing_entity) payload.owner_billing_entity = parseInt(addForm.owner_billing_entity, 10);
+      if (addForm.billing_entity) payload.billing_entity = parseInt(addForm.billing_entity, 10);
+      if (addForm.contact) payload.contact = parseInt(addForm.contact, 10);
       if (addForm.year_new) payload.year_new = parseInt(addForm.year_new, 10);
       if (addForm.status) payload.status = addForm.status;
       if (addForm.rack_location) payload.rack_location = addForm.rack_location;
       if (addForm.notes) payload.notes = addForm.notes;
       if (addForm.damages_repairs) payload.damages_repairs = addForm.damages_repairs;
-      if (addForm.billing_entity) payload.billing_entity = parseInt(addForm.billing_entity, 10);
-      if (addForm.contact) payload.contact = parseInt(addForm.contact, 10);
 
       const response = await fetch('/api/probes', {
         method: 'POST',
@@ -209,14 +207,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       const payload: Record<string, unknown> = {
         serial_number: editForm.serial_number,
         brand: editForm.brand || null,
-        owner_billing_entity: editForm.owner_billing_entity ? parseInt(editForm.owner_billing_entity, 10) : null,
+        billing_entity: editForm.billing_entity ? parseInt(editForm.billing_entity, 10) : null,
+        contact: editForm.contact ? parseInt(editForm.contact, 10) : null,
         year_new: editForm.year_new ? parseInt(editForm.year_new, 10) : null,
         status: editForm.status || null,
         rack_location: editForm.rack_location || null,
         notes: editForm.notes || null,
         damages_repairs: editForm.damages_repairs || null,
-        billing_entity: editForm.billing_entity ? parseInt(editForm.billing_entity, 10) : null,
-        contact: editForm.contact ? parseInt(editForm.contact, 10) : null,
       };
 
       const response = await fetch(`/api/probes/${selectedProbe.id}`, {
@@ -262,14 +259,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     setEditForm({
       serial_number: probe.serialNumber,
       brand: probe.brand,
-      owner_billing_entity: probe.ownerBillingEntityId?.toString() || '',
+      billing_entity: probe.billingEntityId?.toString() || '',
+      contact: probe.contactId?.toString() || '',
       year_new: probe.yearNew?.toString() || '',
       status: probe.status,
       rack_location: probe.rackLocation === '—' ? '' : probe.rackLocation,
       notes: probe.notes || '',
       damages_repairs: probe.damagesRepairs || '',
-      billing_entity: probe.billingEntityId?.toString() || '',
-      contact: probe.contactId?.toString() || '',
     });
     setShowEditModal(true);
   };
@@ -424,9 +420,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                 </th>
                 <th>Rack Location</th>
-                <th className="sortable" onClick={() => handleSort('owner')}>
-                  Owner
-                  {sortColumn === 'owner' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable" onClick={() => handleSort('operation')}>
+                  Operation
+                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                 </th>
                 <th className="sortable" onClick={() => handleSort('year')}>
                   Year New
@@ -456,7 +452,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
                       {probe.rackLocation}
                     </td>
-                    <td style={{ fontSize: '13px' }}>{probe.ownerBillingEntity}</td>
+                    <td style={{ fontSize: '13px' }}>{probe.operation}</td>
                     <td className="field-count">{probe.yearNew || '—'}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '4px' }}>
@@ -508,13 +504,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         <div className="mobile-card-row"><span>Serial:</span> #{probe.serialNumber}</div>
                         <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
                         <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
-                        <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
+                        <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
                       </>
                     ) : (
                       <>
                         <div className="mobile-card-row"><span>Brand:</span> {probe.brand}</div>
                         <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(probe.id) || '—'}</div>
-                        <div className="mobile-card-row"><span>Owner:</span> {probe.ownerBillingEntity}</div>
+                        <div className="mobile-card-row"><span>Operation:</span> {probe.operation}</div>
                         <div className="mobile-card-row"><span>Rack:</span> {probe.rackLocation}</div>
                         <div className="mobile-card-row"><span>Year New:</span> {probe.yearNew || '—'}</div>
                       </>
@@ -591,14 +587,26 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Owner (Billing Entity)</label>
+                  <label>Billing Entity</label>
                   <select
-                    value={addForm.owner_billing_entity}
-                    onChange={(e) => setAddForm({ ...addForm, owner_billing_entity: e.target.value })}
+                    value={addForm.billing_entity}
+                    onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}
                   >
                     <option value="">Select billing entity...</option>
                     {billingEntities.map((be) => (
                       <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Contact</label>
+                  <select
+                    value={addForm.contact}
+                    onChange={(e) => setAddForm({ ...addForm, contact: e.target.value })}
+                  >
+                    <option value="">Select contact...</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.operationName})</option>
                     ))}
                   </select>
                 </div>
@@ -649,30 +657,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     rows={2}
                   />
                 </div>
-                <div className="form-group">
-                  <label>Billing Entity</label>
-                  <select
-                    value={addForm.billing_entity}
-                    onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}
-                  >
-                    <option value="">Select billing entity...</option>
-                    {billingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Contact</label>
-                  <select
-                    value={addForm.contact}
-                    onChange={(e) => setAddForm({ ...addForm, contact: e.target.value })}
-                  >
-                    <option value="">Select contact...</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
               </div>
             </div>
             <div className="detail-panel-footer">
@@ -720,14 +704,26 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Owner (Billing Entity)</label>
+                  <label>Billing Entity</label>
                   <select
-                    value={editForm.owner_billing_entity}
-                    onChange={(e) => setEditForm({ ...editForm, owner_billing_entity: e.target.value })}
+                    value={editForm.billing_entity}
+                    onChange={(e) => setEditForm({ ...editForm, billing_entity: e.target.value })}
                   >
                     <option value="">Select billing entity...</option>
                     {billingEntities.map((be) => (
                       <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Contact</label>
+                  <select
+                    value={editForm.contact}
+                    onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
+                  >
+                    <option value="">Select contact...</option>
+                    {contacts.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.operationName})</option>
                     ))}
                   </select>
                 </div>
@@ -777,30 +773,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     placeholder="Enter damages or repairs..."
                     rows={2}
                   />
-                </div>
-                <div className="form-group">
-                  <label>Billing Entity</label>
-                  <select
-                    value={editForm.billing_entity}
-                    onChange={(e) => setEditForm({ ...editForm, billing_entity: e.target.value })}
-                  >
-                    <option value="">Select billing entity...</option>
-                    {billingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Contact</label>
-                  <select
-                    value={editForm.contact}
-                    onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
-                  >
-                    <option value="">Select contact...</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
                 </div>
                 {selectedProbe.dateCreated && (
                   <div className="form-group">

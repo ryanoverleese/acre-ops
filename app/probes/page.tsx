@@ -1,4 +1,4 @@
-import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts } from '@/lib/baserow';
+import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations } from '@/lib/baserow';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
 async function getProbesData(): Promise<{
@@ -10,38 +10,47 @@ async function getProbesData(): Promise<{
   probeFieldAssignments: ProbeFieldAssignment[];
 }> {
   try {
-    const [probes, billingEntities, fieldSeasons, fields, contacts] = await Promise.all([
+    const [probes, billingEntities, fieldSeasons, fields, contacts, operations] = await Promise.all([
       getProbes(),
       getBillingEntities(),
       getFieldSeasons(),
       getFields(),
       getContacts(),
+      getOperations(),
     ]);
 
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
-    const contactMap = new Map(contacts.map((c) => [c.id, c.name]));
+    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const fieldMap = new Map(fields.map((f) => [f.id, f.name]));
 
+    // Build contact to operation name mapping
+    const contactOperationMap = new Map<number, string>();
+    contacts.forEach((c) => {
+      const opNames = (c.operations || [])
+        .map((op) => operationMap.get(op.id) || op.value)
+        .filter(Boolean);
+      contactOperationMap.set(c.id, opNames.join(', ') || '—');
+    });
+
     const processedProbes: ProcessedProbe[] = probes.map((probe) => {
-      const ownerLink = probe.owner_billing_entity?.[0];
       const billingEntityLink = probe.billing_entity?.[0];
       const contactLink = probe.contact?.[0];
+      const operationName = contactLink ? contactOperationMap.get(contactLink.id) || '—' : '—';
       return {
         id: probe.id,
         serialNumber: probe.serial_number || 'Unknown',
         brand: probe.brand?.value || 'Unknown',
         status: probe.status?.value || 'Unknown',
         rackLocation: probe.rack_location || '—',
-        ownerBillingEntity: ownerLink ? billingEntityMap.get(ownerLink.id) || ownerLink.value : '—',
-        ownerBillingEntityId: ownerLink?.id,
         yearNew: probe.year_new,
         notes: probe.notes,
         damagesRepairs: probe.damages_repairs,
         billingEntity: billingEntityLink ? billingEntityMap.get(billingEntityLink.id) || billingEntityLink.value : '—',
         billingEntityId: billingEntityLink?.id,
         dateCreated: probe.date_created,
-        contact: contactLink ? contactMap.get(contactLink.id) || contactLink.value : '—',
+        contact: contactLink ? (contacts.find((c) => c.id === contactLink.id)?.name || contactLink.value) : '—',
         contactId: contactLink?.id,
+        operation: operationName,
       };
     });
 
@@ -53,6 +62,7 @@ async function getProbesData(): Promise<{
     const contactOptions: ContactOption[] = contacts.map((c) => ({
       id: c.id,
       name: c.name,
+      operationName: contactOperationMap.get(c.id) || '—',
     }));
 
     const statusCounts: Record<string, number> = {

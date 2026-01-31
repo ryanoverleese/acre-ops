@@ -313,15 +313,15 @@ async function getFieldsData(): Promise<{
       };
     });
 
-    // Probe options with owner billing entity
+    // Probe options with billing entity
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
     const probeOptions: ProbeOption[] = probes.map((p) => {
-      const ownerBeLink = p.owner_billing_entity?.[0];
-      const ownerName = ownerBeLink ? billingEntityMap.get(ownerBeLink.id) || ownerBeLink.value : 'Unassigned';
+      const beLink = p.billing_entity?.[0];
+      const beName = beLink ? billingEntityMap.get(beLink.id) || beLink.value : 'Unassigned';
       return {
         id: p.id,
         serialNumber: p.serial_number || '',
-        ownerBillingEntity: ownerName,
+        ownerBillingEntity: beName,
         status: p.status?.value || 'Unknown',
       };
     });

@@ -25,20 +25,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (body.serial_number !== undefined) updateData.serial_number = body.serial_number;
     if (body.brand !== undefined) updateData.brand = body.brand;
-    if (body.owner_billing_entity !== undefined) {
-      updateData.owner_billing_entity = body.owner_billing_entity ? [body.owner_billing_entity] : [];
-    }
-    if (body.year_new !== undefined) updateData.year_new = body.year_new;
-    if (body.status !== undefined) updateData.status = body.status;
-    if (body.rack_location !== undefined) updateData.rack_location = body.rack_location;
-    if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.damages_repairs !== undefined) updateData.damages_repairs = body.damages_repairs;
     if (body.billing_entity !== undefined) {
       updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
     }
     if (body.contact !== undefined) {
       updateData.contact = body.contact ? [body.contact] : [];
     }
+    if (body.year_new !== undefined) updateData.year_new = body.year_new;
+    if (body.status !== undefined) updateData.status = body.status;
+    if (body.rack_location !== undefined) updateData.rack_location = body.rack_location;
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.damages_repairs !== undefined) updateData.damages_repairs = body.damages_repairs;
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probes}/${probeId}/?user_field_names=true`;
     const response = await fetch(url, {

@@ -165,15 +165,14 @@ export interface Probe {
   id: number;
   serial_number?: string;
   brand?: { id: number; value: string };
-  owner_billing_entity?: { id: number; value: string }[];
+  billing_entity?: { id: number; value: string }[];
+  contact?: { id: number; value: string }[];
   year_new?: number;
   status?: { id: number; value: string };
   rack_location?: string;
   notes?: string;
   damages_repairs?: string;
-  billing_entity?: { id: number; value: string }[];
   date_created?: string;
-  contact?: { id: number; value: string }[];
 }
 
 export interface FieldSeason {
