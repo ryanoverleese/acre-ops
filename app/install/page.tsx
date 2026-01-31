@@ -101,8 +101,8 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           probeId: probeId || null,
           probeSerial: probe?.serial_number || '',
           probeBrand: probe?.brand?.value || '',
-          probeRack: probe?.rack || '',
-          probeRackSlot: probe?.rack_slot || '',
+          probeRack: probe?.rack?.value || '',
+          probeRackSlot: probe?.rack_slot?.toString() || '',
           // From probe_assignment
           antennaType: pa.antenna_type?.value || '',
         };
@@ -122,8 +122,8 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         id: p.id,
         serialNumber: p.serial_number || '',
         brand: p.brand?.value || '',
-        rack: p.rack || '',
-        rackSlot: p.rack_slot || '',
+        rack: p.rack?.value || '',
+        rackSlot: p.rack_slot?.toString() || '',
       }))
       .sort((a, b) => a.serialNumber.localeCompare(b.serialNumber));
 

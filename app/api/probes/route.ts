@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     if (body.year_new) createData.year_new = body.year_new;
     if (body.status) createData.status = body.status;
     if (body.rack) createData.rack = body.rack;
-    if (body.rack_slot) createData.rack_slot = body.rack_slot;
+    if (body.rack_slot) createData.rack_slot = parseInt(body.rack_slot, 10);
     if (body.notes) createData.notes = body.notes;
     if (body.damages_repairs) createData.damages_repairs = body.damages_repairs;
     // Auto-fill date_created with current date

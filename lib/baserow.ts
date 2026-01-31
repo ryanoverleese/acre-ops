@@ -169,8 +169,8 @@ export interface Probe {
   contact?: { id: number; value: string }[];
   year_new?: number;
   status?: { id: number; value: string };
-  rack?: string;
-  rack_slot?: string;
+  rack?: { id: number; value: string };
+  rack_slot?: number;
   notes?: string;
   damages_repairs?: string;
   date_created?: string;
