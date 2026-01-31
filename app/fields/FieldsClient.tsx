@@ -271,6 +271,7 @@ export default function FieldsClient({
   const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
   const [savingProbeAssignment, setSavingProbeAssignment] = useState(false);
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
+  const [customYears, setCustomYears] = useState<string[]>([]);
   const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
   const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
@@ -343,6 +344,12 @@ export default function FieldsClient({
       setSortDirection('asc');
     }
   };
+
+  // Combine available seasons with any custom years added by user
+  const allSeasons = useMemo(() => {
+    const combined = new Set([...availableSeasons, ...customYears]);
+    return Array.from(combined).sort((a, b) => b.localeCompare(a));
+  }, [availableSeasons, customYears]);
 
   // Filter fields by current season - only show fields that have actual season data
   const seasonFields = useMemo(() => {
@@ -1347,7 +1354,20 @@ export default function FieldsClient({
           <h2>Fields</h2>
           <select
             value={currentSeason}
-            onChange={(e) => setCurrentSeason(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value === '__add_year__') {
+                const year = prompt('Enter year (e.g., 2028):');
+                if (year && /^\d{4}$/.test(year.trim())) {
+                  const newYear = year.trim();
+                  if (!allSeasons.includes(newYear)) {
+                    setCustomYears(prev => [...prev, newYear]);
+                  }
+                  setCurrentSeason(newYear);
+                }
+              } else {
+                setCurrentSeason(e.target.value);
+              }
+            }}
             className="season-selector"
             style={{
               background: 'var(--accent-green-dim)',
@@ -1361,9 +1381,10 @@ export default function FieldsClient({
             }}
           >
             <option value="all">All Seasons</option>
-            {availableSeasons.map((s) => (
+            {allSeasons.map((s) => (
               <option key={s} value={s}>{s} Season</option>
             ))}
+            <option value="__add_year__">+ Add Year...</option>
           </select>
         </div>
         <div className="header-right" style={{ display: 'flex', gap: '8px' }}>
@@ -2903,7 +2924,7 @@ export default function FieldsClient({
                         value={rolloverForm.fromSeason}
                         onChange={(e) => setRolloverForm({ ...rolloverForm, fromSeason: e.target.value })}
                       >
-                        {availableSeasons.map((s) => (
+                        {allSeasons.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
                       </select>
@@ -2913,20 +2934,24 @@ export default function FieldsClient({
                       <select
                         value={rolloverForm.toSeason}
                         onChange={(e) => {
-                          if (e.target.value === 'custom') {
+                          if (e.target.value === '__add_year__') {
                             const customYear = prompt('Enter year (e.g., 2030):');
                             if (customYear && /^\d{4}$/.test(customYear.trim())) {
-                              setRolloverForm({ ...rolloverForm, toSeason: customYear.trim() });
+                              const newYear = customYear.trim();
+                              if (!allSeasons.includes(newYear)) {
+                                setCustomYears(prev => [...prev, newYear]);
+                              }
+                              setRolloverForm({ ...rolloverForm, toSeason: newYear });
                             }
                           } else {
                             setRolloverForm({ ...rolloverForm, toSeason: e.target.value });
                           }
                         }}
                       >
-                        {availableSeasons.map((s) => (
+                        {allSeasons.map((s) => (
                           <option key={s} value={s}>{s}</option>
                         ))}
-                        <option value="custom">New Year</option>
+                        <option value="__add_year__">+ Add Year...</option>
                       </select>
                     </div>
                   </div>
