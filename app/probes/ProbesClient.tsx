@@ -477,7 +477,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             ))}
             <option value="__add_year__">+ Add Year...</option>
           </select>
-          <span className="season-badge">{statusCounts.all} Total</span>
         </div>
       </header>
 
@@ -501,97 +500,85 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           </div>
         </div>
 
-        {/* View Toggle */}
-        <div className="fields-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div className="view-mode-toggle">
-            <button
-              onClick={() => setViewMode('all')}
-              className={viewMode === 'all' ? 'active' : ''}
-            >
-              All Probes
-            </button>
-            <button
-              onClick={() => setViewMode('rack')}
-              className={viewMode === 'rack' ? 'active' : ''}
-            >
-              Probe Rack
-            </button>
+        {/* Filter Row */}
+        <div className="fields-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div className="view-mode-toggle">
+              <button
+                onClick={() => setViewMode('all')}
+                className={viewMode === 'all' ? 'active' : ''}
+              >
+                All Probes
+              </button>
+              <button
+                onClick={() => setViewMode('rack')}
+                className={viewMode === 'rack' ? 'active' : ''}
+              >
+                Probe Rack
+              </button>
+            </div>
+            <div className="search-box" style={{ minWidth: '220px' }}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder={viewMode === 'rack' ? "Search rack or serial..." : "Search probes..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
-          {viewMode === 'rack' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Show:</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {viewMode === 'rack' && (
+              <>
                 <select
                   value={rackFilter}
                   onChange={(e) => setRackFilter(e.target.value as 'all' | 'empty')}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-sm)',
                     border: '1px solid var(--border)',
-                    background: rackFilter === 'empty' ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+                    background: rackFilter === 'empty' ? 'var(--accent-green-dim)' : 'var(--bg-card)',
                     color: rackFilter === 'empty' ? 'var(--accent-green)' : 'var(--text-primary)',
                     fontSize: '13px',
                     cursor: 'pointer',
-                    fontWeight: rackFilter === 'empty' ? 600 : 400,
+                    fontWeight: rackFilter === 'empty' ? 600 : 500,
                   }}
                 >
                   <option value="all">All Slots</option>
                   <option value="empty">Empty Only ({emptySlotCount})</option>
                 </select>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort:</span>
                 <select
                   value={rackSortBy}
                   onChange={(e) => setRackSortBy(e.target.value as 'rack' | 'slot' | 'serial')}
                   style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
+                    padding: '8px 12px',
+                    borderRadius: 'var(--radius-sm)',
                     border: '1px solid var(--border)',
-                    background: 'var(--bg-secondary)',
+                    background: 'var(--bg-card)',
                     color: 'var(--text-primary)',
                     fontSize: '13px',
                     cursor: 'pointer',
+                    fontWeight: 500,
                   }}
                 >
-                  <option value="rack">Rack</option>
-                  <option value="slot">Slot</option>
-                  <option value="serial">Serial Number</option>
+                  <option value="rack">Sort: Rack</option>
+                  <option value="slot">Sort: Slot</option>
+                  <option value="serial">Sort: Serial</option>
                 </select>
-              </div>
-            </div>
-          )}
+              </>
+            )}
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Probe
+            </button>
+          </div>
         </div>
 
         <div className="table-container">
-          <div className="table-header">
-            <h3 className="table-title">
-              {searchQuery
-                ? `Matching Probes (${filteredProbes.length})`
-                : viewMode === 'rack'
-                  ? `Probe Rack (${filteredProbes.length})`
-                  : 'All Probes'}
-            </h3>
-            <div className="table-actions">
-              <div className="search-box" style={{ minWidth: '200px' }}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
-                  type="text"
-                  placeholder={viewMode === 'rack' ? "Search rack or serial..." : "Search probes..."}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Probe
-              </button>
-            </div>
-          </div>
           <table className="desktop-table">
             <thead>
               <tr>
