@@ -6,7 +6,7 @@ import LoadingBar from '@/components/LoadingBar';
 import AskAI from '@/components/AskAI';
 
 export const metadata: Metadata = {
-  title: 'Acre Insights - Probe Manager',
+  title: 'Acre Insights Operation Center',
   description: 'Agricultural probe management system',
 };
 

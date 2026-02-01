@@ -148,7 +148,7 @@ export default function AppShell({ children }: AppShellProps) {
           </svg>
         </button>
         <div className="mobile-logo">
-          <h1>Acre Insights</h1>
+          <h1>Acre Insights Operation Center</h1>
         </div>
       </div>
 
@@ -165,7 +165,7 @@ export default function AppShell({ children }: AppShellProps) {
         <div className="sidebar-header-mobile">
           <div className="logo">
             <h1>Acre Insights</h1>
-            <span>Probe Manager</span>
+            <span>Operation Center</span>
           </div>
           <button
             className="mobile-close-btn"
@@ -180,7 +180,7 @@ export default function AppShell({ children }: AppShellProps) {
 
         <div className="logo desktop-only">
           <h1>Acre Insights</h1>
-          <span>Probe Manager</span>
+          <span>Operation Center</span>
         </div>
 
         {navSections.map((section) => (
