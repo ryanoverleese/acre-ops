@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import './globals.css';
 import AppShell from '@/components/AppShell';
 import LoadingBar from '@/components/LoadingBar';
+import AskAI from '@/components/AskAI';
 
 export const metadata: Metadata = {
   title: 'Acre Insights - Probe Manager',
@@ -23,6 +24,7 @@ export default function RootLayout({
         <div className="app">
           <AppShell>{children}</AppShell>
         </div>
+        <AskAI />
       </body>
     </html>
   );
