@@ -2147,7 +2147,7 @@ input[type="date"]:focus {
   bottom: 0;
   left: 0;
   right: 0;
-  max-height: 45vh;
+  max-height: 280px;
   background: var(--bg-card);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   display: flex;
@@ -2224,24 +2224,7 @@ input[type="date"]:focus {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  min-height: 100px;
-}
-
-.ask-ai-empty {
-  text-align: center;
-  padding: var(--space-3) var(--space-3);
-  color: var(--text-secondary);
-}
-
-.ask-ai-empty p {
-  margin-bottom: var(--space-3);
-  font-size: 13px;
-}
-
-.ask-ai-suggestions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  min-height: 60px;
 }
 
 .ask-ai-suggestions button {

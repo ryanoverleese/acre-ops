@@ -77,7 +77,7 @@ export default function AskAI() {
           <div className="ask-ai-backdrop" onClick={() => setIsOpen(false)} />
           <div className="ask-ai-panel">
             <div className="ask-ai-header">
-              <h3>Ask AI</h3>
+              <h3>AI</h3>
               <button onClick={() => setIsOpen(false)} className="ask-ai-close" aria-label="Close">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18" />
@@ -87,16 +87,6 @@ export default function AskAI() {
             </div>
 
             <div className="ask-ai-messages">
-              {messages.length === 0 && (
-                <div className="ask-ai-empty">
-                  <p>Ask anything about your farm data:</p>
-                  <div className="ask-ai-suggestions">
-                    <button onClick={() => setQuestion('How many fields do I have?')}>How many fields do I have?</button>
-                    <button onClick={() => setQuestion('Which probes need repairs?')}>Which probes need repairs?</button>
-                    <button onClick={() => setQuestion('Show me a summary of this season')}>Summary of this season</button>
-                  </div>
-                </div>
-              )}
               {messages.map((msg, i) => (
                 <div key={i} className={`ask-ai-message ${msg.role}`}>
                   <div className="ask-ai-message-content">{msg.content}</div>
