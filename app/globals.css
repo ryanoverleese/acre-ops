@@ -97,7 +97,7 @@ body {
 .logo h1 {
   font-size: 17px;
   font-weight: 700;
-  color: var(--accent-green);
+  color: var(--text-primary);
   letter-spacing: -0.02em;
 }
 
@@ -144,8 +144,8 @@ body {
 }
 
 .nav-item.active {
-  background: var(--accent-green-dim);
-  color: var(--accent-green);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -937,7 +937,7 @@ select:focus {
 .mobile-logo h1 {
   font-size: 16px;
   font-weight: 700;
-  color: var(--accent-green);
+  color: var(--text-primary);
 }
 
 .mobile-overlay {
