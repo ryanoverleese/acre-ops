@@ -472,7 +472,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             }}
           >
             {allSeasons.map((s) => (
-              <option key={s} value={s}>{s} Season</option>
+              <option key={s} value={s}>{s}</option>
             ))}
             <option value="__add_year__">+ Add Year...</option>
           </select>

@@ -1380,9 +1380,9 @@ export default function FieldsClient({
               cursor: 'pointer',
             }}
           >
-            <option value="all">All Seasons</option>
+            <option value="all">All</option>
             {allSeasons.map((s) => (
-              <option key={s} value={s}>{s} Season</option>
+              <option key={s} value={s}>{s}</option>
             ))}
             <option value="__add_year__">+ Add Year...</option>
           </select>
