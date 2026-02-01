@@ -2144,7 +2144,7 @@ input[type="date"]:focus {
 
 .ask-ai-panel {
   position: fixed;
-  top: 50%;
+  top: 35%;
   left: 50%;
   transform: translate(-50%, -50%);
   width: calc(100% - 32px);
