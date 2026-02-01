@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import EmptyState from '@/components/EmptyState';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -1508,8 +1509,13 @@ export default function FieldsClient({
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                              No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
+                            <td colSpan={9}>
+                              <EmptyState
+                                icon={searchQuery ? 'search' : currentSeason !== 'all' ? 'calendar' : 'fields'}
+                                title={searchQuery ? 'No matching fields' : currentSeason !== 'all' ? `No fields for ${currentSeason}` : 'No fields yet'}
+                                description={searchQuery ? 'Try a different search term' : currentSeason !== 'all' ? 'Use "Copy to New Season" to set up fields for this year' : 'Add your first field to get started'}
+                                action={!searchQuery && currentSeason === 'all' ? { label: 'Add Field', onClick: () => setShowAddModal(true) } : undefined}
+                              />
                             </td>
                           </tr>
                         ) : (
@@ -1850,7 +1856,12 @@ export default function FieldsClient({
                   </div>
                   <div className="mobile-cards">
                     {filteredFields.length === 0 ? (
-                      <div className="empty-state">No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.</div>
+                      <EmptyState
+                        icon={searchQuery ? 'search' : currentSeason !== 'all' ? 'calendar' : 'fields'}
+                        title={searchQuery ? 'No matching fields' : currentSeason !== 'all' ? `No fields for ${currentSeason}` : 'No fields yet'}
+                        description={searchQuery ? 'Try a different search term' : currentSeason !== 'all' ? 'Use "Copy to New Season" to set up fields for this year' : 'Add your first field to get started'}
+                        action={!searchQuery && currentSeason === 'all' ? { label: 'Add Field', onClick: () => setShowAddModal(true) } : undefined}
+                      />
                     ) : (
                       filteredFields.map((field) => (
                         <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>
@@ -1921,8 +1932,13 @@ export default function FieldsClient({
                     <tbody>
                       {filteredFields.length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                            No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.
+                          <td colSpan={7}>
+                            <EmptyState
+                              icon={searchQuery ? 'search' : 'fields'}
+                              title={searchQuery ? 'No matching fields' : 'No fields yet'}
+                              description={searchQuery ? 'Try a different search term' : 'Add your first field to get started'}
+                              action={!searchQuery ? { label: 'Add Field', onClick: () => setShowAddModal(true) } : undefined}
+                            />
                           </td>
                         </tr>
                       ) : (
@@ -2009,7 +2025,12 @@ export default function FieldsClient({
                   </table>
                   <div className="mobile-cards">
                     {filteredFields.length === 0 ? (
-                      <div className="empty-state">No fields found{currentSeason !== 'all' ? ` for ${currentSeason} season` : ''}.</div>
+                      <EmptyState
+                        icon={searchQuery ? 'search' : 'fields'}
+                        title={searchQuery ? 'No matching fields' : 'No fields yet'}
+                        description={searchQuery ? 'Try a different search term' : 'Add your first field to get started'}
+                        action={!searchQuery ? { label: 'Add Field', onClick: () => setShowAddModal(true) } : undefined}
+                      />
                     ) : (
                       filteredFields.map((field) => (
                         <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>

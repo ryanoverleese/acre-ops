@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback } from 'react';
+import EmptyState from '@/components/EmptyState';
 
 export interface ProcessedProbe {
   id: number;
@@ -625,8 +626,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             <tbody>
               {filteredProbes.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                    {searchQuery ? 'No matching probes found.' : 'No probes found.'}
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={searchQuery ? 'search' : 'probes'}
+                      title={searchQuery ? 'No matching probes' : 'No probes yet'}
+                      description={searchQuery ? 'Try a different search term' : 'Add your first probe to get started'}
+                      action={!searchQuery ? { label: 'Add Probe', onClick: () => setShowAddModal(true) } : undefined}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -667,9 +673,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           <div style={{ position: 'relative' }}>
             <div className="mobile-cards" ref={mobileCardsRef}>
               {filteredProbes.length === 0 ? (
-                <div className="empty-state">
-                  {searchQuery ? 'No matching probes found.' : viewMode === 'rack' ? 'No probes with rack locations.' : 'No probes found.'}
-                </div>
+                <EmptyState
+                  icon={searchQuery ? 'search' : 'probes'}
+                  title={searchQuery ? 'No matching probes' : viewMode === 'rack' ? 'No probes in rack' : 'No probes yet'}
+                  description={searchQuery ? 'Try a different search term' : 'Add your first probe to get started'}
+                  action={!searchQuery ? { label: 'Add Probe', onClick: () => setShowAddModal(true) } : undefined}
+                />
               ) : viewMode === 'rack' && rackSortBy === 'rack' ? (
                 rackDisplayItems.map((item, index) =>
                   item.type === 'empty' ? (
@@ -826,16 +835,18 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 className="rack-scrubber"
                 style={{
                   position: 'fixed',
-                  right: '4px',
+                  right: '8px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '2px',
-                  padding: '8px 4px',
-                  background: 'var(--bg-tertiary)',
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  gap: '1px',
+                  padding: '10px 6px',
+                  background: 'rgba(var(--bg-tertiary-rgb, 30, 30, 30), 0.85)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
                   zIndex: 100,
                 }}
               >
@@ -845,16 +856,16 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     onClick={() => scrollToRack(num)}
                     disabled={!activeRackNumbers.has(num)}
                     style={{
-                      width: '28px',
-                      height: '24px',
+                      width: '30px',
+                      height: '22px',
                       border: 'none',
-                      borderRadius: '4px',
-                      background: activeRackNumbers.has(num) ? 'var(--accent-green-dim)' : 'transparent',
-                      color: activeRackNumbers.has(num) ? 'var(--accent-green)' : 'var(--text-muted)',
+                      borderRadius: '6px',
+                      background: activeRackNumbers.has(num) ? 'var(--accent-green)' : 'transparent',
+                      color: activeRackNumbers.has(num) ? 'white' : 'var(--text-muted)',
                       fontSize: '11px',
                       fontWeight: 600,
                       cursor: activeRackNumbers.has(num) ? 'pointer' : 'default',
-                      opacity: activeRackNumbers.has(num) ? 1 : 0.4,
+                      opacity: activeRackNumbers.has(num) ? 1 : 0.3,
                       transition: 'all 0.15s ease',
                     }}
                   >

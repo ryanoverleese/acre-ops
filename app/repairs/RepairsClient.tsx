@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import EmptyState from '@/components/EmptyState';
 
 export interface ProcessedRepair {
   id: number;
@@ -357,8 +358,12 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
             <tbody>
               {filteredRepairs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                    {searchQuery ? 'No matching repairs found.' : 'No repairs found.'}
+                  <td colSpan={8}>
+                    <EmptyState
+                      icon={searchQuery ? 'search' : 'repairs'}
+                      title={searchQuery ? 'No matching repairs' : 'No repairs yet'}
+                      description={searchQuery ? 'Try a different search term' : 'Repairs will appear here when reported'}
+                    />
                   </td>
                 </tr>
               ) : (
@@ -431,7 +436,11 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
           </table>
           <div className="mobile-cards">
             {filteredRepairs.length === 0 ? (
-              <div className="empty-state">{searchQuery ? 'No matching repairs found.' : 'No repairs found.'}</div>
+              <EmptyState
+                icon={searchQuery ? 'search' : 'repairs'}
+                title={searchQuery ? 'No matching repairs' : 'No repairs yet'}
+                description={searchQuery ? 'Try a different search term' : 'Repairs will appear here when reported'}
+              />
             ) : (
               filteredRepairs.map((repair) => (
                 <div key={repair.id} className="mobile-card" onClick={() => openEditModal(repair)}>
