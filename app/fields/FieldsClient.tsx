@@ -260,6 +260,8 @@ const initialAddForm = {
   side_dress: '',
   logger_id: '',
   early_removal: '',
+  hybrid_variety: '',
+  ready_to_remove: '',
 };
 
 export default function FieldsClient({
@@ -316,6 +318,8 @@ export default function FieldsClient({
     side_dress: '',
     logger_id: '',
     early_removal: '',
+    hybrid_variety: '',
+    ready_to_remove: '',
     route_order: '',
     planned_installer: '',
     ready_to_install: false,
@@ -334,8 +338,18 @@ export default function FieldsClient({
     side_dress: '',
     logger_id: '',
     early_removal: '',
+    hybrid_variety: '',
+    ready_to_remove: '',
   });
   const [savingSeason, setSavingSeason] = useState(false);
+  // Removal logging
+  const [showRemovalModal, setShowRemovalModal] = useState(false);
+  const [removalForm, setRemovalForm] = useState({
+    removal_date: '',
+    removal_notes: '',
+    log_to_probe: false,
+  });
+  const [savingRemoval, setSavingRemoval] = useState(false);
   const [showRolloverModal, setShowRolloverModal] = useState(false);
   const [rolloverForm, setRolloverForm] = useState({
     fromSeason: availableSeasons[1] || String(new Date().getFullYear() - 1),
@@ -659,6 +673,8 @@ export default function FieldsClient({
       side_dress: field.sideDress || '',
       logger_id: field.loggerId || '',
       early_removal: field.earlyRemoval || '',
+      hybrid_variety: field.hybridVariety || '',
+      ready_to_remove: field.readyToRemove || '',
       route_order: field.routeOrder?.toString() || '',
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
@@ -860,6 +876,8 @@ export default function FieldsClient({
           side_dress: seasonFieldsForm.side_dress || null,
           logger_id: seasonFieldsForm.logger_id || null,
           early_removal: seasonFieldsForm.early_removal || null,
+          hybrid_variety: seasonFieldsForm.hybrid_variety || null,
+          ready_to_remove: seasonFieldsForm.ready_to_remove || null,
         }),
       });
       if (response.ok) {
@@ -898,11 +916,13 @@ export default function FieldsClient({
           side_dress: addSeasonForm.side_dress || undefined,
           logger_id: addSeasonForm.logger_id || undefined,
           early_removal: addSeasonForm.early_removal || undefined,
+          hybrid_variety: addSeasonForm.hybrid_variety || undefined,
+          ready_to_remove: addSeasonForm.ready_to_remove || undefined,
         }),
       });
       if (response.ok) {
         setShowAddSeasonModal(false);
-        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '' });
+        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '', hybrid_variety: '', ready_to_remove: '' });
         window.location.reload();
       } else {
         const error = await response.json();
@@ -913,6 +933,60 @@ export default function FieldsClient({
       alert('Failed to create season');
     } finally {
       setSavingSeason(false);
+    }
+  };
+
+  // Handle removal logging
+  const handleLogRemoval = async () => {
+    if (!selectedField?.fieldSeasonId) return;
+    if (!removalForm.removal_date) {
+      alert('Removal date is required');
+      return;
+    }
+    setSavingRemoval(true);
+    try {
+      // Update field season with removal date and notes
+      const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          removal_date: removalForm.removal_date,
+          removal_notes: removalForm.removal_notes || null,
+        }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        alert(error.error || 'Failed to log removal');
+        return;
+      }
+
+      // If checkbox is checked and there's a probe, append to probe notes
+      if (removalForm.log_to_probe && removalForm.removal_notes && selectedField.probeId) {
+        // First get the current probe to get existing notes
+        const probeResponse = await fetch(`/api/probes/${selectedField.probeId}`);
+        if (probeResponse.ok) {
+          const probeData = await probeResponse.json();
+          const existingNotes = probeData.notes || '';
+          const timestamp = removalForm.removal_date;
+          const newNote = `[${timestamp}] ${removalForm.removal_notes}`;
+          const updatedNotes = existingNotes ? `${existingNotes}\n${newNote}` : newNote;
+
+          await fetch(`/api/probes/${selectedField.probeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: updatedNotes }),
+          });
+        }
+      }
+
+      setShowRemovalModal(false);
+      setRemovalForm({ removal_date: '', removal_notes: '', log_to_probe: false });
+      window.location.reload();
+    } catch (error) {
+      console.error('Log removal error:', error);
+      alert('Failed to log removal');
+    } finally {
+      setSavingRemoval(false);
     }
   };
 
@@ -1330,6 +1404,8 @@ export default function FieldsClient({
           side_dress: addForm.side_dress || undefined,
           logger_id: addForm.logger_id || undefined,
           early_removal: addForm.early_removal || undefined,
+          hybrid_variety: addForm.hybrid_variety || undefined,
+          ready_to_remove: addForm.ready_to_remove || undefined,
         }),
       });
       if (response.ok) {
@@ -2554,9 +2630,17 @@ export default function FieldsClient({
                   <>
                     <button className="btn btn-secondary" style={{ color: 'var(--accent-red)' }} onClick={handleDelete}>Delete</button>
                     {selectedField.fieldSeasonId && (
-                      <button className="btn btn-secondary" onClick={() => setShowSeasonFieldsEdit(true)}>
-                        Edit Season
-                      </button>
+                      <>
+                        <button className="btn btn-secondary" onClick={() => setShowSeasonFieldsEdit(true)}>
+                          Edit Season
+                        </button>
+                        <button className="btn btn-secondary" onClick={() => {
+                          setRemovalForm({ removal_date: new Date().toISOString().split('T')[0], removal_notes: '', log_to_probe: false });
+                          setShowRemovalModal(true);
+                        }}>
+                          Log Removal
+                        </button>
+                      </>
                     )}
                     <button className="btn btn-primary" onClick={handleEdit}>Edit Field</button>
                   </>
@@ -2669,6 +2753,25 @@ export default function FieldsClient({
                   </div>
                   <div className="form-row">
                     <div className="form-group">
+                      <label>Hybrid/Variety</label>
+                      <input
+                        type="text"
+                        value={seasonFieldsForm.hybrid_variety}
+                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, hybrid_variety: e.target.value })}
+                        placeholder="e.g., P1185AM"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Ready to Remove</label>
+                      <select value={seasonFieldsForm.ready_to_remove} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, ready_to_remove: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
                       <label>Probe 1</label>
                       <select value={selectedProbeId} onChange={(e) => setSelectedProbeId(e.target.value)}>
                         <option value="">— No Probe —</option>
@@ -2745,6 +2848,8 @@ export default function FieldsClient({
                     side_dress: selectedField.sideDress || '',
                     logger_id: selectedField.loggerId || '',
                     early_removal: selectedField.earlyRemoval || '',
+                    hybrid_variety: selectedField.hybridVariety || '',
+                    ready_to_remove: selectedField.readyToRemove || '',
                     route_order: selectedField.routeOrder?.toString() || '',
                     planned_installer: selectedField.plannedInstaller || '',
                     ready_to_install: selectedField.readyToInstall || false,
@@ -2769,6 +2874,8 @@ export default function FieldsClient({
                         side_dress: seasonFieldsForm.side_dress || null,
                         logger_id: seasonFieldsForm.logger_id || null,
                         early_removal: seasonFieldsForm.early_removal || null,
+                        hybrid_variety: seasonFieldsForm.hybrid_variety || null,
+                        ready_to_remove: seasonFieldsForm.ready_to_remove || null,
                         probe: probeId,
                         probe_status: probeId ? 'Assigned' : 'Unassigned',
                         probe_2: probe2Id,
@@ -2984,6 +3091,25 @@ export default function FieldsClient({
                       </select>
                     </div>
                   </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Hybrid/Variety</label>
+                      <input
+                        type="text"
+                        value={addForm.hybrid_variety}
+                        onChange={(e) => setAddForm({ ...addForm, hybrid_variety: e.target.value })}
+                        placeholder="e.g., P1185AM"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Ready to Remove</label>
+                      <select value={addForm.ready_to_remove} onChange={(e) => setAddForm({ ...addForm, ready_to_remove: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="detail-panel-footer">
@@ -3107,12 +3233,95 @@ export default function FieldsClient({
                       </select>
                     </div>
                   </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Hybrid/Variety</label>
+                      <input
+                        type="text"
+                        value={addSeasonForm.hybrid_variety}
+                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, hybrid_variety: e.target.value })}
+                        placeholder="e.g., P1185AM"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Ready to Remove</label>
+                      <select value={addSeasonForm.ready_to_remove} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, ready_to_remove: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="detail-panel-footer">
                 <button className="btn btn-secondary" onClick={() => setShowAddSeasonModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleAddSeason} disabled={savingSeason}>
                   {savingSeason ? 'Creating...' : 'Create Season'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Removal Logging Modal */}
+        {showRemovalModal && selectedField && (
+          <div className="detail-panel-overlay" onClick={() => setShowRemovalModal(false)}>
+            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+              <div className="detail-panel-header">
+                <h3>Log Removal for {selectedField.name}</h3>
+                <button className="close-btn" onClick={() => setShowRemovalModal(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                <div className="edit-form">
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                    Log when a probe was removed from this field. Optionally log any issues to the probe&apos;s history.
+                  </p>
+                  <div className="form-group">
+                    <label>Removal Date *</label>
+                    <input
+                      type="date"
+                      value={removalForm.removal_date}
+                      onChange={(e) => setRemovalForm({ ...removalForm, removal_date: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Removal Notes</label>
+                    <textarea
+                      value={removalForm.removal_notes}
+                      onChange={(e) => setRemovalForm({ ...removalForm, removal_notes: e.target.value })}
+                      placeholder="Any notes about the removal or issues found..."
+                      rows={4}
+                      style={{ resize: 'vertical' }}
+                    />
+                  </div>
+                  {selectedField.probeId && (
+                    <div className="form-group">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={removalForm.log_to_probe}
+                          onChange={(e) => setRemovalForm({ ...removalForm, log_to_probe: e.target.checked })}
+                          style={{ width: '18px', height: '18px' }}
+                        />
+                        Log issue to probe
+                      </label>
+                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        If checked, the removal notes will be appended to probe {selectedField.probe}&apos;s notes with a timestamp.
+                        This helps track damage history as the probe moves between fields.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => setShowRemovalModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleLogRemoval} disabled={savingRemoval}>
+                  {savingRemoval ? 'Saving...' : 'Log Removal'}
                 </button>
               </div>
             </div>

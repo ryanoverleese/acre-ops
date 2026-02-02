@@ -8,6 +8,45 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+export async function GET(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const probeId = parseInt(id, 10);
+
+    if (isNaN(probeId)) {
+      return NextResponse.json(
+        { error: 'Invalid probe ID' },
+        { status: 400 }
+      );
+    }
+
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.probes}/${probeId}/?user_field_names=true`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Token ${BASEROW_TOKEN}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Baserow API error:', response.status, errorText);
+      return NextResponse.json(
+        { error: 'Failed to fetch probe' },
+        { status: response.status }
+      );
+    }
+
+    const probe = await response.json();
+    return NextResponse.json(probe);
+  } catch (error) {
+    console.error('Error fetching probe:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;

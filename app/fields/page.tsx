@@ -51,6 +51,8 @@ export interface ProcessedField {
   sideDress: string;
   loggerId: string;
   earlyRemoval: string;
+  hybridVariety: string;
+  readyToRemove: string;
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
@@ -220,6 +222,8 @@ async function getFieldsData(): Promise<{
           sideDress: '',
           loggerId: '',
           earlyRemoval: '',
+          hybridVariety: '',
+          readyToRemove: '',
           probe: null,
           probeId: null,
           probeStatus: 'Unassigned',
@@ -271,6 +275,8 @@ async function getFieldsData(): Promise<{
             sideDress: fs.side_dress?.value || '',
             loggerId: fs.logger_id || '',
             earlyRemoval: fs.early_removal?.value || '',
+            hybridVariety: fs.hybrid_variety || '',
+            readyToRemove: fs.ready_to_remove?.value || '',
             probe: probeData ? `#${probeData.serial_number}` : null,
             probeId: probeLink?.id || null,
             probeStatus: fs.probe_status?.value || 'Unassigned',
