@@ -133,6 +133,7 @@ export async function POST(request: NextRequest) {
             billing_entity: probe.billing_entity?.[0]?.value,
             contact: probe.contact?.[0]?.value,
             year_new: probe.year_new,
+            age_years: probe.year_new ? new Date().getFullYear() - probe.year_new : null,
             notes: probe.notes,
             assigned_to_field: assignment?.field_season?.[0]?.value || 'Not currently assigned',
             install_date: assignment?.install_date || null,
@@ -218,6 +219,8 @@ export async function POST(request: NextRequest) {
           status: p.status?.value,
           rack: p.rack?.value,
           slot: p.rack_slot,
+          year_new: p.year_new,
+          age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
         })),
         probes_installed: contactProbes.filter(p => p.status?.value === 'Installed').length,
         probes_in_storage: contactProbes.filter(p => p.status?.value === 'In Storage').length,
@@ -241,6 +244,8 @@ export async function POST(request: NextRequest) {
           status: p.status?.value,
           rack: p.rack?.value,
           slot: p.rack_slot,
+          year_new: p.year_new,
+          age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
         })),
         probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
         probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
@@ -275,6 +280,7 @@ PROBES: ${JSON.stringify(probes.slice(0, 100).map(p => ({
   rack: p.rack?.value,
   slot: p.rack_slot,
   entity: p.billing_entity?.[0]?.value,
+  year_new: p.year_new,
 })))}
 
 PROBE ASSIGNMENTS: ${JSON.stringify(probeAssignments.slice(0, 50).map(pa => ({
