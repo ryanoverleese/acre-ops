@@ -2701,9 +2701,23 @@ export default function FieldsClient({
                       <label>Service Type</label>
                       <select value={seasonFieldsForm.service_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, service_type: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Full Service">Full Service</option>
-                        <option value="DIY">DIY</option>
-                        <option value="VRS">VRS</option>
+                        <option value="CropX Complete DIY">CropX Complete DIY</option>
+                        <option value="CropX DIY">CropX DIY</option>
+                        <option value="CropX DIY 2x Field">CropX DIY 2x Field</option>
+                        <option value="CropX DIY 2x Field Bulk">CropX DIY 2x Field Bulk</option>
+                        <option value="CropX DIY Bulk">CropX DIY Bulk</option>
+                        <option value="CropX DIY + $100 Roeder">CropX DIY + $100 Roeder</option>
+                        <option value="CropX Regular">CropX Regular</option>
+                        <option value="CropX Regular 2x Field">CropX Regular 2x Field</option>
+                        <option value="CropX Regular 2x Field Bulk">CropX Regular 2x Field Bulk</option>
+                        <option value="CropX Regular Bulk">CropX Regular Bulk</option>
+                        <option value="CropX Regular Family Rate">CropX Regular Family Rate</option>
+                        <option value="CropX Regular Olsen Rate">CropX Regular Olsen Rate</option>
+                        <option value="CropX Regular Small Field">CropX Regular Small Field</option>
+                        <option value="CropX Regular Dryland">CropX Regular Dryland</option>
+                        <option value="IrriMax Live">IrriMax Live</option>
+                        <option value="IrriMax Live – Ryan Cost">IrriMax Live – Ryan Cost</option>
+                        <option value="Overview Field">Overview Field</option>
                       </select>
                     </div>
                   </div>
@@ -3054,9 +3068,23 @@ export default function FieldsClient({
                       <label>Service Type</label>
                       <select value={addForm.service_type} onChange={(e) => setAddForm({ ...addForm, service_type: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Full Service">Full Service</option>
-                        <option value="DIY">DIY</option>
-                        <option value="VRS">VRS</option>
+                        <option value="CropX Complete DIY">CropX Complete DIY</option>
+                        <option value="CropX DIY">CropX DIY</option>
+                        <option value="CropX DIY 2x Field">CropX DIY 2x Field</option>
+                        <option value="CropX DIY 2x Field Bulk">CropX DIY 2x Field Bulk</option>
+                        <option value="CropX DIY Bulk">CropX DIY Bulk</option>
+                        <option value="CropX DIY + $100 Roeder">CropX DIY + $100 Roeder</option>
+                        <option value="CropX Regular">CropX Regular</option>
+                        <option value="CropX Regular 2x Field">CropX Regular 2x Field</option>
+                        <option value="CropX Regular 2x Field Bulk">CropX Regular 2x Field Bulk</option>
+                        <option value="CropX Regular Bulk">CropX Regular Bulk</option>
+                        <option value="CropX Regular Family Rate">CropX Regular Family Rate</option>
+                        <option value="CropX Regular Olsen Rate">CropX Regular Olsen Rate</option>
+                        <option value="CropX Regular Small Field">CropX Regular Small Field</option>
+                        <option value="CropX Regular Dryland">CropX Regular Dryland</option>
+                        <option value="IrriMax Live">IrriMax Live</option>
+                        <option value="IrriMax Live – Ryan Cost">IrriMax Live – Ryan Cost</option>
+                        <option value="Overview Field">Overview Field</option>
                       </select>
                     </div>
                     <div className="form-group">
@@ -3207,9 +3235,23 @@ export default function FieldsClient({
                       <label>Service Type</label>
                       <select value={addSeasonForm.service_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, service_type: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Full Service">Full Service</option>
-                        <option value="DIY">DIY</option>
-                        <option value="VRS">VRS</option>
+                        <option value="CropX Complete DIY">CropX Complete DIY</option>
+                        <option value="CropX DIY">CropX DIY</option>
+                        <option value="CropX DIY 2x Field">CropX DIY 2x Field</option>
+                        <option value="CropX DIY 2x Field Bulk">CropX DIY 2x Field Bulk</option>
+                        <option value="CropX DIY Bulk">CropX DIY Bulk</option>
+                        <option value="CropX DIY + $100 Roeder">CropX DIY + $100 Roeder</option>
+                        <option value="CropX Regular">CropX Regular</option>
+                        <option value="CropX Regular 2x Field">CropX Regular 2x Field</option>
+                        <option value="CropX Regular 2x Field Bulk">CropX Regular 2x Field Bulk</option>
+                        <option value="CropX Regular Bulk">CropX Regular Bulk</option>
+                        <option value="CropX Regular Family Rate">CropX Regular Family Rate</option>
+                        <option value="CropX Regular Olsen Rate">CropX Regular Olsen Rate</option>
+                        <option value="CropX Regular Small Field">CropX Regular Small Field</option>
+                        <option value="CropX Regular Dryland">CropX Regular Dryland</option>
+                        <option value="IrriMax Live">IrriMax Live</option>
+                        <option value="IrriMax Live – Ryan Cost">IrriMax Live – Ryan Cost</option>
+                        <option value="Overview Field">Overview Field</option>
                       </select>
                     </div>
                     <div className="form-group">
