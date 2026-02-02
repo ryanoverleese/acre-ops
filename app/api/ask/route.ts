@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOperations } from '@/lib/baserow';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const BASEROW_API_TOKEN = process.env.BASEROW_API_TOKEN;
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,44 @@ export async function POST(request: NextRequest) {
         { error: 'Please provide a question' },
         { status: 400 }
       );
+    }
+
+    // Check if question contains a serial number (5-6 digit number)
+    const serialMatch = question.match(/\b\d{5,6}\b/);
+    let specificProbeContext = '';
+
+    if (serialMatch && BASEROW_API_TOKEN) {
+      try {
+        const probeResponse = await fetch(
+          `https://api.baserow.io/api/database/rows/table/817299/?user_field_names=true&filter__serial_number__contains=${serialMatch[0]}`,
+          {
+            headers: {
+              'Authorization': `Token ${BASEROW_API_TOKEN}`,
+              'Content-Type': 'application/json',
+            }
+          }
+        );
+        const probeData = await probeResponse.json();
+
+        if (probeData.results?.length > 0) {
+          const probe = probeData.results[0];
+          specificProbeContext = `SPECIFIC PROBE FOUND (Serial: ${serialMatch[0]}):\n${JSON.stringify({
+            serial_number: probe.serial_number,
+            rack: probe.rack?.value,
+            rack_slot: probe.rack_slot,
+            status: probe.status?.value,
+            brand: probe.brand?.value,
+            billing_entity: probe.billing_entity?.[0]?.value,
+            contact: probe.contact?.[0]?.value,
+            year_new: probe.year_new,
+            notes: probe.notes,
+          }, null, 2)}\n\n`;
+        } else {
+          specificProbeContext = `NOTE: No probe found with serial number ${serialMatch[0]}\n\n`;
+        }
+      } catch (probeError) {
+        console.error('Probe lookup error:', probeError);
+      }
     }
 
     // Fetch data with individual error handling
@@ -46,7 +85,7 @@ export async function POST(request: NextRequest) {
     // Build context about the data (keep it concise)
     const dataContext = `You are an AI assistant for Acre Insights Operation Center, a farm management app. Answer questions about the farm data below. Be concise.
 
-Data Summary:
+${specificProbeContext}Data Summary:
 - ${fields.length} fields
 - ${probes.length} probes
 - ${fieldSeasons.length} field seasons
