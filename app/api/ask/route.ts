@@ -134,13 +134,18 @@ function fuzzyMatch(searchTerm: string, targetString: string): boolean {
     if (stem.length >= 3 && target.includes(stem)) return true;
   }
 
-  // Split into words and check if any word (3+ chars) appears in target
-  const words = search.split(/\s+/).filter(w => w.length >= 3);
+  // Split into words - keep numbers and alphanumeric codes regardless of length
+  const words = search.split(/\s+/).filter(w => {
+    // Keep if 3+ chars, or if it's a number, or if it contains digits (like "4G")
+    return w.length >= 3 || /^\d+$/.test(w) || /\d/.test(w);
+  });
   for (const word of words) {
     if (target.includes(word)) return true;
-    // Also try without trailing s
-    const wordStem = word.replace(/s$/, '');
-    if (wordStem.length >= 3 && target.includes(wordStem)) return true;
+    // Also try without trailing s (only for longer words)
+    if (word.length >= 3) {
+      const wordStem = word.replace(/s$/, '');
+      if (wordStem.length >= 3 && target.includes(wordStem)) return true;
+    }
   }
 
   return false;
