@@ -191,12 +191,34 @@ export async function POST(request: NextRequest) {
       c.name && questionLower.includes(c.name.toLowerCase())
     );
     if (matchedContact) {
+      // Get the contact's operations and find their probes
+      const contactOperations = matchedContact.operations?.map(o => o.value) || [];
+      const contactProbes = probes.filter(p => {
+        const probeBillingEntity = p.billing_entity?.[0]?.value?.toLowerCase() || '';
+        return contactOperations.some(op => probeBillingEntity.includes(op.toLowerCase()));
+      });
+      const contactFields = fields.filter(f => {
+        const fieldBillingEntity = f.billing_entity?.[0]?.value?.toLowerCase() || '';
+        return contactOperations.some(op => fieldBillingEntity.includes(op.toLowerCase()));
+      });
+
       specificLookupContext += `SPECIFIC CONTACT FOUND (${matchedContact.name}):\n${JSON.stringify({
         name: matchedContact.name,
         email: matchedContact.email,
         phone: matchedContact.phone,
         type: matchedContact.customer_type?.value,
-        operations: matchedContact.operations?.map(o => o.value),
+        operations: contactOperations,
+        total_probes: contactProbes.length,
+        probes: contactProbes.map(p => ({
+          serial_number: p.serial_number,
+          status: p.status?.value,
+          rack: p.rack?.value,
+          slot: p.rack_slot,
+        })),
+        probes_installed: contactProbes.filter(p => p.status?.value === 'Installed').length,
+        probes_in_storage: contactProbes.filter(p => p.status?.value === 'In Storage').length,
+        total_fields: contactFields.length,
+        fields: contactFields.map(f => f.name),
       }, null, 2)}\n\n`;
     }
 
