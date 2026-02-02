@@ -2743,15 +2743,15 @@ export default function FieldsClient({
                       <label>Side Dress</label>
                       <select value={seasonFieldsForm.side_dress} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, side_dress: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Low Y-Drop">Low Y-Drop</option>
-                        <option value="High Y-Drop">High Y-Drop</option>
-                        <option value="Coulter">Coulter</option>
-                        <option value="Sprayer Drops">Sprayer Drops</option>
-                        <option value="Pivot">Pivot</option>
                         <option value="None">None</option>
                         <option value="Cultivate">Cultivate</option>
                         <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
                         <option value="Cultivation Likely">Cultivation Likely</option>
+                        <option value="High Y-Drop">High Y-Drop</option>
+                        <option value="Coulter">Coulter</option>
+                        <option value="Sprayer Drops">Sprayer Drops</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="Low Y-Drop">Low Y-Drop</option>
                       </select>
                     </div>
                   </div>
@@ -3110,15 +3110,15 @@ export default function FieldsClient({
                       <label>Side Dress</label>
                       <select value={addForm.side_dress} onChange={(e) => setAddForm({ ...addForm, side_dress: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Low Y-Drop">Low Y-Drop</option>
-                        <option value="High Y-Drop">High Y-Drop</option>
-                        <option value="Coulter">Coulter</option>
-                        <option value="Sprayer Drops">Sprayer Drops</option>
-                        <option value="Pivot">Pivot</option>
                         <option value="None">None</option>
                         <option value="Cultivate">Cultivate</option>
                         <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
                         <option value="Cultivation Likely">Cultivation Likely</option>
+                        <option value="High Y-Drop">High Y-Drop</option>
+                        <option value="Coulter">Coulter</option>
+                        <option value="Sprayer Drops">Sprayer Drops</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="Low Y-Drop">Low Y-Drop</option>
                       </select>
                     </div>
                   </div>
@@ -3277,15 +3277,15 @@ export default function FieldsClient({
                       <label>Side Dress</label>
                       <select value={addSeasonForm.side_dress} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, side_dress: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Low Y-Drop">Low Y-Drop</option>
-                        <option value="High Y-Drop">High Y-Drop</option>
-                        <option value="Coulter">Coulter</option>
-                        <option value="Sprayer Drops">Sprayer Drops</option>
-                        <option value="Pivot">Pivot</option>
                         <option value="None">None</option>
                         <option value="Cultivate">Cultivate</option>
                         <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
                         <option value="Cultivation Likely">Cultivation Likely</option>
+                        <option value="High Y-Drop">High Y-Drop</option>
+                        <option value="Coulter">Coulter</option>
+                        <option value="Sprayer Drops">Sprayer Drops</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="Low Y-Drop">Low Y-Drop</option>
                       </select>
                     </div>
                   </div>
