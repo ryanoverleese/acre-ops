@@ -2285,6 +2285,20 @@ input[type="date"]:focus {
   border-bottom-left-radius: 4px;
 }
 
+.ask-ai-message-content a {
+  color: var(--accent-green);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.ask-ai-message-content a:hover {
+  opacity: 0.8;
+}
+
+.ask-ai-message.user .ask-ai-message-content a {
+  color: white;
+}
+
 .ask-ai-loading {
   display: flex;
   gap: 4px;

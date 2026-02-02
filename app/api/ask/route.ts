@@ -24,7 +24,7 @@ How to behave:
 
 4. Keep answers concise. Field crews need quick info, not paragraphs.
 
-5. For navigation/directions, provide lat/lng coordinates and a Google Maps link.`;
+5. For navigation/directions, provide lat/lng coordinates and format the Google Maps link as markdown: [View on Google Maps](url)`;
 
 // Tool definitions for Claude
 const TOOLS = [
