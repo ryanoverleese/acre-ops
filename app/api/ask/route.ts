@@ -4,7 +4,7 @@ import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOper
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BASEROW_API_TOKEN = process.env.BASEROW_API_TOKEN;
 
-// Domain knowledge for the AI
+// Domain knowledge, business rules, and examples for the AI
 const DOMAIN_KNOWLEDGE = `
 ABOUT THIS APP:
 Acre Insights Operation Center manages soil moisture probes for agricultural fields.
@@ -17,9 +17,45 @@ Acre Insights Operation Center manages soil moisture probes for agricultural fie
 
 RELATIONSHIPS:
 - Probe → assigned to → Field Season → belongs to → Field → owned by → Billing Entity
-- Probe status: "Installed", "In Storage", "Needs Repair", "Retired"
-- When a probe serial number is mentioned, look it up in SPECIFIC PROBE FOUND section first
+- Contacts can be linked to Operations (growers)
+
+PROBE STATUSES:
+- "Installed" = currently in a field
+- "In Storage" = at the warehouse, should have rack/slot assigned
+- "Needs Repair" = has an issue that needs fixing
+- "Retired" = no longer in service
+
+BUSINESS RULES:
+- A probe "In Storage" should always have a rack and slot location
+- Each field can have 1-2 probes per season
+- Probes are installed in spring/early summer and removed in fall
+- If someone asks about a probe without a rack, it might be installed in a field
+
+EXAMPLE Q&A:
+Q: "Where is probe 408923?"
+A: If status is "In Storage": "Probe 408923 is in rack 5A, slot 12"
+   If status is "Installed": "Probe 408923 is installed at Smith Farm North field"
+
+Q: "How many probes does Johnson Farms have?"
+A: Count probes where billing_entity matches, e.g., "Johnson Farms has 15 probes (12 installed, 3 in storage)"
+
+Q: "What's planted at Miller field?"
+A: Look up field season for current year, e.g., "Miller field has corn planted for 2026"
+
+Q: "Who is the contact for probe 123456?"
+A: Look up probe's contact field, e.g., "The contact for probe 123456 is John Smith (555-123-4567)"
+
+INSTRUCTIONS:
+- Be concise and helpful
+- If data is in SPECIFIC LOOKUP section, use that first
+- When counting, give totals and breakdowns when relevant
+- If you can't find something, say so clearly
 `;
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,7 +66,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { question } = await request.json();
+    const { question, history = [] } = await request.json();
 
     if (!question || typeof question !== 'string') {
       return NextResponse.json(
@@ -39,13 +75,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Specific lookup context for detected entities
+    let specificLookupContext = '';
+
     // Check if question contains a serial number (5-6 digit number)
     const serialMatch = question.match(/\b\d{5,6}\b/);
-    let specificProbeContext = '';
 
     if (serialMatch && BASEROW_API_TOKEN) {
       try {
-        // Look up the probe
         const probeResponse = await fetch(
           `https://api.baserow.io/api/database/rows/table/817299/?user_field_names=true&filter__serial_number__contains=${serialMatch[0]}`,
           {
@@ -60,7 +97,6 @@ export async function POST(request: NextRequest) {
         if (probeData.results?.length > 0) {
           const probe = probeData.results[0];
 
-          // Also look up probe assignments to find field info
           const assignmentResponse = await fetch(
             `https://api.baserow.io/api/database/rows/table/819350/?user_field_names=true&filter__probe__link_row_contains=${probe.id}`,
             {
@@ -73,7 +109,7 @@ export async function POST(request: NextRequest) {
           const assignmentData = await assignmentResponse.json();
           const assignment = assignmentData.results?.[0];
 
-          specificProbeContext = `SPECIFIC PROBE FOUND (Serial: ${serialMatch[0]}):\n${JSON.stringify({
+          specificLookupContext += `SPECIFIC PROBE FOUND (Serial: ${serialMatch[0]}):\n${JSON.stringify({
             serial_number: probe.serial_number,
             rack: probe.rack?.value,
             rack_slot: probe.rack_slot,
@@ -83,21 +119,18 @@ export async function POST(request: NextRequest) {
             contact: probe.contact?.[0]?.value,
             year_new: probe.year_new,
             notes: probe.notes,
-            // Assignment info
             assigned_to_field: assignment?.field_season?.[0]?.value || 'Not currently assigned',
             install_date: assignment?.install_date || null,
-            install_location: assignment?.install_lat && assignment?.install_lng
-              ? `${assignment.install_lat}, ${assignment.install_lng}` : null,
           }, null, 2)}\n\n`;
         } else {
-          specificProbeContext = `NOTE: No probe found with serial number ${serialMatch[0]}\n\n`;
+          specificLookupContext += `NOTE: No probe found with serial number ${serialMatch[0]}\n\n`;
         }
       } catch (probeError) {
         console.error('Probe lookup error:', probeError);
       }
     }
 
-    // Fetch data with individual error handling
+    // Fetch all data
     let fields: Awaited<ReturnType<typeof getFields>> = [];
     let probes: Awaited<ReturnType<typeof getProbes>> = [];
     let fieldSeasons: Awaited<ReturnType<typeof getFieldSeasons>> = [];
@@ -120,11 +153,59 @@ export async function POST(request: NextRequest) {
       console.error('Data fetch error:', fetchError);
     }
 
-    // Build context about the data
+    // Check for field name mentions
+    const questionLower = question.toLowerCase();
+    const matchedField = fields.find(f =>
+      f.name && questionLower.includes(f.name.toLowerCase())
+    );
+    if (matchedField) {
+      const fieldSeason = fieldSeasons.find(fs => fs.field?.[0]?.value === matchedField.name);
+      specificLookupContext += `SPECIFIC FIELD FOUND (${matchedField.name}):\n${JSON.stringify({
+        name: matchedField.name,
+        acres: matchedField.acres,
+        irrigation: matchedField.irrigation_type?.value,
+        billing_entity: matchedField.billing_entity?.[0]?.value,
+        current_crop: fieldSeason?.crop?.value,
+        current_probe: fieldSeason?.probe?.[0]?.value,
+        probe_status: fieldSeason?.probe_status?.value,
+      }, null, 2)}\n\n`;
+    }
+
+    // Check for contact name mentions
+    const matchedContact = contacts.find(c =>
+      c.name && questionLower.includes(c.name.toLowerCase())
+    );
+    if (matchedContact) {
+      specificLookupContext += `SPECIFIC CONTACT FOUND (${matchedContact.name}):\n${JSON.stringify({
+        name: matchedContact.name,
+        email: matchedContact.email,
+        phone: matchedContact.phone,
+        type: matchedContact.customer_type?.value,
+        operations: matchedContact.operations?.map(o => o.value),
+      }, null, 2)}\n\n`;
+    }
+
+    // Check for operation name mentions
+    const matchedOperation = operations.find(o =>
+      o.name && questionLower.includes(o.name.toLowerCase())
+    );
+    if (matchedOperation) {
+      const opProbes = probes.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(matchedOperation.name.toLowerCase()));
+      const opFields = fields.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(matchedOperation.name.toLowerCase()));
+      specificLookupContext += `SPECIFIC OPERATION FOUND (${matchedOperation.name}):\n${JSON.stringify({
+        name: matchedOperation.name,
+        total_probes: opProbes.length,
+        probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
+        probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
+        total_fields: opFields.length,
+      }, null, 2)}\n\n`;
+    }
+
+    // Build context
     const dataContext = `You are an AI assistant for Acre Insights Operation Center, a farm management app.
 ${DOMAIN_KNOWLEDGE}
 
-${specificProbeContext}DATA SUMMARY:
+${specificLookupContext}DATA SUMMARY:
 - ${fields.length} fields
 - ${probes.length} probes
 - ${fieldSeasons.length} field seasons
@@ -148,11 +229,10 @@ PROBES: ${JSON.stringify(probes.slice(0, 100).map(p => ({
   entity: p.billing_entity?.[0]?.value,
 })))}
 
-PROBE ASSIGNMENTS (probe→field links): ${JSON.stringify(probeAssignments.slice(0, 50).map(pa => ({
+PROBE ASSIGNMENTS: ${JSON.stringify(probeAssignments.slice(0, 50).map(pa => ({
   probe: pa.probe?.[0]?.value,
   field_season: pa.field_season?.[0]?.value,
   status: pa.probe_status?.value,
-  install_date: pa.install_date,
 })))}
 
 FIELD SEASONS: ${JSON.stringify(fieldSeasons.slice(0, 50).map(fs => ({
@@ -160,23 +240,32 @@ FIELD SEASONS: ${JSON.stringify(fieldSeasons.slice(0, 50).map(fs => ({
   season: fs.season,
   crop: fs.crop?.value,
   probe: fs.probe?.[0]?.value,
-  probe_status: fs.probe_status?.value,
 })))}
 
 REPAIRS: ${JSON.stringify(repairs.slice(0, 30).map(r => ({
   field: r.field_season?.[0]?.value,
   problem: r.problem,
-  fix: r.fix,
   repaired: r.repaired_at,
 })))}
 
 CONTACTS: ${JSON.stringify(contacts.slice(0, 30).map(c => ({
   name: c.name,
   type: c.customer_type?.value,
-  operations: c.operations?.map(o => o.value),
 })))}
 
 OPERATIONS: ${JSON.stringify(operations.map(o => o.name))}`;
+
+    // Build messages with history for conversation memory
+    const messages: Message[] = [];
+
+    // Add conversation history (limit to last 10 exchanges to manage context size)
+    const recentHistory = (history as Message[]).slice(-20);
+    for (const msg of recentHistory) {
+      messages.push({ role: msg.role, content: msg.content });
+    }
+
+    // Add current question
+    messages.push({ role: 'user', content: question });
 
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -190,12 +279,7 @@ OPERATIONS: ${JSON.stringify(operations.map(o => o.name))}`;
         model: 'claude-3-haiku-20240307',
         max_tokens: 1024,
         system: dataContext,
-        messages: [
-          {
-            role: 'user',
-            content: question,
-          },
-        ],
+        messages,
       }),
     });
 

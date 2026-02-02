@@ -35,10 +35,14 @@ export default function AskAI() {
     setIsLoading(true);
 
     try {
+      // Send conversation history for context
       const response = await fetch('/api/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: userQuestion }),
+        body: JSON.stringify({
+          question: userQuestion,
+          history: messages, // Include previous messages for conversation memory
+        }),
       });
 
       const data = await response.json();
