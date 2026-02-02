@@ -1703,9 +1703,23 @@ export default function FieldsClient({
                                   value={field.serviceType}
                                   type="select"
                                   options={[
-                                    { value: 'Full Service', label: 'Full Service' },
-                                    { value: 'DIY', label: 'DIY' },
-                                    { value: 'VRS', label: 'VRS' },
+                                    { value: 'CropX Complete DIY', label: 'CropX Complete DIY' },
+                                    { value: 'CropX DIY', label: 'CropX DIY' },
+                                    { value: 'CropX DIY 2x Field', label: 'CropX DIY 2x Field' },
+                                    { value: 'CropX DIY 2x Field Bulk', label: 'CropX DIY 2x Field Bulk' },
+                                    { value: 'CropX DIY Bulk', label: 'CropX DIY Bulk' },
+                                    { value: 'CropX DIY + $100 Roeder', label: 'CropX DIY + $100 Roeder' },
+                                    { value: 'CropX Regular', label: 'CropX Regular' },
+                                    { value: 'CropX Regular 2x Field', label: 'CropX Regular 2x Field' },
+                                    { value: 'CropX Regular 2x Field Bulk', label: 'CropX Regular 2x Field Bulk' },
+                                    { value: 'CropX Regular Bulk', label: 'CropX Regular Bulk' },
+                                    { value: 'CropX Regular Family Rate', label: 'CropX Regular Family Rate' },
+                                    { value: 'CropX Regular Olsen Rate', label: 'CropX Regular Olsen Rate' },
+                                    { value: 'CropX Regular Small Field', label: 'CropX Regular Small Field' },
+                                    { value: 'CropX Regular Dryland', label: 'CropX Regular Dryland' },
+                                    { value: 'IrriMax Live', label: 'IrriMax Live' },
+                                    { value: 'IrriMax Live – Ryan Cost', label: 'IrriMax Live – Ryan Cost' },
+                                    { value: 'Overview Field', label: 'Overview Field' },
                                   ]}
                                   onSave={handleInlineSave}
                                   savingFields={savingFields}
