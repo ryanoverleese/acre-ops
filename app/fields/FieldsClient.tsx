@@ -1508,11 +1508,16 @@ export default function FieldsClient({
 
   const getStatusBadge = (status: string | undefined | null) => {
     const safeStatus = status || 'Unassigned';
-    const normalized = safeStatus.toLowerCase().replace(' ', '-');
+    const normalized = safeStatus.toLowerCase().replace(/\s+/g, '-');
     const statusMap: Record<string, { class: string; label: string }> = {
-      installed: { class: 'installed', label: 'Installed' },
-      assigned: { class: 'pending', label: 'Assigned' },
       unassigned: { class: 'needs-probe', label: 'Unassigned' },
+      assigned: { class: 'pending', label: 'Assigned' },
+      'ready-to-install': { class: 'pending', label: 'Ready to Install' },
+      installed: { class: 'installed', label: 'Installed' },
+      'in-season-repair-requested': { class: 'repair', label: 'In Season Repair' },
+      'ready-to-remove': { class: 'pending', label: 'Ready to Remove' },
+      removed: { class: 'needs-probe', label: 'Removed' },
+      'off-season-repair-requested': { class: 'repair', label: 'Off Season Repair' },
       rma: { class: 'repair', label: 'RMA' },
     };
     const config = statusMap[normalized] || { class: 'needs-probe', label: safeStatus };
@@ -2043,8 +2048,12 @@ export default function FieldsClient({
                                             options={[
                                               { value: 'Unassigned', label: 'Unassigned' },
                                               { value: 'Assigned', label: 'Assigned' },
+                                              { value: 'Ready to Install', label: 'Ready to Install' },
                                               { value: 'Installed', label: 'Installed' },
-                                              { value: 'RMA', label: 'RMA' },
+                                              { value: 'In Season Repair Requested', label: 'In Season Repair' },
+                                              { value: 'Ready to Remove', label: 'Ready to Remove' },
+                                              { value: 'Removed', label: 'Removed' },
+                                              { value: 'Off Season Repair Requested', label: 'Off Season Repair' },
                                             ]}
                                             onSave={handleProbeAssignmentSave}
                                             savingFields={savingFields}
@@ -2058,8 +2067,13 @@ export default function FieldsClient({
                                             value={pa.antennaType}
                                             type="select"
                                             options={[
-                                              { value: 'Short', label: 'Short' },
-                                              { value: 'Tall', label: 'Tall' },
+                                              { value: 'Stub Sentek Antenna', label: 'Stub Sentek Antenna' },
+                                              { value: 'CropX Stub - White Flag', label: 'CropX Stub - White Flag' },
+                                              { value: "6' CropX Antenna", label: "6' CropX Antenna" },
+                                              { value: 'ASK', label: 'ASK' },
+                                              { value: "10' CropX Antenna", label: "10' CropX Antenna" },
+                                              { value: 'Stub CropX Antenna', label: 'Stub CropX Antenna' },
+                                              { value: "10' Sentek Antenna", label: "10' Sentek Antenna" },
                                             ]}
                                             onSave={handleProbeAssignmentSave}
                                             savingFields={savingFields}
