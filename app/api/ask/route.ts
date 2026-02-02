@@ -24,7 +24,9 @@ How to behave:
 
 4. Keep answers concise. Field crews need quick info, not paragraphs.
 
-5. For navigation/directions, provide lat/lng coordinates and format the Google Maps link as markdown: [View on Google Maps](url)`;
+5. For navigation/directions, provide lat/lng coordinates and format the Google Maps link as markdown: [View on Google Maps](url)
+
+6. You cannot search by geographic proximity or distance. If a user asks for fields near a city, within X miles of a location, or "what's nearby", explain that you can only search by name. Offer to search for fields with that city/location in the field name instead.`;
 
 // Tool definitions for Claude
 const TOOLS = [
