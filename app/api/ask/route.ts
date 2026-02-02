@@ -216,6 +216,7 @@ export async function POST(request: NextRequest) {
         total_probes: contactProbes.length,
         probes: contactProbes.map(p => ({
           serial_number: p.serial_number,
+          brand: p.brand?.value,
           status: p.status?.value,
           rack: p.rack?.value,
           slot: p.rack_slot,
@@ -241,6 +242,7 @@ export async function POST(request: NextRequest) {
         total_probes: opProbes.length,
         probes: opProbes.map(p => ({
           serial_number: p.serial_number,
+          brand: p.brand?.value,
           status: p.status?.value,
           rack: p.rack?.value,
           slot: p.rack_slot,
@@ -276,6 +278,7 @@ FIELDS: ${JSON.stringify(fields.slice(0, 100).map(f => ({
 
 PROBES: ${JSON.stringify(probes.slice(0, 100).map(p => ({
   serial: p.serial_number,
+  brand: p.brand?.value,
   status: p.status?.value,
   rack: p.rack?.value,
   slot: p.rack_slot,
