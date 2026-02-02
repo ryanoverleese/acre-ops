@@ -358,17 +358,7 @@ export async function POST(request: NextRequest) {
           const fbe = f.billing_entity?.[0]?.value?.toLowerCase() || '';
           return matchedNames.some(name => fbe.includes(name.toLowerCase()));
         });
-        specificLookupContext += `PARTIAL MATCH FOUND - GROWER "${searchWords.join(' ')}":\n${JSON.stringify({
-          matched_billing_entities: matchedNames,
-          total_probes: pmProbes.length,
-          total_fields: pmFields.length,
-          fields: pmFields.map(f => ({
-            name: f.name,
-            acres: f.acres,
-            irrigation: f.irrigation_type?.value,
-            billing_entity: f.billing_entity?.[0]?.value,
-          })),
-        }, null, 2)}\n\n`;
+        specificLookupContext += `GROWER LOOKUP "${searchWords.join(' ')}":\nMatched billing entities: ${matchedNames.join(', ')}\n\nFIELD NAMES for this grower (these are the actual field/pivot names, NOT billing entities):\n${pmFields.map(f => `- "${f.name}" (${f.acres || '?'} acres, ${f.irrigation_type?.value || 'unknown irrigation'}, billed to: ${f.billing_entity?.[0]?.value})`).join('\n')}\n\nPROBES for this grower: ${pmProbes.length} total\n\n`;
       }
     }
 
