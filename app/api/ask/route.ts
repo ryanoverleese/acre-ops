@@ -257,6 +257,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Build context
+    // Calculate probe stats by brand
+    const probeBrandCounts: Record<string, number> = {};
+    const probeStatusCounts: Record<string, number> = {};
+    probes.forEach(p => {
+      const brand = p.brand?.value || 'Unknown';
+      const status = p.status?.value || 'Unknown';
+      probeBrandCounts[brand] = (probeBrandCounts[brand] || 0) + 1;
+      probeStatusCounts[status] = (probeStatusCounts[status] || 0) + 1;
+    });
+
     const dataContext = `You are an AI assistant for Acre Insights Operation Center, a farm management app.
 ${DOMAIN_KNOWLEDGE}
 
@@ -268,6 +278,9 @@ ${specificLookupContext}DATA SUMMARY:
 - ${repairs.length} repairs
 - ${contacts.length} contacts
 - ${operations.length} operations
+
+PROBE COUNTS BY BRAND: ${JSON.stringify(probeBrandCounts)}
+PROBE COUNTS BY STATUS: ${JSON.stringify(probeStatusCounts)}
 
 FIELDS: ${JSON.stringify(fields.slice(0, 100).map(f => ({
   name: f.name,
