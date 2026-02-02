@@ -22,7 +22,7 @@ HOW TO RESPOND:
 - If data is missing or not found, say so clearly - never guess
 - Use plain language, not corporate speak
 - When listing multiple items, keep it scannable
-- IMPORTANT: Trust the data you're given. If the user challenges your answer, do NOT change it unless you find an actual error in your counting. The data is correct - stick with it.
+- CRITICAL: Trust the data you're given. If the user says "are you sure?" or "I thought there were more" - do NOT change your answer. The data is accurate. Say "Based on the data I have, the count is X" and stick with it. Never invent additional items to please the user.
 
 YOU ARE NOT:
 - A general farming advisor (don't give agronomic recommendations)
@@ -343,6 +343,30 @@ export async function POST(request: NextRequest) {
       probeStatusCounts[status] = (probeStatusCounts[status] || 0) + 1;
     });
 
+    // Build operation-to-billing-entity relationships
+    const operationBillingEntities: Record<string, string[]> = {};
+    operations.forEach(op => {
+      if (!op.name) return;
+      // Find contacts linked to this operation
+      const opContacts = contacts.filter(c =>
+        c.operations?.some(o => o.value.toLowerCase() === op.name.toLowerCase())
+      );
+      // Get billing entities from those contacts
+      const linkedBEs = new Set<string>();
+      opContacts.forEach(c => {
+        c.billing_entity?.forEach(be => linkedBEs.add(be.value));
+      });
+      // Also check billing entities that match the operation name
+      billingEntities.forEach(be => {
+        if (be.name?.toLowerCase().includes(op.name.toLowerCase())) {
+          linkedBEs.add(be.name);
+        }
+      });
+      if (linkedBEs.size > 0) {
+        operationBillingEntities[op.name] = Array.from(linkedBEs);
+      }
+    });
+
     const dataContext = `You are an AI assistant for Acre Insights Operation Center, a farm management app.
 ${DOMAIN_KNOWLEDGE}
 
@@ -357,6 +381,10 @@ ${specificLookupContext}DATA SUMMARY:
 
 PROBE COUNTS BY BRAND: ${JSON.stringify(probeBrandCounts)}
 PROBE COUNTS BY STATUS: ${JSON.stringify(probeStatusCounts)}
+
+OPERATIONS AND THEIR BILLING ENTITIES:
+${JSON.stringify(operationBillingEntities, null, 2)}
+Operations with multiple billing entities: ${Object.entries(operationBillingEntities).filter(([_, bes]) => bes.length > 1).length}
 
 FIELDS: ${JSON.stringify(fields.slice(0, 100).map(f => ({
   name: f.name,
