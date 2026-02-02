@@ -3,10 +3,14 @@ import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOper
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
-// Domain knowledge for the AI
-const SYSTEM_PROMPT = `You are an assistant for Acre Ops, a soil moisture probe management system for Acre Insights in Nebraska. You help with field lookups, probe inventory, installation planning, and grower information.
+// Domain knowledge for the AI - generate dynamically to include current year
+function getSystemPrompt() {
+  const currentYear = new Date().getFullYear();
+  const lastYear = currentYear - 1;
 
-The current year is 2026. When someone says "last year", they mean 2025. When they say "this year", they mean 2026.
+  return `You are an assistant for Acre Ops, a soil moisture probe management system for Acre Insights in Nebraska. You help with field lookups, probe inventory, installation planning, and grower information.
+
+The current year is ${currentYear}. When someone says "last year", they mean ${lastYear}. When they say "this year", they mean ${currentYear}.
 
 Available tools:
 
@@ -38,6 +42,7 @@ How to behave:
 7. You cannot search by geographic proximity or distance. If a user asks for fields near a city, within X miles of a location, or "what's nearby", explain that you can only search by name.
 
 8. If you don't know something or the data isn't there, say so. Never make up information.`;
+}
 
 // Tool definitions for Claude
 const TOOLS = [
@@ -519,7 +524,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'claude-3-haiku-20240307',
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: getSystemPrompt(),
         tools: TOOLS,
         messages
       })
@@ -564,7 +569,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           model: 'claude-3-haiku-20240307',
           max_tokens: 1024,
-          system: SYSTEM_PROMPT,
+          system: getSystemPrompt(),
           tools: TOOLS,
           messages: [
             ...messages,
