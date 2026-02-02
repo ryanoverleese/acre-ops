@@ -2,71 +2,323 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOperations, getProbeAssignments, getBillingEntities } from '@/lib/baserow';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const BASEROW_API_TOKEN = process.env.BASEROW_API_TOKEN;
 
-// Domain knowledge, business rules, and examples for the AI
-const DOMAIN_KNOWLEDGE = `
-You are the AI assistant for Acre Ops, the probe management system for Acre Insights LLC, an agricultural consulting business in Nebraska.
+// Domain knowledge for the AI
+const SYSTEM_PROMPT = `You are the AI assistant for Acre Ops, the probe management system for Acre Insights LLC, an agricultural consulting business in Nebraska.
 
-Acre Insights serves over 44 farm operations with soil moisture monitoring, agronomic advice, and data management. You help Ryan (the owner and chief agronomist) and his team manage their probe inventory, track field assignments, and handle service records.
+You help Ryan (the owner) and his team manage probe inventory, track field assignments, and handle service records.
 
-YOUR JOB:
-- Answer questions about probe locations, rack assignments, and field deployments
-- Help find probes by serial number, grower, field, or status
-- Summarize service history and repairs
-- Give quick counts and inventory checks
+DATABASE SCHEMA:
+- Fields: name, acres, irrigation_type, billing_entity (who pays)
+- Probes: serial_number, brand, status, rack, rack_slot, billing_entity, year_new
+- Operations: farming companies/growers
+- Billing Entities: who pays for services (linked to operations via contacts)
+- Contacts: people linked to operations and billing entities
+- Field Seasons: tracks which probe is in which field each year
 
-HOW TO RESPOND:
-- Be direct and concise - no fluff
-- If you find the data, lead with the answer (e.g., "Probe 408923 is in Rack 4, Slot 12")
-- If data is missing or not found, say so clearly - never guess
-- Use plain language, not corporate speak
-- When listing multiple items, keep it scannable
-- If the user challenges your answer ("are you sure?", "I thought there were more"), re-check the actual data carefully. If you find a real mistake, correct it and explain what you missed. But NEVER invent items that aren't in the data just to please the user. Every answer must be based on what you can actually see in the data provided.
+PROBE STATUSES: "Installed", "In Storage", "Needs Repair", "Retired"
 
-YOU ARE NOT:
-- A general farming advisor (don't give agronomic recommendations)
-- A CropX or IrriMax expert (that's separate from this system)
-- Able to make changes to the database (you can only read and report)
+HOW TO WORK:
+1. Use the search tools to find relevant data - don't guess
+2. Be direct and concise in your answers
+3. If you can't find something, say so clearly
+4. When listing items, keep it scannable
 
-DATA CONTEXT:
-- Probes have serial numbers, rack/slot locations, status, brand, and billing entity
-- Fields have names, acres, irrigation type, and assigned growers
-- Field seasons track which probes are deployed where each year
-- Repairs log service history with problems and fixes
+IMPORTANT: You have tools to search the database. USE THEM to answer questions. Don't make assumptions about data you haven't looked up.`;
 
-RELATIONSHIPS:
-- Probe → assigned to → Field Season → belongs to → Field → owned by → Billing Entity
-- Contacts can be linked to Operations (growers)
+// Tool definitions for Claude
+const TOOLS = [
+  {
+    name: "search_fields",
+    description: "Search for fields by name pattern and/or billing entity. Use this to find specific fields like 'Home Pivot' or all fields for a grower like 'Lundeen'.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name_contains: {
+          type: "string",
+          description: "Search for fields where name contains this text (case-insensitive)"
+        },
+        billing_entity_contains: {
+          type: "string",
+          description: "Search for fields where billing entity contains this text (case-insensitive)"
+        }
+      }
+    }
+  },
+  {
+    name: "search_probes",
+    description: "Search for probes by serial number, status, brand, or billing entity.",
+    input_schema: {
+      type: "object",
+      properties: {
+        serial_number: {
+          type: "string",
+          description: "Exact or partial serial number to search for"
+        },
+        status: {
+          type: "string",
+          description: "Filter by status: 'Installed', 'In Storage', 'Needs Repair', 'Retired'"
+        },
+        brand: {
+          type: "string",
+          description: "Filter by brand (e.g., 'CropX', 'IrriMax')"
+        },
+        billing_entity_contains: {
+          type: "string",
+          description: "Search for probes where billing entity contains this text"
+        }
+      }
+    }
+  },
+  {
+    name: "get_probe_counts",
+    description: "Get summary counts of probes by status and brand. Use this for questions like 'how many probes are installed?' or 'how many CropX probes?'",
+    input_schema: {
+      type: "object",
+      properties: {}
+    }
+  },
+  {
+    name: "search_operations",
+    description: "Search for operations/growers and see their linked billing entities and contacts.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name_contains: {
+          type: "string",
+          description: "Search for operations where name contains this text"
+        }
+      }
+    }
+  },
+  {
+    name: "get_grower_summary",
+    description: "Get a complete summary for a grower - their operations, billing entities, fields, and probes. Use this when someone asks about everything related to a person or farm.",
+    input_schema: {
+      type: "object",
+      properties: {
+        grower_name: {
+          type: "string",
+          description: "Name to search for across operations, contacts, and billing entities"
+        }
+      },
+      required: ["grower_name"]
+    }
+  }
+];
 
-PROBE STATUSES:
-- "Installed" = currently in a field
-- "In Storage" = at the warehouse, should have rack/slot assigned
-- "Needs Repair" = has an issue that needs fixing
-- "Retired" = no longer in service
+// Tool execution functions
+async function executeSearchFields(params: { name_contains?: string; billing_entity_contains?: string }) {
+  const fields = await getFields();
+  let results = fields;
 
-BUSINESS RULES:
-- A probe "In Storage" should always have a rack and slot location
-- Each field can have 1-2 probes per season
-- Probes are installed in spring/early summer and removed in fall
-- If someone asks about a probe without a rack, it might be installed in a field
+  if (params.name_contains) {
+    const search = params.name_contains.toLowerCase();
+    results = results.filter(f => f.name?.toLowerCase().includes(search));
+  }
 
-EXAMPLE Q&A:
-Q: "Where is probe 408923?"
-A: If status is "In Storage": "Probe 408923 is in Rack 5A, Slot 12"
-   If status is "Installed": "Probe 408923 is installed at Smith Farm North field"
+  if (params.billing_entity_contains) {
+    const search = params.billing_entity_contains.toLowerCase();
+    results = results.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(search));
+  }
 
-Q: "How many probes does Johnson Farms have?"
-A: Count probes where billing_entity matches, e.g., "Johnson Farms has 15 probes (12 installed, 3 in storage)"
+  return results.slice(0, 50).map(f => ({
+    field_name: f.name,
+    acres: f.acres,
+    irrigation_type: f.irrigation_type?.value,
+    billing_entity: f.billing_entity?.[0]?.value
+  }));
+}
 
-Q: "What's planted at Miller field?"
-A: Look up field season for current year, e.g., "Miller field has corn planted for 2026"
+async function executeSearchProbes(params: { serial_number?: string; status?: string; brand?: string; billing_entity_contains?: string }) {
+  const probes = await getProbes();
+  let results = probes;
 
-INSTRUCTIONS:
-- If data is in SPECIFIC LOOKUP section, use that first
-- When counting, give totals and breakdowns when relevant
-- If you can't find something, say so clearly
-`;
+  if (params.serial_number) {
+    const search = params.serial_number.toLowerCase();
+    results = results.filter(p => p.serial_number?.toLowerCase().includes(search));
+  }
+
+  if (params.status) {
+    results = results.filter(p => p.status?.value === params.status);
+  }
+
+  if (params.brand) {
+    const search = params.brand.toLowerCase();
+    results = results.filter(p => p.brand?.value?.toLowerCase().includes(search));
+  }
+
+  if (params.billing_entity_contains) {
+    const search = params.billing_entity_contains.toLowerCase();
+    results = results.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(search));
+  }
+
+  return {
+    total_found: results.length,
+    probes: results.slice(0, 50).map(p => ({
+      serial_number: p.serial_number,
+      brand: p.brand?.value,
+      status: p.status?.value,
+      rack: p.rack?.value,
+      rack_slot: p.rack_slot,
+      billing_entity: p.billing_entity?.[0]?.value,
+      year_new: p.year_new
+    }))
+  };
+}
+
+async function executeGetProbeCounts() {
+  const probes = await getProbes();
+
+  const byStatus: Record<string, number> = {};
+  const byBrand: Record<string, number> = {};
+
+  probes.forEach(p => {
+    const status = p.status?.value || 'Unknown';
+    const brand = p.brand?.value || 'Unknown';
+    byStatus[status] = (byStatus[status] || 0) + 1;
+    byBrand[brand] = (byBrand[brand] || 0) + 1;
+  });
+
+  return {
+    total_probes: probes.length,
+    by_status: byStatus,
+    by_brand: byBrand
+  };
+}
+
+async function executeSearchOperations(params: { name_contains?: string }) {
+  const [operations, contacts, billingEntities] = await Promise.all([
+    getOperations(),
+    getContacts(),
+    getBillingEntities()
+  ]);
+
+  let results = operations;
+  if (params.name_contains) {
+    const search = params.name_contains.toLowerCase();
+    results = results.filter(o => o.name?.toLowerCase().includes(search));
+  }
+
+  return results.slice(0, 20).map(op => {
+    // Find contacts linked to this operation
+    const opContacts = contacts.filter(c =>
+      c.operations?.some(o => o.value.toLowerCase() === op.name?.toLowerCase())
+    );
+    // Get billing entities from contacts
+    const linkedBEs = new Set<string>();
+    opContacts.forEach(c => {
+      c.billing_entity?.forEach(be => linkedBEs.add(be.value));
+    });
+
+    return {
+      operation_name: op.name,
+      contacts: opContacts.map(c => c.name),
+      billing_entities: Array.from(linkedBEs)
+    };
+  });
+}
+
+async function executeGetGrowerSummary(params: { grower_name: string }) {
+  const search = params.grower_name.toLowerCase();
+
+  const [fields, probes, operations, contacts, billingEntities] = await Promise.all([
+    getFields(),
+    getProbes(),
+    getOperations(),
+    getContacts(),
+    getBillingEntities()
+  ]);
+
+  // Find matching billing entities
+  const matchedBEs = billingEntities.filter(be =>
+    be.name?.toLowerCase().includes(search)
+  ).map(be => be.name);
+
+  // Find matching operations
+  const matchedOps = operations.filter(op =>
+    op.name?.toLowerCase().includes(search)
+  );
+
+  // Find matching contacts and their billing entities
+  const matchedContacts = contacts.filter(c =>
+    c.name?.toLowerCase().includes(search)
+  );
+  matchedContacts.forEach(c => {
+    c.billing_entity?.forEach(be => {
+      if (!matchedBEs.includes(be.value)) matchedBEs.push(be.value);
+    });
+  });
+
+  // Also get BEs from matched operations via contacts
+  matchedOps.forEach(op => {
+    const opContacts = contacts.filter(c =>
+      c.operations?.some(o => o.value.toLowerCase() === op.name?.toLowerCase())
+    );
+    opContacts.forEach(c => {
+      c.billing_entity?.forEach(be => {
+        if (!matchedBEs.includes(be.value)) matchedBEs.push(be.value);
+      });
+    });
+  });
+
+  // Find fields for these billing entities
+  const growerFields = fields.filter(f => {
+    const fbe = f.billing_entity?.[0]?.value?.toLowerCase() || '';
+    return matchedBEs.some(be => fbe.includes(be.toLowerCase()));
+  });
+
+  // Find probes for these billing entities
+  const growerProbes = probes.filter(p => {
+    const pbe = p.billing_entity?.[0]?.value?.toLowerCase() || '';
+    return matchedBEs.some(be => pbe.includes(be.toLowerCase()));
+  });
+
+  return {
+    search_term: params.grower_name,
+    matched_operations: matchedOps.map(o => o.name),
+    matched_billing_entities: matchedBEs,
+    matched_contacts: matchedContacts.map(c => c.name),
+    fields: growerFields.map(f => ({
+      field_name: f.name,
+      acres: f.acres,
+      irrigation_type: f.irrigation_type?.value,
+      billing_entity: f.billing_entity?.[0]?.value
+    })),
+    probes: {
+      total: growerProbes.length,
+      by_status: growerProbes.reduce((acc, p) => {
+        const status = p.status?.value || 'Unknown';
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      list: growerProbes.slice(0, 30).map(p => ({
+        serial_number: p.serial_number,
+        status: p.status?.value,
+        rack: p.rack?.value,
+        slot: p.rack_slot
+      }))
+    }
+  };
+}
+
+// Execute a tool call
+async function executeTool(name: string, input: Record<string, unknown>) {
+  switch (name) {
+    case 'search_fields':
+      return await executeSearchFields(input as { name_contains?: string; billing_entity_contains?: string });
+    case 'search_probes':
+      return await executeSearchProbes(input as { serial_number?: string; status?: string; brand?: string; billing_entity_contains?: string });
+    case 'get_probe_counts':
+      return await executeGetProbeCounts();
+    case 'search_operations':
+      return await executeSearchOperations(input as { name_contains?: string });
+    case 'get_grower_summary':
+      return await executeGetGrowerSummary(input as { grower_name: string });
+    default:
+      return { error: `Unknown tool: ${name}` };
+  }
+}
 
 interface Message {
   role: 'user' | 'assistant';
@@ -84,429 +336,104 @@ export async function POST(request: NextRequest) {
 
     const { question, history = [] } = await request.json();
 
-    if (!question || typeof question !== 'string') {
-      return NextResponse.json(
-        { error: 'Please provide a question' },
-        { status: 400 }
-      );
+    if (!question) {
+      return NextResponse.json({ error: 'Question is required' }, { status: 400 });
     }
 
-    // Specific lookup context for detected entities
-    let specificLookupContext = '';
+    // Build messages array with conversation history
+    const messages = [
+      ...history.slice(-10).map((msg: Message) => ({
+        role: msg.role,
+        content: msg.content
+      })),
+      { role: 'user', content: question }
+    ];
 
-    // Check if question contains a serial number (5-6 digit number)
-    const serialMatch = question.match(/\b\d{5,6}\b/);
-
-    if (serialMatch && BASEROW_API_TOKEN) {
-      try {
-        const probeResponse = await fetch(
-          `https://api.baserow.io/api/database/rows/table/817299/?user_field_names=true&filter__serial_number__contains=${serialMatch[0]}`,
-          {
-            headers: {
-              'Authorization': `Token ${BASEROW_API_TOKEN}`,
-              'Content-Type': 'application/json',
-            }
-          }
-        );
-        const probeData = await probeResponse.json();
-
-        if (probeData.results?.length > 0) {
-          const probe = probeData.results[0];
-
-          const assignmentResponse = await fetch(
-            `https://api.baserow.io/api/database/rows/table/819350/?user_field_names=true&filter__probe__link_row_contains=${probe.id}`,
-            {
-              headers: {
-                'Authorization': `Token ${BASEROW_API_TOKEN}`,
-                'Content-Type': 'application/json',
-              }
-            }
-          );
-          const assignmentData = await assignmentResponse.json();
-          const assignment = assignmentData.results?.[0];
-
-          specificLookupContext += `SPECIFIC PROBE FOUND (Serial: ${serialMatch[0]}):\n${JSON.stringify({
-            serial_number: probe.serial_number,
-            rack: probe.rack?.value,
-            rack_slot: probe.rack_slot,
-            status: probe.status?.value,
-            brand: probe.brand?.value,
-            billing_entity: probe.billing_entity?.[0]?.value,
-            contact: probe.contact?.[0]?.value,
-            year_new: probe.year_new,
-            age_years: probe.year_new ? new Date().getFullYear() - probe.year_new : null,
-            notes: probe.notes,
-            assigned_to_field: assignment?.field_season?.[0]?.value || 'Not currently assigned',
-            install_date: assignment?.install_date || null,
-          }, null, 2)}\n\n`;
-        } else {
-          specificLookupContext += `NOTE: No probe found with serial number ${serialMatch[0]}\n\n`;
-        }
-      } catch (probeError) {
-        console.error('Probe lookup error:', probeError);
-      }
-    }
-
-    // Fetch all data
-    let fields: Awaited<ReturnType<typeof getFields>> = [];
-    let probes: Awaited<ReturnType<typeof getProbes>> = [];
-    let fieldSeasons: Awaited<ReturnType<typeof getFieldSeasons>> = [];
-    let repairs: Awaited<ReturnType<typeof getRepairs>> = [];
-    let contacts: Awaited<ReturnType<typeof getContacts>> = [];
-    let operations: Awaited<ReturnType<typeof getOperations>> = [];
-    let probeAssignments: Awaited<ReturnType<typeof getProbeAssignments>> = [];
-    let billingEntities: Awaited<ReturnType<typeof getBillingEntities>> = [];
-
-    try {
-      [fields, probes, fieldSeasons, repairs, contacts, operations, probeAssignments, billingEntities] = await Promise.all([
-        getFields().catch(() => []),
-        getProbes().catch(() => []),
-        getFieldSeasons().catch(() => []),
-        getRepairs().catch(() => []),
-        getContacts().catch(() => []),
-        getOperations().catch(() => []),
-        getProbeAssignments().catch(() => []),
-        getBillingEntities().catch(() => []),
-      ]);
-    } catch (fetchError) {
-      console.error('Data fetch error:', fetchError);
-    }
-
-    // Check for field name mentions
-    const questionLower = question.toLowerCase();
-    const matchedField = fields.find(f =>
-      f.name && questionLower.includes(f.name.toLowerCase())
-    );
-    if (matchedField) {
-      const fieldSeason = fieldSeasons.find(fs => fs.field?.[0]?.value === matchedField.name);
-      specificLookupContext += `SPECIFIC FIELD FOUND (${matchedField.name}):\n${JSON.stringify({
-        name: matchedField.name,
-        acres: matchedField.acres,
-        irrigation: matchedField.irrigation_type?.value,
-        billing_entity: matchedField.billing_entity?.[0]?.value,
-        current_crop: fieldSeason?.crop?.value,
-        current_probe: fieldSeason?.probe?.[0]?.value,
-        probe_status: fieldSeason?.probe_status?.value,
-      }, null, 2)}\n\n`;
-    }
-
-    // Check for contact name mentions
-    const matchedContact = contacts.find(c =>
-      c.name && questionLower.includes(c.name.toLowerCase())
-    );
-    if (matchedContact) {
-      // Get the contact's operations AND billing entities and find their probes
-      const contactOperations = matchedContact.operations?.map(o => o.value) || [];
-      const contactBillingEntities = matchedContact.billing_entity?.map(b => b.value) || [];
-      const allLinkedEntities = [...new Set([...contactOperations, ...contactBillingEntities])];
-
-      const contactProbes = probes.filter(p => {
-        const probeBillingEntity = p.billing_entity?.[0]?.value?.toLowerCase() || '';
-        return allLinkedEntities.some(entity => probeBillingEntity.includes(entity.toLowerCase()));
-      });
-      const contactFields = fields.filter(f => {
-        const fieldBillingEntity = f.billing_entity?.[0]?.value?.toLowerCase() || '';
-        return allLinkedEntities.some(entity => fieldBillingEntity.includes(entity.toLowerCase()));
-      });
-
-      specificLookupContext += `SPECIFIC CONTACT FOUND (${matchedContact.name}):\n${JSON.stringify({
-        name: matchedContact.name,
-        email: matchedContact.email,
-        phone: matchedContact.phone,
-        type: matchedContact.customer_type?.value,
-        operations: contactOperations,
-        billing_entities: contactBillingEntities,
-        total_probes: contactProbes.length,
-        probes: contactProbes.map(p => ({
-          serial_number: p.serial_number,
-          brand: p.brand?.value,
-          status: p.status?.value,
-          rack: p.rack?.value,
-          slot: p.rack_slot,
-          year_new: p.year_new,
-          age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
-        })),
-        probes_installed: contactProbes.filter(p => p.status?.value === 'Installed').length,
-        probes_in_storage: contactProbes.filter(p => p.status?.value === 'In Storage').length,
-        total_fields: contactFields.length,
-        fields: contactFields.map(f => f.name),
-      }, null, 2)}\n\n`;
-    }
-
-    // Check for operation or billing entity name mentions
-    // Detect if user is asking about "operation" or "billing entity" specifically
-    const askingAboutOperation = questionLower.includes('operation');
-    const askingAboutBillingEntity = questionLower.includes('billing') || questionLower.includes('entity');
-
-    // Try to match an operation
-    const matchedOperation = operations.find(o => {
-      if (!o.name) return false;
-      const opNameLower = o.name.toLowerCase();
-      return questionLower.includes(opNameLower) ||
-             opNameLower.includes(questionLower.split(' ').filter(w => w.length > 2).join(' '));
-    });
-
-    // Try to match a billing entity directly
-    const matchedBillingEntity = billingEntities.find(b => {
-      if (!b.name) return false;
-      const beName = b.name.toLowerCase();
-      const questionWords = questionLower.split(' ').filter(w => w.length > 1);
-      return questionLower.includes(beName) ||
-             beName.includes(questionWords.join(' ')) ||
-             questionWords.some(w => beName.startsWith(w) && w.length > 2);
-    });
-
-    // If asking about an OPERATION, find everything linked through contacts
-    if (matchedOperation && (askingAboutOperation || !matchedBillingEntity)) {
-      // Find all contacts linked to this operation
-      const opContacts = contacts.filter(c =>
-        c.operations?.some(o => o.value.toLowerCase().includes(matchedOperation.name.toLowerCase()))
-      );
-
-      // Get all billing entities linked to those contacts
-      const linkedBillingEntities = new Set<string>();
-      opContacts.forEach(c => {
-        c.billing_entity?.forEach(be => linkedBillingEntities.add(be.value));
-      });
-
-      // Also check if any billing entity name matches the operation name directly
-      billingEntities.forEach(be => {
-        if (be.name?.toLowerCase().includes(matchedOperation.name.toLowerCase())) {
-          linkedBillingEntities.add(be.name);
-        }
-      });
-
-      // Find all probes/fields linked to those billing entities
-      const opProbes = probes.filter(p => {
-        const probeBE = p.billing_entity?.[0]?.value?.toLowerCase() || '';
-        return Array.from(linkedBillingEntities).some(be => probeBE.includes(be.toLowerCase())) ||
-               probeBE.includes(matchedOperation.name.toLowerCase());
-      });
-      const opFields = fields.filter(f => {
-        const fieldBE = f.billing_entity?.[0]?.value?.toLowerCase() || '';
-        return Array.from(linkedBillingEntities).some(be => fieldBE.includes(be.toLowerCase())) ||
-               fieldBE.includes(matchedOperation.name.toLowerCase());
-      });
-
-      specificLookupContext += `SPECIFIC OPERATION FOUND (${matchedOperation.name}):\n${JSON.stringify({
-        operation_name: matchedOperation.name,
-        linked_contacts: opContacts.map(c => c.name),
-        linked_billing_entities: Array.from(linkedBillingEntities),
-        total_probes: opProbes.length,
-        probes: opProbes.map(p => ({
-          serial_number: p.serial_number,
-          brand: p.brand?.value,
-          status: p.status?.value,
-          rack: p.rack?.value,
-          slot: p.rack_slot,
-          year_new: p.year_new,
-          age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
-          billing_entity: p.billing_entity?.[0]?.value,
-        })),
-        probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
-        probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
-        total_fields: opFields.length,
-        fields: opFields.map(f => ({
-          name: f.name,
-          acres: f.acres,
-          irrigation: f.irrigation_type?.value,
-          billing_entity: f.billing_entity?.[0]?.value
-        })),
-      }, null, 2)}\n\n`;
-    }
-    // If asking about a BILLING ENTITY specifically
-    else if (matchedBillingEntity) {
-      const beProbes = probes.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(matchedBillingEntity.name.toLowerCase()));
-      const beFields = fields.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(matchedBillingEntity.name.toLowerCase()));
-      specificLookupContext += `SPECIFIC BILLING ENTITY FOUND (${matchedBillingEntity.name}):\n${JSON.stringify({
-        billing_entity_name: matchedBillingEntity.name,
-        total_probes: beProbes.length,
-        probes: beProbes.map(p => ({
-          serial_number: p.serial_number,
-          brand: p.brand?.value,
-          status: p.status?.value,
-          rack: p.rack?.value,
-          slot: p.rack_slot,
-          year_new: p.year_new,
-          age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
-        })),
-        probes_installed: beProbes.filter(p => p.status?.value === 'Installed').length,
-        probes_in_storage: beProbes.filter(p => p.status?.value === 'In Storage').length,
-        total_fields: beFields.length,
-        fields: beFields.map(f => ({
-          name: f.name,
-          acres: f.acres,
-          irrigation: f.irrigation_type?.value,
-        })),
-      }, null, 2)}\n\n`;
-    }
-    // Also try to match partial names against billing entities for grower lookups like "Lundeen"
-    if (!matchedOperation && !matchedBillingEntity) {
-      const searchWords = questionLower.split(' ').filter(w => w.length > 3);
-      const partialMatches = billingEntities.filter(b => {
-        if (!b.name) return false;
-        const beName = b.name.toLowerCase();
-        return searchWords.some(w => beName.includes(w));
-      });
-      if (partialMatches.length > 0) {
-        const matchedNames = partialMatches.map(m => m.name);
-        const pmProbes = probes.filter(p => {
-          const pbe = p.billing_entity?.[0]?.value?.toLowerCase() || '';
-          return matchedNames.some(name => pbe.includes(name.toLowerCase()));
-        });
-        const pmFields = fields.filter(f => {
-          const fbe = f.billing_entity?.[0]?.value?.toLowerCase() || '';
-          return matchedNames.some(name => fbe.includes(name.toLowerCase()));
-        });
-        const fieldsList = pmFields.length > 0
-          ? pmFields.map(f => `- "${f.name}" (${f.acres || '?'} acres, ${f.irrigation_type?.value || 'unknown irrigation'}, billed to: ${f.billing_entity?.[0]?.value})`).join('\n')
-          : '(No fields found linked to these billing entities)';
-        specificLookupContext += `GROWER LOOKUP "${searchWords.join(' ')}":\nMatched billing entities: ${matchedNames.join(', ')}\n\nFIELD NAMES for this grower (these are the actual field/pivot names, NOT billing entities):\n${fieldsList}\n\nPROBES for this grower: ${pmProbes.length} total\n\n`;
-      }
-    }
-
-    // Build context
-    // Calculate probe stats by brand
-    const probeBrandCounts: Record<string, number> = {};
-    const probeStatusCounts: Record<string, number> = {};
-    probes.forEach(p => {
-      const brand = p.brand?.value || 'Unknown';
-      const status = p.status?.value || 'Unknown';
-      probeBrandCounts[brand] = (probeBrandCounts[brand] || 0) + 1;
-      probeStatusCounts[status] = (probeStatusCounts[status] || 0) + 1;
-    });
-
-    // Build operation-to-billing-entity relationships
-    const operationBillingEntities: Record<string, string[]> = {};
-    operations.forEach(op => {
-      if (!op.name) return;
-      // Find contacts linked to this operation
-      const opContacts = contacts.filter(c =>
-        c.operations?.some(o => o.value.toLowerCase() === op.name.toLowerCase())
-      );
-      // Get billing entities from those contacts
-      const linkedBEs = new Set<string>();
-      opContacts.forEach(c => {
-        c.billing_entity?.forEach(be => linkedBEs.add(be.value));
-      });
-      // Also check billing entities that match the operation name
-      billingEntities.forEach(be => {
-        if (be.name?.toLowerCase().includes(op.name.toLowerCase())) {
-          linkedBEs.add(be.name);
-        }
-      });
-      if (linkedBEs.size > 0) {
-        operationBillingEntities[op.name] = Array.from(linkedBEs);
-      }
-    });
-
-    const dataContext = `You are an AI assistant for Acre Insights Operation Center, a farm management app.
-${DOMAIN_KNOWLEDGE}
-
-${specificLookupContext}DATA SUMMARY:
-- ${fields.length} fields
-- ${probes.length} probes
-- ${fieldSeasons.length} field seasons
-- ${probeAssignments.length} probe assignments
-- ${repairs.length} repairs
-- ${contacts.length} contacts
-- ${operations.length} operations
-
-PROBE COUNTS BY BRAND: ${JSON.stringify(probeBrandCounts)}
-PROBE COUNTS BY STATUS: ${JSON.stringify(probeStatusCounts)}
-
-OPERATIONS AND THEIR BILLING ENTITIES:
-${JSON.stringify(operationBillingEntities, null, 2)}
-Operations with multiple billing entities: ${Object.entries(operationBillingEntities).filter(([_, bes]) => bes.length > 1).length}
-
-FIELDS: ${JSON.stringify(fields.slice(0, 100).map(f => ({
-  name: f.name,
-  acres: f.acres,
-  irrigation: f.irrigation_type?.value,
-  entity: f.billing_entity?.[0]?.value,
-})))}
-
-PROBES: ${JSON.stringify(probes.slice(0, 100).map(p => ({
-  serial: p.serial_number,
-  brand: p.brand?.value,
-  status: p.status?.value,
-  rack: p.rack?.value,
-  slot: p.rack_slot,
-  entity: p.billing_entity?.[0]?.value,
-  year_new: p.year_new,
-})))}
-
-PROBE ASSIGNMENTS: ${JSON.stringify(probeAssignments.slice(0, 50).map(pa => ({
-  probe: pa.probe?.[0]?.value,
-  field_season: pa.field_season?.[0]?.value,
-  status: pa.probe_status?.value,
-})))}
-
-FIELD SEASONS: ${JSON.stringify(fieldSeasons.slice(0, 50).map(fs => ({
-  field: fs.field?.[0]?.value,
-  season: fs.season,
-  crop: fs.crop?.value,
-  probe: fs.probe?.[0]?.value,
-})))}
-
-REPAIRS: ${JSON.stringify(repairs.slice(0, 30).map(r => ({
-  field: r.field_season?.[0]?.value,
-  problem: r.problem,
-  repaired: r.repaired_at,
-})))}
-
-CONTACTS: ${JSON.stringify(contacts.slice(0, 30).map(c => ({
-  name: c.name,
-  type: c.customer_type?.value,
-})))}
-
-OPERATIONS: ${JSON.stringify(operations.map(o => o.name))}`;
-
-    // Build messages with history for conversation memory
-    const messages: Message[] = [];
-
-    // Add conversation history (limit to last 10 exchanges to manage context size)
-    const recentHistory = (history as Message[]).slice(-20);
-    for (const msg of recentHistory) {
-      messages.push({ role: msg.role, content: msg.content });
-    }
-
-    // Add current question
-    messages.push({ role: 'user', content: question });
-
-    // Call Claude API
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Initial API call with tools
+    let response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
         model: 'claude-3-haiku-20240307',
         max_tokens: 1024,
-        system: dataContext,
-        messages,
-      }),
+        system: SYSTEM_PROMPT,
+        tools: TOOLS,
+        messages
+      })
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Anthropic API error:', errorText);
-      return NextResponse.json(
-        { error: `AI error: ${response.status}` },
-        { status: 500 }
-      );
+      const error = await response.text();
+      console.error('Claude API error:', error);
+      return NextResponse.json({ error: 'Failed to get AI response' }, { status: 500 });
     }
 
-    const data = await response.json();
-    const answer = data.content?.[0]?.text || 'No response generated';
+    let data = await response.json();
+
+    // Handle tool use loop (max 5 iterations to prevent infinite loops)
+    let iterations = 0;
+    while (data.stop_reason === 'tool_use' && iterations < 5) {
+      iterations++;
+
+      // Find tool use blocks in the response
+      const toolUseBlocks = data.content.filter((block: { type: string }) => block.type === 'tool_use');
+
+      // Execute each tool and collect results
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (toolUse: { id: string; name: string; input: Record<string, unknown> }) => {
+          const result = await executeTool(toolUse.name, toolUse.input);
+          return {
+            type: 'tool_result',
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(result, null, 2)
+          };
+        })
+      );
+
+      // Continue conversation with tool results
+      response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 1024,
+          system: SYSTEM_PROMPT,
+          tools: TOOLS,
+          messages: [
+            ...messages,
+            { role: 'assistant', content: data.content },
+            { role: 'user', content: toolResults }
+          ]
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error('Claude API error on tool result:', error);
+        return NextResponse.json({ error: 'Failed to get AI response' }, { status: 500 });
+      }
+
+      data = await response.json();
+    }
+
+    // Extract text response
+    const textBlock = data.content.find((block: { type: string }) => block.type === 'text');
+    const answer = textBlock?.text || 'No response generated';
 
     return NextResponse.json({ answer });
+
   } catch (error) {
     console.error('Ask API error:', error);
     return NextResponse.json(
-      { error: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      { error: 'Failed to process question' },
       { status: 500 }
     );
   }
