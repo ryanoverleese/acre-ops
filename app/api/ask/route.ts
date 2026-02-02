@@ -6,6 +6,8 @@ const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 // Domain knowledge for the AI
 const SYSTEM_PROMPT = `You are an assistant for Acre Ops, a soil moisture probe management system for Acre Insights in Nebraska. You help with field lookups, probe inventory, installation planning, and grower information.
 
+The current year is 2026. When someone says "last year", they mean 2025. When they say "this year", they mean 2026.
+
 Available tools:
 
 - search_fields - Find fields by name or billing entity. Returns field info and season data with linked probes.
