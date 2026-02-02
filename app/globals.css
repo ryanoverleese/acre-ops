@@ -2198,6 +2198,13 @@ input[type="date"]:focus {
   border-radius: 50%;
 }
 
+.ask-ai-header-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ask-ai-copy,
 .ask-ai-close {
   background: var(--bg-hover);
   border: none;
@@ -2211,6 +2218,7 @@ input[type="date"]:focus {
   transition: all 0.15s;
 }
 
+.ask-ai-copy:hover,
 .ask-ai-close:hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);

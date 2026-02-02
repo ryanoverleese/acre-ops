@@ -195,9 +195,16 @@ export async function POST(request: NextRequest) {
       specificLookupContext += `SPECIFIC OPERATION FOUND (${matchedOperation.name}):\n${JSON.stringify({
         name: matchedOperation.name,
         total_probes: opProbes.length,
+        probes: opProbes.map(p => ({
+          serial_number: p.serial_number,
+          status: p.status?.value,
+          rack: p.rack?.value,
+          slot: p.rack_slot,
+        })),
         probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
         probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
         total_fields: opFields.length,
+        fields: opFields.map(f => f.name),
       }, null, 2)}\n\n`;
     }
 
