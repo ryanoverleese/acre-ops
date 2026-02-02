@@ -2857,9 +2857,8 @@ export default function FieldsClient({
                         <select value={seasonFieldsForm.planned_installer} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, planned_installer: e.target.value })}>
                           <option value="">Select...</option>
                           <option value="Brian">Brian</option>
-                          <option value="Daine">Daine</option>
                           <option value="Ryan">Ryan</option>
-                          <option value="Ryan and Kasen">Ryan and Kasen</option>
+                          <option value="Daine">Daine</option>
                         </select>
                       </div>
                     </div>
