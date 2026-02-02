@@ -91,6 +91,13 @@ export async function POST(request: NextRequest) {
     if (body.crop) fieldSeasonData.crop = body.crop;
     if (body.service_type) fieldSeasonData.service_type = body.service_type;
     if (body.antenna_type) fieldSeasonData.antenna_type = body.antenna_type;
+    if (body.battery_type) fieldSeasonData.battery_type = body.battery_type;
+    if (body.side_dress) fieldSeasonData.side_dress = body.side_dress;
+    if (body.logger_id) fieldSeasonData.logger_id = body.logger_id;
+    if (body.early_removal) fieldSeasonData.early_removal = body.early_removal;
+    if (body.hybrid_variety) fieldSeasonData.hybrid_variety = body.hybrid_variety;
+    if (body.ready_to_remove) fieldSeasonData.ready_to_remove = body.ready_to_remove;
+    if (body.planting_date) fieldSeasonData.planting_date = body.planting_date;
 
     const fieldSeasonUrl = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/?user_field_names=true`;
     const fieldSeasonResponse = await fetch(fieldSeasonUrl, {

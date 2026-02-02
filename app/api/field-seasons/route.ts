@@ -30,6 +30,13 @@ export async function POST(request: NextRequest) {
     if (body.crop) createData.crop = body.crop;
     if (body.service_type) createData.service_type = body.service_type;
     if (body.antenna_type) createData.antenna_type = body.antenna_type;
+    if (body.battery_type) createData.battery_type = body.battery_type;
+    if (body.side_dress) createData.side_dress = body.side_dress;
+    if (body.logger_id) createData.logger_id = body.logger_id;
+    if (body.early_removal) createData.early_removal = body.early_removal;
+    if (body.hybrid_variety) createData.hybrid_variety = body.hybrid_variety;
+    if (body.ready_to_remove) createData.ready_to_remove = body.ready_to_remove;
+    if (body.planting_date) createData.planting_date = body.planting_date;
     if (body.probe) createData.probe = [body.probe];
     createData.probe_status = body.probe_status || 'Unassigned';
 

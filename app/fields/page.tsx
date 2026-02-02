@@ -53,6 +53,7 @@ export interface ProcessedField {
   earlyRemoval: string;
   hybridVariety: string;
   readyToRemove: string;
+  plantingDate: string;
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
@@ -224,6 +225,7 @@ async function getFieldsData(): Promise<{
           earlyRemoval: '',
           hybridVariety: '',
           readyToRemove: '',
+          plantingDate: '',
           probe: null,
           probeId: null,
           probeStatus: 'Unassigned',
@@ -277,6 +279,7 @@ async function getFieldsData(): Promise<{
             earlyRemoval: fs.early_removal?.value || '',
             hybridVariety: fs.hybrid_variety || '',
             readyToRemove: fs.ready_to_remove?.value || '',
+            plantingDate: fs.planting_date || '',
             probe: probeData ? `#${probeData.serial_number}` : null,
             probeId: probeLink?.id || null,
             probeStatus: fs.probe_status?.value || 'Unassigned',

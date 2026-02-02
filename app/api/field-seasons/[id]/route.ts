@@ -34,6 +34,13 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.crop !== undefined) updateData.crop = body.crop;
     if (body.service_type !== undefined) updateData.service_type = body.service_type;
     if (body.antenna_type !== undefined) updateData.antenna_type = body.antenna_type;
+    if (body.battery_type !== undefined) updateData.battery_type = body.battery_type;
+    if (body.side_dress !== undefined) updateData.side_dress = body.side_dress;
+    if (body.logger_id !== undefined) updateData.logger_id = body.logger_id;
+    if (body.early_removal !== undefined) updateData.early_removal = body.early_removal;
+    if (body.hybrid_variety !== undefined) updateData.hybrid_variety = body.hybrid_variety;
+    if (body.ready_to_remove !== undefined) updateData.ready_to_remove = body.ready_to_remove;
+    if (body.planting_date !== undefined) updateData.planting_date = body.planting_date;
     if (body.probe !== undefined) {
       updateData.probe = body.probe ? [body.probe] : [];
     }

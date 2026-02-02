@@ -262,6 +262,7 @@ const initialAddForm = {
   early_removal: '',
   hybrid_variety: '',
   ready_to_remove: '',
+  planting_date: '',
 };
 
 export default function FieldsClient({
@@ -320,6 +321,7 @@ export default function FieldsClient({
     early_removal: '',
     hybrid_variety: '',
     ready_to_remove: '',
+    planting_date: '',
     route_order: '',
     planned_installer: '',
     ready_to_install: false,
@@ -340,6 +342,7 @@ export default function FieldsClient({
     early_removal: '',
     hybrid_variety: '',
     ready_to_remove: '',
+    planting_date: '',
   });
   const [savingSeason, setSavingSeason] = useState(false);
   // Removal logging
@@ -675,6 +678,7 @@ export default function FieldsClient({
       early_removal: field.earlyRemoval || '',
       hybrid_variety: field.hybridVariety || '',
       ready_to_remove: field.readyToRemove || '',
+      planting_date: field.plantingDate || '',
       route_order: field.routeOrder?.toString() || '',
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
@@ -878,6 +882,7 @@ export default function FieldsClient({
           early_removal: seasonFieldsForm.early_removal || null,
           hybrid_variety: seasonFieldsForm.hybrid_variety || null,
           ready_to_remove: seasonFieldsForm.ready_to_remove || null,
+          planting_date: seasonFieldsForm.planting_date || null,
         }),
       });
       if (response.ok) {
@@ -918,11 +923,12 @@ export default function FieldsClient({
           early_removal: addSeasonForm.early_removal || undefined,
           hybrid_variety: addSeasonForm.hybrid_variety || undefined,
           ready_to_remove: addSeasonForm.ready_to_remove || undefined,
+          planting_date: addSeasonForm.planting_date || undefined,
         }),
       });
       if (response.ok) {
         setShowAddSeasonModal(false);
-        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '', hybrid_variety: '', ready_to_remove: '' });
+        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '', hybrid_variety: '', ready_to_remove: '', planting_date: '' });
         window.location.reload();
       } else {
         const error = await response.json();
@@ -1406,6 +1412,7 @@ export default function FieldsClient({
           early_removal: addForm.early_removal || undefined,
           hybrid_variety: addForm.hybrid_variety || undefined,
           ready_to_remove: addForm.ready_to_remove || undefined,
+          planting_date: addForm.planting_date || undefined,
         }),
       });
       if (response.ok) {
@@ -2507,11 +2514,22 @@ export default function FieldsClient({
                     )}
 
                     {/* Install Planning Section */}
-                    {(selectedField.routeOrder || selectedField.plannedInstaller || selectedField.readyToInstall) && (
+                    {(selectedField.routeOrder || selectedField.plannedInstaller || selectedField.readyToInstall || selectedField.plantingDate) && (
                       <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
                         <div className="detail-row" style={{ marginBottom: '8px' }}>
                           <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Install Planning</span>
                         </div>
+                        {selectedField.plantingDate && (
+                          <div className="detail-row">
+                            <span className="detail-label">Days Since Planting</span>
+                            <span className="detail-value" style={{ fontWeight: 500, color: 'var(--accent-green)' }}>
+                              {Math.floor((Date.now() - new Date(selectedField.plantingDate).getTime()) / 86400000)} days
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '8px' }}>
+                                (planted {selectedField.plantingDate})
+                              </span>
+                            </span>
+                          </div>
+                        )}
                         {selectedField.routeOrder && (
                           <div className="detail-row">
                             <span className="detail-label">Route Order</span>
@@ -2772,6 +2790,17 @@ export default function FieldsClient({
                   </div>
                   <div className="form-row">
                     <div className="form-group">
+                      <label>Planting Date</label>
+                      <input
+                        type="date"
+                        value={seasonFieldsForm.planting_date}
+                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, planting_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group"></div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
                       <label>Probe 1</label>
                       <select value={selectedProbeId} onChange={(e) => setSelectedProbeId(e.target.value)}>
                         <option value="">— No Probe —</option>
@@ -2850,6 +2879,7 @@ export default function FieldsClient({
                     early_removal: selectedField.earlyRemoval || '',
                     hybrid_variety: selectedField.hybridVariety || '',
                     ready_to_remove: selectedField.readyToRemove || '',
+                    planting_date: selectedField.plantingDate || '',
                     route_order: selectedField.routeOrder?.toString() || '',
                     planned_installer: selectedField.plannedInstaller || '',
                     ready_to_install: selectedField.readyToInstall || false,
@@ -2876,6 +2906,7 @@ export default function FieldsClient({
                         early_removal: seasonFieldsForm.early_removal || null,
                         hybrid_variety: seasonFieldsForm.hybrid_variety || null,
                         ready_to_remove: seasonFieldsForm.ready_to_remove || null,
+                        planting_date: seasonFieldsForm.planting_date || null,
                         probe: probeId,
                         probe_status: probeId ? 'Assigned' : 'Unassigned',
                         probe_2: probe2Id,
@@ -3110,6 +3141,17 @@ export default function FieldsClient({
                       </select>
                     </div>
                   </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Planting Date</label>
+                      <input
+                        type="date"
+                        value={addForm.planting_date}
+                        onChange={(e) => setAddForm({ ...addForm, planting_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group"></div>
+                  </div>
                 </div>
               </div>
               <div className="detail-panel-footer">
@@ -3251,6 +3293,17 @@ export default function FieldsClient({
                         <option value="No">No</option>
                       </select>
                     </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Planting Date</label>
+                      <input
+                        type="date"
+                        value={addSeasonForm.planting_date}
+                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, planting_date: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group"></div>
                   </div>
                 </div>
               </div>

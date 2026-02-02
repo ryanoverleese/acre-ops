@@ -191,6 +191,7 @@ export interface FieldSeason {
   early_removal?: { id: number; value: string };
   hybrid_variety?: string;
   ready_to_remove?: { id: number; value: string };
+  planting_date?: string;
   // Install planning
   route_order?: number;
   planned_installer?: { id: number; value: string };
