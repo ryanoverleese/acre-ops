@@ -16,7 +16,7 @@ Available tools:
 
 How to behave:
 
-1. Always use your tools to answer data questions. Never guess from memory.
+1. Always use your tools to answer data questions. Never guess from memory. If search_fields returns no results, try search_by_name as a fallback - it searches across contacts, operations, and billing entities and may find what you're looking for.
 
 2. If the user challenges your answer, do NOT just agree with them. Re-run your query to verify, or stand by your answer and explain what you found. Say "I queried the database and I'm still only seeing X results - which one do you think I'm missing?" rather than adding items to match what the user suggests.
 
@@ -107,19 +107,52 @@ const TOOLS = [
   }
 ];
 
+// Helper for fuzzy/partial matching - strips common suffixes and matches stems
+function fuzzyMatch(searchTerm: string, targetString: string): boolean {
+  if (!searchTerm || !targetString) return false;
+
+  const search = searchTerm.toLowerCase().trim();
+  const target = targetString.toLowerCase();
+
+  // Direct match
+  if (target.includes(search)) return true;
+
+  // Strip common suffixes: 's, 'es, s, es
+  const stems = [
+    search,
+    search.replace(/'s$/, ''),
+    search.replace(/s$/, ''),
+    search.replace(/es$/, ''),
+  ];
+
+  // Check if any stem matches
+  for (const stem of stems) {
+    if (stem.length >= 3 && target.includes(stem)) return true;
+  }
+
+  // Split into words and check if any word (3+ chars) appears in target
+  const words = search.split(/\s+/).filter(w => w.length >= 3);
+  for (const word of words) {
+    if (target.includes(word)) return true;
+    // Also try without trailing s
+    const wordStem = word.replace(/s$/, '');
+    if (wordStem.length >= 3 && target.includes(wordStem)) return true;
+  }
+
+  return false;
+}
+
 // Tool execution functions
 async function executeSearchFields(params: { name_contains?: string; billing_entity_contains?: string }) {
   const fields = await getFields();
   let results = fields;
 
   if (params.name_contains) {
-    const search = params.name_contains.toLowerCase();
-    results = results.filter(f => f.name?.toLowerCase().includes(search));
+    results = results.filter(f => fuzzyMatch(params.name_contains!, f.name || ''));
   }
 
   if (params.billing_entity_contains) {
-    const search = params.billing_entity_contains.toLowerCase();
-    results = results.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(search));
+    results = results.filter(f => fuzzyMatch(params.billing_entity_contains!, f.billing_entity?.[0]?.value || ''));
   }
 
   return results.slice(0, 50).map(f => ({
@@ -152,8 +185,7 @@ async function executeSearchProbes(params: { serial_number?: string; status?: st
   }
 
   if (params.billing_entity_contains) {
-    const search = params.billing_entity_contains.toLowerCase();
-    results = results.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(search));
+    results = results.filter(p => fuzzyMatch(params.billing_entity_contains!, p.billing_entity?.[0]?.value || ''));
   }
 
   return {
@@ -223,7 +255,7 @@ async function executeSearchOperations(params: { name_contains?: string }) {
 }
 
 async function executeSearchByName(params: { name: string }) {
-  const search = params.name.toLowerCase();
+  const searchTerm = params.name;
 
   const [fields, probes, operations, contacts, billingEntities] = await Promise.all([
     getFields(),
@@ -233,20 +265,16 @@ async function executeSearchByName(params: { name: string }) {
     getBillingEntities()
   ]);
 
-  // Find matching billing entities
-  const matchedBEs = billingEntities.filter(be =>
-    be.name?.toLowerCase().includes(search)
-  ).map(be => be.name);
+  // Find matching billing entities using fuzzy match
+  const matchedBEs: string[] = billingEntities
+    .filter(be => fuzzyMatch(searchTerm, be.name || ''))
+    .map(be => be.name!);
 
-  // Find matching operations
-  const matchedOps = operations.filter(op =>
-    op.name?.toLowerCase().includes(search)
-  );
+  // Find matching operations using fuzzy match
+  const matchedOps = operations.filter(op => fuzzyMatch(searchTerm, op.name || ''));
 
-  // Find matching contacts and their billing entities
-  const matchedContacts = contacts.filter(c =>
-    c.name?.toLowerCase().includes(search)
-  );
+  // Find matching contacts and their billing entities using fuzzy match
+  const matchedContacts = contacts.filter(c => fuzzyMatch(searchTerm, c.name || ''));
   matchedContacts.forEach(c => {
     c.billing_entity?.forEach(be => {
       if (!matchedBEs.includes(be.value)) matchedBEs.push(be.value);
@@ -267,14 +295,14 @@ async function executeSearchByName(params: { name: string }) {
 
   // Find fields for these billing entities
   const growerFields = fields.filter(f => {
-    const fbe = f.billing_entity?.[0]?.value?.toLowerCase() || '';
-    return matchedBEs.some(be => fbe.includes(be.toLowerCase()));
+    const fbe = f.billing_entity?.[0]?.value || '';
+    return matchedBEs.some(be => fbe.toLowerCase().includes(be.toLowerCase()));
   });
 
   // Find probes for these billing entities
   const growerProbes = probes.filter(p => {
-    const pbe = p.billing_entity?.[0]?.value?.toLowerCase() || '';
-    return matchedBEs.some(be => pbe.includes(be.toLowerCase()));
+    const pbe = p.billing_entity?.[0]?.value || '';
+    return matchedBEs.some(be => pbe.toLowerCase().includes(be.toLowerCase()));
   });
 
   return {
