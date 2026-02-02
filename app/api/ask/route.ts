@@ -8,7 +8,7 @@ const SYSTEM_PROMPT = `You are an assistant for Acre Ops, a soil moisture probe 
 
 Available tools:
 
-- search_fields - Find fields by name or billing entity. Returns field name, acres, lat/lng coordinates, billing entity, and linked probe info.
+- search_fields - Find fields by name or billing entity. Returns field name, acres, lat/lng, billing entity, and all season data with linked probes. Use this to look up what probe was on a field in a specific year.
 - search_probes - Find probes by serial number, status, brand, or billing entity.
 - get_probe_counts - Get summary counts (how many by status, by brand, etc.)
 - search_operations - Find operations with their linked contacts and billing entities.
@@ -34,7 +34,7 @@ How to behave:
 const TOOLS = [
   {
     name: "search_fields",
-    description: "Find fields by name or billing entity. Returns field name, acres, lat/lng coordinates, billing entity, and irrigation type. Use for location questions or finding specific fields.",
+    description: "Find fields by name or billing entity. Returns field info including all season data with linked probes. Use for location questions, finding specific fields, or looking up what probe was on a field in a specific year.",
     input_schema: {
       type: "object",
       properties: {
@@ -45,6 +45,10 @@ const TOOLS = [
         billing_entity_contains: {
           type: "string",
           description: "Search for fields where billing entity contains this text (case-insensitive)"
+        },
+        season: {
+          type: "string",
+          description: "Filter to a specific season/year (e.g., '2025', '2024')"
         }
       }
     }
@@ -152,8 +156,16 @@ function fuzzyMatch(searchTerm: string, targetString: string): boolean {
 }
 
 // Tool execution functions
-async function executeSearchFields(params: { name_contains?: string; billing_entity_contains?: string }) {
-  const fields = await getFields();
+async function executeSearchFields(params: { name_contains?: string; billing_entity_contains?: string; season?: string }) {
+  const [fields, fieldSeasons, probes] = await Promise.all([
+    getFields(),
+    getFieldSeasons(),
+    getProbes()
+  ]);
+
+  // Create probe lookup
+  const probeMap = new Map(probes.map(p => [p.id, p]));
+
   let results = fields;
 
   if (params.name_contains) {
@@ -164,15 +176,42 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
     results = results.filter(f => fuzzyMatch(params.billing_entity_contains!, f.billing_entity?.[0]?.value || ''));
   }
 
-  return results.slice(0, 50).map(f => ({
-    field_name: f.name,
-    acres: f.acres,
-    lat: f.lat,
-    lng: f.lng,
-    irrigation_type: f.irrigation_type?.value,
-    billing_entity: f.billing_entity?.[0]?.value,
-    google_maps_link: f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : null
-  }));
+  return results.slice(0, 50).map(f => {
+    // Find field_seasons for this field
+    const seasons = fieldSeasons.filter(fs => fs.field?.[0]?.id === f.id);
+
+    // If a specific season is requested, filter to that
+    const relevantSeasons = params.season
+      ? seasons.filter(s => String(s.season) === params.season)
+      : seasons;
+
+    // Get probe info for each season
+    const seasonData = relevantSeasons.map(s => {
+      const probe = s.probe?.[0] ? probeMap.get(s.probe[0].id) : null;
+      const probe2 = s.probe_2?.[0] ? probeMap.get(s.probe_2[0].id) : null;
+      return {
+        season: s.season,
+        crop: s.crop?.value,
+        service_type: s.service_type?.value,
+        probe_status: s.probe_status?.value,
+        probe: probe ? `#${probe.serial_number}` : null,
+        probe_2: probe2 ? `#${probe2.serial_number}` : null,
+        installer: s.installer,
+        install_date: s.install_date
+      };
+    });
+
+    return {
+      field_name: f.name,
+      acres: f.acres,
+      lat: f.lat,
+      lng: f.lng,
+      irrigation_type: f.irrigation_type?.value,
+      billing_entity: f.billing_entity?.[0]?.value,
+      seasons: seasonData,
+      google_maps_link: f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : null
+    };
+  });
 }
 
 async function executeSearchProbes(params: { serial_number?: string; status?: string; brand?: string; billing_entity_contains?: string }) {
