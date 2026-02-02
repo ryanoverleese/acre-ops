@@ -8,11 +8,12 @@ const SYSTEM_PROMPT = `You are an assistant for Acre Ops, a soil moisture probe 
 
 Available tools:
 
-- search_fields - Find fields by name or billing entity. Returns field name, acres, lat/lng, billing entity, and all season data with linked probes. Use this to look up what probe was on a field in a specific year.
+- search_fields - Find fields by name or billing entity. Returns field info and season data with linked probes.
+- search_field_seasons - Search field_seasons directly by field name or year. Best for finding what probe/crop was on a specific field in a specific year.
 - search_probes - Find probes by serial number, status, brand, or billing entity.
 - get_probe_counts - Get summary counts (how many by status, by brand, etc.)
 - search_operations - Find operations with their linked contacts and billing entities.
-- search_by_name - Searches across contacts, operations, and billing entities. Use this when looking up a grower, farm, or person by name. Returns all related fields, probes, and linked entities.
+- search_by_name - Searches across contacts, operations, and billing entities. Use this when looking up a grower, farm, or person by name.
 
 How to behave:
 
@@ -112,6 +113,23 @@ const TOOLS = [
       },
       required: ["name"]
     }
+  },
+  {
+    name: "search_field_seasons",
+    description: "Search field_seasons records directly. Use this to find season data by field name or year. Returns crop, service type, probe info, and installer details.",
+    input_schema: {
+      type: "object",
+      properties: {
+        field_name_contains: {
+          type: "string",
+          description: "Search for field_seasons where the linked field name contains this text"
+        },
+        season: {
+          type: "string",
+          description: "Filter to a specific season/year (e.g., '2025', '2024')"
+        }
+      }
+    }
   }
 ];
 
@@ -177,8 +195,13 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
   }
 
   return results.slice(0, 50).map(f => {
-    // Find field_seasons for this field
-    const seasons = fieldSeasons.filter(fs => fs.field?.[0]?.id === f.id);
+    // Find field_seasons for this field - match by id OR by name in the link value
+    const seasons = fieldSeasons.filter(fs => {
+      const fieldLink = fs.field?.[0];
+      if (!fieldLink) return false;
+      // Match by id or by name (in case link wasn't properly set up)
+      return fieldLink.id === f.id || fieldLink.value === f.name;
+    });
 
     // If a specific season is requested, filter to that
     const relevantSeasons = params.season
@@ -302,6 +325,50 @@ async function executeSearchOperations(params: { name_contains?: string }) {
   });
 }
 
+async function executeSearchFieldSeasons(params: { field_name_contains?: string; season?: string }) {
+  const [fieldSeasons, probes] = await Promise.all([
+    getFieldSeasons(),
+    getProbes()
+  ]);
+
+  const probeMap = new Map(probes.map(p => [p.id, p]));
+
+  let results = fieldSeasons;
+
+  // Filter by field name (from the link value)
+  if (params.field_name_contains) {
+    results = results.filter(fs => {
+      const fieldName = fs.field?.[0]?.value || '';
+      return fuzzyMatch(params.field_name_contains!, fieldName);
+    });
+  }
+
+  // Filter by season
+  if (params.season) {
+    results = results.filter(fs => String(fs.season) === params.season);
+  }
+
+  return {
+    total_found: results.length,
+    field_seasons: results.slice(0, 50).map(fs => {
+      const probe = fs.probe?.[0] ? probeMap.get(fs.probe[0].id) : null;
+      const probe2 = fs.probe_2?.[0] ? probeMap.get(fs.probe_2[0].id) : null;
+      return {
+        field_name: fs.field?.[0]?.value || 'Unknown',
+        season: fs.season,
+        crop: fs.crop?.value,
+        service_type: fs.service_type?.value,
+        probe_status: fs.probe_status?.value,
+        probe: probe ? `#${probe.serial_number}` : null,
+        probe_2: probe2 ? `#${probe2.serial_number}` : null,
+        installer: fs.installer,
+        install_date: fs.install_date,
+        antenna_type: fs.antenna_type?.value
+      };
+    })
+  };
+}
+
 async function executeSearchByName(params: { name: string }) {
   const searchTerm = params.name;
 
@@ -397,6 +464,8 @@ async function executeTool(name: string, input: Record<string, unknown>) {
       return await executeSearchOperations(input as { name_contains?: string });
     case 'search_by_name':
       return await executeSearchByName(input as { name: string });
+    case 'search_field_seasons':
+      return await executeSearchFieldSeasons(input as { field_name_contains?: string; season?: string });
     default:
       return { error: `Unknown tool: ${name}` };
   }
