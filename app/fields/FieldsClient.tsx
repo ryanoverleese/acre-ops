@@ -256,6 +256,10 @@ const initialAddForm = {
   crop: '',
   service_type: '',
   antenna_type: '',
+  battery_type: '',
+  side_dress: '',
+  logger_id: '',
+  early_removal: '',
 };
 
 export default function FieldsClient({
@@ -308,6 +312,10 @@ export default function FieldsClient({
     crop: '',
     service_type: '',
     antenna_type: '',
+    battery_type: '',
+    side_dress: '',
+    logger_id: '',
+    early_removal: '',
     route_order: '',
     planned_installer: '',
     ready_to_install: false,
@@ -322,6 +330,10 @@ export default function FieldsClient({
     crop: '',
     service_type: '',
     antenna_type: '',
+    battery_type: '',
+    side_dress: '',
+    logger_id: '',
+    early_removal: '',
   });
   const [savingSeason, setSavingSeason] = useState(false);
   const [showRolloverModal, setShowRolloverModal] = useState(false);
@@ -643,6 +655,10 @@ export default function FieldsClient({
       crop: field.crop || '',
       service_type: field.serviceType || '',
       antenna_type: field.antennaType || '',
+      battery_type: field.batteryType || '',
+      side_dress: field.sideDress || '',
+      logger_id: field.loggerId || '',
+      early_removal: field.earlyRemoval || '',
       route_order: field.routeOrder?.toString() || '',
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
@@ -840,6 +856,10 @@ export default function FieldsClient({
           crop: seasonFieldsForm.crop || null,
           service_type: seasonFieldsForm.service_type || null,
           antenna_type: seasonFieldsForm.antenna_type || null,
+          battery_type: seasonFieldsForm.battery_type || null,
+          side_dress: seasonFieldsForm.side_dress || null,
+          logger_id: seasonFieldsForm.logger_id || null,
+          early_removal: seasonFieldsForm.early_removal || null,
         }),
       });
       if (response.ok) {
@@ -874,11 +894,15 @@ export default function FieldsClient({
           crop: addSeasonForm.crop || undefined,
           service_type: addSeasonForm.service_type || undefined,
           antenna_type: addSeasonForm.antenna_type || undefined,
+          battery_type: addSeasonForm.battery_type || undefined,
+          side_dress: addSeasonForm.side_dress || undefined,
+          logger_id: addSeasonForm.logger_id || undefined,
+          early_removal: addSeasonForm.early_removal || undefined,
         }),
       });
       if (response.ok) {
         setShowAddSeasonModal(false);
-        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '' });
+        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '' });
         window.location.reload();
       } else {
         const error = await response.json();
@@ -1302,6 +1326,10 @@ export default function FieldsClient({
           crop: addForm.crop || undefined,
           service_type: addForm.service_type || undefined,
           antenna_type: addForm.antenna_type || undefined,
+          battery_type: addForm.battery_type || undefined,
+          side_dress: addForm.side_dress || undefined,
+          logger_id: addForm.logger_id || undefined,
+          early_removal: addForm.early_removal || undefined,
         }),
       });
       if (response.ok) {
@@ -2587,6 +2615,60 @@ export default function FieldsClient({
                       </select>
                     </div>
                     <div className="form-group">
+                      <label>Battery Type</label>
+                      <select value={seasonFieldsForm.battery_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, battery_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="CropX">CropX</option>
+                        <option value="Sentek Used">Sentek Used</option>
+                        <option value="Sentek New">Sentek New</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Side Dress</label>
+                      <select value={seasonFieldsForm.side_dress} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, side_dress: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Low Y-Drop">Low Y-Drop</option>
+                        <option value="High Y-Drop">High Y-Drop</option>
+                        <option value="Coulter">Coulter</option>
+                        <option value="Sprayer Drops">Sprayer Drops</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="None">None</option>
+                        <option value="Cultivate">Cultivate</option>
+                        <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
+                        <option value="Cultivation Likely">Cultivation Likely</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Logger ID</label>
+                      <input
+                        type="text"
+                        value={seasonFieldsForm.logger_id}
+                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, logger_id: e.target.value })}
+                        placeholder="e.g., 7080859"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Early Removal</label>
+                      <select value={seasonFieldsForm.early_removal} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, early_removal: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Silage">Silage</option>
+                        <option value="Soybeans">Soybeans</option>
+                        <option value="HMC">HMC</option>
+                        <option value="HMC – Oct 1">HMC – Oct 1</option>
+                        <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
+                        <option value="Popcorn">Popcorn</option>
+                        <option value="HMC Maybe">HMC Maybe</option>
+                        <option value="Early Incentive Corn">Early Incentive Corn</option>
+                        <option value="Seed Corn">Seed Corn</option>
+                        <option value="Sorghum">Sorghum</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
                       <label>Probe 1</label>
                       <select value={selectedProbeId} onChange={(e) => setSelectedProbeId(e.target.value)}>
                         <option value="">— No Probe —</option>
@@ -2659,6 +2741,10 @@ export default function FieldsClient({
                     crop: selectedField.crop || '',
                     service_type: selectedField.serviceType || '',
                     antenna_type: selectedField.antennaType || '',
+                    battery_type: selectedField.batteryType || '',
+                    side_dress: selectedField.sideDress || '',
+                    logger_id: selectedField.loggerId || '',
+                    early_removal: selectedField.earlyRemoval || '',
                     route_order: selectedField.routeOrder?.toString() || '',
                     planned_installer: selectedField.plannedInstaller || '',
                     ready_to_install: selectedField.readyToInstall || false,
@@ -2679,6 +2765,10 @@ export default function FieldsClient({
                         crop: seasonFieldsForm.crop || null,
                         service_type: seasonFieldsForm.service_type || null,
                         antenna_type: seasonFieldsForm.antenna_type || null,
+                        battery_type: seasonFieldsForm.battery_type || null,
+                        side_dress: seasonFieldsForm.side_dress || null,
+                        logger_id: seasonFieldsForm.logger_id || null,
+                        early_removal: seasonFieldsForm.early_removal || null,
                         probe: probeId,
                         probe_status: probeId ? 'Assigned' : 'Unassigned',
                         probe_2: probe2Id,
@@ -2840,6 +2930,60 @@ export default function FieldsClient({
                       </select>
                     </div>
                   </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Battery Type</label>
+                      <select value={addForm.battery_type} onChange={(e) => setAddForm({ ...addForm, battery_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="CropX">CropX</option>
+                        <option value="Sentek Used">Sentek Used</option>
+                        <option value="Sentek New">Sentek New</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Side Dress</label>
+                      <select value={addForm.side_dress} onChange={(e) => setAddForm({ ...addForm, side_dress: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Low Y-Drop">Low Y-Drop</option>
+                        <option value="High Y-Drop">High Y-Drop</option>
+                        <option value="Coulter">Coulter</option>
+                        <option value="Sprayer Drops">Sprayer Drops</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="None">None</option>
+                        <option value="Cultivate">Cultivate</option>
+                        <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
+                        <option value="Cultivation Likely">Cultivation Likely</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Logger ID</label>
+                      <input
+                        type="text"
+                        value={addForm.logger_id}
+                        onChange={(e) => setAddForm({ ...addForm, logger_id: e.target.value })}
+                        placeholder="e.g., 7080859"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Early Removal</label>
+                      <select value={addForm.early_removal} onChange={(e) => setAddForm({ ...addForm, early_removal: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Silage">Silage</option>
+                        <option value="Soybeans">Soybeans</option>
+                        <option value="HMC">HMC</option>
+                        <option value="HMC – Oct 1">HMC – Oct 1</option>
+                        <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
+                        <option value="Popcorn">Popcorn</option>
+                        <option value="HMC Maybe">HMC Maybe</option>
+                        <option value="Early Incentive Corn">Early Incentive Corn</option>
+                        <option value="Seed Corn">Seed Corn</option>
+                        <option value="Sorghum">Sorghum</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div className="detail-panel-footer">
@@ -2906,6 +3050,60 @@ export default function FieldsClient({
                         <option value="">Select...</option>
                         <option value="Short">Short</option>
                         <option value="Tall">Tall</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Battery Type</label>
+                      <select value={addSeasonForm.battery_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, battery_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="CropX">CropX</option>
+                        <option value="Sentek Used">Sentek Used</option>
+                        <option value="Sentek New">Sentek New</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label>Side Dress</label>
+                      <select value={addSeasonForm.side_dress} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, side_dress: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Low Y-Drop">Low Y-Drop</option>
+                        <option value="High Y-Drop">High Y-Drop</option>
+                        <option value="Coulter">Coulter</option>
+                        <option value="Sprayer Drops">Sprayer Drops</option>
+                        <option value="Pivot">Pivot</option>
+                        <option value="None">None</option>
+                        <option value="Cultivate">Cultivate</option>
+                        <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
+                        <option value="Cultivation Likely">Cultivation Likely</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Logger ID</label>
+                      <input
+                        type="text"
+                        value={addSeasonForm.logger_id}
+                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, logger_id: e.target.value })}
+                        placeholder="e.g., 7080859"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label>Early Removal</label>
+                      <select value={addSeasonForm.early_removal} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, early_removal: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Regular">Regular</option>
+                        <option value="Silage">Silage</option>
+                        <option value="Soybeans">Soybeans</option>
+                        <option value="HMC">HMC</option>
+                        <option value="HMC – Oct 1">HMC – Oct 1</option>
+                        <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
+                        <option value="Popcorn">Popcorn</option>
+                        <option value="HMC Maybe">HMC Maybe</option>
+                        <option value="Early Incentive Corn">Early Incentive Corn</option>
+                        <option value="Seed Corn">Seed Corn</option>
+                        <option value="Sorghum">Sorghum</option>
                       </select>
                     </div>
                   </div>

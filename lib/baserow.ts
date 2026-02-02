@@ -185,6 +185,10 @@ export interface FieldSeason {
   crop_confirmed?: boolean;
   service_type?: { id: number; value: string };
   antenna_type?: { id: number; value: string };
+  battery_type?: { id: number; value: string };
+  side_dress?: { id: number; value: string };
+  logger_id?: string;
+  early_removal?: { id: number; value: string };
   // Install planning
   route_order?: number;
   planned_installer?: { id: number; value: string };

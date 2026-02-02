@@ -47,6 +47,10 @@ export interface ProcessedField {
   crop: string;
   serviceType: string;
   antennaType: string;
+  batteryType: string;
+  sideDress: string;
+  loggerId: string;
+  earlyRemoval: string;
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
@@ -212,6 +216,10 @@ async function getFieldsData(): Promise<{
           crop: 'Unknown',
           serviceType: '',
           antennaType: '',
+          batteryType: '',
+          sideDress: '',
+          loggerId: '',
+          earlyRemoval: '',
           probe: null,
           probeId: null,
           probeStatus: 'Unassigned',
@@ -259,6 +267,10 @@ async function getFieldsData(): Promise<{
             crop: fs.crop?.value || 'Unknown',
             serviceType: fs.service_type?.value || '',
             antennaType: fs.antenna_type?.value || '',
+            batteryType: fs.battery_type?.value || '',
+            sideDress: fs.side_dress?.value || '',
+            loggerId: fs.logger_id || '',
+            earlyRemoval: fs.early_removal?.value || '',
             probe: probeData ? `#${probeData.serial_number}` : null,
             probeId: probeLink?.id || null,
             probeStatus: fs.probe_status?.value || 'Unassigned',
