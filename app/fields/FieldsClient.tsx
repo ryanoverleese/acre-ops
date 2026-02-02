@@ -1737,7 +1737,7 @@ export default function FieldsClient({
                                       borderRadius: '4px',
                                       cursor: 'pointer',
                                       fontSize: '11px',
-                                      color: hasProbeAssignments ? 'var(--accent-green)' : 'var(--text-muted)',
+                                      color: (hasProbeAssignments || field.probe) ? 'var(--accent-green)' : 'var(--text-muted)',
                                       display: 'flex',
                                       alignItems: 'center',
                                       gap: '4px',
@@ -1745,6 +1745,8 @@ export default function FieldsClient({
                                   >
                                     {hasProbeAssignments ? (
                                       <>{fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''}</>
+                                    ) : field.probe ? (
+                                      <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</>
                                     ) : (
                                       <>+ Add</>
                                     )}
