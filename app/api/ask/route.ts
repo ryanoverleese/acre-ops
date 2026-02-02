@@ -306,7 +306,12 @@ export async function POST(request: NextRequest) {
         probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
         probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
         total_fields: opFields.length,
-        fields: opFields.map(f => ({ name: f.name, billing_entity: f.billing_entity?.[0]?.value })),
+        fields: opFields.map(f => ({
+          name: f.name,
+          acres: f.acres,
+          irrigation: f.irrigation_type?.value,
+          billing_entity: f.billing_entity?.[0]?.value
+        })),
       }, null, 2)}\n\n`;
     }
     // If asking about a BILLING ENTITY specifically
@@ -328,8 +333,43 @@ export async function POST(request: NextRequest) {
         probes_installed: beProbes.filter(p => p.status?.value === 'Installed').length,
         probes_in_storage: beProbes.filter(p => p.status?.value === 'In Storage').length,
         total_fields: beFields.length,
-        fields: beFields.map(f => f.name),
+        fields: beFields.map(f => ({
+          name: f.name,
+          acres: f.acres,
+          irrigation: f.irrigation_type?.value,
+        })),
       }, null, 2)}\n\n`;
+    }
+    // Also try to match partial names against billing entities for grower lookups like "Lundeen"
+    if (!matchedOperation && !matchedBillingEntity) {
+      const searchWords = questionLower.split(' ').filter(w => w.length > 3);
+      const partialMatches = billingEntities.filter(b => {
+        if (!b.name) return false;
+        const beName = b.name.toLowerCase();
+        return searchWords.some(w => beName.includes(w));
+      });
+      if (partialMatches.length > 0) {
+        const matchedNames = partialMatches.map(m => m.name);
+        const pmProbes = probes.filter(p => {
+          const pbe = p.billing_entity?.[0]?.value?.toLowerCase() || '';
+          return matchedNames.some(name => pbe.includes(name.toLowerCase()));
+        });
+        const pmFields = fields.filter(f => {
+          const fbe = f.billing_entity?.[0]?.value?.toLowerCase() || '';
+          return matchedNames.some(name => fbe.includes(name.toLowerCase()));
+        });
+        specificLookupContext += `PARTIAL MATCH FOUND - GROWER "${searchWords.join(' ')}":\n${JSON.stringify({
+          matched_billing_entities: matchedNames,
+          total_probes: pmProbes.length,
+          total_fields: pmFields.length,
+          fields: pmFields.map(f => ({
+            name: f.name,
+            acres: f.acres,
+            irrigation: f.irrigation_type?.value,
+            billing_entity: f.billing_entity?.[0]?.value,
+          })),
+        }, null, 2)}\n\n`;
+      }
     }
 
     // Build context
