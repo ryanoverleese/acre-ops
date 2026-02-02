@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOperations, getProbeAssignments } from '@/lib/baserow';
+import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOperations, getProbeAssignments, getBillingEntities } from '@/lib/baserow';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const BASEROW_API_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -22,6 +22,7 @@ HOW TO RESPOND:
 - If data is missing or not found, say so clearly - never guess
 - Use plain language, not corporate speak
 - When listing multiple items, keep it scannable
+- IMPORTANT: Trust the data you're given. If the user challenges your answer, do NOT change it unless you find an actual error in your counting. The data is correct - stick with it.
 
 YOU ARE NOT:
 - A general farming advisor (don't give agronomic recommendations)
@@ -154,9 +155,10 @@ export async function POST(request: NextRequest) {
     let contacts: Awaited<ReturnType<typeof getContacts>> = [];
     let operations: Awaited<ReturnType<typeof getOperations>> = [];
     let probeAssignments: Awaited<ReturnType<typeof getProbeAssignments>> = [];
+    let billingEntities: Awaited<ReturnType<typeof getBillingEntities>> = [];
 
     try {
-      [fields, probes, fieldSeasons, repairs, contacts, operations, probeAssignments] = await Promise.all([
+      [fields, probes, fieldSeasons, repairs, contacts, operations, probeAssignments, billingEntities] = await Promise.all([
         getFields().catch(() => []),
         getProbes().catch(() => []),
         getFieldSeasons().catch(() => []),
@@ -164,6 +166,7 @@ export async function POST(request: NextRequest) {
         getContacts().catch(() => []),
         getOperations().catch(() => []),
         getProbeAssignments().catch(() => []),
+        getBillingEntities().catch(() => []),
       ]);
     } catch (fetchError) {
       console.error('Data fetch error:', fetchError);
@@ -230,17 +233,36 @@ export async function POST(request: NextRequest) {
       }, null, 2)}\n\n`;
     }
 
-    // Check for operation name mentions
-    const matchedOperation = operations.find(o =>
-      o.name && questionLower.includes(o.name.toLowerCase())
-    );
-    if (matchedOperation) {
-      const opProbes = probes.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(matchedOperation.name.toLowerCase()));
-      const opFields = fields.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(matchedOperation.name.toLowerCase()));
-      specificLookupContext += `SPECIFIC OPERATION FOUND (${matchedOperation.name}):\n${JSON.stringify({
-        name: matchedOperation.name,
-        total_probes: opProbes.length,
-        probes: opProbes.map(p => ({
+    // Check for operation or billing entity name mentions
+    // First try to match an operation
+    const matchedOperation = operations.find(o => {
+      if (!o.name) return false;
+      const opNameLower = o.name.toLowerCase();
+      return questionLower.includes(opNameLower) ||
+             opNameLower.includes(questionLower.split(' ').filter(w => w.length > 2).join(' '));
+    });
+
+    // Also check billing entities directly (probes are linked to billing entities, not operations)
+    const matchedBillingEntity = billingEntities.find(b => {
+      if (!b.name) return false;
+      const beName = b.name.toLowerCase();
+      // Extract key words from question to match partial names like "37 ag"
+      const questionWords = questionLower.split(' ').filter(w => w.length > 1);
+      return questionLower.includes(beName) ||
+             beName.includes(questionWords.join(' ')) ||
+             questionWords.some(w => beName.startsWith(w) && w.length > 2);
+    });
+
+    // Use billing entity if found, otherwise use operation
+    const entityToUse = matchedBillingEntity?.name || matchedOperation?.name;
+
+    if (entityToUse) {
+      const entityProbes = probes.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(entityToUse.toLowerCase()));
+      const entityFields = fields.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(entityToUse.toLowerCase()));
+      specificLookupContext += `SPECIFIC ENTITY FOUND (${entityToUse}):\n${JSON.stringify({
+        name: entityToUse,
+        total_probes: entityProbes.length,
+        probes: entityProbes.map(p => ({
           serial_number: p.serial_number,
           brand: p.brand?.value,
           status: p.status?.value,
@@ -249,10 +271,10 @@ export async function POST(request: NextRequest) {
           year_new: p.year_new,
           age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
         })),
-        probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
-        probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
-        total_fields: opFields.length,
-        fields: opFields.map(f => f.name),
+        probes_installed: entityProbes.filter(p => p.status?.value === 'Installed').length,
+        probes_in_storage: entityProbes.filter(p => p.status?.value === 'In Storage').length,
+        total_fields: entityFields.length,
+        fields: entityFields.map(f => f.name),
       }, null, 2)}\n\n`;
     }
 
