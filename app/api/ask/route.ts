@@ -234,7 +234,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check for operation or billing entity name mentions
-    // First try to match an operation
+    // Detect if user is asking about "operation" or "billing entity" specifically
+    const askingAboutOperation = questionLower.includes('operation');
+    const askingAboutBillingEntity = questionLower.includes('billing') || questionLower.includes('entity');
+
+    // Try to match an operation
     const matchedOperation = operations.find(o => {
       if (!o.name) return false;
       const opNameLower = o.name.toLowerCase();
@@ -242,27 +246,77 @@ export async function POST(request: NextRequest) {
              opNameLower.includes(questionLower.split(' ').filter(w => w.length > 2).join(' '));
     });
 
-    // Also check billing entities directly (probes are linked to billing entities, not operations)
+    // Try to match a billing entity directly
     const matchedBillingEntity = billingEntities.find(b => {
       if (!b.name) return false;
       const beName = b.name.toLowerCase();
-      // Extract key words from question to match partial names like "37 ag"
       const questionWords = questionLower.split(' ').filter(w => w.length > 1);
       return questionLower.includes(beName) ||
              beName.includes(questionWords.join(' ')) ||
              questionWords.some(w => beName.startsWith(w) && w.length > 2);
     });
 
-    // Use billing entity if found, otherwise use operation
-    const entityToUse = matchedBillingEntity?.name || matchedOperation?.name;
+    // If asking about an OPERATION, find everything linked through contacts
+    if (matchedOperation && (askingAboutOperation || !matchedBillingEntity)) {
+      // Find all contacts linked to this operation
+      const opContacts = contacts.filter(c =>
+        c.operations?.some(o => o.value.toLowerCase().includes(matchedOperation.name.toLowerCase()))
+      );
 
-    if (entityToUse) {
-      const entityProbes = probes.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(entityToUse.toLowerCase()));
-      const entityFields = fields.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(entityToUse.toLowerCase()));
-      specificLookupContext += `SPECIFIC ENTITY FOUND (${entityToUse}):\n${JSON.stringify({
-        name: entityToUse,
-        total_probes: entityProbes.length,
-        probes: entityProbes.map(p => ({
+      // Get all billing entities linked to those contacts
+      const linkedBillingEntities = new Set<string>();
+      opContacts.forEach(c => {
+        c.billing_entity?.forEach(be => linkedBillingEntities.add(be.value));
+      });
+
+      // Also check if any billing entity name matches the operation name directly
+      billingEntities.forEach(be => {
+        if (be.name?.toLowerCase().includes(matchedOperation.name.toLowerCase())) {
+          linkedBillingEntities.add(be.name);
+        }
+      });
+
+      // Find all probes/fields linked to those billing entities
+      const opProbes = probes.filter(p => {
+        const probeBE = p.billing_entity?.[0]?.value?.toLowerCase() || '';
+        return Array.from(linkedBillingEntities).some(be => probeBE.includes(be.toLowerCase())) ||
+               probeBE.includes(matchedOperation.name.toLowerCase());
+      });
+      const opFields = fields.filter(f => {
+        const fieldBE = f.billing_entity?.[0]?.value?.toLowerCase() || '';
+        return Array.from(linkedBillingEntities).some(be => fieldBE.includes(be.toLowerCase())) ||
+               fieldBE.includes(matchedOperation.name.toLowerCase());
+      });
+
+      specificLookupContext += `SPECIFIC OPERATION FOUND (${matchedOperation.name}):\n${JSON.stringify({
+        operation_name: matchedOperation.name,
+        linked_contacts: opContacts.map(c => c.name),
+        linked_billing_entities: Array.from(linkedBillingEntities),
+        total_probes: opProbes.length,
+        probes: opProbes.map(p => ({
+          serial_number: p.serial_number,
+          brand: p.brand?.value,
+          status: p.status?.value,
+          rack: p.rack?.value,
+          slot: p.rack_slot,
+          year_new: p.year_new,
+          age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
+          billing_entity: p.billing_entity?.[0]?.value,
+        })),
+        probes_installed: opProbes.filter(p => p.status?.value === 'Installed').length,
+        probes_in_storage: opProbes.filter(p => p.status?.value === 'In Storage').length,
+        total_fields: opFields.length,
+        fields: opFields.map(f => ({ name: f.name, billing_entity: f.billing_entity?.[0]?.value })),
+      }, null, 2)}\n\n`;
+    }
+    // If asking about a BILLING ENTITY specifically
+    else if (matchedBillingEntity) {
+      const beProbes = probes.filter(p => p.billing_entity?.[0]?.value?.toLowerCase().includes(matchedBillingEntity.name.toLowerCase()));
+      const beFields = fields.filter(f => f.billing_entity?.[0]?.value?.toLowerCase().includes(matchedBillingEntity.name.toLowerCase()));
+      specificLookupContext += `SPECIFIC BILLING ENTITY FOUND (${matchedBillingEntity.name}):\n${JSON.stringify({
+        billing_entity_name: matchedBillingEntity.name,
+        total_probes: beProbes.length,
+        probes: beProbes.map(p => ({
           serial_number: p.serial_number,
           brand: p.brand?.value,
           status: p.status?.value,
@@ -271,10 +325,10 @@ export async function POST(request: NextRequest) {
           year_new: p.year_new,
           age_years: p.year_new ? new Date().getFullYear() - p.year_new : null,
         })),
-        probes_installed: entityProbes.filter(p => p.status?.value === 'Installed').length,
-        probes_in_storage: entityProbes.filter(p => p.status?.value === 'In Storage').length,
-        total_fields: entityFields.length,
-        fields: entityFields.map(f => f.name),
+        probes_installed: beProbes.filter(p => p.status?.value === 'Installed').length,
+        probes_in_storage: beProbes.filter(p => p.status?.value === 'In Storage').length,
+        total_fields: beFields.length,
+        fields: beFields.map(f => f.name),
       }, null, 2)}\n\n`;
     }
 
