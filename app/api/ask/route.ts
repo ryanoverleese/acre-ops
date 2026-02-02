@@ -358,7 +358,10 @@ export async function POST(request: NextRequest) {
           const fbe = f.billing_entity?.[0]?.value?.toLowerCase() || '';
           return matchedNames.some(name => fbe.includes(name.toLowerCase()));
         });
-        specificLookupContext += `GROWER LOOKUP "${searchWords.join(' ')}":\nMatched billing entities: ${matchedNames.join(', ')}\n\nFIELD NAMES for this grower (these are the actual field/pivot names, NOT billing entities):\n${pmFields.map(f => `- "${f.name}" (${f.acres || '?'} acres, ${f.irrigation_type?.value || 'unknown irrigation'}, billed to: ${f.billing_entity?.[0]?.value})`).join('\n')}\n\nPROBES for this grower: ${pmProbes.length} total\n\n`;
+        const fieldsList = pmFields.length > 0
+          ? pmFields.map(f => `- "${f.name}" (${f.acres || '?'} acres, ${f.irrigation_type?.value || 'unknown irrigation'}, billed to: ${f.billing_entity?.[0]?.value})`).join('\n')
+          : '(No fields found linked to these billing entities)';
+        specificLookupContext += `GROWER LOOKUP "${searchWords.join(' ')}":\nMatched billing entities: ${matchedNames.join(', ')}\n\nFIELD NAMES for this grower (these are the actual field/pivot names, NOT billing entities):\n${fieldsList}\n\nPROBES for this grower: ${pmProbes.length} total\n\n`;
       }
     }
 
