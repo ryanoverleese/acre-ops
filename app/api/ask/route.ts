@@ -4,33 +4,33 @@ import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOper
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
 // Domain knowledge for the AI
-const SYSTEM_PROMPT = `You are the AI assistant for Acre Ops, the probe management system for Acre Insights LLC, an agricultural consulting business in Nebraska.
+const SYSTEM_PROMPT = `You are an assistant for Acre Ops, a soil moisture probe management system for Acre Insights in Nebraska. You help with field lookups, probe inventory, installation planning, and grower information.
 
-You help Ryan (the owner) and his team manage probe inventory, track field assignments, and handle service records.
+Available tools:
 
-DATABASE SCHEMA:
-- Fields: name, acres, irrigation_type, billing_entity (who pays)
-- Probes: serial_number, brand, status, rack, rack_slot, billing_entity, year_new
-- Operations: farming companies/growers
-- Billing Entities: who pays for services (linked to operations via contacts)
-- Contacts: people linked to operations and billing entities
-- Field Seasons: tracks which probe is in which field each year
+- search_fields - Find fields by name or billing entity. Returns field name, acres, lat/lng coordinates, billing entity, and linked probe info.
+- search_probes - Find probes by serial number, status, brand, or billing entity.
+- get_probe_counts - Get summary counts (how many by status, by brand, etc.)
+- search_operations - Find operations with their linked contacts and billing entities.
+- search_by_name - Searches across contacts, operations, and billing entities. Use this when looking up a grower, farm, or person by name. Returns all related fields, probes, and linked entities.
 
-PROBE STATUSES: "Installed", "In Storage", "Needs Repair", "Retired"
+How to behave:
 
-HOW TO WORK:
-1. Use the search tools to find relevant data - don't guess
-2. Be direct and concise in your answers
-3. If you can't find something, say so clearly
-4. When listing items, keep it scannable
+1. Always use your tools to answer data questions. Never guess from memory.
 
-IMPORTANT: You have tools to search the database. USE THEM to answer questions. Don't make assumptions about data you haven't looked up.`;
+2. If the user challenges your answer, do NOT just agree with them. Re-run your query to verify, or stand by your answer and explain what you found. Say "I queried the database and I'm still only seeing X results - which one do you think I'm missing?" rather than adding items to match what the user suggests.
+
+3. If a query returns no results, say so clearly. Don't invent data.
+
+4. Keep answers concise. Field crews need quick info, not paragraphs.
+
+5. For navigation/directions, provide lat/lng coordinates and a Google Maps link.`;
 
 // Tool definitions for Claude
 const TOOLS = [
   {
     name: "search_fields",
-    description: "Search for fields by name pattern and/or billing entity. Use this to find specific fields like 'Home Pivot' or all fields for a grower like 'Lundeen'.",
+    description: "Find fields by name or billing entity. Returns field name, acres, lat/lng coordinates, billing entity, and irrigation type. Use for location questions or finding specific fields.",
     input_schema: {
       type: "object",
       properties: {
@@ -92,17 +92,17 @@ const TOOLS = [
     }
   },
   {
-    name: "get_grower_summary",
-    description: "Get a complete summary for a grower - their operations, billing entities, fields, and probes. Use this when someone asks about everything related to a person or farm.",
+    name: "search_by_name",
+    description: "Searches across contacts, operations, and billing entities. Use this when looking up a grower, farm, or person by name. Returns all related fields, probes, and linked entities.",
     input_schema: {
       type: "object",
       properties: {
-        grower_name: {
+        name: {
           type: "string",
           description: "Name to search for across operations, contacts, and billing entities"
         }
       },
-      required: ["grower_name"]
+      required: ["name"]
     }
   }
 ];
@@ -125,8 +125,11 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
   return results.slice(0, 50).map(f => ({
     field_name: f.name,
     acres: f.acres,
+    lat: f.lat,
+    lng: f.lng,
     irrigation_type: f.irrigation_type?.value,
-    billing_entity: f.billing_entity?.[0]?.value
+    billing_entity: f.billing_entity?.[0]?.value,
+    google_maps_link: f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : null
   }));
 }
 
@@ -219,8 +222,8 @@ async function executeSearchOperations(params: { name_contains?: string }) {
   });
 }
 
-async function executeGetGrowerSummary(params: { grower_name: string }) {
-  const search = params.grower_name.toLowerCase();
+async function executeSearchByName(params: { name: string }) {
+  const search = params.name.toLowerCase();
 
   const [fields, probes, operations, contacts, billingEntities] = await Promise.all([
     getFields(),
@@ -275,15 +278,18 @@ async function executeGetGrowerSummary(params: { grower_name: string }) {
   });
 
   return {
-    search_term: params.grower_name,
+    search_term: params.name,
     matched_operations: matchedOps.map(o => o.name),
     matched_billing_entities: matchedBEs,
     matched_contacts: matchedContacts.map(c => c.name),
     fields: growerFields.map(f => ({
       field_name: f.name,
       acres: f.acres,
+      lat: f.lat,
+      lng: f.lng,
       irrigation_type: f.irrigation_type?.value,
-      billing_entity: f.billing_entity?.[0]?.value
+      billing_entity: f.billing_entity?.[0]?.value,
+      google_maps_link: f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : null
     })),
     probes: {
       total: growerProbes.length,
@@ -313,8 +319,8 @@ async function executeTool(name: string, input: Record<string, unknown>) {
       return await executeGetProbeCounts();
     case 'search_operations':
       return await executeSearchOperations(input as { name_contains?: string });
-    case 'get_grower_summary':
-      return await executeGetGrowerSummary(input as { grower_name: string });
+    case 'search_by_name':
+      return await executeSearchByName(input as { name: string });
     default:
       return { error: `Unknown tool: ${name}` };
   }
