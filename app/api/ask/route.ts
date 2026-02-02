@@ -26,7 +26,9 @@ How to behave:
 
 5. For navigation/directions, provide lat/lng coordinates and format the Google Maps link as markdown: [View on Google Maps](url)
 
-6. You cannot search by geographic proximity or distance. If a user asks for fields near a city, within X miles of a location, or "what's nearby", explain that you can only search by name. Offer to search for fields with that city/location in the field name instead.`;
+6. You cannot search by geographic proximity or distance. If a user asks for fields near a city, within X miles of a location, or "what's nearby", explain that you can only search by name. Offer to search for fields with that city/location in the field name instead.
+
+7. If you don't know something or the data isn't there, say so. Never make up information - no invented names, no fake counts, no guessed locations, no pretending you can do something you can't.`;
 
 // Tool definitions for Claude
 const TOOLS = [
