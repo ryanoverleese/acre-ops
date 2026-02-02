@@ -1,52 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-}
-
-// Render markdown links and bare URLs as clickable
-function renderWithLinks(text: string): React.ReactNode {
-  // Pattern for markdown links [text](url) and bare URLs
-  const pattern = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/g;
-
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = pattern.exec(text)) !== null) {
-    // Add text before the match
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-
-    if (match[1] && match[2]) {
-      // Markdown link [text](url)
-      parts.push(
-        <a key={match.index} href={match[2]} target="_blank" rel="noopener noreferrer">
-          {match[1]}
-        </a>
-      );
-    } else if (match[3]) {
-      // Bare URL
-      parts.push(
-        <a key={match.index} href={match[3]} target="_blank" rel="noopener noreferrer">
-          {match[3]}
-        </a>
-      );
-    }
-
-    lastIndex = pattern.lastIndex;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length > 0 ? parts : text;
 }
 
 export default function AskAI() {
@@ -152,7 +111,23 @@ export default function AskAI() {
             <div className="ask-ai-messages">
               {messages.map((msg, i) => (
                 <div key={i} className={`ask-ai-message ${msg.role}`}>
-                  <div className="ask-ai-message-content">{renderWithLinks(msg.content)}</div>
+                  <div className="ask-ai-message-content">
+                    {msg.role === 'assistant' ? (
+                      <ReactMarkdown
+                        components={{
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer">
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
                 </div>
               ))}
               {isLoading && (

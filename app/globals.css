@@ -2299,6 +2299,36 @@ input[type="date"]:focus {
   color: white;
 }
 
+/* Markdown content styling */
+.ask-ai-message-content p {
+  margin: 0 0 0.5em 0;
+}
+
+.ask-ai-message-content p:last-child {
+  margin-bottom: 0;
+}
+
+.ask-ai-message-content ul,
+.ask-ai-message-content ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.ask-ai-message-content li {
+  margin: 0.25em 0;
+}
+
+.ask-ai-message-content code {
+  background: var(--bg-tertiary);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.ask-ai-message-content strong {
+  font-weight: 600;
+}
+
 .ask-ai-loading {
   display: flex;
   gap: 4px;
