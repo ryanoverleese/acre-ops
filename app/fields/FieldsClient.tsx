@@ -2726,7 +2726,12 @@ export default function FieldsClient({
                       <label>Antenna Type</label>
                       <select value={seasonFieldsForm.antenna_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, antenna_type: e.target.value })}>
                         <option value="">Select...</option>
+                        <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
+                        <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
+                        <option value="6' CropX Antenna">6' CropX Antenna</option>
+                        <option value="ASK">ASK</option>
                         <option value="10' CropX Antenna">10' CropX Antenna</option>
+                        <option value="Stub CropX Antenna">Stub CropX Antenna</option>
                         <option value="10' Sentek Antenna">10' Sentek Antenna</option>
                       </select>
                     </div>
