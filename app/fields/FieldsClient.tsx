@@ -265,6 +265,29 @@ const initialAddForm = {
   planting_date: '',
 };
 
+// Column picker definitions for install planning table
+type FieldColumnKey = 'field' | 'operation' | 'crop' | 'service' | 'probes' | 'routeOrder' | 'installer' | 'ready';
+
+interface FieldColumnDefinition {
+  key: FieldColumnKey;
+  label: string;
+  alwaysVisible?: boolean;
+}
+
+const FIELD_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
+  { key: 'field', label: 'Field', alwaysVisible: true },
+  { key: 'operation', label: 'Operation' },
+  { key: 'crop', label: 'Crop' },
+  { key: 'service', label: 'Service' },
+  { key: 'probes', label: 'Probes' },
+  { key: 'routeOrder', label: 'Route #' },
+  { key: 'installer', label: 'Installer' },
+  { key: 'ready', label: 'Ready' },
+];
+
+const DEFAULT_FIELD_VISIBLE_COLUMNS: FieldColumnKey[] = ['field', 'operation', 'crop', 'service', 'probes', 'routeOrder', 'installer', 'ready'];
+const FIELD_COLUMNS_STORAGE_KEY = 'fields-visible-columns';
+
 export default function FieldsClient({
   initialFields,
   operations,
@@ -361,10 +384,62 @@ export default function FieldsClient({
   });
   const [rollingOver, setRollingOver] = useState(false);
 
+  // Column picker state
+  const [visibleColumns, setVisibleColumns] = useState<FieldColumnKey[]>(DEFAULT_FIELD_VISIBLE_COLUMNS);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const columnPickerRef = useRef<HTMLDivElement>(null);
+
   // Persist viewMode to sessionStorage so it survives page reloads
   useEffect(() => {
     sessionStorage.setItem('fieldsViewMode', viewMode);
   }, [viewMode]);
+
+  // Load column preferences from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(FIELD_COLUMNS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as FieldColumnKey[];
+        const valid = parsed.filter((col) => FIELD_COLUMN_DEFINITIONS.some((def) => def.key === col));
+        if (!valid.includes('field')) valid.unshift('field');
+        setVisibleColumns(valid);
+      }
+    } catch (e) {
+      console.error('Failed to load column preferences:', e);
+    }
+  }, []);
+
+  // Save column preferences to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(FIELD_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch (e) {
+      console.error('Failed to save column preferences:', e);
+    }
+  }, [visibleColumns]);
+
+  // Close column picker when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnPickerRef.current && !columnPickerRef.current.contains(event.target as Node)) {
+        setShowColumnPicker(false);
+      }
+    };
+    if (showColumnPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColumnPicker]);
+
+  const toggleColumn = (columnKey: FieldColumnKey) => {
+    const column = FIELD_COLUMN_DEFINITIONS.find((col) => col.key === columnKey);
+    if (column?.alwaysVisible) return;
+    setVisibleColumns((prev) =>
+      prev.includes(columnKey) ? prev.filter((c) => c !== columnKey) : [...prev, columnKey]
+    );
+  };
+
+  const isColumnVisible = (columnKey: FieldColumnKey) => visibleColumns.includes(columnKey);
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -1500,6 +1575,72 @@ export default function FieldsClient({
           </select>
         </div>
         <div className="header-right" style={{ display: 'flex', gap: '8px' }}>
+          {/* Column Picker - only in seasonal view */}
+          {viewMode === 'seasonal' && (
+            <div ref={columnPickerRef} style={{ position: 'relative' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowColumnPicker(!showColumnPicker)}
+                title="Select columns to display"
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                Columns
+              </button>
+              {showColumnPicker && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: '4px',
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                    zIndex: 100,
+                    minWidth: '180px',
+                    padding: '8px 0',
+                  }}
+                >
+                  <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Show Columns</span>
+                  </div>
+                  {FIELD_COLUMN_DEFINITIONS.map((col) => (
+                    <label
+                      key={col.key}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 12px',
+                        cursor: col.alwaysVisible ? 'not-allowed' : 'pointer',
+                        opacity: col.alwaysVisible ? 0.6 : 1,
+                        fontSize: '13px',
+                      }}
+                      onClick={(e) => {
+                        if (!col.alwaysVisible) {
+                          e.preventDefault();
+                          toggleColumn(col.key);
+                        }
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isColumnVisible(col.key)}
+                        disabled={col.alwaysVisible}
+                        onChange={() => {}}
+                        style={{ cursor: col.alwaysVisible ? 'not-allowed' : 'pointer' }}
+                      />
+                      {col.label}
+                      {col.alwaysVisible && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>(required)</span>}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <button className="btn btn-secondary" onClick={() => setShowRolloverModal(true)}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -1606,21 +1747,21 @@ export default function FieldsClient({
                     <table className="desktop-table" style={{ fontSize: '12px' }}>
                       <thead>
                         <tr>
-                          <th style={{ minWidth: '140px' }}>Field</th>
-                          <th style={{ minWidth: '100px' }}>Operation</th>
-                          <th style={{ minWidth: '90px' }}>Crop</th>
-                          <th style={{ minWidth: '90px' }}>Service</th>
-                          <th style={{ minWidth: '100px' }}>Probes</th>
-                          <th style={{ minWidth: '60px' }}>Route #</th>
-                          <th style={{ minWidth: '110px' }}>Installer</th>
-                          <th style={{ minWidth: '60px' }}>Ready</th>
+                          {isColumnVisible('field') && <th style={{ minWidth: '140px' }}>Field</th>}
+                          {isColumnVisible('operation') && <th style={{ minWidth: '100px' }}>Operation</th>}
+                          {isColumnVisible('crop') && <th style={{ minWidth: '90px' }}>Crop</th>}
+                          {isColumnVisible('service') && <th style={{ minWidth: '90px' }}>Service</th>}
+                          {isColumnVisible('probes') && <th style={{ minWidth: '100px' }}>Probes</th>}
+                          {isColumnVisible('routeOrder') && <th style={{ minWidth: '60px' }}>Route #</th>}
+                          {isColumnVisible('installer') && <th style={{ minWidth: '110px' }}>Installer</th>}
+                          {isColumnVisible('ready') && <th style={{ minWidth: '60px' }}>Ready</th>}
                           <th style={{ minWidth: '40px' }}></th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={9}>
+                            <td colSpan={visibleColumns.length + 1}>
                               <EmptyState
                                 icon={searchQuery ? 'search' : currentSeason !== 'all' ? 'calendar' : 'fields'}
                                 title={searchQuery ? 'No matching fields' : currentSeason !== 'all' ? `No fields for ${currentSeason}` : 'No fields yet'}
@@ -1639,16 +1780,18 @@ export default function FieldsClient({
                             return (
                               <React.Fragment key={`${field.id}-${field.fieldSeasonId || 'no-season'}`}>
                                 <tr>
-                                  <td
-                                    style={{ fontWeight: 500, cursor: 'pointer' }}
-                                    title="Click to view details"
-                                    onClick={() => handleRowClick(field)}
-                                  >
-                                    {field.name}
-                                  </td>
+                                  {isColumnVisible('field') && (
+                                    <td
+                                      style={{ fontWeight: 500, cursor: 'pointer' }}
+                                      title="Click to view details"
+                                      onClick={() => handleRowClick(field)}
+                                    >
+                                      {field.name}
+                                    </td>
+                                  )}
                               {needsSeasonStart ? (
                                 <>
-                                  <td colSpan={7} style={{ textAlign: 'left' }}>
+                                  <td colSpan={visibleColumns.length - 1} style={{ textAlign: 'left' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                       <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>
                                         No {currentSeason} season configured
@@ -1677,133 +1820,145 @@ export default function FieldsClient({
                                 </>
                               ) : (
                                 <>
-                              <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="crop"
-                                  value={field.crop}
-                                  type="select"
-                                  options={[
-                                    { value: 'Corn', label: 'Corn' },
-                                    { value: 'Soybeans', label: 'Soybeans' },
-                                    { value: 'Wheat', label: 'Wheat' },
-                                    { value: 'Seed Corn', label: 'Seed Corn' },
-                                    { value: 'Other', label: 'Other' },
-                                  ]}
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="serviceType"
-                                  value={field.serviceType}
-                                  type="select"
-                                  options={[
-                                    { value: 'CropX Complete DIY', label: 'CropX Complete DIY' },
-                                    { value: 'CropX DIY', label: 'CropX DIY' },
-                                    { value: 'CropX DIY 2x Field', label: 'CropX DIY 2x Field' },
-                                    { value: 'CropX DIY 2x Field Bulk', label: 'CropX DIY 2x Field Bulk' },
-                                    { value: 'CropX DIY Bulk', label: 'CropX DIY Bulk' },
-                                    { value: 'CropX DIY + $100 Roeder', label: 'CropX DIY + $100 Roeder' },
-                                    { value: 'CropX Regular', label: 'CropX Regular' },
-                                    { value: 'CropX Regular 2x Field', label: 'CropX Regular 2x Field' },
-                                    { value: 'CropX Regular 2x Field Bulk', label: 'CropX Regular 2x Field Bulk' },
-                                    { value: 'CropX Regular Bulk', label: 'CropX Regular Bulk' },
-                                    { value: 'CropX Regular Family Rate', label: 'CropX Regular Family Rate' },
-                                    { value: 'CropX Regular Olsen Rate', label: 'CropX Regular Olsen Rate' },
-                                    { value: 'CropX Regular Small Field', label: 'CropX Regular Small Field' },
-                                    { value: 'CropX Regular Dryland', label: 'CropX Regular Dryland' },
-                                    { value: 'IrriMax Live', label: 'IrriMax Live' },
-                                    { value: 'IrriMax Live – Ryan Cost', label: 'IrriMax Live – Ryan Cost' },
-                                    { value: 'Overview Field', label: 'Overview Field' },
-                                  ]}
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                {field.fieldSeasonId ? (
-                                  <button
-                                    onClick={() => toggleFieldSeasonExpand(field.fieldSeasonId!)}
-                                    style={{
-                                      background: 'none',
-                                      border: '1px solid var(--border)',
-                                      padding: '4px 8px',
-                                      borderRadius: '4px',
-                                      cursor: 'pointer',
-                                      fontSize: '11px',
-                                      color: (hasProbeAssignments || field.probe) ? 'var(--accent-green)' : 'var(--text-muted)',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                    }}
-                                  >
-                                    {hasProbeAssignments ? (
-                                      <>{fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''}</>
-                                    ) : field.probe ? (
-                                      <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</>
-                                    ) : (
-                                      <>+ Add</>
-                                    )}
-                                    <svg
-                                      width="10"
-                                      height="10"
-                                      viewBox="0 0 24 24"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                              {isColumnVisible('operation') && <td style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>}
+                              {isColumnVisible('crop') && (
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <InlineCell
+                                    fieldSeasonId={field.fieldSeasonId}
+                                    field="crop"
+                                    value={field.crop}
+                                    type="select"
+                                    options={[
+                                      { value: 'Corn', label: 'Corn' },
+                                      { value: 'Soybeans', label: 'Soybeans' },
+                                      { value: 'Wheat', label: 'Wheat' },
+                                      { value: 'Seed Corn', label: 'Seed Corn' },
+                                      { value: 'Other', label: 'Other' },
+                                    ]}
+                                    onSave={handleInlineSave}
+                                    savingFields={savingFields}
+                                    savedFields={savedFields}
+                                  />
+                                </td>
+                              )}
+                              {isColumnVisible('service') && (
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <InlineCell
+                                    fieldSeasonId={field.fieldSeasonId}
+                                    field="serviceType"
+                                    value={field.serviceType}
+                                    type="select"
+                                    options={[
+                                      { value: 'CropX Complete DIY', label: 'CropX Complete DIY' },
+                                      { value: 'CropX DIY', label: 'CropX DIY' },
+                                      { value: 'CropX DIY 2x Field', label: 'CropX DIY 2x Field' },
+                                      { value: 'CropX DIY 2x Field Bulk', label: 'CropX DIY 2x Field Bulk' },
+                                      { value: 'CropX DIY Bulk', label: 'CropX DIY Bulk' },
+                                      { value: 'CropX DIY + $100 Roeder', label: 'CropX DIY + $100 Roeder' },
+                                      { value: 'CropX Regular', label: 'CropX Regular' },
+                                      { value: 'CropX Regular 2x Field', label: 'CropX Regular 2x Field' },
+                                      { value: 'CropX Regular 2x Field Bulk', label: 'CropX Regular 2x Field Bulk' },
+                                      { value: 'CropX Regular Bulk', label: 'CropX Regular Bulk' },
+                                      { value: 'CropX Regular Family Rate', label: 'CropX Regular Family Rate' },
+                                      { value: 'CropX Regular Olsen Rate', label: 'CropX Regular Olsen Rate' },
+                                      { value: 'CropX Regular Small Field', label: 'CropX Regular Small Field' },
+                                      { value: 'CropX Regular Dryland', label: 'CropX Regular Dryland' },
+                                      { value: 'IrriMax Live', label: 'IrriMax Live' },
+                                      { value: 'IrriMax Live – Ryan Cost', label: 'IrriMax Live – Ryan Cost' },
+                                      { value: 'Overview Field', label: 'Overview Field' },
+                                    ]}
+                                    onSave={handleInlineSave}
+                                    savingFields={savingFields}
+                                    savedFields={savedFields}
+                                  />
+                                </td>
+                              )}
+                              {isColumnVisible('probes') && (
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  {field.fieldSeasonId ? (
+                                    <button
+                                      onClick={() => toggleFieldSeasonExpand(field.fieldSeasonId!)}
+                                      style={{
+                                        background: 'none',
+                                        border: '1px solid var(--border)',
+                                        padding: '4px 8px',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer',
+                                        fontSize: '11px',
+                                        color: (hasProbeAssignments || field.probe) ? 'var(--accent-green)' : 'var(--text-muted)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                      }}
                                     >
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                  </button>
-                                ) : (
-                                  <span style={{ color: 'var(--text-muted)' }}>—</span>
-                                )}
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="routeOrder"
-                                  value={field.routeOrder}
-                                  type="number"
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="plannedInstaller"
-                                  value={field.plannedInstaller}
-                                  type="select"
-                                  options={[
-                                    { value: 'Brian', label: 'Brian' },
-                                    { value: 'Daine', label: 'Daine' },
-                                    { value: 'Ryan', label: 'Ryan' },
-                                    { value: 'Ryan and Kasen', label: 'Ryan and Kasen' },
-                                  ]}
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
-                              <td onClick={(e) => e.stopPropagation()}>
-                                <InlineCell
-                                  fieldSeasonId={field.fieldSeasonId}
-                                  field="readyToInstall"
-                                  value={field.readyToInstall}
-                                  type="checkbox"
-                                  onSave={handleInlineSave}
-                                  savingFields={savingFields}
-                                  savedFields={savedFields}
-                                />
-                              </td>
+                                      {hasProbeAssignments ? (
+                                        <>{fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''}</>
+                                      ) : field.probe ? (
+                                        <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</>
+                                      ) : (
+                                        <>+ Add</>
+                                      )}
+                                      <svg
+                                        width="10"
+                                        height="10"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                      </svg>
+                                    </button>
+                                  ) : (
+                                    <span style={{ color: 'var(--text-muted)' }}>—</span>
+                                  )}
+                                </td>
+                              )}
+                              {isColumnVisible('routeOrder') && (
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <InlineCell
+                                    fieldSeasonId={field.fieldSeasonId}
+                                    field="routeOrder"
+                                    value={field.routeOrder}
+                                    type="number"
+                                    onSave={handleInlineSave}
+                                    savingFields={savingFields}
+                                    savedFields={savedFields}
+                                  />
+                                </td>
+                              )}
+                              {isColumnVisible('installer') && (
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <InlineCell
+                                    fieldSeasonId={field.fieldSeasonId}
+                                    field="plannedInstaller"
+                                    value={field.plannedInstaller}
+                                    type="select"
+                                    options={[
+                                      { value: 'Brian', label: 'Brian' },
+                                      { value: 'Daine', label: 'Daine' },
+                                      { value: 'Ryan', label: 'Ryan' },
+                                      { value: 'Ryan and Kasen', label: 'Ryan and Kasen' },
+                                    ]}
+                                    onSave={handleInlineSave}
+                                    savingFields={savingFields}
+                                    savedFields={savedFields}
+                                  />
+                                </td>
+                              )}
+                              {isColumnVisible('ready') && (
+                                <td onClick={(e) => e.stopPropagation()}>
+                                  <InlineCell
+                                    fieldSeasonId={field.fieldSeasonId}
+                                    field="readyToInstall"
+                                    value={field.readyToInstall}
+                                    type="checkbox"
+                                    onSave={handleInlineSave}
+                                    savingFields={savingFields}
+                                    savedFields={savedFields}
+                                  />
+                                </td>
+                              )}
                               <td onClick={(e) => e.stopPropagation()}>
                                 <button
                                   className="action-btn"
