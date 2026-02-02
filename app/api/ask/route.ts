@@ -191,15 +191,18 @@ export async function POST(request: NextRequest) {
       c.name && questionLower.includes(c.name.toLowerCase())
     );
     if (matchedContact) {
-      // Get the contact's operations and find their probes
+      // Get the contact's operations AND billing entities and find their probes
       const contactOperations = matchedContact.operations?.map(o => o.value) || [];
+      const contactBillingEntities = matchedContact.billing_entity?.map(b => b.value) || [];
+      const allLinkedEntities = [...new Set([...contactOperations, ...contactBillingEntities])];
+
       const contactProbes = probes.filter(p => {
         const probeBillingEntity = p.billing_entity?.[0]?.value?.toLowerCase() || '';
-        return contactOperations.some(op => probeBillingEntity.includes(op.toLowerCase()));
+        return allLinkedEntities.some(entity => probeBillingEntity.includes(entity.toLowerCase()));
       });
       const contactFields = fields.filter(f => {
         const fieldBillingEntity = f.billing_entity?.[0]?.value?.toLowerCase() || '';
-        return contactOperations.some(op => fieldBillingEntity.includes(op.toLowerCase()));
+        return allLinkedEntities.some(entity => fieldBillingEntity.includes(entity.toLowerCase()));
       });
 
       specificLookupContext += `SPECIFIC CONTACT FOUND (${matchedContact.name}):\n${JSON.stringify({
@@ -208,6 +211,7 @@ export async function POST(request: NextRequest) {
         phone: matchedContact.phone,
         type: matchedContact.customer_type?.value,
         operations: contactOperations,
+        billing_entities: contactBillingEntities,
         total_probes: contactProbes.length,
         probes: contactProbes.map(p => ({
           serial_number: p.serial_number,
