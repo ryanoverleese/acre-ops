@@ -21,22 +21,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch relevant data in parallel
-    const [fields, probes, fieldSeasons, repairs, contacts, operations] = await Promise.all([
-      getFields(),
-      getProbes(),
-      getFieldSeasons(),
-      getRepairs(),
-      getContacts(),
-      getOperations(),
-    ]);
+    // Fetch data with individual error handling
+    let fields: Awaited<ReturnType<typeof getFields>> = [];
+    let probes: Awaited<ReturnType<typeof getProbes>> = [];
+    let fieldSeasons: Awaited<ReturnType<typeof getFieldSeasons>> = [];
+    let repairs: Awaited<ReturnType<typeof getRepairs>> = [];
+    let contacts: Awaited<ReturnType<typeof getContacts>> = [];
+    let operations: Awaited<ReturnType<typeof getOperations>> = [];
 
-    // Build context about the data
-    const dataContext = `
-You are an AI assistant for Acre Ops, a farm management application. Answer questions about the farm data below.
-Be concise and helpful. If you can't answer from the data provided, say so.
+    try {
+      [fields, probes, fieldSeasons, repairs, contacts, operations] = await Promise.all([
+        getFields().catch(() => []),
+        getProbes().catch(() => []),
+        getFieldSeasons().catch(() => []),
+        getRepairs().catch(() => []),
+        getContacts().catch(() => []),
+        getOperations().catch(() => []),
+      ]);
+    } catch (fetchError) {
+      console.error('Data fetch error:', fetchError);
+      // Continue with empty data rather than failing
+    }
 
-## Current Data Summary:
+    // Build context about the data (keep it concise)
+    const dataContext = `You are an AI assistant for Acre Insights Operation Center, a farm management app. Answer questions about the farm data below. Be concise.
+
+Data Summary:
 - ${fields.length} fields
 - ${probes.length} probes
 - ${fieldSeasons.length} field seasons
@@ -44,66 +54,37 @@ Be concise and helpful. If you can't answer from the data provided, say so.
 - ${contacts.length} contacts
 - ${operations.length} operations
 
-## Fields Data:
-${JSON.stringify(fields.map(f => ({
-  id: f.id,
+Fields: ${JSON.stringify(fields.slice(0, 100).map(f => ({
   name: f.name,
   acres: f.acres,
-  pivot_acres: f.pivot_acres,
-  irrigation_type: f.irrigation_type?.value,
-  water_source: f.water_source?.value,
-  fuel_source: f.fuel_source?.value,
-  billing_entity: f.billing_entity?.[0]?.value,
-})), null, 2)}
+  irrigation: f.irrigation_type?.value,
+  entity: f.billing_entity?.[0]?.value,
+})))}
 
-## Probes Data:
-${JSON.stringify(probes.map(p => ({
-  id: p.id,
-  serial_number: p.serial_number,
-  brand: p.brand?.value,
+Probes: ${JSON.stringify(probes.slice(0, 100).map(p => ({
+  serial: p.serial_number,
   status: p.status?.value,
-  year_new: p.year_new,
   rack: p.rack?.value,
-  rack_slot: p.rack_slot,
-  billing_entity: p.billing_entity?.[0]?.value,
-})), null, 2)}
+})))}
 
-## Field Seasons Data:
-${JSON.stringify(fieldSeasons.map(fs => ({
-  id: fs.id,
+Field Seasons: ${JSON.stringify(fieldSeasons.slice(0, 50).map(fs => ({
   field: fs.field?.[0]?.value,
   season: fs.season,
   crop: fs.crop?.value,
-  service_type: fs.service_type?.value,
-  probe_status: fs.probe_status?.value,
-  install_date: fs.install_date,
-})), null, 2)}
+})))}
 
-## Repairs Data:
-${JSON.stringify(repairs.map(r => ({
-  id: r.id,
-  field_season: r.field_season?.[0]?.value,
-  reported_at: r.reported_at,
+Repairs: ${JSON.stringify(repairs.slice(0, 30).map(r => ({
   problem: r.problem,
   fix: r.fix,
-  repaired_at: r.repaired_at,
-})), null, 2)}
+  repaired: r.repaired_at,
+})))}
 
-## Contacts Data:
-${JSON.stringify(contacts.map(c => ({
-  id: c.id,
+Contacts: ${JSON.stringify(contacts.slice(0, 30).map(c => ({
   name: c.name,
-  email: c.email,
-  phone: c.phone,
-  customer_type: c.customer_type?.value,
-})), null, 2)}
+  type: c.customer_type?.value,
+})))}
 
-## Operations Data:
-${JSON.stringify(operations.map(o => ({
-  id: o.id,
-  name: o.name,
-})), null, 2)}
-`;
+Operations: ${JSON.stringify(operations.map(o => o.name))}`;
 
     // Call Claude API
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -130,7 +111,7 @@ ${JSON.stringify(operations.map(o => ({
       const errorText = await response.text();
       console.error('Anthropic API error:', errorText);
       return NextResponse.json(
-        { error: 'Failed to get AI response' },
+        { error: `AI error: ${response.status}` },
         { status: 500 }
       );
     }
@@ -142,7 +123,7 @@ ${JSON.stringify(operations.map(o => ({
   } catch (error) {
     console.error('Ask API error:', error);
     return NextResponse.json(
-      { error: 'Something went wrong' },
+      { error: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` },
       { status: 500 }
     );
   }
