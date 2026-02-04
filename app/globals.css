@@ -384,16 +384,17 @@ body {
   flex-wrap: wrap;
 }
 
-.view-mode-toggle {
+.fields-tabs {
   display: flex;
   background: var(--bg-tertiary);
   border-radius: 8px;
   padding: 4px;
   gap: 4px;
   flex-shrink: 0;
+  overflow-x: auto;
 }
 
-.view-mode-toggle button {
+.fields-tabs button {
   padding: 6px 16px;
   border-radius: 6px;
   border: none;
@@ -406,7 +407,7 @@ body {
   white-space: nowrap;
 }
 
-.view-mode-toggle button.active {
+.fields-tabs button.active {
   background: var(--accent-green);
   color: white;
 }
@@ -1433,13 +1434,14 @@ tr.selected {
     -webkit-overflow-scrolling: touch;
   }
 
-  .fields-filter-row .view-mode-toggle {
+  .fields-filter-row .fields-tabs {
     width: 100%;
-    justify-content: center;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .view-mode-toggle button {
-    flex: 1;
+  .fields-tabs button {
+    flex-shrink: 0;
     text-align: center;
   }
 

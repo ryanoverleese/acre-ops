@@ -91,6 +91,11 @@ export interface ProcessedField {
   installPhotoExtraUrl?: string;
   // Approval
   approvalStatus?: string;
+  // Removal
+  removalDate?: string;
+  removalNotes?: string;
+  // Billing entity name for display
+  billingEntityName?: string;
 }
 
 export interface OperationOption {
@@ -260,6 +265,11 @@ async function getFieldsData(): Promise<{
           fieldDirections: field.field_directions,
           // No season = no approval status
           approvalStatus: undefined,
+          // Removal
+          removalDate: '',
+          removalNotes: '',
+          // Billing entity name
+          billingEntityName: billingEntityLink?.value || '',
         });
       } else {
         // Create entry for each season
@@ -326,6 +336,11 @@ async function getFieldsData(): Promise<{
             installPhotoExtraUrl: fs.install_photo_extra_url?.[0]?.url,
             // Approval
             approvalStatus: fs.approval_status?.value || 'Pending',
+            // Removal
+            removalDate: fs.removal_date || '',
+            removalNotes: fs.removal_notes || '',
+            // Billing entity name
+            billingEntityName: billingEntityLink?.value || '',
           });
         });
       }
