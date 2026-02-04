@@ -18,6 +18,32 @@ async function getBillingData(): Promise<BillingData> {
       getServiceRates(),
     ]);
 
+    // Debug logging
+    console.log('=== BILLING DEBUG ===');
+    console.log('Billing entities count:', billingEntities.length);
+    console.log('Field seasons count:', fieldSeasons.length);
+    console.log('Fields count:', fields.length);
+    console.log('Service rates count:', serviceRates.length);
+
+    // Check how many fields have billing_entity set
+    const fieldsWithBE = fields.filter(f => f.billing_entity?.[0]?.id);
+    console.log('Fields with billing_entity:', fieldsWithBE.length);
+
+    // Sample a field that has billing_entity
+    if (fieldsWithBE.length > 0) {
+      console.log('Sample field with BE:', { id: fieldsWithBE[0].id, name: fieldsWithBE[0].name, be: fieldsWithBE[0].billing_entity });
+    }
+
+    // Sample field seasons
+    if (fieldSeasons.length > 0) {
+      const fs = fieldSeasons[0];
+      const fieldId = fs.field?.[0]?.id;
+      const field = fieldId ? fields.find(f => f.id === fieldId) : null;
+      console.log('Sample field season:', { id: fs.id, fieldLink: fs.field, season: fs.season, serviceType: fs.service_type?.value });
+      console.log('Linked field:', field ? { id: field.id, name: field.name, be: field.billing_entity } : 'not found');
+    }
+    console.log('=== END DEBUG ===');
+
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
 
     // Build service rate lookup by service type name
@@ -155,6 +181,14 @@ async function getBillingData(): Promise<BillingData> {
 
     // Sort seasons descending (newest first)
     const sortedSeasons = Array.from(allSeasons).sort((a, b) => b - a);
+
+    console.log('=== BILLING RESULTS ===');
+    console.log('Processed entities:', processedEntities.length);
+    console.log('Available seasons:', sortedSeasons);
+    if (processedEntities.length > 0) {
+      console.log('Sample entity:', { id: processedEntities[0].id, name: processedEntities[0].name, season: processedEntities[0].season, lineCount: processedEntities[0].invoices[0]?.lines.length });
+    }
+    console.log('=== END RESULTS ===');
 
     return {
       billingEntities: processedEntities,
