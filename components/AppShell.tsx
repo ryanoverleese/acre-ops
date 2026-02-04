@@ -49,6 +49,12 @@ const navSections: NavSection[] = [
       { name: 'Inventory', href: '/inventory', icon: 'package' },
     ],
   },
+  {
+    title: 'Admin',
+    items: [
+      { name: 'Settings', href: '/settings', icon: 'settings' },
+    ],
+  },
 ];
 
 const icons: Record<string, ReactNode> = {

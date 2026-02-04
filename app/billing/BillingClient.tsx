@@ -196,6 +196,47 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
     }
   };
 
+  const handleUpdateInvoiceDate = async (invoiceId: number, field: 'sent_at' | 'paid_at', value: string) => {
+    try {
+      const updateData: Record<string, unknown> = { [field]: value || null };
+
+      // Auto-update status based on dates
+      if (field === 'sent_at' && value) {
+        updateData.status = 'Sent';
+      }
+      if (field === 'paid_at' && value) {
+        updateData.status = 'Paid';
+      }
+
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updateData),
+      });
+
+      if (response.ok) {
+        // Update local state to avoid full reload
+        setBillingEntities(billingEntities.map((be) => ({
+          ...be,
+          invoices: be.invoices.map((inv) => {
+            if (inv.id === invoiceId) {
+              const updated = { ...inv, [field === 'sent_at' ? 'sentAt' : 'paidAt']: value || undefined };
+              if (field === 'sent_at' && value) updated.status = 'Sent';
+              if (field === 'paid_at' && value) updated.status = 'Paid';
+              return updated;
+            }
+            return inv;
+          }),
+        })));
+      } else {
+        alert('Failed to update date');
+      }
+    } catch (error) {
+      console.error('Error updating date:', error);
+      alert('Failed to update date');
+    }
+  };
+
   const handleExport = () => {
     // Generate CSV
     const headers = ['Billing Entity', 'Operation', 'Contact', 'Total Billed', 'Total Paid', 'Outstanding'];
@@ -526,8 +567,36 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
                               {inv.status}
                             </span>
                           </td>
-                          <td style={{ fontSize: '13px' }}>{formatDate(inv.sentAt)}</td>
-                          <td style={{ fontSize: '13px' }}>{formatDate(inv.paidAt)}</td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="date"
+                              value={inv.sentAt?.split('T')[0] || ''}
+                              onChange={(e) => handleUpdateInvoiceDate(inv.id, 'sent_at', e.target.value)}
+                              style={{
+                                padding: '4px 6px',
+                                fontSize: '12px',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                background: 'var(--bg-secondary)',
+                                width: '120px',
+                              }}
+                            />
+                          </td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="date"
+                              value={inv.paidAt?.split('T')[0] || ''}
+                              onChange={(e) => handleUpdateInvoiceDate(inv.id, 'paid_at', e.target.value)}
+                              style={{
+                                padding: '4px 6px',
+                                fontSize: '12px',
+                                border: '1px solid var(--border)',
+                                borderRadius: '4px',
+                                background: 'var(--bg-secondary)',
+                                width: '120px',
+                              }}
+                            />
+                          </td>
                           <td onClick={(e) => e.stopPropagation()}>
                             <div style={{ display: 'flex', gap: '4px' }}>
                               {inv.status.toLowerCase() !== 'paid' && (
