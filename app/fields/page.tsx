@@ -1,4 +1,4 @@
-import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts } from '@/lib/baserow';
+import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getServiceRates } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
 // Force dynamic rendering to always get fresh data
@@ -111,6 +111,13 @@ export interface ProbeOption {
   status: string;
 }
 
+export interface ServiceRateOption {
+  id: number;
+  serviceType: string;
+  rate: number;
+  dealerFee: number;
+}
+
 async function getFieldsData(): Promise<{
   fields: ProcessedField[];
   operations: OperationOption[];
@@ -118,9 +125,10 @@ async function getFieldsData(): Promise<{
   probes: ProbeOption[];
   availableSeasons: string[];
   probeAssignments: ProcessedProbeAssignment[];
+  serviceRates: ServiceRateOption[];
 }> {
   try {
-    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawServiceRates] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
@@ -128,6 +136,7 @@ async function getFieldsData(): Promise<{
       getBillingEntities(),
       getProbeAssignments(),
       getContacts(),
+      getServiceRates(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -385,6 +394,16 @@ async function getFieldsData(): Promise<{
       };
     });
 
+    // Process service rates - filter to active only
+    const serviceRates: ServiceRateOption[] = rawServiceRates
+      .filter((sr) => !sr.status || sr.status?.value === 'Active')
+      .map((sr) => ({
+        id: sr.id,
+        serviceType: sr.service_type || '',
+        rate: sr.rate || 0,
+        dealerFee: sr.dealer_fee || 0,
+      }));
+
     return {
       fields: processedFields,
       operations: operationOptions,
@@ -392,6 +411,7 @@ async function getFieldsData(): Promise<{
       probes: probeOptions,
       availableSeasons,
       probeAssignments,
+      serviceRates,
     };
   } catch (error) {
     console.error('Error fetching fields data:', error);
@@ -402,12 +422,13 @@ async function getFieldsData(): Promise<{
       probes: [],
       availableSeasons: [String(new Date().getFullYear())],
       probeAssignments: [],
+      serviceRates: [],
     };
   }
 }
 
 export default async function FieldsPage() {
-  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments } = await getFieldsData();
+  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments, serviceRates } = await getFieldsData();
 
   return (
     <FieldsClient
@@ -417,6 +438,7 @@ export default async function FieldsPage() {
       probes={probes}
       availableSeasons={availableSeasons}
       initialProbeAssignments={probeAssignments}
+      serviceRates={serviceRates}
     />
   );
 }

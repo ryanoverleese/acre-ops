@@ -14,6 +14,7 @@ export const TABLE_IDS = {
   invoices: 817303,
   invoice_lines: 817304,
   probe_assignments: 819350,
+  service_rates: 826849,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -295,6 +296,15 @@ export interface InvoiceLine {
   rate?: number;
 }
 
+export interface ServiceRate {
+  id: number;
+  service_type?: string;
+  rate?: number;
+  dealer_fee?: number;
+  description?: string;
+  status?: { id: number; value: string };
+}
+
 // Convenience functions for each table
 export const getContacts = (options?: FetchOptions) => getRows<Contact>('contacts', options);
 export const getOperations = (options?: FetchOptions) => getRows<Operation>('operations', options);
@@ -307,3 +317,4 @@ export const getWaterRecs = (options?: FetchOptions) => getRows<WaterRec>('water
 export const getInvoices = (options?: FetchOptions) => getRows<Invoice>('invoices', options);
 export const getInvoiceLines = (options?: FetchOptions) => getRows<InvoiceLine>('invoice_lines', options);
 export const getProbeAssignments = (options?: FetchOptions) => getRows<ProbeAssignment>('probe_assignments', options);
+export const getServiceRates = (options?: FetchOptions) => getRows<ServiceRate>('service_rates', options);

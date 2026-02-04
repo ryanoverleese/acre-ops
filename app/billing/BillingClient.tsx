@@ -2,20 +2,30 @@
 
 import { useState } from 'react';
 
+export interface InvoiceLine {
+  id: number;
+  fieldName: string;
+  serviceType: string;
+  rate: number;
+}
+
+export interface ProcessedInvoice {
+  id: number;
+  season: number;
+  amount: number;
+  status: string;
+  sentAt?: string;
+  paidAt?: string;
+  lines: InvoiceLine[];
+}
+
 export interface ProcessedBillingEntity {
   id: number;
   name: string;
   operation: string;
   invoiceContact: string;
   invoiceContactEmail?: string;
-  invoices: {
-    id: number;
-    season: number;
-    amount: number;
-    status: string;
-    sentAt?: string;
-    paidAt?: string;
-  }[];
+  invoices: ProcessedInvoice[];
   totalBilled: number;
   totalPaid: number;
 }
@@ -61,10 +71,23 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
   const [showAddModal, setShowAddModal] = useState(false);
   const [showInvoicesModal, setShowInvoicesModal] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<ProcessedBillingEntity | null>(null);
+  const [expandedInvoices, setExpandedInvoices] = useState<Set<number>>(new Set());
   const [addForm, setAddForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  const toggleInvoiceExpand = (invoiceId: number) => {
+    setExpandedInvoices(prev => {
+      const next = new Set(prev);
+      if (next.has(invoiceId)) {
+        next.delete(invoiceId);
+      } else {
+        next.add(invoiceId);
+      }
+      return next;
+    });
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -458,6 +481,7 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
                 <table style={{ width: '100%' }}>
                   <thead>
                     <tr>
+                      <th style={{ width: '30px' }}></th>
                       <th>Season</th>
                       <th>Amount</th>
                       <th>Status</th>
@@ -468,44 +492,96 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
                   </thead>
                   <tbody>
                     {selectedEntity.invoices.map((inv) => (
-                      <tr key={inv.id}>
-                        <td>{inv.season}</td>
-                        <td style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                          {formatCurrency(inv.amount)}
-                        </td>
-                        <td>
-                          <span className={`status-badge ${inv.status.toLowerCase() === 'paid' ? 'installed' : 'pending'}`}>
-                            <span className="status-dot"></span>
-                            {inv.status}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: '13px' }}>{formatDate(inv.sentAt)}</td>
-                        <td style={{ fontSize: '13px' }}>{formatDate(inv.paidAt)}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '4px' }}>
-                            {inv.status.toLowerCase() !== 'paid' && (
+                      <>
+                        <tr key={inv.id} style={{ cursor: inv.lines.length > 0 ? 'pointer' : 'default' }} onClick={() => inv.lines.length > 0 && toggleInvoiceExpand(inv.id)}>
+                          <td style={{ textAlign: 'center' }}>
+                            {inv.lines.length > 0 && (
+                              <svg
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                width="16"
+                                height="16"
+                                style={{
+                                  transform: expandedInvoices.has(inv.id) ? 'rotate(90deg)' : 'rotate(0deg)',
+                                  transition: 'transform 0.2s'
+                                }}
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            )}
+                          </td>
+                          <td>{inv.season}</td>
+                          <td style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                            {formatCurrency(inv.amount)}
+                            {inv.lines.length > 0 && (
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                                ({inv.lines.length} {inv.lines.length === 1 ? 'field' : 'fields'})
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={`status-badge ${inv.status.toLowerCase() === 'paid' ? 'installed' : 'pending'}`}>
+                              <span className="status-dot"></span>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '13px' }}>{formatDate(inv.sentAt)}</td>
+                          <td style={{ fontSize: '13px' }}>{formatDate(inv.paidAt)}</td>
+                          <td onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              {inv.status.toLowerCase() !== 'paid' && (
+                                <button
+                                  className="action-btn"
+                                  title="Mark Paid"
+                                  onClick={() => handleMarkPaid(inv.id)}
+                                >
+                                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </button>
+                              )}
                               <button
                                 className="action-btn"
-                                title="Mark Paid"
-                                onClick={() => handleMarkPaid(inv.id)}
+                                title="Delete"
+                                onClick={() => handleDeleteInvoice(inv.id)}
                               >
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                 </svg>
                               </button>
-                            )}
-                            <button
-                              className="action-btn"
-                              title="Delete"
-                              onClick={() => handleDeleteInvoice(inv.id)}
-                            >
-                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
+                            </div>
+                          </td>
+                        </tr>
+                        {expandedInvoices.has(inv.id) && inv.lines.length > 0 && (
+                          <tr key={`${inv.id}-lines`}>
+                            <td colSpan={7} style={{ padding: '0', backgroundColor: 'var(--bg-tertiary)' }}>
+                              <div style={{ padding: '12px 12px 12px 40px' }}>
+                                <table style={{ width: '100%', fontSize: '13px' }}>
+                                  <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                      <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>Field</th>
+                                      <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>Service Type</th>
+                                      <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 500 }}>Rate</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {inv.lines.map((line) => (
+                                      <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '6px 8px' }}>{line.fieldName}</td>
+                                        <td style={{ padding: '6px 8px', color: 'var(--text-muted)' }}>{line.serviceType || '—'}</td>
+                                        <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>
+                                          {formatCurrency(line.rate)}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>

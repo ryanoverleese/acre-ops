@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import EmptyState from '@/components/EmptyState';
-import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption } from './page';
+import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -24,6 +24,7 @@ interface FieldsClientProps {
   probes: ProbeOption[];
   availableSeasons: string[];
   initialProbeAssignments: ProcessedProbeAssignment[];
+  serviceRates: ServiceRateOption[];
 }
 
 // Inline editable cell component for seasonal data
@@ -263,6 +264,7 @@ const initialAddForm = {
   hybrid_variety: '',
   ready_to_remove: '',
   planting_date: '',
+  billing_rate: '',
 };
 
 // Column picker definitions for install planning table
@@ -295,6 +297,7 @@ export default function FieldsClient({
   probes,
   availableSeasons,
   initialProbeAssignments,
+  serviceRates,
 }: FieldsClientProps) {
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
@@ -348,6 +351,7 @@ export default function FieldsClient({
     route_order: '',
     planned_installer: '',
     ready_to_install: false,
+    billing_rate: '',
   });
   const [savingSeasonFields, setSavingSeasonFields] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
@@ -366,6 +370,7 @@ export default function FieldsClient({
     hybrid_variety: '',
     ready_to_remove: '',
     planting_date: '',
+    billing_rate: '',
   });
   const [savingSeason, setSavingSeason] = useState(false);
   // Removal logging
@@ -455,6 +460,23 @@ export default function FieldsClient({
     const combined = new Set([...availableSeasons, ...customYears]);
     return Array.from(combined).sort((a, b) => b.localeCompare(a));
   }, [availableSeasons, customYears]);
+
+  // Create service rate lookup map by service type name
+  const serviceRateMap = useMemo(() => {
+    const map = new Map<string, number>();
+    serviceRates.forEach((sr) => {
+      if (sr.serviceType) {
+        map.set(sr.serviceType, sr.rate);
+      }
+    });
+    return map;
+  }, [serviceRates]);
+
+  // Helper to get rate for a service type
+  const getRateForServiceType = useCallback((serviceType: string): string => {
+    const rate = serviceRateMap.get(serviceType);
+    return rate !== undefined ? rate.toString() : '';
+  }, [serviceRateMap]);
 
   // Filter fields by current season - only show fields that have actual season data
   const seasonFields = useMemo(() => {
@@ -757,6 +779,7 @@ export default function FieldsClient({
       route_order: field.routeOrder?.toString() || '',
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
+      billing_rate: getRateForServiceType(field.serviceType || ''),
     });
     // Auto-enter edit mode when in permanent data view
     setIsEditing(viewMode === 'permanent');
@@ -1002,8 +1025,29 @@ export default function FieldsClient({
         }),
       });
       if (response.ok) {
+        const result = await response.json();
+
+        // Create invoice line if billing_rate is provided
+        if (addSeasonForm.billing_rate && result.id && selectedField.billingEntityId) {
+          try {
+            await fetch('/api/billing/enroll', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                billing_entity_id: selectedField.billingEntityId,
+                season: addSeasonForm.season,
+                field_season_id: result.id,
+                service_type: addSeasonForm.service_type || '',
+                rate: addSeasonForm.billing_rate,
+              }),
+            });
+          } catch (billingError) {
+            console.error('Failed to create billing entry:', billingError);
+          }
+        }
+
         setShowAddSeasonModal(false);
-        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '', hybrid_variety: '', ready_to_remove: '', planting_date: '' });
+        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '', hybrid_variety: '', ready_to_remove: '', planting_date: '', billing_rate: '' });
         window.location.reload();
       } else {
         const error = await response.json();
@@ -1491,6 +1535,28 @@ export default function FieldsClient({
         }),
       });
       if (response.ok) {
+        const result = await response.json();
+
+        // Create invoice line if billing_rate is provided
+        if (addForm.billing_rate && result.fieldSeason?.id) {
+          try {
+            await fetch('/api/billing/enroll', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                billing_entity_id: parseInt(addForm.billing_entity, 10),
+                season: addForm.season,
+                field_season_id: result.fieldSeason.id,
+                service_type: addForm.service_type || '',
+                rate: addForm.billing_rate,
+              }),
+            });
+          } catch (billingError) {
+            console.error('Failed to create billing entry:', billingError);
+            // Don't fail the whole operation if billing fails
+          }
+        }
+
         setShowAddModal(false);
         setAddForm({ ...initialAddForm, season: currentSeason });
         window.location.reload();
@@ -2884,7 +2950,11 @@ export default function FieldsClient({
                     </div>
                     <div className="form-group">
                       <label>Service Type</label>
-                      <select value={seasonFieldsForm.service_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, service_type: e.target.value })}>
+                      <select value={seasonFieldsForm.service_type} onChange={(e) => {
+                        const serviceType = e.target.value;
+                        const rate = getRateForServiceType(serviceType);
+                        setSeasonFieldsForm({ ...seasonFieldsForm, service_type: serviceType, billing_rate: rate });
+                      }}>
                         <option value="">Select...</option>
                         <option value="CropX Complete DIY">CropX Complete DIY</option>
                         <option value="CropX DIY">CropX DIY</option>
@@ -2905,6 +2975,16 @@ export default function FieldsClient({
                         <option value="Overview Field">Overview Field</option>
                       </select>
                     </div>
+                    <div className="form-group">
+                      <label>Billing Rate ($)</label>
+                      <input
+                        type="number"
+                        value={seasonFieldsForm.billing_rate}
+                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, billing_rate: e.target.value })}
+                        placeholder="Auto-filled from service type"
+                        step="0.01"
+                      />
+                    </div>
                   </div>
                   <div className="form-row">
                     <div className="form-group">
@@ -2913,11 +2993,11 @@ export default function FieldsClient({
                         <option value="">Select...</option>
                         <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
                         <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                        <option value="6' CropX Antenna">6' CropX Antenna</option>
+                        <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
                         <option value="ASK">ASK</option>
-                        <option value="10' CropX Antenna">10' CropX Antenna</option>
+                        <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
                         <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                        <option value="10' Sentek Antenna">10' Sentek Antenna</option>
+                        <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
                       </select>
                     </div>
                     <div className="form-group">
@@ -3087,6 +3167,7 @@ export default function FieldsClient({
                     route_order: selectedField.routeOrder?.toString() || '',
                     planned_installer: selectedField.plannedInstaller || '',
                     ready_to_install: selectedField.readyToInstall || false,
+                    billing_rate: getRateForServiceType(selectedField.serviceType || ''),
                   });
                   setSelectedProbeId(selectedField.probeId?.toString() || '');
                   setSelectedProbe2Id(selectedField.probe2Id?.toString() || '');
@@ -3121,6 +3202,25 @@ export default function FieldsClient({
                       }),
                     });
                     if (response.ok) {
+                      // Create/update invoice line if billing_rate is provided
+                      if (seasonFieldsForm.billing_rate && selectedField.billingEntityId) {
+                        try {
+                          await fetch('/api/billing/enroll', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              billing_entity_id: selectedField.billingEntityId,
+                              season: selectedField.season,
+                              field_season_id: selectedField.fieldSeasonId,
+                              service_type: seasonFieldsForm.service_type || '',
+                              rate: seasonFieldsForm.billing_rate,
+                            }),
+                          });
+                        } catch (billingError) {
+                          console.error('Failed to update billing entry:', billingError);
+                        }
+                      }
+
                       setShowSeasonFieldsEdit(false);
                       window.location.reload();
                     } else {
@@ -3256,7 +3356,11 @@ export default function FieldsClient({
                   <div className="form-row">
                     <div className="form-group">
                       <label>Service Type</label>
-                      <select value={addForm.service_type} onChange={(e) => setAddForm({ ...addForm, service_type: e.target.value })}>
+                      <select value={addForm.service_type} onChange={(e) => {
+                        const serviceType = e.target.value;
+                        const rate = getRateForServiceType(serviceType);
+                        setAddForm({ ...addForm, service_type: serviceType, billing_rate: rate });
+                      }}>
                         <option value="">Select...</option>
                         <option value="CropX Complete DIY">CropX Complete DIY</option>
                         <option value="CropX DIY">CropX DIY</option>
@@ -3278,11 +3382,28 @@ export default function FieldsClient({
                       </select>
                     </div>
                     <div className="form-group">
+                      <label>Billing Rate ($)</label>
+                      <input
+                        type="number"
+                        value={addForm.billing_rate}
+                        onChange={(e) => setAddForm({ ...addForm, billing_rate: e.target.value })}
+                        placeholder="Auto-filled from service type"
+                        step="0.01"
+                      />
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
                       <label>Antenna Type</label>
                       <select value={addForm.antenna_type} onChange={(e) => setAddForm({ ...addForm, antenna_type: e.target.value })}>
                         <option value="">Select...</option>
-                        <option value="Short">Short</option>
-                        <option value="Tall">Tall</option>
+                        <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
+                        <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
+                        <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
+                        <option value="ASK">ASK</option>
+                        <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
+                        <option value="Stub CropX Antenna">Stub CropX Antenna</option>
+                        <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
                       </select>
                     </div>
                   </div>
@@ -3423,7 +3544,11 @@ export default function FieldsClient({
                   <div className="form-row">
                     <div className="form-group">
                       <label>Service Type</label>
-                      <select value={addSeasonForm.service_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, service_type: e.target.value })}>
+                      <select value={addSeasonForm.service_type} onChange={(e) => {
+                        const serviceType = e.target.value;
+                        const rate = getRateForServiceType(serviceType);
+                        setAddSeasonForm({ ...addSeasonForm, service_type: serviceType, billing_rate: rate });
+                      }}>
                         <option value="">Select...</option>
                         <option value="CropX Complete DIY">CropX Complete DIY</option>
                         <option value="CropX DIY">CropX DIY</option>
@@ -3445,15 +3570,30 @@ export default function FieldsClient({
                       </select>
                     </div>
                     <div className="form-group">
-                      <label>Antenna Type</label>
-                      <select value={addSeasonForm.antenna_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, antenna_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Short">Short</option>
-                        <option value="Tall">Tall</option>
-                      </select>
+                      <label>Billing Rate ($)</label>
+                      <input
+                        type="number"
+                        value={addSeasonForm.billing_rate}
+                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, billing_rate: e.target.value })}
+                        placeholder="Auto-filled from service type"
+                        step="0.01"
+                      />
                     </div>
                   </div>
                   <div className="form-row">
+                    <div className="form-group">
+                      <label>Antenna Type</label>
+                      <select value={addSeasonForm.antenna_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, antenna_type: e.target.value })}>
+                        <option value="">Select...</option>
+                        <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
+                        <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
+                        <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
+                        <option value="ASK">ASK</option>
+                        <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
+                        <option value="Stub CropX Antenna">Stub CropX Antenna</option>
+                        <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
+                      </select>
+                    </div>
                     <div className="form-group">
                       <label>Battery Type</label>
                       <select value={addSeasonForm.battery_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, battery_type: e.target.value })}>

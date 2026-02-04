@@ -1,13 +1,16 @@
-import { getBillingEntities, getInvoices, getOperations, getContacts } from '@/lib/baserow';
+import { getBillingEntities, getInvoices, getOperations, getContacts, getInvoiceLines, getFieldSeasons, getFields } from '@/lib/baserow';
 import BillingClient, { ProcessedBillingEntity } from './BillingClient';
 
 async function getBillingData(): Promise<ProcessedBillingEntity[]> {
   try {
-    const [billingEntities, invoices, operations, contacts] = await Promise.all([
+    const [billingEntities, invoices, operations, contacts, invoiceLines, fieldSeasons, fields] = await Promise.all([
       getBillingEntities(),
       getInvoices(),
       getOperations(),
       getContacts(),
+      getInvoiceLines(),
+      getFieldSeasons(),
+      getFields(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -38,6 +41,30 @@ async function getBillingData(): Promise<ProcessedBillingEntity[]> {
       });
     });
 
+    // Build map of field ID to field name
+    const fieldNameMap = new Map(fields.map((f) => [f.id, f.name]));
+
+    // Build map of field season ID to field name
+    const fieldSeasonToFieldName = new Map<number, string>();
+    fieldSeasons.forEach((fs) => {
+      const fieldId = fs.field?.[0]?.id;
+      if (fieldId) {
+        const fieldName = fieldNameMap.get(fieldId) || fs.field?.[0]?.value || 'Unknown';
+        fieldSeasonToFieldName.set(fs.id, fieldName);
+      }
+    });
+
+    // Group invoice lines by invoice ID
+    const linesByInvoice = new Map<number, typeof invoiceLines>();
+    invoiceLines.forEach((line) => {
+      const invoiceId = line.invoice?.[0]?.id;
+      if (invoiceId) {
+        const existing = linesByInvoice.get(invoiceId) || [];
+        existing.push(line);
+        linesByInvoice.set(invoiceId, existing);
+      }
+    });
+
     // Group invoices by billing entity
     const invoicesByBE = new Map<number, typeof invoices>();
     invoices.forEach((inv) => {
@@ -54,14 +81,29 @@ async function getBillingData(): Promise<ProcessedBillingEntity[]> {
       const linkedContacts = beToContacts.get(be.id) || [];
       const beInvoices = invoicesByBE.get(be.id) || [];
 
-      const processedInvoices = beInvoices.map((inv) => ({
-        id: inv.id,
-        season: inv.season || 2025,
-        amount: inv.amount || 0,
-        status: inv.status?.value || 'Draft',
-        sentAt: inv.sent_at,
-        paidAt: inv.paid_at,
-      }));
+      const processedInvoices = beInvoices.map((inv) => {
+        const lines = linesByInvoice.get(inv.id) || [];
+        const processedLines = lines.map((line) => {
+          const fieldSeasonId = line.field_season?.[0]?.id;
+          const fieldName = fieldSeasonId ? fieldSeasonToFieldName.get(fieldSeasonId) || 'Unknown' : 'Unknown';
+          return {
+            id: line.id,
+            fieldName,
+            serviceType: line.service_type || '',
+            rate: line.rate || 0,
+          };
+        });
+
+        return {
+          id: inv.id,
+          season: inv.season || 2025,
+          amount: inv.amount || 0,
+          status: inv.status?.value || 'Draft',
+          sentAt: inv.sent_at,
+          paidAt: inv.paid_at,
+          lines: processedLines,
+        };
+      });
 
       const totalBilled = processedInvoices.reduce((sum, inv) => sum + inv.amount, 0);
       const totalPaid = processedInvoices
