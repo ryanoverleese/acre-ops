@@ -318,7 +318,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: 600 }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>
                           {formatCurrency(total)}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
@@ -355,7 +355,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 <td style={{ padding: '10px 20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
                                   {line.serviceType || '—'}
                                 </td>
-                                <td style={{ padding: '10px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px' }}>
+                                <td style={{ padding: '10px 20px', textAlign: 'right', fontSize: '14px' }}>
                                   {formatCurrency(line.rate)}
                                 </td>
                               </tr>
@@ -365,7 +365,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                               <td colSpan={2} style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 500, fontSize: '13px' }}>
                                 Subtotal
                               </td>
-                              <td style={{ padding: '10px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px' }}>
+                              <td style={{ padding: '10px 20px', textAlign: 'right', fontSize: '14px' }}>
                                 {formatCurrency(subtotal)}
                               </td>
                             </tr>
@@ -375,7 +375,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 <td colSpan={2} style={{ padding: '10px 20px', textAlign: 'right', fontSize: '13px', color: 'var(--accent-green)' }}>
                                   Bulk Discount ({eligibleCount} fields × ${BULK_DISCOUNT_PER_FIELD})
                                 </td>
-                                <td style={{ padding: '10px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', color: 'var(--accent-green)' }}>
+                                <td style={{ padding: '10px 20px', textAlign: 'right', fontSize: '14px', color: 'var(--accent-green)' }}>
                                   -{formatCurrency(discount)}
                                 </td>
                               </tr>
@@ -385,7 +385,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                               <td colSpan={2} style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 600, fontSize: '14px' }}>
                                 Total
                               </td>
-                              <td style={{ padding: '12px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: 600 }}>
+                              <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: '16px', fontWeight: 600 }}>
                                 {formatCurrency(total)}
                               </td>
                             </tr>
