@@ -629,12 +629,16 @@ tbody tr:hover {
 .fields-container {
   display: flex;
   gap: 20px;
+}
+
+.fields-container.map-visible {
   height: calc(100vh - 280px);
   min-height: 400px;
 }
 
 .fields-container.map-visible .fields-list {
   width: 55%;
+  overflow-y: auto;
 }
 
 .fields-container.map-visible .fields-map {
