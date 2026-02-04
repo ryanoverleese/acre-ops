@@ -472,6 +472,14 @@ export default function FieldsClient({
     return map;
   }, [serviceRates]);
 
+  // Create service type options from service rates
+  const serviceTypeOptions = useMemo(() => {
+    return serviceRates
+      .filter((sr) => sr.serviceType)
+      .map((sr) => ({ value: sr.serviceType, label: sr.serviceType }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [serviceRates]);
+
   // Helper to get rate for a service type
   const getRateForServiceType = useCallback((serviceType: string): string => {
     const rate = serviceRateMap.get(serviceType);
@@ -1948,25 +1956,7 @@ export default function FieldsClient({
                                     field="serviceType"
                                     value={field.serviceType}
                                     type="select"
-                                    options={[
-                                      { value: 'CropX Complete DIY', label: 'CropX Complete DIY' },
-                                      { value: 'CropX DIY', label: 'CropX DIY' },
-                                      { value: 'CropX DIY 2x Field', label: 'CropX DIY 2x Field' },
-                                      { value: 'CropX DIY 2x Field Bulk', label: 'CropX DIY 2x Field Bulk' },
-                                      { value: 'CropX DIY Bulk', label: 'CropX DIY Bulk' },
-                                      { value: 'CropX DIY + $100 Roeder', label: 'CropX DIY + $100 Roeder' },
-                                      { value: 'CropX Regular', label: 'CropX Regular' },
-                                      { value: 'CropX Regular 2x Field', label: 'CropX Regular 2x Field' },
-                                      { value: 'CropX Regular 2x Field Bulk', label: 'CropX Regular 2x Field Bulk' },
-                                      { value: 'CropX Regular Bulk', label: 'CropX Regular Bulk' },
-                                      { value: 'CropX Regular Family Rate', label: 'CropX Regular Family Rate' },
-                                      { value: 'CropX Regular Olsen Rate', label: 'CropX Regular Olsen Rate' },
-                                      { value: 'CropX Regular Small Field', label: 'CropX Regular Small Field' },
-                                      { value: 'CropX Regular Dryland', label: 'CropX Regular Dryland' },
-                                      { value: 'IrriMax Live', label: 'IrriMax Live' },
-                                      { value: 'IrriMax Live – Ryan Cost', label: 'IrriMax Live – Ryan Cost' },
-                                      { value: 'Overview Field', label: 'Overview Field' },
-                                    ]}
+                                    options={serviceTypeOptions}
                                     onSave={handleInlineSave}
                                     savingFields={savingFields}
                                     savedFields={savedFields}
@@ -2985,23 +2975,9 @@ export default function FieldsClient({
                         setSeasonFieldsForm({ ...seasonFieldsForm, service_type: serviceType, billing_rate: rate });
                       }}>
                         <option value="">Select...</option>
-                        <option value="CropX Complete DIY">CropX Complete DIY</option>
-                        <option value="CropX DIY">CropX DIY</option>
-                        <option value="CropX DIY 2x Field">CropX DIY 2x Field</option>
-                        <option value="CropX DIY 2x Field Bulk">CropX DIY 2x Field Bulk</option>
-                        <option value="CropX DIY Bulk">CropX DIY Bulk</option>
-                        <option value="CropX DIY + $100 Roeder">CropX DIY + $100 Roeder</option>
-                        <option value="CropX Regular">CropX Regular</option>
-                        <option value="CropX Regular 2x Field">CropX Regular 2x Field</option>
-                        <option value="CropX Regular 2x Field Bulk">CropX Regular 2x Field Bulk</option>
-                        <option value="CropX Regular Bulk">CropX Regular Bulk</option>
-                        <option value="CropX Regular Family Rate">CropX Regular Family Rate</option>
-                        <option value="CropX Regular Olsen Rate">CropX Regular Olsen Rate</option>
-                        <option value="CropX Regular Small Field">CropX Regular Small Field</option>
-                        <option value="CropX Regular Dryland">CropX Regular Dryland</option>
-                        <option value="IrriMax Live">IrriMax Live</option>
-                        <option value="IrriMax Live – Ryan Cost">IrriMax Live – Ryan Cost</option>
-                        <option value="Overview Field">Overview Field</option>
+                        {serviceTypeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">
@@ -3391,23 +3367,9 @@ export default function FieldsClient({
                         setAddForm({ ...addForm, service_type: serviceType, billing_rate: rate });
                       }}>
                         <option value="">Select...</option>
-                        <option value="CropX Complete DIY">CropX Complete DIY</option>
-                        <option value="CropX DIY">CropX DIY</option>
-                        <option value="CropX DIY 2x Field">CropX DIY 2x Field</option>
-                        <option value="CropX DIY 2x Field Bulk">CropX DIY 2x Field Bulk</option>
-                        <option value="CropX DIY Bulk">CropX DIY Bulk</option>
-                        <option value="CropX DIY + $100 Roeder">CropX DIY + $100 Roeder</option>
-                        <option value="CropX Regular">CropX Regular</option>
-                        <option value="CropX Regular 2x Field">CropX Regular 2x Field</option>
-                        <option value="CropX Regular 2x Field Bulk">CropX Regular 2x Field Bulk</option>
-                        <option value="CropX Regular Bulk">CropX Regular Bulk</option>
-                        <option value="CropX Regular Family Rate">CropX Regular Family Rate</option>
-                        <option value="CropX Regular Olsen Rate">CropX Regular Olsen Rate</option>
-                        <option value="CropX Regular Small Field">CropX Regular Small Field</option>
-                        <option value="CropX Regular Dryland">CropX Regular Dryland</option>
-                        <option value="IrriMax Live">IrriMax Live</option>
-                        <option value="IrriMax Live – Ryan Cost">IrriMax Live – Ryan Cost</option>
-                        <option value="Overview Field">Overview Field</option>
+                        {serviceTypeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">
@@ -3579,23 +3541,9 @@ export default function FieldsClient({
                         setAddSeasonForm({ ...addSeasonForm, service_type: serviceType, billing_rate: rate });
                       }}>
                         <option value="">Select...</option>
-                        <option value="CropX Complete DIY">CropX Complete DIY</option>
-                        <option value="CropX DIY">CropX DIY</option>
-                        <option value="CropX DIY 2x Field">CropX DIY 2x Field</option>
-                        <option value="CropX DIY 2x Field Bulk">CropX DIY 2x Field Bulk</option>
-                        <option value="CropX DIY Bulk">CropX DIY Bulk</option>
-                        <option value="CropX DIY + $100 Roeder">CropX DIY + $100 Roeder</option>
-                        <option value="CropX Regular">CropX Regular</option>
-                        <option value="CropX Regular 2x Field">CropX Regular 2x Field</option>
-                        <option value="CropX Regular 2x Field Bulk">CropX Regular 2x Field Bulk</option>
-                        <option value="CropX Regular Bulk">CropX Regular Bulk</option>
-                        <option value="CropX Regular Family Rate">CropX Regular Family Rate</option>
-                        <option value="CropX Regular Olsen Rate">CropX Regular Olsen Rate</option>
-                        <option value="CropX Regular Small Field">CropX Regular Small Field</option>
-                        <option value="CropX Regular Dryland">CropX Regular Dryland</option>
-                        <option value="IrriMax Live">IrriMax Live</option>
-                        <option value="IrriMax Live – Ryan Cost">IrriMax Live – Ryan Cost</option>
-                        <option value="Overview Field">Overview Field</option>
+                        {serviceTypeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
                       </select>
                     </div>
                     <div className="form-group">
