@@ -16,6 +16,7 @@ export interface ProcessedOperation {
   linkedContacts: LinkedContact[];
   billingEntities: { id: number; name: string }[];
   fieldCount: number;
+  probeCount: number;
   notes?: string;
 }
 
@@ -85,6 +86,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
       switch (sortColumn) {
         case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
         case 'fields': aVal = a.fieldCount; bVal = b.fieldCount; break;
+        case 'probes': aVal = a.probeCount; bVal = b.probeCount; break;
         default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
       }
 
@@ -116,6 +118,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
           linkedContacts: [],
           billingEntities: [],
           fieldCount: 0,
+          probeCount: 0,
           notes: newOp.notes,
         }]);
         setShowAddModal(false);
@@ -349,6 +352,10 @@ export default function OperationsClient({ operations: initialOperations, allCon
                   Fields
                   {sortColumn === 'fields' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                 </th>
+                <th className="sortable" onClick={() => handleSort('probes')}>
+                  Probes
+                  {sortColumn === 'probes' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </th>
                 <th>Notes</th>
                 <th></th>
               </tr>
@@ -356,7 +363,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
             <tbody>
               {filteredOperations.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                     {searchQuery ? 'No matching operations found.' : 'No operations found.'}
                   </td>
                 </tr>
@@ -395,6 +402,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                       )}
                     </td>
                     <td className="field-count">{op.fieldCount}</td>
+                    <td className="field-count">{op.probeCount}</td>
                     <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
                       {op.notes || '—'}
                     </td>
@@ -426,7 +434,10 @@ export default function OperationsClient({ operations: initialOperations, allCon
                 <div key={op.id} className="mobile-card">
                   <div className="mobile-card-header">
                     <span className="mobile-card-title">{op.name}</span>
-                    <span className="status-badge in-stock">{op.fieldCount} fields</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <span className="status-badge in-stock">{op.fieldCount} fields</span>
+                      <span className="status-badge installed">{op.probeCount} probes</span>
+                    </div>
                   </div>
                   <div className="mobile-card-body">
                     {op.linkedContacts.length > 0 && (

@@ -1,4 +1,4 @@
-import { getOperations, getContacts, getBillingEntities, getFields } from '@/lib/baserow';
+import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/baserow';
 import OperationsClient, { ProcessedOperation, ContactOption, LinkedContact } from './OperationsClient';
 
 async function getOperationsData(): Promise<{
@@ -6,11 +6,12 @@ async function getOperationsData(): Promise<{
   allContacts: ContactOption[];
 }> {
   try {
-    const [operations, contacts, billingEntities, fields] = await Promise.all([
+    const [operations, contacts, billingEntities, fields, probes] = await Promise.all([
       getOperations(),
       getContacts(),
       getBillingEntities(),
       getFields(),
+      getProbes(),
     ]);
 
     // Build a map of billing entity ID to name
@@ -72,6 +73,20 @@ async function getOperationsData(): Promise<{
       }
     });
 
+    // Count probes per operation (probe -> billing_entity -> contact -> operation)
+    const operationProbeCount = new Map<number, number>();
+    probes.forEach((probe) => {
+      const beLink = probe.billing_entity?.[0];
+      if (beLink) {
+        const opIds = beToOperations.get(beLink.id);
+        if (opIds) {
+          opIds.forEach((opId) => {
+            operationProbeCount.set(opId, (operationProbeCount.get(opId) || 0) + 1);
+          });
+        }
+      }
+    });
+
     const allContacts: ContactOption[] = contacts.map((c) => ({
       id: c.id,
       name: c.name,
@@ -92,6 +107,7 @@ async function getOperationsData(): Promise<{
         linkedContacts: linkedContactsMap.get(op.id) || [],
         billingEntities: billingEntitiesForOp,
         fieldCount: operationFieldCount.get(op.id) || 0,
+        probeCount: operationProbeCount.get(op.id) || 0,
         notes: op.notes,
       };
     });
