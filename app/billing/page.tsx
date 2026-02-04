@@ -87,7 +87,8 @@ async function getBillingData(): Promise<BillingData> {
       const fieldName = fieldInfo?.name || fs.field?.[0]?.value || 'Unknown';
       const serviceType = fs.service_type?.value || '';
       const billingEntityId = fieldInfo?.billingEntityId;
-      const season = fs.season || new Date().getFullYear();
+      // Ensure season is a number (Baserow may return it as string)
+      const season = typeof fs.season === 'string' ? parseInt(fs.season, 10) : (fs.season || new Date().getFullYear());
 
       // Look up rate from service_rates table
       const rate = rateMap.get(serviceType.toLowerCase()) || 0;
@@ -109,7 +110,8 @@ async function getBillingData(): Promise<BillingData> {
     const invoicesByBEAndSeason = new Map<string, typeof invoices[0]>();
     invoices.forEach((inv) => {
       const beLink = inv.billing_entity?.[0];
-      const season = inv.season || new Date().getFullYear();
+      // Ensure season is a number (Baserow may return it as string)
+      const season = typeof inv.season === 'string' ? parseInt(inv.season, 10) : (inv.season || new Date().getFullYear());
       if (beLink) {
         const key = `${beLink.id}-${season}`;
         // Use first invoice if multiple exist
