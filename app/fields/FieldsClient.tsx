@@ -1127,7 +1127,36 @@ export default function FieldsClient({
         }),
       });
       if (response.ok) {
-        window.location.reload();
+        const newFieldSeason = await response.json();
+        // Update local state - find the field and add a new entry with the season
+        const existingField = fields.find(f => f.id === fieldId);
+        if (existingField) {
+          const newSeasonField: ProcessedField = {
+            ...existingField,
+            fieldSeasonId: newFieldSeason.id,
+            season: season,
+            crop: 'Unknown',
+            serviceType: '',
+            antennaType: '',
+            batteryType: '',
+            sideDress: '',
+            loggerId: '',
+            earlyRemoval: '',
+            hybridVariety: '',
+            readyToRemove: '',
+            plantingDate: '',
+            probe: null,
+            probeId: null,
+            probeStatus: 'Unassigned',
+            probe2: null,
+            probe2Id: null,
+            probe2Status: 'Unassigned',
+            routeOrder: undefined,
+            plannedInstaller: '',
+            readyToInstall: false,
+          };
+          setFields(prev => [...prev, newSeasonField]);
+        }
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to start season');
