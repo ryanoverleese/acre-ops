@@ -16,6 +16,7 @@ export interface ProcessedInvoice {
   status: string;
   sentAt?: string;
   paidAt?: string;
+  notes: string;
   lines: InvoiceLine[];
 }
 
@@ -34,15 +35,8 @@ interface BillingClientProps {
   billingEntities: ProcessedBillingEntity[];
 }
 
-const INVOICE_STATUS_OPTIONS = ['Draft', 'Sent', 'Paid', 'Overdue', 'Cancelled'];
-
-const initialForm = {
-  billing_entity: '',
-  season: new Date().getFullYear().toString(),
-  amount: '',
-  status: 'Draft',
-  notes: '',
-};
+const BULK_DISCOUNT_PER_FIELD = 25;
+const BULK_DISCOUNT_MIN_FIELDS = 10;
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -53,160 +47,46 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function formatDate(dateStr?: string): string {
-  if (!dateStr) return '—';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
-}
-
 export default function BillingClient({ billingEntities: initialEntities }: BillingClientProps) {
   const [billingEntities, setBillingEntities] = useState(initialEntities);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showInvoicesModal, setShowInvoicesModal] = useState(false);
-  const [selectedEntity, setSelectedEntity] = useState<ProcessedBillingEntity | null>(null);
-  const [expandedInvoices, setExpandedInvoices] = useState<Set<number>>(new Set());
-  const [addForm, setAddForm] = useState(initialForm);
+  const [expandedEntities, setExpandedEntities] = useState<Set<number>>(new Set(initialEntities.map(be => be.id)));
+  const [editingNotes, setEditingNotes] = useState<number | null>(null);
+  const [notesValue, setNotesValue] = useState('');
   const [saving, setSaving] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  const toggleInvoiceExpand = (invoiceId: number) => {
-    setExpandedInvoices(prev => {
+  const toggleExpand = (beId: number) => {
+    setExpandedEntities(prev => {
       const next = new Set(prev);
-      if (next.has(invoiceId)) {
-        next.delete(invoiceId);
+      if (next.has(beId)) {
+        next.delete(beId);
       } else {
-        next.add(invoiceId);
+        next.add(beId);
       }
       return next;
     });
   };
 
-  const handleSort = (column: string) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortColumn(column);
-      setSortDirection('asc');
-    }
-  };
+  // Calculate bulk discount for an invoice
+  const calculateBulkDiscount = (lines: InvoiceLine[]): { discount: number; eligibleCount: number } => {
+    // Count fields with "Bulk" in the service type
+    const bulkLines = lines.filter(line =>
+      line.serviceType.toLowerCase().includes('bulk')
+    );
 
-  const sortedEntities = [...billingEntities].sort((a, b) => {
-    let aVal: string | number = '';
-    let bVal: string | number = '';
-
-    switch (sortColumn) {
-      case 'name': aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase(); break;
-      case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
-      case 'totalBilled': aVal = a.totalBilled; bVal = b.totalBilled; break;
-      default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
-    }
-
-    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  const totalBilled = billingEntities.reduce((sum, be) => sum + be.totalBilled, 0);
-  const totalPaid = billingEntities.reduce((sum, be) => sum + be.totalPaid, 0);
-  const totalOutstanding = totalBilled - totalPaid;
-
-  const handleAddInvoice = async () => {
-    if (!addForm.billing_entity) {
-      alert('Billing entity is required');
-      return;
-    }
-    if (!addForm.amount) {
-      alert('Amount is required');
-      return;
-    }
-    setSaving(true);
-    try {
-      const payload: Record<string, unknown> = {
-        billing_entity: parseInt(addForm.billing_entity, 10),
-        season: parseInt(addForm.season, 10),
-        amount: parseFloat(addForm.amount),
-        status: addForm.status,
+    if (bulkLines.length >= BULK_DISCOUNT_MIN_FIELDS) {
+      return {
+        discount: bulkLines.length * BULK_DISCOUNT_PER_FIELD,
+        eligibleCount: bulkLines.length,
       };
-      if (addForm.notes) payload.notes = addForm.notes;
-
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (response.ok) {
-        setShowAddModal(false);
-        setAddForm(initialForm);
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to create invoice');
-      }
-    } catch (error) {
-      console.error('Create error:', error);
-      alert('Failed to create invoice');
-    } finally {
-      setSaving(false);
     }
-  };
-
-  const handleMarkPaid = async (invoiceId: number) => {
-    try {
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'Paid',
-          paid_at: new Date().toISOString().split('T')[0],
-        }),
-      });
-      if (response.ok) {
-        window.location.reload();
-      } else {
-        alert('Failed to mark as paid');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to mark as paid');
-    }
-  };
-
-  const handleDeleteInvoice = async (invoiceId: number) => {
-    if (!confirm('Delete this invoice?')) return;
-    try {
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
-        method: 'DELETE',
-      });
-      if (response.ok) {
-        window.location.reload();
-      } else {
-        alert('Failed to delete invoice');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Failed to delete invoice');
-    }
+    return { discount: 0, eligibleCount: 0 };
   };
 
   const handleUpdateInvoiceDate = async (invoiceId: number, field: 'sent_at' | 'paid_at', value: string) => {
     try {
       const updateData: Record<string, unknown> = { [field]: value || null };
-
-      // Auto-update status based on dates
-      if (field === 'sent_at' && value) {
-        updateData.status = 'Sent';
-      }
-      if (field === 'paid_at' && value) {
-        updateData.status = 'Paid';
-      }
+      if (field === 'sent_at' && value) updateData.status = 'Sent';
+      if (field === 'paid_at' && value) updateData.status = 'Paid';
 
       const response = await fetch(`/api/invoices/${invoiceId}`, {
         method: 'PATCH',
@@ -215,7 +95,6 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
       });
 
       if (response.ok) {
-        // Update local state to avoid full reload
         setBillingEntities(billingEntities.map((be) => ({
           ...be,
           invoices: be.invoices.map((inv) => {
@@ -237,17 +116,56 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
     }
   };
 
+  const handleSaveNotes = async (invoiceId: number) => {
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/invoices/${invoiceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: notesValue }),
+      });
+
+      if (response.ok) {
+        setBillingEntities(billingEntities.map((be) => ({
+          ...be,
+          invoices: be.invoices.map((inv) =>
+            inv.id === invoiceId ? { ...inv, notes: notesValue } : inv
+          ),
+        })));
+        setEditingNotes(null);
+      } else {
+        alert('Failed to save notes');
+      }
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      alert('Failed to save notes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleExport = () => {
-    // Generate CSV
-    const headers = ['Billing Entity', 'Operation', 'Contact', 'Total Billed', 'Total Paid', 'Outstanding'];
-    const rows = billingEntities.map((be) => [
-      be.name,
-      be.operation,
-      be.invoiceContact,
-      be.totalBilled,
-      be.totalPaid,
-      be.totalBilled - be.totalPaid,
-    ]);
+    const headers = ['Billing Entity', 'Operation', 'Field', 'Service Type', 'Rate', 'Discount', 'Total'];
+    const rows: (string | number)[][] = [];
+
+    billingEntities.forEach((be) => {
+      be.invoices.forEach((inv) => {
+        const { discount } = calculateBulkDiscount(inv.lines);
+        const subtotal = inv.lines.reduce((sum, line) => sum + line.rate, 0);
+
+        inv.lines.forEach((line, idx) => {
+          rows.push([
+            idx === 0 ? be.name : '',
+            idx === 0 ? be.operation : '',
+            line.fieldName,
+            line.serviceType,
+            line.rate,
+            idx === 0 ? discount : '',
+            idx === 0 ? subtotal - discount : '',
+          ]);
+        });
+      });
+    });
 
     const csv = [
       headers.join(','),
@@ -258,22 +176,37 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `billing-export-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `billing-2026-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const openInvoicesModal = (entity: ProcessedBillingEntity) => {
-    setSelectedEntity(entity);
-    setShowInvoicesModal(true);
-  };
+  // Calculate totals
+  const totalSubtotal = billingEntities.reduce((sum, be) =>
+    sum + be.invoices.reduce((invSum, inv) =>
+      invSum + inv.lines.reduce((lineSum, line) => lineSum + line.rate, 0), 0), 0);
+
+  const totalDiscount = billingEntities.reduce((sum, be) =>
+    sum + be.invoices.reduce((invSum, inv) =>
+      invSum + calculateBulkDiscount(inv.lines).discount, 0), 0);
+
+  const totalAfterDiscount = totalSubtotal - totalDiscount;
+
+  const totalPaid = billingEntities.reduce((sum, be) =>
+    sum + be.invoices
+      .filter(inv => inv.status.toLowerCase() === 'paid')
+      .reduce((invSum, inv) => {
+        const subtotal = inv.lines.reduce((s, l) => s + l.rate, 0);
+        const { discount } = calculateBulkDiscount(inv.lines);
+        return invSum + subtotal - discount;
+      }, 0), 0);
 
   return (
     <>
       <header className="header">
         <div className="header-left">
           <h2>Billing</h2>
-          <span className="season-badge">2025 Season</span>
+          <span className="season-badge">2026 Season</span>
         </div>
         <div className="header-right">
           <button className="btn btn-secondary" onClick={handleExport}>
@@ -282,396 +215,272 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
             </svg>
             Export
           </button>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Invoice
-          </button>
         </div>
       </header>
 
       <div className="content">
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '24px' }}>
           <div className="stat-card">
-            <div className="stat-label">Billing Entities</div>
+            <div className="stat-label">Active Entities</div>
             <div className="stat-value blue">{billingEntities.length}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Total Billed</div>
-            <div className="stat-value">{formatCurrency(totalBilled)}</div>
+            <div className="stat-label">Subtotal</div>
+            <div className="stat-value">{formatCurrency(totalSubtotal)}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Total Paid</div>
-            <div className="stat-value green">{formatCurrency(totalPaid)}</div>
+            <div className="stat-label">Bulk Discounts</div>
+            <div className="stat-value amber">-{formatCurrency(totalDiscount)}</div>
           </div>
           <div className="stat-card">
-            <div className="stat-label">Outstanding</div>
-            <div className="stat-value amber">{formatCurrency(totalOutstanding)}</div>
+            <div className="stat-label">Total / Paid</div>
+            <div className="stat-value green">{formatCurrency(totalAfterDiscount)} / {formatCurrency(totalPaid)}</div>
           </div>
         </div>
 
-        <div className="table-container">
-          <div className="table-header">
-            <h3 className="table-title">Billing Entities</h3>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th className="sortable" onClick={() => handleSort('name')}>
-                  Billing Entity
-                  {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                </th>
-                <th className="sortable" onClick={() => handleSort('operation')}>
-                  Operation
-                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                </th>
-                <th>Invoice Contact</th>
-                <th>Invoices</th>
-                <th className="sortable" onClick={() => handleSort('totalBilled')}>
-                  Total Billed
-                  {sortColumn === 'totalBilled' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                </th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortedEntities.length === 0 ? (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No billing entities found.
-                  </td>
-                </tr>
-              ) : (
-                sortedEntities.map((be) => {
-                  const paidCount = be.invoices.filter((i) => i.status.toLowerCase() === 'paid').length;
-                  const pendingCount = be.invoices.filter((i) => i.status.toLowerCase() !== 'paid').length;
-
-                  return (
-                    <tr key={be.id}>
-                      <td className="operation-name">{be.name}</td>
-                      <td style={{ fontSize: '13px' }}>{be.operation}</td>
-                      <td>
-                        <div>
-                          <div style={{ fontSize: '14px' }}>{be.invoiceContact}</div>
-                          {be.invoiceContactEmail && (
-                            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                              {be.invoiceContactEmail}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
-                            {be.invoices.length}
-                          </span>
-                          {paidCount > 0 && (
-                            <span className="status-badge installed" style={{ padding: '2px 6px', fontSize: '11px' }}>
-                              {paidCount} paid
-                            </span>
-                          )}
-                          {pendingCount > 0 && (
-                            <span className="status-badge pending" style={{ padding: '2px 6px', fontSize: '11px' }}>
-                              {pendingCount} pending
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '14px' }}>
-                        {formatCurrency(be.totalBilled)}
-                      </td>
-                      <td>
-                        {be.totalBilled === 0 ? (
-                          <span className="status-badge needs-probe">
-                            <span className="status-dot"></span>
-                            No invoices
-                          </span>
-                        ) : be.totalPaid >= be.totalBilled ? (
-                          <span className="status-badge installed">
-                            <span className="status-dot"></span>
-                            Paid
-                          </span>
-                        ) : be.totalPaid > 0 ? (
-                          <span className="status-badge pending">
-                            <span className="status-dot"></span>
-                            Partial
-                          </span>
-                        ) : (
-                          <span className="status-badge repair">
-                            <span className="status-dot"></span>
-                            Unpaid
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <button className="action-btn" title="View Invoices" onClick={() => openInvoicesModal(be)}>
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {showAddModal && (
-        <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
-            <div className="detail-panel-header">
-              <h3>New Invoice</h3>
-              <button className="close-btn" onClick={() => setShowAddModal(false)}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+        {billingEntities.length === 0 ? (
+          <div className="table-container">
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              No billing entities with 2026 field seasons found.
             </div>
-            <div className="detail-panel-content">
-              <div className="edit-form">
-                <div className="form-group">
-                  <label>Billing Entity *</label>
-                  <select
-                    value={addForm.billing_entity}
-                    onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {billingEntities.map((be) => {
+              const isExpanded = expandedEntities.has(be.id);
+              const invoice = be.invoices[0]; // Usually one invoice per entity per season
+              const lines = invoice?.lines || [];
+              const subtotal = lines.reduce((sum, line) => sum + line.rate, 0);
+              const { discount, eligibleCount } = calculateBulkDiscount(lines);
+              const total = subtotal - discount;
+
+              return (
+                <div key={be.id} className="table-container" style={{ overflow: 'hidden' }}>
+                  {/* Entity Header */}
+                  <div
+                    style={{
+                      padding: '16px 20px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      cursor: 'pointer',
+                      background: 'var(--bg-secondary)',
+                    }}
+                    onClick={() => toggleExpand(be.id)}
                   >
-                    <option value="">Select billing entity...</option>
-                    {billingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>
-                        {be.name} ({be.operation})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Season</label>
-                    <select
-                      value={addForm.season}
-                      onChange={(e) => setAddForm({ ...addForm, season: e.target.value })}
-                    >
-                      <option value="2024">2024</option>
-                      <option value="2025">2025</option>
-                      <option value="2026">2026</option>
-                    </select>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <svg
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        style={{
+                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '15px' }}>{be.name}</div>
+                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{be.operation}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: 600 }}>
+                          {formatCurrency(total)}
+                        </div>
+                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {lines.length} {lines.length === 1 ? 'field' : 'fields'}
+                          {discount > 0 && ` • -${formatCurrency(discount)} bulk`}
+                        </div>
+                      </div>
+                      {invoice && (
+                        <span className={`status-badge ${invoice.status.toLowerCase() === 'paid' ? 'installed' : invoice.status.toLowerCase() === 'sent' ? 'pending' : 'needs-probe'}`}>
+                          <span className="status-dot"></span>
+                          {invoice.status}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Amount *</label>
-                    <input
-                      type="number"
-                      value={addForm.amount}
-                      onChange={(e) => setAddForm({ ...addForm, amount: e.target.value })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label>Status</label>
-                  <select
-                    value={addForm.status}
-                    onChange={(e) => setAddForm({ ...addForm, status: e.target.value })}
-                  >
-                    {INVOICE_STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Notes</label>
-                  <textarea
-                    value={addForm.notes}
-                    onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })}
-                    placeholder="Enter notes..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="detail-panel-footer">
-              <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleAddInvoice} disabled={saving}>
-                {saving ? 'Creating...' : 'Create Invoice'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {showInvoicesModal && selectedEntity && (
-        <div className="detail-panel-overlay" onClick={() => setShowInvoicesModal(false)}>
-          <div className="detail-panel" style={{ width: '600px' }} onClick={(e) => e.stopPropagation()}>
-            <div className="detail-panel-header">
-              <h3>Invoices - {selectedEntity.name}</h3>
-              <button className="close-btn" onClick={() => setShowInvoicesModal(false)}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="detail-panel-content">
-              {selectedEntity.invoices.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
-                  No invoices for this billing entity.
-                </p>
-              ) : (
-                <table style={{ width: '100%' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '30px' }}></th>
-                      <th>Season</th>
-                      <th>Amount</th>
-                      <th>Status</th>
-                      <th>Sent</th>
-                      <th>Paid</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedEntity.invoices.map((inv) => (
-                      <>
-                        <tr key={inv.id} style={{ cursor: inv.lines.length > 0 ? 'pointer' : 'default' }} onClick={() => inv.lines.length > 0 && toggleInvoiceExpand(inv.id)}>
-                          <td style={{ textAlign: 'center' }}>
-                            {inv.lines.length > 0 && (
-                              <svg
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                                width="16"
-                                height="16"
+                  {/* Expanded Content */}
+                  {isExpanded && (
+                    <div style={{ borderTop: '1px solid var(--border)' }}>
+                      {/* Line Items */}
+                      {lines.length > 0 ? (
+                        <table style={{ width: '100%' }}>
+                          <thead>
+                            <tr style={{ background: 'var(--bg-tertiary)' }}>
+                              <th style={{ padding: '10px 20px', textAlign: 'left', fontWeight: 500, fontSize: '13px' }}>Field</th>
+                              <th style={{ padding: '10px 20px', textAlign: 'left', fontWeight: 500, fontSize: '13px' }}>Service Type</th>
+                              <th style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 500, fontSize: '13px' }}>Rate</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {lines.map((line) => (
+                              <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                <td style={{ padding: '10px 20px', fontSize: '14px' }}>{line.fieldName}</td>
+                                <td style={{ padding: '10px 20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
+                                  {line.serviceType || '—'}
+                                </td>
+                                <td style={{ padding: '10px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px' }}>
+                                  {formatCurrency(line.rate)}
+                                </td>
+                              </tr>
+                            ))}
+                            {/* Subtotal row */}
+                            <tr style={{ background: 'var(--bg-tertiary)' }}>
+                              <td colSpan={2} style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 500, fontSize: '13px' }}>
+                                Subtotal
+                              </td>
+                              <td style={{ padding: '10px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px' }}>
+                                {formatCurrency(subtotal)}
+                              </td>
+                            </tr>
+                            {/* Discount row (if applicable) */}
+                            {discount > 0 && (
+                              <tr style={{ background: 'var(--bg-tertiary)' }}>
+                                <td colSpan={2} style={{ padding: '10px 20px', textAlign: 'right', fontSize: '13px', color: 'var(--accent-green)' }}>
+                                  Bulk Discount ({eligibleCount} fields × ${BULK_DISCOUNT_PER_FIELD})
+                                </td>
+                                <td style={{ padding: '10px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '14px', color: 'var(--accent-green)' }}>
+                                  -{formatCurrency(discount)}
+                                </td>
+                              </tr>
+                            )}
+                            {/* Total row */}
+                            <tr style={{ background: 'var(--bg-secondary)' }}>
+                              <td colSpan={2} style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 600, fontSize: '14px' }}>
+                                Total
+                              </td>
+                              <td style={{ padding: '12px 20px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", fontSize: '16px', fontWeight: 600 }}>
+                                {formatCurrency(total)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          No line items yet. Enroll fields to add billing items.
+                        </div>
+                      )}
+
+                      {/* Footer: Notes + Dates */}
+                      {invoice && (
+                        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
+                          {/* Notes */}
+                          <div style={{ flex: '1 1 300px' }}>
+                            <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                              Notes
+                            </label>
+                            {editingNotes === invoice.id ? (
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <textarea
+                                  value={notesValue}
+                                  onChange={(e) => setNotesValue(e.target.value)}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px',
+                                    fontSize: '13px',
+                                    border: '1px solid var(--border)',
+                                    borderRadius: '4px',
+                                    background: 'var(--bg-secondary)',
+                                    resize: 'vertical',
+                                    minHeight: '60px',
+                                  }}
+                                  placeholder="Add notes..."
+                                />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <button
+                                    className="btn btn-primary"
+                                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                                    onClick={() => handleSaveNotes(invoice.id)}
+                                    disabled={saving}
+                                  >
+                                    {saving ? '...' : 'Save'}
+                                  </button>
+                                  <button
+                                    className="btn btn-secondary"
+                                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                                    onClick={() => setEditingNotes(null)}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() => {
+                                  setEditingNotes(invoice.id);
+                                  setNotesValue(invoice.notes || '');
+                                }}
                                 style={{
-                                  transform: expandedInvoices.has(inv.id) ? 'rotate(90deg)' : 'rotate(0deg)',
-                                  transition: 'transform 0.2s'
+                                  padding: '8px',
+                                  fontSize: '13px',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '4px',
+                                  background: 'var(--bg-secondary)',
+                                  minHeight: '40px',
+                                  cursor: 'pointer',
+                                  color: invoice.notes ? 'var(--text-primary)' : 'var(--text-muted)',
                                 }}
                               >
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            )}
-                          </td>
-                          <td>{inv.season}</td>
-                          <td style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                            {formatCurrency(inv.amount)}
-                            {inv.lines.length > 0 && (
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: '4px' }}>
-                                ({inv.lines.length} {inv.lines.length === 1 ? 'field' : 'fields'})
-                              </span>
-                            )}
-                          </td>
-                          <td>
-                            <span className={`status-badge ${inv.status.toLowerCase() === 'paid' ? 'installed' : 'pending'}`}>
-                              <span className="status-dot"></span>
-                              {inv.status}
-                            </span>
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="date"
-                              value={inv.sentAt?.split('T')[0] || ''}
-                              onChange={(e) => handleUpdateInvoiceDate(inv.id, 'sent_at', e.target.value)}
-                              style={{
-                                padding: '4px 6px',
-                                fontSize: '12px',
-                                border: '1px solid var(--border)',
-                                borderRadius: '4px',
-                                background: 'var(--bg-secondary)',
-                                width: '120px',
-                              }}
-                            />
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="date"
-                              value={inv.paidAt?.split('T')[0] || ''}
-                              onChange={(e) => handleUpdateInvoiceDate(inv.id, 'paid_at', e.target.value)}
-                              style={{
-                                padding: '4px 6px',
-                                fontSize: '12px',
-                                border: '1px solid var(--border)',
-                                borderRadius: '4px',
-                                background: 'var(--bg-secondary)',
-                                width: '120px',
-                              }}
-                            />
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                              {inv.status.toLowerCase() !== 'paid' && (
-                                <button
-                                  className="action-btn"
-                                  title="Mark Paid"
-                                  onClick={() => handleMarkPaid(inv.id)}
-                                >
-                                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                  </svg>
-                                </button>
-                              )}
-                              <button
-                                className="action-btn"
-                                title="Delete"
-                                onClick={() => handleDeleteInvoice(inv.id)}
-                              >
-                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                        {expandedInvoices.has(inv.id) && inv.lines.length > 0 && (
-                          <tr key={`${inv.id}-lines`}>
-                            <td colSpan={7} style={{ padding: '0', backgroundColor: 'var(--bg-tertiary)' }}>
-                              <div style={{ padding: '12px 12px 12px 40px' }}>
-                                <table style={{ width: '100%', fontSize: '13px' }}>
-                                  <thead>
-                                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                                      <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>Field</th>
-                                      <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>Service Type</th>
-                                      <th style={{ textAlign: 'right', padding: '4px 8px', fontWeight: 500 }}>Rate</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {inv.lines.map((line) => (
-                                      <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '6px 8px' }}>{line.fieldName}</td>
-                                        <td style={{ padding: '6px 8px', color: 'var(--text-muted)' }}>{line.serviceType || '—'}</td>
-                                        <td style={{ padding: '6px 8px', textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>
-                                          {formatCurrency(line.rate)}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                {invoice.notes || 'Click to add notes...'}
                               </div>
-                            </td>
-                          </tr>
-                        )}
-                      </>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-            <div className="detail-panel-footer">
-              <button className="btn btn-secondary" onClick={() => setShowInvoicesModal(false)}>Close</button>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  setShowInvoicesModal(false);
-                  setAddForm({ ...initialForm, billing_entity: selectedEntity.id.toString() });
-                  setShowAddModal(true);
-                }}
-              >
-                Add Invoice
-              </button>
-            </div>
+                            )}
+                          </div>
+
+                          {/* Dates */}
+                          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                            <div>
+                              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                                Sent Date
+                              </label>
+                              <input
+                                type="date"
+                                value={invoice.sentAt?.split('T')[0] || ''}
+                                onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'sent_at', e.target.value)}
+                                style={{
+                                  padding: '8px',
+                                  fontSize: '13px',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '4px',
+                                  background: 'var(--bg-secondary)',
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                                Paid Date
+                              </label>
+                              <input
+                                type="date"
+                                value={invoice.paidAt?.split('T')[0] || ''}
+                                onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'paid_at', e.target.value)}
+                                style={{
+                                  padding: '8px',
+                                  fontSize: '13px',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '4px',
+                                  background: 'var(--bg-secondary)',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }
