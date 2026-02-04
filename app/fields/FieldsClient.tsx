@@ -368,7 +368,7 @@ export default function FieldsClient({
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ ...initialAddForm, season: currentSeason });
-  const [sortColumn, setSortColumn] = useState<string>('name');
+  const [sortColumn, setSortColumn] = useState<string>('field');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showProbeAssign, setShowProbeAssign] = useState(false);
   const [selectedProbeId, setSelectedProbeId] = useState<string>('');
@@ -637,15 +637,33 @@ export default function FieldsClient({
 
     // Sort
     filtered = [...filtered].sort((a, b) => {
-      let aVal: string | number = '';
-      let bVal: string | number = '';
+      let aVal: string | number | boolean = '';
+      let bVal: string | number | boolean = '';
 
       switch (sortColumn) {
-        case 'name': aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase(); break;
+        case 'field': aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase(); break;
         case 'operation': aVal = (a.operation || '').toLowerCase(); bVal = (b.operation || '').toLowerCase(); break;
-        case 'acres': aVal = a.acres || 0; bVal = b.acres || 0; break;
+        case 'billingEntity': aVal = (a.billingEntityName || '').toLowerCase(); bVal = (b.billingEntityName || '').toLowerCase(); break;
         case 'crop': aVal = (a.crop || '').toLowerCase(); bVal = (b.crop || '').toLowerCase(); break;
-        case 'status': aVal = (a.probeStatus || '').toLowerCase(); bVal = (b.probeStatus || '').toLowerCase(); break;
+        case 'cropConfirmed': aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase(); break; // Checkbox column - fallback to name
+        case 'service': aVal = (a.serviceType || '').toLowerCase(); bVal = (b.serviceType || '').toLowerCase(); break;
+        case 'hybrid': aVal = (a.hybridVariety || '').toLowerCase(); bVal = (b.hybridVariety || '').toLowerCase(); break;
+        case 'antenna': aVal = (a.antennaType || '').toLowerCase(); bVal = (b.antennaType || '').toLowerCase(); break;
+        case 'battery': aVal = (a.batteryType || '').toLowerCase(); bVal = (b.batteryType || '').toLowerCase(); break;
+        case 'sideDress': aVal = (a.sideDress || '').toLowerCase(); bVal = (b.sideDress || '').toLowerCase(); break;
+        case 'loggerId': aVal = (a.loggerId || '').toLowerCase(); bVal = (b.loggerId || '').toLowerCase(); break;
+        case 'probes': aVal = (a.probe || '').toLowerCase(); bVal = (b.probe || '').toLowerCase(); break;
+        case 'routeOrder': aVal = a.routeOrder || 999; bVal = b.routeOrder || 999; break;
+        case 'plannedInstaller': aVal = (a.plannedInstaller || '').toLowerCase(); bVal = (b.plannedInstaller || '').toLowerCase(); break;
+        case 'readyToInstall': aVal = a.readyToInstall ? 1 : 0; bVal = b.readyToInstall ? 1 : 0; break;
+        case 'probeStatus': aVal = (a.probeStatus || '').toLowerCase(); bVal = (b.probeStatus || '').toLowerCase(); break;
+        case 'installDate': aVal = a.installDate || ''; bVal = b.installDate || ''; break;
+        case 'installer': aVal = (a.installer || '').toLowerCase(); bVal = (b.installer || '').toLowerCase(); break;
+        case 'approvalStatus': aVal = (a.approvalStatus || '').toLowerCase(); bVal = (b.approvalStatus || '').toLowerCase(); break;
+        case 'removalDate': aVal = a.removalDate || ''; bVal = b.removalDate || ''; break;
+        case 'removalNotes': aVal = (a.removalNotes || '').toLowerCase(); bVal = (b.removalNotes || '').toLowerCase(); break;
+        case 'readyToRemove': aVal = (a.readyToRemove || '').toLowerCase(); bVal = (b.readyToRemove || '').toLowerCase(); break;
+        case 'earlyRemoval': aVal = (a.earlyRemoval || '').toLowerCase(); bVal = (b.earlyRemoval || '').toLowerCase(); break;
         default: aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase();
       }
 
@@ -1910,9 +1928,20 @@ export default function FieldsClient({
                               approvalStatus: '100px', removalDate: '100px', removalNotes: '150px',
                               readyToRemove: '60px', earlyRemoval: '60px',
                             };
+                            const isSorted = sortColumn === colKey;
                             return (
-                              <th key={colKey} style={{ minWidth: minWidths[colKey] || '80px' }}>
+                              <th
+                                key={colKey}
+                                className="sortable"
+                                style={{ minWidth: minWidths[colKey] || '80px', cursor: 'pointer' }}
+                                onClick={() => handleSort(colKey)}
+                              >
                                 {colDef.label}
+                                {isSorted && (
+                                  <span className="sort-indicator">
+                                    {sortDirection === 'asc' ? ' ▲' : ' ▼'}
+                                  </span>
+                                )}
                               </th>
                             );
                           })}

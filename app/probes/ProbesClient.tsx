@@ -270,18 +270,45 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     return rackDisplayItems.filter(item => item.type === 'empty').length;
   }, [rackDisplayItems]);
 
+  // Ref for desktop table
+  const desktopTableRef = useRef<HTMLTableElement>(null);
+
   // Scroll to a specific rack number
   const scrollToRack = useCallback((rackNum: number) => {
-    if (!mobileCardsRef.current) return;
-    const cards = mobileCardsRef.current.querySelectorAll('.mobile-card');
-    for (const card of cards) {
-      const titleEl = card.querySelector('.mobile-card-title');
-      if (titleEl) {
-        const rackText = titleEl.textContent || '';
-        const cardRackNum = parseInt(rackText);
-        if (cardRackNum === rackNum) {
-          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          break;
+    // Check if we're on mobile (mobile cards visible) or desktop (table visible)
+    const isMobileVisible = mobileCardsRef.current &&
+      window.getComputedStyle(mobileCardsRef.current).display !== 'none';
+
+    if (isMobileVisible && mobileCardsRef.current) {
+      // Mobile: scroll to mobile card
+      const cards = mobileCardsRef.current.querySelectorAll('.mobile-card');
+      for (const card of cards) {
+        const titleEl = card.querySelector('.mobile-card-title');
+        if (titleEl) {
+          const rackText = titleEl.textContent || '';
+          const cardRackNum = parseInt(rackText);
+          if (cardRackNum === rackNum) {
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            break;
+          }
+        }
+      }
+    } else if (desktopTableRef.current) {
+      // Desktop: scroll to table row
+      const rows = desktopTableRef.current.querySelectorAll('tbody tr');
+      for (const row of rows) {
+        // Rack Location is the 5th column (index 4)
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+          const rackText = cells[4].textContent || '';
+          const rowRackNum = parseInt(rackText);
+          if (rowRackNum === rackNum) {
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Highlight the row briefly
+            row.classList.add('highlight-row');
+            setTimeout(() => row.classList.remove('highlight-row'), 1500);
+            break;
+          }
         }
       }
     }
@@ -503,7 +530,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         {/* Filter Row */}
         <div className="fields-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <div className="view-mode-toggle">
+            <div className="fields-tabs">
               <button
                 onClick={() => setViewMode('all')}
                 className={viewMode === 'all' ? 'active' : ''}
@@ -579,7 +606,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         </div>
 
         <div className="table-container">
-          <table className="desktop-table">
+          <table className="desktop-table" ref={desktopTableRef}>
             <thead>
               <tr>
                 <th className="sortable" onClick={() => handleSort('serialNumber')}>

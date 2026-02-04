@@ -1513,6 +1513,19 @@ tr.selected {
   width: 100%;
 }
 
+.desktop-table tr.highlight-row {
+  animation: rowHighlight 1.5s ease-out;
+}
+
+@keyframes rowHighlight {
+  0% {
+    background-color: var(--accent-green-dim);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 @media (max-width: 768px) {
   .desktop-table {
     display: none;
