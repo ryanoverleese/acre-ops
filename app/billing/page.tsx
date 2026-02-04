@@ -1,4 +1,4 @@
-import { getBillingEntities, getInvoices, getOperations, getContacts, getInvoiceLines, getFieldSeasons, getFields } from '@/lib/baserow';
+import { getBillingEntities, getInvoices, getOperations, getContacts, getFieldSeasons, getFields, getServiceRates } from '@/lib/baserow';
 import BillingClient, { ProcessedBillingEntity } from './BillingClient';
 
 interface BillingData {
@@ -8,17 +8,20 @@ interface BillingData {
 
 async function getBillingData(): Promise<BillingData> {
   try {
-    const [billingEntities, invoices, operations, contacts, invoiceLines, fieldSeasons, fields] = await Promise.all([
+    const [billingEntities, invoices, operations, contacts, fieldSeasons, fields, serviceRates] = await Promise.all([
       getBillingEntities(),
       getInvoices(),
       getOperations(),
       getContacts(),
-      getInvoiceLines(),
       getFieldSeasons(),
       getFields(),
+      getServiceRates(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+
+    // Build service rate lookup by service type name
+    const rateMap = new Map(serviceRates.map((sr) => [sr.service_type?.toLowerCase(), sr.rate || 0]));
 
     // Build maps from contacts: billing entity -> operations and billing entity -> contacts
     const beToOperations = new Map<number, string[]>();
@@ -47,11 +50,9 @@ async function getBillingData(): Promise<BillingData> {
     // Build map of field ID to field details (including billing entity)
     const fieldMap = new Map(fields.map((f) => [f.id, { name: f.name, billingEntityId: f.billing_entity?.[0]?.id }]));
 
-    // Build map of field season to details (field name, service type, billing entity, season)
-    const fieldSeasonMap = new Map<number, { fieldName: string; serviceType: string; billingEntityId?: number; season: number }>();
-
-    // Track which billing entities have field seasons for each year
-    const beSeasonMap = new Map<number, Set<number>>(); // beId -> Set of seasons
+    // Track field seasons grouped by billing entity and season
+    // Key: "beId-season", Value: array of line items (field name, service type, rate)
+    const beSeasonLines = new Map<string, { fieldSeasonId: number; fieldName: string; serviceType: string; rate: number }[]>();
     const allSeasons = new Set<number>();
 
     fieldSeasons.forEach((fs) => {
@@ -62,96 +63,81 @@ async function getBillingData(): Promise<BillingData> {
       const billingEntityId = fieldInfo?.billingEntityId;
       const season = fs.season || new Date().getFullYear();
 
-      fieldSeasonMap.set(fs.id, { fieldName, serviceType, billingEntityId, season });
+      // Look up rate from service_rates table
+      const rate = rateMap.get(serviceType.toLowerCase()) || 0;
 
       if (season) {
         allSeasons.add(season);
       }
 
-      // Track billing entities with field seasons
+      // Group by billing entity and season
       if (billingEntityId && season) {
-        if (!beSeasonMap.has(billingEntityId)) {
-          beSeasonMap.set(billingEntityId, new Set());
-        }
-        beSeasonMap.get(billingEntityId)!.add(season);
+        const key = `${billingEntityId}-${season}`;
+        const existing = beSeasonLines.get(key) || [];
+        existing.push({ fieldSeasonId: fs.id, fieldName, serviceType, rate });
+        beSeasonLines.set(key, existing);
       }
     });
 
-    // Group invoice lines by invoice ID
-    const linesByInvoice = new Map<number, typeof invoiceLines>();
-    invoiceLines.forEach((line) => {
-      const invoiceId = line.invoice?.[0]?.id;
-      if (invoiceId) {
-        const existing = linesByInvoice.get(invoiceId) || [];
-        existing.push(line);
-        linesByInvoice.set(invoiceId, existing);
-      }
-    });
-
-    // Group invoices by billing entity and season
-    const invoicesByBEAndSeason = new Map<string, typeof invoices>();
+    // Also track invoices by billing entity and season for status/notes
+    const invoicesByBEAndSeason = new Map<string, typeof invoices[0]>();
     invoices.forEach((inv) => {
       const beLink = inv.billing_entity?.[0];
       const season = inv.season || new Date().getFullYear();
       if (beLink) {
         const key = `${beLink.id}-${season}`;
-        const existing = invoicesByBEAndSeason.get(key) || [];
-        existing.push(inv);
-        invoicesByBEAndSeason.set(key, existing);
-
-        // Also track this season
+        // Use first invoice if multiple exist
+        if (!invoicesByBEAndSeason.has(key)) {
+          invoicesByBEAndSeason.set(key, inv);
+        }
         allSeasons.add(season);
       }
     });
 
-    // Process all billing entities with their invoices for each season they have data
+    // Process billing entities that have field seasons
     const processedEntities: ProcessedBillingEntity[] = [];
 
     billingEntities.forEach((be) => {
       const opNames = beToOperations.get(be.id) || [];
       const linkedContacts = beToContacts.get(be.id) || [];
-      const beSeasonsSet = beSeasonMap.get(be.id) || new Set();
 
-      // Also check for invoices without field seasons
-      invoices.forEach((inv) => {
-        if (inv.billing_entity?.[0]?.id === be.id && inv.season) {
-          beSeasonsSet.add(inv.season);
+      // Find all seasons this billing entity has field seasons for
+      const beSeasonsSet = new Set<number>();
+      beSeasonLines.forEach((_, key) => {
+        const [beIdStr, seasonStr] = key.split('-');
+        if (parseInt(beIdStr) === be.id) {
+          beSeasonsSet.add(parseInt(seasonStr));
         }
       });
 
-      // Create an entry for each season this billing entity has data
+      // Create an entry for each season this billing entity has field seasons
       beSeasonsSet.forEach((season) => {
-        const beInvoices = invoicesByBEAndSeason.get(`${be.id}-${season}`) || [];
+        const key = `${be.id}-${season}`;
+        const lines = beSeasonLines.get(key) || [];
+        const invoice = invoicesByBEAndSeason.get(key);
 
-        const processedInvoices = beInvoices.map((inv) => {
-          const lines = linesByInvoice.get(inv.id) || [];
-          const processedLines = lines.map((line) => {
-            const fieldSeasonId = line.field_season?.[0]?.id;
-            const fsInfo = fieldSeasonId ? fieldSeasonMap.get(fieldSeasonId) : null;
-            return {
-              id: line.id,
-              fieldName: fsInfo?.fieldName || 'Unknown',
-              serviceType: line.service_type || fsInfo?.serviceType || '',
-              rate: line.rate || 0,
-            };
-          });
+        // Calculate totals from lines
+        const subtotal = lines.reduce((sum, line) => sum + line.rate, 0);
 
-          return {
-            id: inv.id,
-            season: inv.season || season,
-            amount: inv.amount || 0,
-            status: inv.status?.value || 'Draft',
-            sentAt: inv.sent_at,
-            paidAt: inv.paid_at,
-            notes: inv.notes || '',
-            lines: processedLines,
-          };
-        });
+        // Create processed invoice structure
+        const processedInvoice = {
+          id: invoice?.id || 0,
+          season: season,
+          amount: subtotal,
+          status: invoice?.status?.value || 'Draft',
+          sentAt: invoice?.sent_at,
+          paidAt: invoice?.paid_at,
+          notes: invoice?.notes || '',
+          lines: lines.map((line) => ({
+            id: line.fieldSeasonId,
+            fieldName: line.fieldName,
+            serviceType: line.serviceType,
+            rate: line.rate,
+          })),
+        };
 
-        const totalBilled = processedInvoices.reduce((sum, inv) => sum + inv.amount, 0);
-        const totalPaid = processedInvoices
-          .filter((inv) => inv.status.toLowerCase() === 'paid')
-          .reduce((sum, inv) => sum + inv.amount, 0);
+        const totalBilled = subtotal;
+        const totalPaid = processedInvoice.status.toLowerCase() === 'paid' ? subtotal : 0;
 
         processedEntities.push({
           id: be.id,
@@ -159,10 +145,10 @@ async function getBillingData(): Promise<BillingData> {
           operation: opNames.length > 0 ? opNames.join(', ') : '—',
           invoiceContact: linkedContacts.length > 0 ? linkedContacts.map((c) => c.name).join(', ') : '—',
           invoiceContactEmail: linkedContacts[0]?.email,
-          invoices: processedInvoices,
+          invoices: [processedInvoice],
           totalBilled,
           totalPaid,
-          season, // Add season to each entity entry
+          season,
         });
       });
     });
