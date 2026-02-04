@@ -412,6 +412,20 @@ body {
   color: white;
 }
 
+/* Mobile dropdown for tabs - hidden on desktop */
+.fields-tabs-mobile {
+  display: none;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  cursor: pointer;
+  width: 100%;
+}
+
 /* Tabs */
 .tabs {
   display: flex;
@@ -1428,32 +1442,13 @@ tr.selected {
     align-items: stretch;
   }
 
-  .fields-filter-row .tabs {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* Hide desktop tabs, show mobile dropdown */
+  .fields-tabs-desktop {
+    display: none !important;
   }
 
-  .fields-filter-row .fields-tabs {
-    width: 100%;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .fields-tabs button {
-    flex-shrink: 0;
-    text-align: center;
-  }
-
-  .tabs {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .tab {
-    white-space: nowrap;
-    flex-shrink: 0;
+  .fields-tabs-mobile {
+    display: block;
   }
 
   .fields-container {

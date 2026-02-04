@@ -344,7 +344,6 @@ export default function FieldsClient({
   const [savingProbeAssignment, setSavingProbeAssignment] = useState(false);
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
   const [customYears, setCustomYears] = useState<string[]>([]);
-  const [currentFilter, setCurrentFilter] = useState<string>('all');
   const [currentOperation, setCurrentOperation] = useState<string>('all');
   const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -556,17 +555,6 @@ export default function FieldsClient({
     return fields.filter((f) => f.season === currentSeason && f.fieldSeasonId !== null);
   }, [fields, currentSeason]);
 
-  // Calculate status counts for current season
-  const statusCounts = useMemo(() => {
-    const normalizeStatus = (status: string | undefined | null) => (status || 'unassigned').toLowerCase().replace(' ', '-');
-    return {
-      all: seasonFields.length,
-      'unassigned': seasonFields.filter((f) => normalizeStatus(f.probeStatus) === 'unassigned').length,
-      'assigned': seasonFields.filter((f) => normalizeStatus(f.probeStatus) === 'assigned').length,
-      'installed': seasonFields.filter((f) => normalizeStatus(f.probeStatus) === 'installed').length,
-    };
-  }, [seasonFields]);
-
   // Calculate fields that can be rolled over (exist in fromSeason but not in toSeason)
   const rolloverStats = useMemo(() => {
     const fromFields = fields.filter((f) => f.season === rolloverForm.fromSeason);
@@ -622,11 +610,6 @@ export default function FieldsClient({
       );
     }
 
-    if (currentFilter !== 'all') {
-      const normalizeStatus = (status: string | undefined | null) => (status || 'unassigned').toLowerCase().replace(' ', '-');
-      filtered = filtered.filter((f) => normalizeStatus(f.probeStatus) === currentFilter);
-    }
-
     if (currentOperation !== 'all') {
       filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
     }
@@ -673,7 +656,7 @@ export default function FieldsClient({
     });
 
     return filtered;
-  }, [seasonFields, searchQuery, currentFilter, currentOperation, currentIrrigationType, sortColumn, sortDirection]);
+  }, [seasonFields, searchQuery, currentOperation, currentIrrigationType, sortColumn, sortDirection]);
 
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
@@ -689,6 +672,19 @@ export default function FieldsClient({
       lng: f.lng,
     }));
   }, [filteredFields]);
+
+  // Calculate approval stats for the Active Season tab
+  const approvalStats = useMemo(() => {
+    const pending = seasonFields.filter(f => !f.approvalStatus || f.approvalStatus === 'Pending');
+    const approved = seasonFields.filter(f => f.approvalStatus === 'Approved');
+    const rejected = seasonFields.filter(f => f.approvalStatus === 'Rejected');
+    return {
+      pending: pending.length,
+      approved: approved.length,
+      rejected: rejected.length,
+      total: seasonFields.length,
+    };
+  }, [seasonFields]);
 
   // Get set of probe IDs that are currently assigned (for the selected season)
   const assignedProbeIds = useMemo(() => {
@@ -815,6 +811,54 @@ export default function FieldsClient({
     } catch (error) {
       console.error('Delete error:', error);
       alert('Failed to delete field season');
+    }
+  };
+
+  // Quick approve/reject handler
+  const handleQuickApproval = async (field: ProcessedField, status: 'Approved' | 'Rejected') => {
+    if (!field.fieldSeasonId) return;
+
+    const cellKey = `${field.fieldSeasonId}-approvalStatus`;
+    setSavingFields(prev => new Set(prev).add(cellKey));
+
+    try {
+      const response = await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          approval_status: status,
+          approval_date: new Date().toISOString().split('T')[0],
+        }),
+      });
+
+      if (response.ok) {
+        setFields(prev => prev.map(f => {
+          if (f.fieldSeasonId === field.fieldSeasonId) {
+            return { ...f, approvalStatus: status };
+          }
+          return f;
+        }));
+
+        setSavedFields(prev => new Set(prev).add(cellKey));
+        setTimeout(() => {
+          setSavedFields(prev => {
+            const next = new Set(prev);
+            next.delete(cellKey);
+            return next;
+          });
+        }, 1500);
+      } else {
+        alert('Failed to update approval status');
+      }
+    } catch (error) {
+      console.error('Approval error:', error);
+      alert('Failed to update approval status');
+    } finally {
+      setSavingFields(prev => {
+        const next = new Set(prev);
+        next.delete(cellKey);
+        return next;
+      });
     }
   };
 
@@ -1833,7 +1877,8 @@ export default function FieldsClient({
       <div className="content">
         {/* Tab Navigation */}
         <div className="fields-filter-row">
-          <div className="fields-tabs">
+          {/* Desktop: Tab buttons */}
+          <div className="fields-tabs fields-tabs-desktop">
             {TAB_INFO.map((tab) => (
               <button
                 key={tab.key}
@@ -1844,21 +1889,70 @@ export default function FieldsClient({
               </button>
             ))}
           </div>
-          <div className="tabs">
-            <button className={`tab ${currentFilter === 'all' ? 'active' : ''}`} onClick={() => setCurrentFilter('all')}>
-              All Fields ({statusCounts.all})
-            </button>
-            <button className={`tab ${currentFilter === 'unassigned' ? 'active' : ''}`} onClick={() => setCurrentFilter('unassigned')}>
-              Unassigned ({statusCounts['unassigned']})
-            </button>
-            <button className={`tab ${currentFilter === 'assigned' ? 'active' : ''}`} onClick={() => setCurrentFilter('assigned')}>
-              Assigned ({statusCounts['assigned']})
-            </button>
-            <button className={`tab ${currentFilter === 'installed' ? 'active' : ''}`} onClick={() => setCurrentFilter('installed')}>
-              Installed ({statusCounts['installed']})
-            </button>
-          </div>
+          {/* Mobile: Dropdown */}
+          <select
+            className="fields-tabs-mobile"
+            value={currentTab}
+            onChange={(e) => setCurrentTab(e.target.value as TabView)}
+          >
+            {TAB_INFO.map((tab) => (
+              <option key={tab.key} value={tab.key}>{tab.label}</option>
+            ))}
+          </select>
         </div>
+
+        {/* Approval Summary - Active Season Tab */}
+        {currentTab === 'activeSeason' && approvalStats.total > 0 && (
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            marginBottom: '16px',
+            padding: '12px 16px',
+            background: 'var(--bg-tertiary)',
+            borderRadius: 'var(--radius)',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary)', marginRight: '8px' }}>Approval Status:</span>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-yellow, #eab308)',
+                }}></span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Pending: </span>
+                <strong>{approvalStats.pending}</strong>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-green)',
+                }}></span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Approved: </span>
+                <strong style={{ color: 'var(--accent-green)' }}>{approvalStats.approved}</strong>
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-red, #ef4444)',
+                }}></span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Rejected: </span>
+                <strong style={{ color: 'var(--accent-red, #ef4444)' }}>{approvalStats.rejected}</strong>
+              </span>
+            </div>
+            {approvalStats.pending > 0 && (
+              <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)' }}>
+                Use the checkmark/X buttons in each row to quickly approve or reject fields
+              </span>
+            )}
+          </div>
+        )}
 
         <div className={`fields-container ${mapVisible ? 'map-visible' : ''}`}>
           <div className="fields-list">
@@ -2130,19 +2224,45 @@ export default function FieldsClient({
                                     <>
                                       {visibleColumns.map((colKey) => renderCell(colKey))}
                                       <td onClick={(e) => e.stopPropagation()}>
-                                        <button className="action-btn" title="View details" onClick={() => handleRowClick(field)} style={{ marginRight: '4px' }}>
-                                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                          </svg>
-                                        </button>
-                                        {field.fieldSeasonId && (
-                                          <button className="action-btn" title="Delete season entry" onClick={() => handleDeleteFieldSeason(field.fieldSeasonId!, field.name, field.season)} style={{ color: 'var(--text-muted)' }}>
+                                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                          <button className="action-btn" title="View details" onClick={() => handleRowClick(field)}>
                                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                           </button>
-                                        )}
+                                          {currentTab === 'activeSeason' && field.fieldSeasonId && field.approvalStatus !== 'Approved' && (
+                                            <button
+                                              className="action-btn"
+                                              title="Approve"
+                                              onClick={() => handleQuickApproval(field, 'Approved')}
+                                              style={{ color: 'var(--accent-green)' }}
+                                            >
+                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                              </svg>
+                                            </button>
+                                          )}
+                                          {currentTab === 'activeSeason' && field.fieldSeasonId && field.approvalStatus !== 'Rejected' && (
+                                            <button
+                                              className="action-btn"
+                                              title="Reject"
+                                              onClick={() => handleQuickApproval(field, 'Rejected')}
+                                              style={{ color: 'var(--accent-red, #ef4444)' }}
+                                            >
+                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                              </svg>
+                                            </button>
+                                          )}
+                                          {field.fieldSeasonId && (
+                                            <button className="action-btn" title="Delete season entry" onClick={() => handleDeleteFieldSeason(field.fieldSeasonId!, field.name, field.season)} style={{ color: 'var(--text-muted)' }}>
+                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                              </svg>
+                                            </button>
+                                          )}
+                                        </div>
                                       </td>
                                     </>
                                   )}

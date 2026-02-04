@@ -17,6 +17,65 @@ interface SettingsClientProps {
 }
 
 const GLOBAL_SEASON_KEY = 'acre-ops-global-season';
+const FIELD_COLUMNS_STORAGE_KEY = 'fields-tab-columns';
+
+// Column definitions matching Fields page
+type FieldColumnKey =
+  | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
+  | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
+  | 'routeOrder' | 'plannedInstaller' | 'readyToInstall'
+  | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
+  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval';
+
+type TabView = 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
+
+interface FieldColumnDefinition {
+  key: FieldColumnKey;
+  label: string;
+  alwaysVisible?: boolean;
+}
+
+const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
+  { key: 'field', label: 'Field', alwaysVisible: true },
+  { key: 'operation', label: 'Operation' },
+  { key: 'billingEntity', label: 'Billing Entity' },
+  { key: 'crop', label: 'Crop' },
+  { key: 'cropConfirmed', label: 'Crop Confirmed' },
+  { key: 'service', label: 'Service Type' },
+  { key: 'hybrid', label: 'Hybrid/Variety' },
+  { key: 'antenna', label: 'Antenna' },
+  { key: 'battery', label: 'Battery' },
+  { key: 'sideDress', label: 'Side-dress' },
+  { key: 'loggerId', label: 'Logger ID' },
+  { key: 'probes', label: 'Probes' },
+  { key: 'routeOrder', label: 'Route #' },
+  { key: 'plannedInstaller', label: 'Planned Installer' },
+  { key: 'readyToInstall', label: 'Ready to Install' },
+  { key: 'probeStatus', label: 'Probe Status' },
+  { key: 'installDate', label: 'Install Date' },
+  { key: 'installer', label: 'Installer' },
+  { key: 'approvalStatus', label: 'Approval Status' },
+  { key: 'removalDate', label: 'Removal Date' },
+  { key: 'removalNotes', label: 'Removal Notes' },
+  { key: 'readyToRemove', label: 'Ready to Remove' },
+  { key: 'earlyRemoval', label: 'Early Removal' },
+];
+
+const TAB_INFO: { key: TabView; label: string }[] = [
+  { key: 'signup', label: 'Signup' },
+  { key: 'seasonSetup', label: 'Season Setup' },
+  { key: 'installPlanning', label: 'Install Planning' },
+  { key: 'activeSeason', label: 'Active Season' },
+  { key: 'removal', label: 'Removal' },
+];
+
+const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
+  signup: ['field', 'operation', 'billingEntity', 'crop', 'service'],
+  seasonSetup: ['field', 'crop', 'hybrid', 'antenna', 'battery', 'sideDress', 'loggerId', 'probes'],
+  installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
+  activeSeason: ['field', 'operation', 'probes', 'probeStatus', 'installDate', 'approvalStatus'],
+  removal: ['field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
+};
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -44,6 +103,9 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
   const [savingEdit, setSavingEdit] = useState(false);
   const [globalSeason, setGlobalSeason] = useState<string>(String(new Date().getFullYear()));
   const [seasonSaved, setSeasonSaved] = useState(false);
+  const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
+  const [selectedColumnTab, setSelectedColumnTab] = useState<TabView>('signup');
+  const [columnsSaved, setColumnsSaved] = useState(false);
 
   // Load global season from localStorage on mount
   useEffect(() => {
@@ -57,6 +119,31 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
     }
   }, []);
 
+  // Load tab columns from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FIELD_COLUMNS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const validated: Record<TabView, FieldColumnKey[]> = { ...TAB_DEFAULT_COLUMNS };
+        for (const tab of TAB_INFO.map(t => t.key)) {
+          if (parsed[tab] && Array.isArray(parsed[tab])) {
+            validated[tab] = parsed[tab].filter((col: string) =>
+              ALL_COLUMN_DEFINITIONS.some(c => c.key === col)
+            );
+            // Ensure 'field' is always included
+            if (!validated[tab].includes('field')) {
+              validated[tab] = ['field', ...validated[tab]];
+            }
+          }
+        }
+        setTabColumns(validated);
+      }
+    } catch (e) {
+      console.error('Failed to load tab columns:', e);
+    }
+  }, []);
+
   // Save global season to localStorage
   const handleSeasonChange = (newSeason: string) => {
     setGlobalSeason(newSeason);
@@ -66,6 +153,49 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
       setTimeout(() => setSeasonSaved(false), 2000);
     } catch (e) {
       console.error('Failed to save global season:', e);
+    }
+  };
+
+  // Toggle column visibility for a tab
+  const handleToggleColumn = (columnKey: FieldColumnKey) => {
+    if (columnKey === 'field') return; // Field column is always visible
+
+    const currentColumns = tabColumns[selectedColumnTab];
+    let newColumns: FieldColumnKey[];
+
+    if (currentColumns.includes(columnKey)) {
+      newColumns = currentColumns.filter(c => c !== columnKey);
+    } else {
+      // Add column in the original order from ALL_COLUMN_DEFINITIONS
+      const allKeys = ALL_COLUMN_DEFINITIONS.map(c => c.key);
+      newColumns = [...currentColumns, columnKey].sort((a, b) =>
+        allKeys.indexOf(a) - allKeys.indexOf(b)
+      );
+    }
+
+    const newTabColumns = { ...tabColumns, [selectedColumnTab]: newColumns };
+    setTabColumns(newTabColumns);
+
+    try {
+      localStorage.setItem(FIELD_COLUMNS_STORAGE_KEY, JSON.stringify(newTabColumns));
+      setColumnsSaved(true);
+      setTimeout(() => setColumnsSaved(false), 2000);
+    } catch (e) {
+      console.error('Failed to save column settings:', e);
+    }
+  };
+
+  // Reset columns for a tab to defaults
+  const handleResetColumns = () => {
+    const newTabColumns = { ...tabColumns, [selectedColumnTab]: TAB_DEFAULT_COLUMNS[selectedColumnTab] };
+    setTabColumns(newTabColumns);
+
+    try {
+      localStorage.setItem(FIELD_COLUMNS_STORAGE_KEY, JSON.stringify(newTabColumns));
+      setColumnsSaved(true);
+      setTimeout(() => setColumnsSaved(false), 2000);
+    } catch (e) {
+      console.error('Failed to save column settings:', e);
     }
   };
 
@@ -234,6 +364,92 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
         <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '8px', marginBottom: 0 }}>
           This season will be pre-selected when you visit pages with season filters.
         </p>
+      </div>
+
+      {/* Fields Tab Column Settings */}
+      <div className="content-card" style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h3 style={{ margin: 0 }}>Fields Tab Columns</h3>
+          {columnsSaved && (
+            <span style={{ color: 'var(--accent-green)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Saved
+            </span>
+          )}
+        </div>
+
+        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+          Configure which columns are visible for each tab on the Fields page.
+        </p>
+
+        {/* Tab selector */}
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {TAB_INFO.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setSelectedColumnTab(tab.key)}
+              className={selectedColumnTab === tab.key ? 'btn btn-primary' : 'btn btn-secondary'}
+              style={{ padding: '6px 12px', fontSize: '13px' }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Column checkboxes */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '8px',
+          padding: '16px',
+          background: 'var(--bg-tertiary)',
+          borderRadius: 'var(--radius)',
+          marginBottom: '12px',
+        }}>
+          {ALL_COLUMN_DEFINITIONS.map((col) => (
+            <label
+              key={col.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                background: tabColumns[selectedColumnTab].includes(col.key) ? 'var(--accent-green-dim)' : 'var(--bg-card)',
+                borderRadius: 'var(--radius-sm)',
+                cursor: col.alwaysVisible ? 'not-allowed' : 'pointer',
+                opacity: col.alwaysVisible ? 0.7 : 1,
+                border: '1px solid var(--border)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={tabColumns[selectedColumnTab].includes(col.key)}
+                onChange={() => handleToggleColumn(col.key)}
+                disabled={col.alwaysVisible}
+                style={{ width: '16px', height: '16px', cursor: col.alwaysVisible ? 'not-allowed' : 'pointer' }}
+              />
+              <span style={{ fontSize: '13px', fontWeight: 500 }}>{col.label}</span>
+              {col.alwaysVisible && (
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>Required</span>
+              )}
+            </label>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            {tabColumns[selectedColumnTab].length} columns selected
+          </span>
+          <button
+            className="btn btn-secondary"
+            onClick={handleResetColumns}
+            style={{ fontSize: '13px', padding: '6px 12px' }}
+          >
+            Reset to Defaults
+          </button>
+        </div>
       </div>
 
       <div className="content-card" style={{ marginBottom: '24px' }}>
