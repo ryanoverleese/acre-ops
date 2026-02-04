@@ -75,6 +75,13 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
   const [searchQuery, setSearchQuery] = useState('');
   const [sortColumn, setSortColumn] = useState<string>('reportedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [repairToComplete, setRepairToComplete] = useState<ProcessedRepair | null>(null);
+  const [completeForm, setCompleteForm] = useState({
+    fix: '',
+    repaired_at: new Date().toISOString().split('T')[0],
+    notified_customer: false,
+  });
 
   // Get probe assignments for the selected field_season
   const availableProbeAssignments = useMemo(() => {
@@ -255,27 +262,50 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
     setShowEditModal(true);
   };
 
-  const handleMarkResolved = async (repair: ProcessedRepair) => {
+  const openCompleteModal = (repair: ProcessedRepair) => {
+    setRepairToComplete(repair);
+    setCompleteForm({
+      fix: repair.fix || '',
+      repaired_at: new Date().toISOString().split('T')[0],
+      notified_customer: repair.notifiedCustomer || false,
+    });
+    setShowCompleteModal(true);
+  };
+
+  const handleCompleteRepair = async () => {
+    if (!repairToComplete) return;
+    if (!completeForm.fix.trim()) {
+      alert('Please describe how the issue was fixed');
+      return;
+    }
     setSaving(true);
     try {
-      const response = await fetch(`/api/repairs/${repair.id}`, {
+      const response = await fetch(`/api/repairs/${repairToComplete.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          repaired_at: new Date().toISOString().split('T')[0],
+          fix: completeForm.fix,
+          repaired_at: completeForm.repaired_at,
+          notified_customer: completeForm.notified_customer,
         }),
       });
       if (response.ok) {
+        setShowCompleteModal(false);
+        setRepairToComplete(null);
         window.location.reload();
       } else {
-        alert('Failed to mark as resolved');
+        alert('Failed to complete repair');
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to mark as resolved');
+      alert('Failed to complete repair');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleMarkResolved = (repair: ProcessedRepair) => {
+    openCompleteModal(repair);
   };
 
   return (
@@ -686,6 +716,73 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
               <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
               <button className="btn btn-primary" onClick={handleEdit} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Repair Modal */}
+      {showCompleteModal && repairToComplete && (
+        <div className="detail-panel-overlay" onClick={() => setShowCompleteModal(false)}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Complete Repair</h3>
+              <button className="close-btn" onClick={() => setShowCompleteModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
+                <div style={{ fontWeight: 600, marginBottom: '4px' }}>{repairToComplete.fieldName}</div>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{repairToComplete.operation}</div>
+                {repairToComplete.probeNumber && (
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                    Probe {repairToComplete.probeNumber}{repairToComplete.probeSerial ? ` - #${repairToComplete.probeSerial}` : ''}
+                  </div>
+                )}
+                <div style={{ fontSize: '13px', color: 'var(--accent-red)', marginTop: '8px' }}>
+                  <strong>Problem:</strong> {repairToComplete.problem}
+                </div>
+              </div>
+
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>How was it fixed? *</label>
+                  <textarea
+                    value={completeForm.fix}
+                    onChange={(e) => setCompleteForm({ ...completeForm, fix: e.target.value })}
+                    placeholder="Describe the repair performed..."
+                    rows={3}
+                    autoFocus
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Repair Date</label>
+                  <input
+                    type="date"
+                    value={completeForm.repaired_at}
+                    onChange={(e) => setCompleteForm({ ...completeForm, repaired_at: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={completeForm.notified_customer}
+                      onChange={(e) => setCompleteForm({ ...completeForm, notified_customer: e.target.checked })}
+                    />
+                    Customer has been notified
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowCompleteModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCompleteRepair} disabled={saving}>
+                {saving ? 'Completing...' : 'Complete Repair'}
               </button>
             </div>
           </div>

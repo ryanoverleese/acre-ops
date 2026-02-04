@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export interface ProcessedServiceRate {
   id: number;
@@ -13,7 +13,10 @@ export interface ProcessedServiceRate {
 
 interface SettingsClientProps {
   initialServiceRates: ProcessedServiceRate[];
+  availableSeasons: string[];
 }
+
+const GLOBAL_SEASON_KEY = 'acre-ops-global-season';
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -31,7 +34,7 @@ const initialAddForm = {
   description: '',
 };
 
-export default function SettingsClient({ initialServiceRates }: SettingsClientProps) {
+export default function SettingsClient({ initialServiceRates, availableSeasons }: SettingsClientProps) {
   const [serviceRates, setServiceRates] = useState(initialServiceRates);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState(initialAddForm);
@@ -39,6 +42,32 @@ export default function SettingsClient({ initialServiceRates }: SettingsClientPr
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProcessedServiceRate>>({});
   const [savingEdit, setSavingEdit] = useState(false);
+  const [globalSeason, setGlobalSeason] = useState<string>(String(new Date().getFullYear()));
+  const [seasonSaved, setSeasonSaved] = useState(false);
+
+  // Load global season from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(GLOBAL_SEASON_KEY);
+      if (stored) {
+        setGlobalSeason(stored);
+      }
+    } catch (e) {
+      console.error('Failed to load global season:', e);
+    }
+  }, []);
+
+  // Save global season to localStorage
+  const handleSeasonChange = (newSeason: string) => {
+    setGlobalSeason(newSeason);
+    try {
+      localStorage.setItem(GLOBAL_SEASON_KEY, newSeason);
+      setSeasonSaved(true);
+      setTimeout(() => setSeasonSaved(false), 2000);
+    } catch (e) {
+      console.error('Failed to save global season:', e);
+    }
+  };
 
   const handleAddRate = async () => {
     if (!addForm.serviceType.trim()) {
@@ -165,6 +194,46 @@ export default function SettingsClient({ initialServiceRates }: SettingsClientPr
     <>
       <div className="page-header">
         <h2>Settings</h2>
+      </div>
+
+      {/* Application Settings */}
+      <div className="content-card" style={{ marginBottom: '24px' }}>
+        <h3 style={{ margin: '0 0 16px 0' }}>Application Settings</h3>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <label style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Default Season:</label>
+            <select
+              value={globalSeason}
+              onChange={(e) => handleSeasonChange(e.target.value)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              {availableSeasons.map((season) => (
+                <option key={season} value={season}>{season}</option>
+              ))}
+            </select>
+            {seasonSaved && (
+              <span style={{ color: 'var(--accent-green)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Saved
+              </span>
+            )}
+          </div>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '8px', marginBottom: 0 }}>
+          This season will be pre-selected when you visit pages with season filters.
+        </p>
       </div>
 
       <div className="content-card" style={{ marginBottom: '24px' }}>

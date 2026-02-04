@@ -1,43 +1,26 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import type { ProcessedInventoryItem } from './page';
 
-interface InventoryItem {
-  id: number;
-  itemName: string;
-  category: string;
-  quantity: number;
-  rackLocation: string;
-  reorderThreshold: number;
-  notes: string;
+interface InventoryClientProps {
+  initialItems: ProcessedInventoryItem[];
+  categoryOptions: string[];
 }
-
-const CATEGORY_OPTIONS = ['Antennas', 'Batteries', 'Flags', 'Tools', 'Other'];
 
 const initialForm = {
   itemName: '',
   category: '',
   quantity: '',
-  rackLocation: '',
-  reorderThreshold: '',
-  notes: '',
 };
 
-// Sample data - replace with API calls when Baserow table is created
-const sampleItems: InventoryItem[] = [
-  { id: 1, itemName: 'Tall Antenna', category: 'Antennas', quantity: 15, rackLocation: 'A1-01', reorderThreshold: 5, notes: '' },
-  { id: 2, itemName: 'Short Antenna', category: 'Antennas', quantity: 22, rackLocation: 'A1-02', reorderThreshold: 5, notes: '' },
-  { id: 3, itemName: 'AA Batteries (Pack of 4)', category: 'Batteries', quantity: 48, rackLocation: 'B2-01', reorderThreshold: 20, notes: '' },
-  { id: 4, itemName: 'Field Flags (Orange)', category: 'Flags', quantity: 200, rackLocation: 'C1-01', reorderThreshold: 50, notes: '' },
-];
-
-export default function InventoryClient() {
-  const [items, setItems] = useState<InventoryItem[]>(sampleItems);
+export default function InventoryClient({ initialItems, categoryOptions }: InventoryClientProps) {
+  const [items, setItems] = useState<ProcessedInventoryItem[]>(initialItems);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<ProcessedInventoryItem | null>(null);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('itemName');
@@ -60,7 +43,7 @@ export default function InventoryClient() {
       filtered = filtered.filter(
         (item) =>
           item.itemName.toLowerCase().includes(query) ||
-          item.rackLocation.toLowerCase().includes(query)
+          item.category.toLowerCase().includes(query)
       );
     }
 
@@ -76,7 +59,6 @@ export default function InventoryClient() {
         case 'itemName': aVal = a.itemName.toLowerCase(); bVal = b.itemName.toLowerCase(); break;
         case 'category': aVal = a.category.toLowerCase(); bVal = b.category.toLowerCase(); break;
         case 'quantity': aVal = a.quantity; bVal = b.quantity; break;
-        case 'rackLocation': aVal = a.rackLocation.toLowerCase(); bVal = b.rackLocation.toLowerCase(); break;
         default: aVal = a.itemName.toLowerCase(); bVal = b.itemName.toLowerCase();
       }
 
@@ -88,32 +70,43 @@ export default function InventoryClient() {
     return filtered;
   }, [items, searchQuery, filterCategory, sortColumn, sortDirection]);
 
-  const lowStockItems = items.filter((item) => item.quantity <= item.reorderThreshold);
+  const totalQuantity = items.reduce((sum, i) => sum + i.quantity, 0);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!form.itemName.trim()) {
       alert('Item name is required');
       return;
     }
     setSaving(true);
 
-    const newItem: InventoryItem = {
-      id: Date.now(),
-      itemName: form.itemName,
-      category: form.category || 'Other',
-      quantity: parseInt(form.quantity) || 0,
-      rackLocation: form.rackLocation,
-      reorderThreshold: parseInt(form.reorderThreshold) || 0,
-      notes: form.notes,
-    };
+    try {
+      const response = await fetch('/api/inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_name: form.itemName,
+          category: form.category || null,
+          quantity: parseInt(form.quantity) || 0,
+        }),
+      });
 
-    setItems([...items, newItem]);
-    setShowAddModal(false);
-    setForm(initialForm);
-    setSaving(false);
+      if (response.ok) {
+        setShowAddModal(false);
+        setForm(initialForm);
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create item');
+      }
+    } catch (error) {
+      console.error('Create error:', error);
+      alert('Failed to create item');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedItem) return;
     if (!form.itemName.trim()) {
       alert('Item name is required');
@@ -121,42 +114,69 @@ export default function InventoryClient() {
     }
     setSaving(true);
 
-    setItems(
-      items.map((item) =>
-        item.id === selectedItem.id
-          ? {
-              ...item,
-              itemName: form.itemName,
-              category: form.category || 'Other',
-              quantity: parseInt(form.quantity) || 0,
-              rackLocation: form.rackLocation,
-              reorderThreshold: parseInt(form.reorderThreshold) || 0,
-              notes: form.notes,
-            }
-          : item
-      )
-    );
+    try {
+      const response = await fetch(`/api/inventory/${selectedItem.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_name: form.itemName,
+          category: form.category || null,
+          quantity: parseInt(form.quantity) || 0,
+        }),
+      });
 
-    setShowEditModal(false);
-    setSelectedItem(null);
-    setForm(initialForm);
-    setSaving(false);
+      if (response.ok) {
+        // Update local state
+        setItems(items.map((item) =>
+          item.id === selectedItem.id
+            ? {
+                ...item,
+                itemName: form.itemName,
+                category: form.category || 'Uncategorized',
+                quantity: parseInt(form.quantity) || 0,
+              }
+            : item
+        ));
+        setShowEditModal(false);
+        setSelectedItem(null);
+        setForm(initialForm);
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to update item');
+      }
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Failed to update item');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (item: InventoryItem) => {
+  const handleDelete = async (item: ProcessedInventoryItem) => {
     if (!confirm(`Delete "${item.itemName}"?`)) return;
-    setItems(items.filter((i) => i.id !== item.id));
+
+    try {
+      const response = await fetch(`/api/inventory/${item.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setItems(items.filter((i) => i.id !== item.id));
+      } else {
+        alert('Failed to delete item');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Failed to delete item');
+    }
   };
 
-  const openEditModal = (item: InventoryItem) => {
+  const openEditModal = (item: ProcessedInventoryItem) => {
     setSelectedItem(item);
     setForm({
       itemName: item.itemName,
       category: item.category,
       quantity: item.quantity.toString(),
-      rackLocation: item.rackLocation,
-      reorderThreshold: item.reorderThreshold.toString(),
-      notes: item.notes,
     });
     setShowEditModal(true);
   };
@@ -167,7 +187,8 @@ export default function InventoryClient() {
       'Batteries': 'pending',
       'Flags': 'installed',
       'Tools': 'repair',
-      'Other': 'needs-probe',
+      'Probes': 'in-stock',
+      'Sensors': 'pending',
     };
     return (
       <span className={`status-badge ${colorMap[category] || 'needs-probe'}`}>
@@ -177,35 +198,24 @@ export default function InventoryClient() {
     );
   };
 
+  // Combine dynamic categories with any predefined ones
+  const allCategories = useMemo(() => {
+    const combined = new Set([...categoryOptions]);
+    return Array.from(combined).sort();
+  }, [categoryOptions]);
+
   return (
     <>
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '24px' }}>
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: '24px' }}>
         <div className="stat-card">
           <div className="stat-label">Total Items</div>
           <div className="stat-value blue">{items.length}</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Total Quantity</div>
-          <div className="stat-value green">{items.reduce((sum, i) => sum + i.quantity, 0)}</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-label">Low Stock Alerts</div>
-          <div className="stat-value red">{lowStockItems.length}</div>
+          <div className="stat-value green">{totalQuantity}</div>
         </div>
       </div>
-
-      {lowStockItems.length > 0 && (
-        <div style={{ background: 'var(--accent-red-dim)', border: '1px solid var(--accent-red)', borderRadius: 'var(--radius)', padding: '16px', marginBottom: '24px' }}>
-          <div style={{ fontWeight: 600, marginBottom: '8px', color: 'var(--accent-red)' }}>Low Stock Items</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-            {lowStockItems.map((item) => (
-              <span key={item.id} style={{ background: 'var(--bg-card)', padding: '4px 12px', borderRadius: '4px', fontSize: '13px' }}>
-                {item.itemName}: {item.quantity} left
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="table-container">
         <div className="table-header">
@@ -224,7 +234,7 @@ export default function InventoryClient() {
             </div>
             <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
               <option value="all">All Categories</option>
-              {CATEGORY_OPTIONS.map((cat) => (
+              {allCategories.map((cat) => (
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
@@ -252,35 +262,22 @@ export default function InventoryClient() {
                 Quantity
                 {sortColumn === 'quantity' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
               </th>
-              <th className="sortable" onClick={() => handleSort('rackLocation')}>
-                Rack Location
-                {sortColumn === 'rackLocation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-              </th>
-              <th>Reorder At</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                   No items found.
                 </td>
               </tr>
             ) : (
               filteredItems.map((item) => (
-                <tr key={item.id} style={item.quantity <= item.reorderThreshold ? { background: 'var(--accent-red-dim)' } : undefined}>
+                <tr key={item.id}>
                   <td className="operation-name">{item.itemName}</td>
                   <td>{getCategoryBadge(item.category)}</td>
-                  <td style={{ color: item.quantity <= item.reorderThreshold ? 'var(--accent-red)' : undefined }}>
-                    {item.quantity}
-                  </td>
-                  <td style={{ fontSize: '13px' }}>
-                    {item.rackLocation || '—'}
-                  </td>
-                  <td style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                    {item.reorderThreshold}
-                  </td>
+                  <td>{item.quantity}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '4px' }}>
                       <button className="action-btn" title="Edit" onClick={() => openEditModal(item)}>
@@ -306,21 +303,45 @@ export default function InventoryClient() {
             <div className="empty-state">No items found.</div>
           ) : (
             filteredItems.map((item) => (
-              <div key={item.id} className="mobile-card" style={item.quantity <= item.reorderThreshold ? { borderColor: 'var(--accent-red)' } : undefined}>
+              <div key={item.id} className="mobile-card" onClick={() => openEditModal(item)}>
                 <div className="mobile-card-header">
                   <span className="mobile-card-title">{item.itemName}</span>
                   {getCategoryBadge(item.category)}
                 </div>
                 <div className="mobile-card-body">
                   <div className="mobile-card-row">
-                    <span>Qty:</span>
-                    <strong style={{ color: item.quantity <= item.reorderThreshold ? 'var(--accent-red)' : undefined }}>{item.quantity}</strong>
+                    <span>Quantity:</span>
+                    <strong>{item.quantity}</strong>
                   </div>
-                  {item.rackLocation && <div className="mobile-card-row"><span>Location:</span> {item.rackLocation}</div>}
                 </div>
-                <div className="mobile-card-actions">
-                  <button className="btn btn-secondary" onClick={() => openEditModal(item)}>Edit</button>
-                  <button className="btn btn-secondary" onClick={() => handleDelete(item)}>Delete</button>
+                <div className="mobile-card-footer" style={{
+                  marginTop: '12px',
+                  paddingTop: '12px',
+                  borderTop: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <button
+                    className="btn btn-secondary"
+                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                    onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                  >
+                    Delete
+                  </button>
+                  <span style={{
+                    color: 'var(--accent-green)',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}>
+                    Edit
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </span>
                 </div>
               </div>
             ))
@@ -350,28 +371,14 @@ export default function InventoryClient() {
                   <label>Category</label>
                   <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                     <option value="">Select category...</option>
-                    {CATEGORY_OPTIONS.map((cat) => (
+                    {allCategories.map((cat) => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Quantity</label>
-                    <input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
-                  </div>
-                  <div className="form-group">
-                    <label>Reorder Threshold</label>
-                    <input type="number" value={form.reorderThreshold} onChange={(e) => setForm({ ...form, reorderThreshold: e.target.value })} placeholder="0" />
-                  </div>
-                </div>
                 <div className="form-group">
-                  <label>Rack Location</label>
-                  <input type="text" value={form.rackLocation} onChange={(e) => setForm({ ...form, rackLocation: e.target.value })} placeholder="e.g. A1-01" />
-                </div>
-                <div className="form-group">
-                  <label>Notes</label>
-                  <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Enter notes..." rows={3} />
+                  <label>Quantity</label>
+                  <input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} placeholder="0" />
                 </div>
               </div>
             </div>
@@ -407,28 +414,14 @@ export default function InventoryClient() {
                   <label>Category</label>
                   <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                     <option value="">Select category...</option>
-                    {CATEGORY_OPTIONS.map((cat) => (
+                    {allCategories.map((cat) => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Quantity</label>
-                    <input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label>Reorder Threshold</label>
-                    <input type="number" value={form.reorderThreshold} onChange={(e) => setForm({ ...form, reorderThreshold: e.target.value })} />
-                  </div>
-                </div>
                 <div className="form-group">
-                  <label>Rack Location</label>
-                  <input type="text" value={form.rackLocation} onChange={(e) => setForm({ ...form, rackLocation: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label>Notes</label>
-                  <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={3} />
+                  <label>Quantity</label>
+                  <input type="number" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
                 </div>
               </div>
             </div>

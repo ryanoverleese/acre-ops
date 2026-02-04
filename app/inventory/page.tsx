@@ -1,9 +1,40 @@
+import { getInventory } from '@/lib/baserow';
 import InventoryClient from './InventoryClient';
 
-// Note: If you have an inventory table in Baserow, update this to fetch from there
-// For now, this uses local state since inventory table may not exist yet
+export interface ProcessedInventoryItem {
+  id: number;
+  itemName: string;
+  category: string;
+  quantity: number;
+}
 
 export default async function InventoryPage() {
+  let items: ProcessedInventoryItem[] = [];
+  let categoryOptions: string[] = [];
+
+  try {
+    const inventory = await getInventory();
+
+    // Collect unique categories
+    const categories = new Set<string>();
+
+    items = inventory.map((item) => {
+      const category = item.category?.value || 'Uncategorized';
+      categories.add(category);
+
+      return {
+        id: item.id,
+        itemName: item.item_name || '',
+        category,
+        quantity: item.quantity || 0,
+      };
+    });
+
+    categoryOptions = Array.from(categories).sort();
+  } catch (error) {
+    console.error('Error fetching inventory data:', error);
+  }
+
   return (
     <>
       <header className="header">
@@ -13,7 +44,7 @@ export default async function InventoryPage() {
       </header>
 
       <div className="content">
-        <InventoryClient />
+        <InventoryClient initialItems={items} categoryOptions={categoryOptions} />
       </div>
     </>
   );

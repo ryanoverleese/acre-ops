@@ -15,6 +15,7 @@ export const TABLE_IDS = {
   invoice_lines: 817304,
   probe_assignments: 819350,
   service_rates: 826849,
+  inventory: 827222,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -319,3 +320,12 @@ export const getInvoices = (options?: FetchOptions) => getRows<Invoice>('invoice
 export const getInvoiceLines = (options?: FetchOptions) => getRows<InvoiceLine>('invoice_lines', options);
 export const getProbeAssignments = (options?: FetchOptions) => getRows<ProbeAssignment>('probe_assignments', options);
 export const getServiceRates = (options?: FetchOptions) => getRows<ServiceRate>('service_rates', options);
+
+export interface InventoryItem {
+  id: number;
+  item_name?: string;
+  category?: { id: number; value: string };
+  quantity?: number;
+}
+
+export const getInventory = (options?: FetchOptions) => getRows<InventoryItem>('inventory', options);
