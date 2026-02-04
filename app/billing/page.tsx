@@ -46,8 +46,11 @@ async function getBillingData(): Promise<BillingData> {
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
 
-    // Build service rate lookup by service type name
-    const rateMap = new Map(serviceRates.map((sr) => [sr.service_type?.toLowerCase(), sr.rate || 0]));
+    // Build service rate lookup by service type name (ensure rate is a number)
+    const rateMap = new Map(serviceRates.map((sr) => {
+      const rate = typeof sr.rate === 'string' ? parseFloat(sr.rate) : (sr.rate || 0);
+      return [sr.service_type?.toLowerCase(), isNaN(rate) ? 0 : rate];
+    }));
 
     // Build maps from contacts: billing entity -> operations and billing entity -> contacts
     const beToOperations = new Map<number, string[]>();
@@ -91,7 +94,8 @@ async function getBillingData(): Promise<BillingData> {
       const season = typeof fs.season === 'string' ? parseInt(fs.season, 10) : (fs.season || new Date().getFullYear());
 
       // Look up rate from service_rates table
-      const rate = rateMap.get(serviceType.toLowerCase()) || 0;
+      const lookupRate = serviceType ? rateMap.get(serviceType.toLowerCase()) : undefined;
+      const rate = typeof lookupRate === 'number' ? lookupRate : 0;
 
       if (season) {
         allSeasons.add(season);
