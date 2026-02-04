@@ -284,6 +284,7 @@ export interface Invoice {
   amount?: number;
   status?: { id: number; value: string };
   sent_at?: string;
+  deposit_at?: string;
   paid_at?: string;
   notes?: string;
 }

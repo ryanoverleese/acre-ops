@@ -132,6 +132,7 @@ async function getBillingData(): Promise<BillingData> {
           amount: subtotal,
           status: invoice?.status?.value || 'Draft',
           sentAt: invoice?.sent_at,
+          depositAt: invoice?.deposit_at,
           paidAt: invoice?.paid_at,
           notes: invoice?.notes || '',
           lines: lines.map((line) => ({

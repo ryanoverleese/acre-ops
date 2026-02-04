@@ -15,6 +15,7 @@ export interface ProcessedInvoice {
   amount: number;
   status: string;
   sentAt?: string;
+  depositAt?: string;
   paidAt?: string;
   notes: string;
   lines: InvoiceLine[];
@@ -78,6 +79,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     });
   };
 
+  const collapseAll = () => setExpandedEntities(new Set());
+  const expandAll = () => setExpandedEntities(new Set(filteredEntities.map(be => be.id)));
+
   // Calculate bulk discount for an entity based on operation-level bulk field count
   const calculateBulkDiscount = (lines: InvoiceLine[], operationBulkFieldCount: number): { discount: number; eligibleCount: number } => {
     // Count bulk fields for THIS entity
@@ -95,7 +99,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     return { discount: 0, eligibleCount: 0 };
   };
 
-  const handleUpdateInvoiceDate = async (invoiceId: number, field: 'sent_at' | 'paid_at', value: string) => {
+  const handleUpdateInvoiceDate = async (invoiceId: number, field: 'sent_at' | 'deposit_at' | 'paid_at', value: string) => {
     try {
       const updateData: Record<string, unknown> = { [field]: value || null };
       if (field === 'sent_at' && value) updateData.status = 'Sent';
@@ -108,11 +112,12 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       });
 
       if (response.ok) {
+        const fieldMap: Record<string, string> = { sent_at: 'sentAt', deposit_at: 'depositAt', paid_at: 'paidAt' };
         setBillingEntities(billingEntities.map((be) => ({
           ...be,
           invoices: be.invoices.map((inv) => {
             if (inv.id === invoiceId) {
-              const updated = { ...inv, [field === 'sent_at' ? 'sentAt' : 'paidAt']: value || undefined };
+              const updated = { ...inv, [fieldMap[field]]: value || undefined };
               if (field === 'sent_at' && value) updated.status = 'Sent';
               if (field === 'paid_at' && value) updated.status = 'Paid';
               return updated;
@@ -238,7 +243,19 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             ))}
           </select>
         </div>
-        <div className="header-right">
+        <div className="header-right" style={{ display: 'flex', gap: '8px' }}>
+          <button className="btn btn-secondary" onClick={collapseAll} title="Collapse all entities">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+            Collapse All
+          </button>
+          <button className="btn btn-secondary" onClick={expandAll} title="Expand all entities">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+            Expand All
+          </button>
           <button className="btn btn-secondary" onClick={handleExport}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -465,7 +482,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                           </div>
 
                           {/* Dates */}
-                          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
                             <div>
                               <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
                                 Sent Date
@@ -474,6 +491,23 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 type="date"
                                 value={invoice.sentAt?.split('T')[0] || ''}
                                 onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'sent_at', e.target.value)}
+                                style={{
+                                  padding: '8px',
+                                  fontSize: '13px',
+                                  border: '1px solid var(--border)',
+                                  borderRadius: '4px',
+                                  background: 'var(--bg-secondary)',
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+                                Deposit Date
+                              </label>
+                              <input
+                                type="date"
+                                value={invoice.depositAt?.split('T')[0] || ''}
+                                onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'deposit_at', e.target.value)}
                                 style={{
                                   padding: '8px',
                                   fontSize: '13px',
