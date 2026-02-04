@@ -272,13 +272,13 @@ export default function InventoryClient() {
                 <tr key={item.id} style={item.quantity <= item.reorderThreshold ? { background: 'var(--accent-red-dim)' } : undefined}>
                   <td className="operation-name">{item.itemName}</td>
                   <td>{getCategoryBadge(item.category)}</td>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", color: item.quantity <= item.reorderThreshold ? 'var(--accent-red)' : undefined }}>
+                  <td style={{ color: item.quantity <= item.reorderThreshold ? 'var(--accent-red)' : undefined }}>
                     {item.quantity}
                   </td>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
+                  <td style={{ fontSize: '13px' }}>
                     {item.rackLocation || '—'}
                   </td>
-                  <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', color: 'var(--text-muted)' }}>
+                  <td style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
                     {item.reorderThreshold}
                   </td>
                   <td>

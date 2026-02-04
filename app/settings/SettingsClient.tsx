@@ -229,7 +229,7 @@ export default function SettingsClient({ initialServiceRates }: SettingsClientPr
                         step="0.01"
                       />
                     </td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                    <td style={{ textAlign: 'right', color: 'var(--accent-green)' }}>
                       {formatCurrency((editForm.rate || 0) - (editForm.dealerFee || 0))}
                     </td>
                     <td>
@@ -261,9 +261,9 @@ export default function SettingsClient({ initialServiceRates }: SettingsClientPr
                 ) : (
                   <>
                     <td style={{ fontWeight: 500 }}>{rate.serviceType}</td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>{formatCurrency(rate.rate)}</td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>{formatCurrency(rate.rate - rate.dealerFee)}</td>
+                    <td style={{ textAlign: 'right',  }}>{formatCurrency(rate.rate)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--accent-green)' }}>{formatCurrency(rate.rate - rate.dealerFee)}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
                     <td>
                       <span className="status-badge installed">
@@ -300,9 +300,9 @@ export default function SettingsClient({ initialServiceRates }: SettingsClientPr
                 {inactiveRates.map((rate) => (
                   <tr key={rate.id} style={{ opacity: 0.6 }}>
                     <td style={{ fontWeight: 500 }}>{rate.serviceType}</td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>{formatCurrency(rate.rate)}</td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
-                    <td style={{ textAlign: 'right', fontFamily: "'JetBrains Mono', monospace" }}>{formatCurrency(rate.rate - rate.dealerFee)}</td>
+                    <td style={{ textAlign: 'right',  }}>{formatCurrency(rate.rate)}</td>
+                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
+                    <td style={{ textAlign: 'right',  }}>{formatCurrency(rate.rate - rate.dealerFee)}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
                     <td>
                       <span className="status-badge pending">
@@ -373,7 +373,7 @@ export default function SettingsClient({ initialServiceRates }: SettingsClientPr
                 {addForm.rate && (
                   <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: '4px', marginBottom: '12px' }}>
                     <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Margin: </span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                    <span style={{ color: 'var(--accent-green)' }}>
                       {formatCurrency(parseFloat(addForm.rate || '0') - parseFloat(addForm.dealerFee || '0'))}
                     </span>
                   </div>

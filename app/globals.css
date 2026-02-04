@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
   /* Refined earthy palette */
@@ -359,7 +359,6 @@ body {
 .stat-value {
   font-size: 26px;
   font-weight: 700;
-  font-family: 'JetBrains Mono', monospace;
   letter-spacing: -0.02em;
 }
 
@@ -539,7 +538,6 @@ tbody tr:hover {
 }
 
 .field-count {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
 }
 
@@ -709,7 +707,6 @@ tbody tr:hover {
   font-size: 11px;
   font-weight: 700;
   color: white;
-  font-family: 'JetBrains Mono', monospace;
 }
 
 .custom-marker.installed {
@@ -1669,7 +1666,6 @@ input[type="date"]:focus {
   padding: 12px 16px;
   background: var(--bg-card);
   font-size: 14px;
-  font-family: 'JetBrains Mono', monospace;
   border-top: 1px solid var(--border);
 }
 

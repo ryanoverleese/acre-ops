@@ -625,7 +625,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               ) : (
                 filteredProbes.map((probe) => (
                   <tr key={probe.id}>
-                    <td style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>
+                    <td style={{ fontWeight: 600 }}>
                       #{probe.serialNumber}
                     </td>
                     <td>{getBrandBadge(probe.brand)}</td>
@@ -633,7 +633,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     <td style={{ fontSize: '13px' }}>
                       {getFieldForProbe(probe.id) || '—'}
                     </td>
-                    <td style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px' }}>
+                    <td style={{ fontSize: '13px' }}>
                       {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}
                     </td>
                     <td style={{ fontSize: '13px' }}>{probe.operation}</td>
@@ -679,7 +679,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       }}
                     >
                       <div className="mobile-card-header">
-                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--text-muted)' }}>
+                        <span className="mobile-card-title" style={{ color: 'var(--text-muted)' }}>
                           {item.rack}-{item.slot}
                         </span>
                         <span style={{
@@ -699,7 +699,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   ) : (
                     <div key={item.probe.id} className="mobile-card" onClick={() => openEditModal(item.probe)}>
                       <div className="mobile-card-header">
-                        <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                        <span className="mobile-card-title" style={{ color: 'var(--accent-green)' }}>
                           {item.probe.rack}{item.probe.rackSlot ? `-${item.probe.rackSlot}` : ''}
                         </span>
                         {getStatusBadge(item.probe.status)}
@@ -749,14 +749,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     <div className="mobile-card-header">
                       {viewMode === 'rack' ? (
                         <>
-                          <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-green)' }}>
+                          <span className="mobile-card-title" style={{ color: 'var(--accent-green)' }}>
                             {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
                           </span>
                           {getStatusBadge(probe.status)}
                         </>
                       ) : (
                         <>
-                          <span className="mobile-card-title" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                          <span className="mobile-card-title" style={{  }}>
                             #{probe.serialNumber}
                           </span>
                           {getStatusBadge(probe.status)}

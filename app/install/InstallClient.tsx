@@ -430,7 +430,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                           Probe {assignment.probeNumber}
                         </span>
-                        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '15px', fontWeight: 500 }}>
+                        <div style={{ fontSize: '15px', fontWeight: 500 }}>
                           #{assignment.probeSerial}
                         </div>
                       </div>
@@ -510,7 +510,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <label>Probe</label>
                   {!formData.changedProbeId ? (
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
-                      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 500 }}>
+                      <span style={{ fontWeight: 500 }}>
                         #{selectedAssignment.probeSerial}
                       </span>
                       <button
@@ -585,7 +585,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       color: 'var(--accent-green)',
                       fontSize: '14px',
                     }}>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                      <div style={{  }}>
                         {formData.lat}, {formData.lng}
                       </div>
                       {formData.accuracy && (
