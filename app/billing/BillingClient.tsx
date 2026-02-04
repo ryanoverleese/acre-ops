@@ -58,14 +58,49 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
   const [saving, setSaving] = useState(false);
+  const [sortBy, setSortBy] = useState<'operation' | 'amount'>('operation');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Filter entities by selected season
+  // Helper to calculate total for an entity (for sorting)
+  const getEntityTotal = (be: ProcessedBillingEntity) => {
+    const invoice = be.invoices[0];
+    if (!invoice) return 0;
+    const subtotal = invoice.lines.reduce((sum, line) => sum + line.rate, 0);
+    const entityBulkCount = invoice.lines.filter(line =>
+      line.serviceType.toLowerCase().includes('bulk')
+    ).length;
+    const discount = (be.operationBulkFieldCount || 0) >= BULK_DISCOUNT_MIN_FIELDS && entityBulkCount > 0
+      ? entityBulkCount * BULK_DISCOUNT_PER_FIELD
+      : 0;
+    return subtotal - discount;
+  };
+
+  // Filter and sort entities by selected season
   const filteredEntities = useMemo(() => {
-    const filtered = billingEntities.filter(be => be.season === currentSeason);
+    let filtered = billingEntities.filter(be => be.season === currentSeason);
+
+    // Sort based on sortBy and sortDirection
+    filtered = [...filtered].sort((a, b) => {
+      let aVal: string | number;
+      let bVal: string | number;
+
+      if (sortBy === 'operation') {
+        aVal = a.operation.toLowerCase();
+        bVal = b.operation.toLowerCase();
+      } else {
+        aVal = getEntityTotal(a);
+        bVal = getEntityTotal(b);
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
     // Auto-expand all entities for current season
     setExpandedEntities(new Set(filtered.map(be => be.id)));
     return filtered;
-  }, [billingEntities, currentSeason]);
+  }, [billingEntities, currentSeason, sortBy, sortDirection]);
 
   const toggleExpand = (beId: number) => {
     setExpandedEntities(prev => {
@@ -243,7 +278,40 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             ))}
           </select>
         </div>
-        <div className="header-right" style={{ display: 'flex', gap: '8px' }}>
+        <div className="header-right" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort:</span>
+            <button
+              className={`btn ${sortBy === 'operation' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => {
+                if (sortBy === 'operation') {
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortBy('operation');
+                  setSortDirection('asc');
+                }
+              }}
+              style={{ padding: '6px 12px', fontSize: '12px' }}
+              title={sortBy === 'operation' ? `Sorted by Operation ${sortDirection === 'asc' ? 'A-Z' : 'Z-A'}` : 'Sort by Operation'}
+            >
+              Operation {sortBy === 'operation' && (sortDirection === 'asc' ? '▲' : '▼')}
+            </button>
+            <button
+              className={`btn ${sortBy === 'amount' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => {
+                if (sortBy === 'amount') {
+                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortBy('amount');
+                  setSortDirection('asc');
+                }
+              }}
+              style={{ padding: '6px 12px', fontSize: '12px' }}
+              title={sortBy === 'amount' ? `Sorted by Amount ${sortDirection === 'asc' ? 'Low to High' : 'High to Low'}` : 'Sort by Amount'}
+            >
+              Amount {sortBy === 'amount' && (sortDirection === 'asc' ? '▲' : '▼')}
+            </button>
+          </div>
           <button className="btn btn-secondary" onClick={collapseAll} title="Collapse all entities">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
