@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 
 export interface InvoiceLine {
   id: number;
@@ -29,10 +29,12 @@ export interface ProcessedBillingEntity {
   invoices: ProcessedInvoice[];
   totalBilled: number;
   totalPaid: number;
+  season?: number;
 }
 
 interface BillingClientProps {
   billingEntities: ProcessedBillingEntity[];
+  availableSeasons: number[];
 }
 
 const BULK_DISCOUNT_PER_FIELD = 25;
@@ -47,12 +49,21 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export default function BillingClient({ billingEntities: initialEntities }: BillingClientProps) {
+export default function BillingClient({ billingEntities: initialEntities, availableSeasons }: BillingClientProps) {
   const [billingEntities, setBillingEntities] = useState(initialEntities);
-  const [expandedEntities, setExpandedEntities] = useState<Set<number>>(new Set(initialEntities.map(be => be.id)));
+  const [currentSeason, setCurrentSeason] = useState<number>(availableSeasons[0] || new Date().getFullYear());
+  const [expandedEntities, setExpandedEntities] = useState<Set<number>>(new Set());
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Filter entities by selected season
+  const filteredEntities = useMemo(() => {
+    const filtered = billingEntities.filter(be => be.season === currentSeason);
+    // Auto-expand all entities for current season
+    setExpandedEntities(new Set(filtered.map(be => be.id)));
+    return filtered;
+  }, [billingEntities, currentSeason]);
 
   const toggleExpand = (beId: number) => {
     setExpandedEntities(prev => {
@@ -148,7 +159,7 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
     const headers = ['Billing Entity', 'Operation', 'Field', 'Service Type', 'Rate', 'Discount', 'Total'];
     const rows: (string | number)[][] = [];
 
-    billingEntities.forEach((be) => {
+    filteredEntities.forEach((be) => {
       be.invoices.forEach((inv) => {
         const { discount } = calculateBulkDiscount(inv.lines);
         const subtotal = inv.lines.reduce((sum, line) => sum + line.rate, 0);
@@ -176,23 +187,23 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `billing-2026-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `billing-${currentSeason}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Calculate totals
-  const totalSubtotal = billingEntities.reduce((sum, be) =>
+  // Calculate totals for filtered entities
+  const totalSubtotal = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
       invSum + inv.lines.reduce((lineSum, line) => lineSum + line.rate, 0), 0), 0);
 
-  const totalDiscount = billingEntities.reduce((sum, be) =>
+  const totalDiscount = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
       invSum + calculateBulkDiscount(inv.lines).discount, 0), 0);
 
   const totalAfterDiscount = totalSubtotal - totalDiscount;
 
-  const totalPaid = billingEntities.reduce((sum, be) =>
+  const totalPaid = filteredEntities.reduce((sum, be) =>
     sum + be.invoices
       .filter(inv => inv.status.toLowerCase() === 'paid')
       .reduce((invSum, inv) => {
@@ -206,7 +217,24 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
       <header className="header">
         <div className="header-left">
           <h2>Billing</h2>
-          <span className="season-badge">2026 Season</span>
+          <select
+            value={currentSeason}
+            onChange={(e) => setCurrentSeason(parseInt(e.target.value, 10))}
+            style={{
+              background: 'var(--accent-green-dim)',
+              color: 'var(--accent-green)',
+              border: 'none',
+              padding: '4px 12px',
+              borderRadius: '16px',
+              fontWeight: 600,
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            {availableSeasons.map((s) => (
+              <option key={s} value={s}>{s} Season</option>
+            ))}
+          </select>
         </div>
         <div className="header-right">
           <button className="btn btn-secondary" onClick={handleExport}>
@@ -222,7 +250,7 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
         <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '24px' }}>
           <div className="stat-card">
             <div className="stat-label">Active Entities</div>
-            <div className="stat-value blue">{billingEntities.length}</div>
+            <div className="stat-value blue">{filteredEntities.length}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Subtotal</div>
@@ -238,15 +266,15 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
           </div>
         </div>
 
-        {billingEntities.length === 0 ? (
+        {filteredEntities.length === 0 ? (
           <div className="table-container">
             <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No billing entities with 2026 field seasons found.
+              No billing entities with {currentSeason} field seasons found.
             </div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {billingEntities.map((be) => {
+            {filteredEntities.map((be) => {
               const isExpanded = expandedEntities.has(be.id);
               const invoice = be.invoices[0]; // Usually one invoice per entity per season
               const lines = invoice?.lines || [];
@@ -255,7 +283,7 @@ export default function BillingClient({ billingEntities: initialEntities }: Bill
               const total = subtotal - discount;
 
               return (
-                <div key={be.id} className="table-container" style={{ overflow: 'hidden' }}>
+                <div key={`${be.id}-${be.season}`} className="table-container" style={{ overflow: 'hidden' }}>
                   {/* Entity Header */}
                   <div
                     style={{
