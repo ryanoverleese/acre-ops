@@ -185,6 +185,23 @@ async function getBillingData(): Promise<BillingData> {
       });
     });
 
+    // Calculate bulk field counts per operation per season (for discount calculation)
+    // Key: "operation-season", Value: count of bulk fields
+    const operationBulkCounts = new Map<string, number>();
+    processedEntities.forEach((entity) => {
+      const opKey = `${entity.operation}-${entity.season}`;
+      const bulkCount = entity.invoices[0]?.lines.filter(
+        (line) => line.serviceType.toLowerCase().includes('bulk')
+      ).length || 0;
+      operationBulkCounts.set(opKey, (operationBulkCounts.get(opKey) || 0) + bulkCount);
+    });
+
+    // Add operation bulk count to each entity so client can calculate discount
+    processedEntities.forEach((entity) => {
+      const opKey = `${entity.operation}-${entity.season}`;
+      entity.operationBulkFieldCount = operationBulkCounts.get(opKey) || 0;
+    });
+
     // Sort seasons descending (newest first)
     const sortedSeasons = Array.from(allSeasons).sort((a, b) => b - a);
 

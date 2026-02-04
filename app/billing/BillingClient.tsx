@@ -30,6 +30,7 @@ export interface ProcessedBillingEntity {
   totalBilled: number;
   totalPaid: number;
   season?: number;
+  operationBulkFieldCount?: number; // Total bulk fields across all entities in this operation
 }
 
 interface BillingClientProps {
@@ -77,17 +78,18 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     });
   };
 
-  // Calculate bulk discount for an invoice
-  const calculateBulkDiscount = (lines: InvoiceLine[]): { discount: number; eligibleCount: number } => {
-    // Count fields with "Bulk" in the service type
-    const bulkLines = lines.filter(line =>
+  // Calculate bulk discount for an entity based on operation-level bulk field count
+  const calculateBulkDiscount = (lines: InvoiceLine[], operationBulkFieldCount: number): { discount: number; eligibleCount: number } => {
+    // Count bulk fields for THIS entity
+    const entityBulkCount = lines.filter(line =>
       line.serviceType.toLowerCase().includes('bulk')
-    );
+    ).length;
 
-    if (bulkLines.length >= BULK_DISCOUNT_MIN_FIELDS) {
+    // Discount applies if OPERATION has 10+ bulk fields total
+    if (operationBulkFieldCount >= BULK_DISCOUNT_MIN_FIELDS && entityBulkCount > 0) {
       return {
-        discount: bulkLines.length * BULK_DISCOUNT_PER_FIELD,
-        eligibleCount: bulkLines.length,
+        discount: entityBulkCount * BULK_DISCOUNT_PER_FIELD,
+        eligibleCount: entityBulkCount,
       };
     }
     return { discount: 0, eligibleCount: 0 };
@@ -161,7 +163,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
     filteredEntities.forEach((be) => {
       be.invoices.forEach((inv) => {
-        const { discount } = calculateBulkDiscount(inv.lines);
+        const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
         const subtotal = inv.lines.reduce((sum, line) => sum + line.rate, 0);
 
         inv.lines.forEach((line, idx) => {
@@ -199,7 +201,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
   const totalDiscount = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
-      invSum + calculateBulkDiscount(inv.lines).discount, 0), 0);
+      invSum + calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0).discount, 0), 0);
 
   const totalAfterDiscount = totalSubtotal - totalDiscount;
 
@@ -208,7 +210,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       .filter(inv => inv.status.toLowerCase() === 'paid')
       .reduce((invSum, inv) => {
         const subtotal = inv.lines.reduce((s, l) => s + l.rate, 0);
-        const { discount } = calculateBulkDiscount(inv.lines);
+        const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
         return invSum + subtotal - discount;
       }, 0), 0);
 
@@ -279,7 +281,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               const invoice = be.invoices[0]; // Usually one invoice per entity per season
               const lines = invoice?.lines || [];
               const subtotal = lines.reduce((sum, line) => sum + line.rate, 0);
-              const { discount, eligibleCount } = calculateBulkDiscount(lines);
+              const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
               const total = subtotal - discount;
 
               return (
