@@ -7,6 +7,7 @@ import InlineCell from '@/components/InlineCell';
 import InlineProbeCell from '@/components/InlineProbeCell';
 import CreateProbeModal from '@/components/fields/CreateProbeModal';
 import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditSeasonModal';
+import AddFieldModal from '@/components/fields/AddFieldModal';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -30,30 +31,6 @@ interface FieldsClientProps {
   initialProbeAssignments: ProcessedProbeAssignment[];
   serviceRates: ServiceRateOption[];
 }
-
-const initialAddForm = {
-  billing_entity: '',
-  name: '',
-  acres: '',
-  pivot_acres: '',
-  lat: '',
-  lng: '',
-  water_source: '',
-  fuel_source: '',
-  notes: '',
-  season: '2026',
-  crop: '',
-  service_type: '',
-  antenna_type: '',
-  battery_type: '',
-  side_dress: '',
-  logger_id: '',
-  early_removal: '',
-  hybrid_variety: '',
-  ready_to_remove: '',
-  planting_date: '',
-  billing_rate: '',
-};
 
 // Column definitions for all tabs
 type FieldColumnKey =
@@ -155,7 +132,7 @@ export default function FieldsClient({
   const [savedFields, setSavedFields] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ ...initialAddForm, season: currentSeason });
+  const [addFieldLatLng, setAddFieldLatLng] = useState<{ lat: string; lng: string } | null>(null);
   const [sortColumn, setSortColumn] = useState<string>('field');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showProbeAssign, setShowProbeAssign] = useState(false);
@@ -1591,81 +1568,6 @@ export default function FieldsClient({
     }
   };
 
-  const handleAddField = async () => {
-    if (!addForm.billing_entity) {
-      alert('Billing Entity is required');
-      return;
-    }
-    if (!addForm.name.trim()) {
-      alert('Field name is required');
-      return;
-    }
-    setSaving(true);
-    try {
-      const response = await fetch('/api/fields', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          billing_entity: parseInt(addForm.billing_entity, 10),
-          name: addForm.name,
-          acres: addForm.acres ? parseFloat(addForm.acres) : undefined,
-          pivot_acres: addForm.pivot_acres ? parseFloat(addForm.pivot_acres) : undefined,
-          lat: addForm.lat ? parseFloat(addForm.lat) : undefined,
-          lng: addForm.lng ? parseFloat(addForm.lng) : undefined,
-          water_source: addForm.water_source || undefined,
-          fuel_source: addForm.fuel_source || undefined,
-          notes: addForm.notes || undefined,
-          season: addForm.season,
-          crop: addForm.crop || undefined,
-          service_type: addForm.service_type || undefined,
-          antenna_type: addForm.antenna_type || undefined,
-          battery_type: addForm.battery_type || undefined,
-          side_dress: addForm.side_dress || undefined,
-          logger_id: addForm.logger_id || undefined,
-          early_removal: addForm.early_removal || undefined,
-          hybrid_variety: addForm.hybrid_variety || undefined,
-          ready_to_remove: addForm.ready_to_remove || undefined,
-          planting_date: addForm.planting_date || undefined,
-        }),
-      });
-      if (response.ok) {
-        const result = await response.json();
-
-        // Create invoice line if billing_rate is provided
-        if (addForm.billing_rate && result.fieldSeason?.id) {
-          try {
-            await fetch('/api/billing/enroll', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                billing_entity_id: parseInt(addForm.billing_entity, 10),
-                season: addForm.season,
-                field_season_id: result.fieldSeason.id,
-                service_type: addForm.service_type || '',
-                rate: addForm.billing_rate,
-              }),
-            });
-          } catch (billingError) {
-            console.error('Failed to create billing entry:', billingError);
-            // Don't fail the whole operation if billing fails
-          }
-        }
-
-        setShowAddModal(false);
-        setAddForm({ ...initialAddForm, season: currentSeason });
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to create field');
-      }
-    } catch (error) {
-      console.error('Create error:', error);
-      alert('Failed to create field');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const getStatusBadge = (status: string | undefined | null) => {
     const safeStatus = status || 'Unassigned';
     const normalized = safeStatus.toLowerCase().replace(/\s+/g, '-');
@@ -2982,250 +2884,26 @@ export default function FieldsClient({
 
         {/* Add Field Modal */}
         {showAddModal && (
-          <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
-            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
-              <div className="detail-panel-header">
-                <h3>Add New Field</h3>
-                <button className="close-btn" onClick={() => setShowAddModal(false)}>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="detail-panel-content">
-                <div className="edit-form">
-                  <div className="form-group">
-                    <label>Billing Entity *</label>
-                    <select value={addForm.billing_entity} onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}>
-                      <option value="">Select billing entity...</option>
-                      {[...billingEntities].sort((a, b) => a.name.localeCompare(b.name)).map((be) => (
-                        <option key={be.id} value={be.id}>{be.name} ({be.operationName})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Field Name *</label>
-                    <input type="text" value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} placeholder="Enter field name" />
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Acres</label>
-                      <input type="number" value={addForm.acres} onChange={(e) => setAddForm({ ...addForm, acres: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Pivot Acres</label>
-                      <input type="number" value={addForm.pivot_acres} onChange={(e) => setAddForm({ ...addForm, pivot_acres: e.target.value })} />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Latitude</label>
-                      <input type="number" step="any" value={addForm.lat} onChange={(e) => setAddForm({ ...addForm, lat: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label>Longitude</label>
-                      <input type="number" step="any" value={addForm.lng} onChange={(e) => setAddForm({ ...addForm, lng: e.target.value })} />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="location-btn"
-                    onClick={() => {
-                      setLocationPickerTarget('add');
-                      setShowLocationPicker(true);
-                    }}
-                    style={{ marginBottom: '16px' }}
-                  >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    Pick Location on Map
-                  </button>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Water Source</label>
-                      <select value={addForm.water_source} onChange={(e) => setAddForm({ ...addForm, water_source: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Well">Well</option>
-                        <option value="Canal">Canal</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Fuel Source</label>
-                      <select value={addForm.fuel_source} onChange={(e) => setAddForm({ ...addForm, fuel_source: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Electric">Electric</option>
-                        <option value="Natural Gas">Natural Gas</option>
-                        <option value="Diesel">Diesel</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label>Notes</label>
-                    <textarea value={addForm.notes} onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })} rows={2} />
-                  </div>
-
-                  <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
-                  <h4 style={{ marginBottom: '12px', color: 'var(--text-secondary)' }}>Season Info ({addForm.season})</h4>
-
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Season</label>
-                      <select value={addForm.season} onChange={(e) => setAddForm({ ...addForm, season: e.target.value })}>
-                        <option value="2027">2027</option>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Crop</label>
-                      <select value={addForm.crop} onChange={(e) => setAddForm({ ...addForm, crop: e.target.value })}>
-                        <option value="">Select crop...</option>
-                        <option value="Corn">Corn</option>
-                        <option value="Soybeans">Soybeans</option>
-                        <option value="Wheat">Wheat</option>
-                        <option value="Seed Corn">Seed Corn</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Service Type</label>
-                      <select value={addForm.service_type} onChange={(e) => {
-                        const serviceType = e.target.value;
-                        const rate = getRateForServiceType(serviceType);
-                        setAddForm({ ...addForm, service_type: serviceType, billing_rate: rate });
-                      }}>
-                        <option value="">Select...</option>
-                        {serviceTypeOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Billing Rate ($)</label>
-                      <input
-                        type="number"
-                        value={addForm.billing_rate}
-                        onChange={(e) => setAddForm({ ...addForm, billing_rate: e.target.value })}
-                        placeholder="Auto-filled from service type"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Antenna Type</label>
-                      <select value={addForm.antenna_type} onChange={(e) => setAddForm({ ...addForm, antenna_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
-                        <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                        <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
-                        <option value="ASK">ASK</option>
-                        <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
-                        <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                        <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Battery Type</label>
-                      <select value={addForm.battery_type} onChange={(e) => setAddForm({ ...addForm, battery_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="CropX">CropX</option>
-                        <option value="Sentek Used">Sentek Used</option>
-                        <option value="Sentek New">Sentek New</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Side Dress</label>
-                      <select value={addForm.side_dress} onChange={(e) => setAddForm({ ...addForm, side_dress: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="None">None</option>
-                        <option value="Cultivate">Cultivate</option>
-                        <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
-                        <option value="Cultivation Likely">Cultivation Likely</option>
-                        <option value="High Y-Drop">High Y-Drop</option>
-                        <option value="Coulter">Coulter</option>
-                        <option value="Sprayer Drops">Sprayer Drops</option>
-                        <option value="Pivot">Pivot</option>
-                        <option value="Low Y-Drop">Low Y-Drop</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Logger ID</label>
-                      <input
-                        type="text"
-                        value={addForm.logger_id}
-                        onChange={(e) => setAddForm({ ...addForm, logger_id: e.target.value })}
-                        placeholder="e.g., 7080859"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Early Removal</label>
-                      <select value={addForm.early_removal} onChange={(e) => setAddForm({ ...addForm, early_removal: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Regular">Regular</option>
-                        <option value="Silage">Silage</option>
-                        <option value="Soybeans">Soybeans</option>
-                        <option value="HMC">HMC</option>
-                        <option value="HMC – Oct 1">HMC – Oct 1</option>
-                        <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
-                        <option value="Popcorn">Popcorn</option>
-                        <option value="HMC Maybe">HMC Maybe</option>
-                        <option value="Early Incentive Corn">Early Incentive Corn</option>
-                        <option value="Seed Corn">Seed Corn</option>
-                        <option value="Sorghum">Sorghum</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Hybrid/Variety</label>
-                      <input
-                        type="text"
-                        value={addForm.hybrid_variety}
-                        onChange={(e) => setAddForm({ ...addForm, hybrid_variety: e.target.value })}
-                        placeholder="e.g., P1185AM"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Ready to Remove</label>
-                      <select value={addForm.ready_to_remove} onChange={(e) => setAddForm({ ...addForm, ready_to_remove: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Planting Date</label>
-                      <input
-                        type="date"
-                        value={addForm.planting_date}
-                        onChange={(e) => setAddForm({ ...addForm, planting_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="detail-panel-footer">
-                <button className="btn btn-secondary" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleAddField} disabled={saving}>
-                  {saving ? 'Creating...' : 'Create Field'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <AddFieldModal
+            currentSeason={currentSeason}
+            billingEntities={billingEntities}
+            serviceTypeOptions={serviceTypeOptions}
+            getRateForServiceType={getRateForServiceType}
+            onClose={() => {
+              setShowAddModal(false);
+              setAddFieldLatLng(null);
+            }}
+            onSaved={() => {
+              setShowAddModal(false);
+              setAddFieldLatLng(null);
+              window.location.reload();
+            }}
+            onOpenLocationPicker={() => {
+              setLocationPickerTarget('add');
+              setShowLocationPicker(true);
+            }}
+            latLng={addFieldLatLng}
+          />
         )}
 
         {/* Add Season Modal */}
@@ -3765,14 +3443,14 @@ export default function FieldsClient({
                 ? (editForm.lat ? Number(editForm.lat) : null)
                 : locationPickerTarget === 'probeAssignment'
                   ? (editingProbeAssignmentLocation?.placementLat ?? null)
-                  : (addForm.lat ? parseFloat(addForm.lat) : null)
+                  : (addFieldLatLng?.lat ? parseFloat(addFieldLatLng.lat) : null)
             }
             lng={
               locationPickerTarget === 'edit'
                 ? (editForm.lng ? Number(editForm.lng) : null)
                 : locationPickerTarget === 'probeAssignment'
                   ? (editingProbeAssignmentLocation?.placementLng ?? null)
-                  : (addForm.lng ? parseFloat(addForm.lng) : null)
+                  : (addFieldLatLng?.lng ? parseFloat(addFieldLatLng.lng) : null)
             }
             onLocationChange={async (lat, lng, elevation, soilType) => {
               if (locationPickerTarget === 'edit') {
@@ -3793,7 +3471,7 @@ export default function FieldsClient({
                   soilType
                 );
               } else {
-                setAddForm({ ...addForm, lat: lat.toString(), lng: lng.toString() });
+                setAddFieldLatLng({ lat: lat.toString(), lng: lng.toString() });
               }
             }}
             onClose={() => {
