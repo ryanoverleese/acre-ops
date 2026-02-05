@@ -1,6 +1,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import {
+  EntityCard,
+  EntityHeader,
+  EntityContent,
+  EntityFooter,
+  NotesField,
+  DateInputGroup,
+} from '@/components/ui';
 
 export interface InvoiceLine {
   id: number;
@@ -31,7 +39,7 @@ export interface ProcessedBillingEntity {
   totalBilled: number;
   totalPaid: number;
   season?: number;
-  operationBulkFieldCount?: number; // Total bulk fields across all entities in this operation
+  operationBulkFieldCount?: number;
 }
 
 interface BillingClientProps {
@@ -119,12 +127,10 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
   // Calculate bulk discount for an entity based on operation-level bulk field count
   const calculateBulkDiscount = (lines: InvoiceLine[], operationBulkFieldCount: number): { discount: number; eligibleCount: number } => {
-    // Count bulk fields for THIS entity
     const entityBulkCount = lines.filter(line =>
       line.serviceType.toLowerCase().includes('bulk')
     ).length;
 
-    // Discount applies if OPERATION has 10+ bulk fields total
     if (operationBulkFieldCount >= BULK_DISCOUNT_MIN_FIELDS && entityBulkCount > 0) {
       return {
         discount: entityBulkCount * BULK_DISCOUNT_PER_FIELD,
@@ -260,29 +266,20 @@ export default function BillingClient({ billingEntities: initialEntities, availa
         <div className="header-left">
           <h2>Billing</h2>
           <select
+            className="season-badge-select"
             value={currentSeason}
             onChange={(e) => setCurrentSeason(parseInt(e.target.value, 10))}
-            style={{
-              background: 'var(--accent-green-dim)',
-              color: 'var(--accent-green)',
-              border: 'none',
-              padding: '4px 12px',
-              borderRadius: '16px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
           >
             {availableSeasons.map((s) => (
               <option key={s} value={s}>{s} Season</option>
             ))}
           </select>
         </div>
-        <div className="header-right" style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Sort:</span>
+        <div className="header-right">
+          <div className="sort-controls">
+            <span className="sort-label">Sort:</span>
             <button
-              className={`btn ${sortBy === 'operation' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-sm ${sortBy === 'operation' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => {
                 if (sortBy === 'operation') {
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -291,13 +288,12 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   setSortDirection('asc');
                 }
               }}
-              style={{ padding: '6px 12px', fontSize: '12px' }}
               title={sortBy === 'operation' ? `Sorted by Operation ${sortDirection === 'asc' ? 'A-Z' : 'Z-A'}` : 'Sort by Operation'}
             >
               Operation {sortBy === 'operation' && (sortDirection === 'asc' ? '▲' : '▼')}
             </button>
             <button
-              className={`btn ${sortBy === 'amount' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`btn btn-sm ${sortBy === 'amount' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => {
                 if (sortBy === 'amount') {
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -306,7 +302,6 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   setSortDirection('asc');
                 }
               }}
-              style={{ padding: '6px 12px', fontSize: '12px' }}
               title={sortBy === 'amount' ? `Sorted by Amount ${sortDirection === 'asc' ? 'Low to High' : 'High to Low'}` : 'Sort by Amount'}
             >
               Amount {sortBy === 'amount' && (sortDirection === 'asc' ? '▲' : '▼')}
@@ -334,7 +329,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       </header>
 
       <div className="content">
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '24px' }}>
+        <div className="stats-grid mb-6">
           <div className="stat-card">
             <div className="stat-label">Active Entities</div>
             <div className="stat-value blue">{filteredEntities.length}</div>
@@ -355,259 +350,129 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
         {filteredEntities.length === 0 ? (
           <div className="table-container">
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div className="entity-empty">
               No billing entities with {currentSeason} field seasons found.
             </div>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="entity-list">
             {filteredEntities.map((be) => {
               const isExpanded = expandedEntities.has(be.id);
-              const invoice = be.invoices[0]; // Usually one invoice per entity per season
+              const invoice = be.invoices[0];
               const lines = invoice?.lines || [];
               const subtotal = lines.reduce((sum, line) => sum + line.rate, 0);
               const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
               const total = subtotal - discount;
 
               return (
-                <div key={`${be.id}-${be.season}`} className="table-container" style={{ overflow: 'hidden' }}>
-                  {/* Entity Header */}
-                  <div
-                    style={{
-                      padding: '16px 20px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                      background: 'var(--bg-secondary)',
-                    }}
-                    onClick={() => toggleExpand(be.id)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <svg
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        width="18"
-                        height="18"
-                        style={{
-                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                          transition: 'transform 0.2s',
-                          color: 'var(--text-muted)',
-                        }}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: '15px' }}>{be.name}</div>
-                        <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{be.operation}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '16px', fontWeight: 600 }}>
-                          {formatCurrency(total)}
+                <EntityCard key={`${be.id}-${be.season}`}>
+                  <EntityHeader
+                    title={be.name}
+                    subtitle={be.operation}
+                    isExpanded={isExpanded}
+                    onToggle={() => toggleExpand(be.id)}
+                    rightContent={
+                      <>
+                        <div className="entity-amount">
+                          <div className="entity-amount-value">{formatCurrency(total)}</div>
+                          <div className="entity-amount-detail">
+                            {lines.length} {lines.length === 1 ? 'field' : 'fields'}
+                            {discount > 0 && ` • -${formatCurrency(discount)} bulk`}
+                          </div>
                         </div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                          {lines.length} {lines.length === 1 ? 'field' : 'fields'}
-                          {discount > 0 && ` • -${formatCurrency(discount)} bulk`}
-                        </div>
-                      </div>
-                      {invoice && (
-                        <span className={`status-badge ${invoice.status.toLowerCase() === 'paid' ? 'installed' : invoice.status.toLowerCase() === 'sent' ? 'pending' : 'needs-probe'}`}>
-                          <span className="status-dot"></span>
-                          {invoice.status}
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                        {invoice && (
+                          <span className={`status-badge ${invoice.status.toLowerCase() === 'paid' ? 'installed' : invoice.status.toLowerCase() === 'sent' ? 'pending' : 'needs-probe'}`}>
+                            <span className="status-dot"></span>
+                            {invoice.status}
+                          </span>
+                        )}
+                      </>
+                    }
+                  />
 
-                  {/* Expanded Content */}
                   {isExpanded && (
-                    <div style={{ borderTop: '1px solid var(--border)' }}>
-                      {/* Line Items */}
+                    <EntityContent>
                       {lines.length > 0 ? (
-                        <table style={{ width: '100%' }}>
+                        <table className="billing-table">
                           <thead>
-                            <tr style={{ background: 'var(--bg-tertiary)' }}>
-                              <th style={{ padding: '10px 20px', textAlign: 'left', fontWeight: 500, fontSize: '13px' }}>Field</th>
-                              <th style={{ padding: '10px 20px', textAlign: 'left', fontWeight: 500, fontSize: '13px' }}>Service Type</th>
-                              <th style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 500, fontSize: '13px' }}>Rate</th>
+                            <tr>
+                              <th>Field</th>
+                              <th>Service Type</th>
+                              <th className="align-right">Rate</th>
                             </tr>
                           </thead>
                           <tbody>
                             {lines.map((line) => (
-                              <tr key={line.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                <td style={{ padding: '10px 20px', fontSize: '14px' }}>{line.fieldName}</td>
-                                <td style={{ padding: '10px 20px', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                                  {line.serviceType || '—'}
-                                </td>
-                                <td style={{ padding: '10px 20px', textAlign: 'right', fontSize: '14px' }}>
-                                  {formatCurrency(line.rate)}
-                                </td>
+                              <tr key={line.id}>
+                                <td>{line.fieldName}</td>
+                                <td className="text-secondary">{line.serviceType || '—'}</td>
+                                <td className="align-right">{formatCurrency(line.rate)}</td>
                               </tr>
                             ))}
-                            {/* Subtotal row */}
-                            <tr style={{ background: 'var(--bg-tertiary)' }}>
-                              <td colSpan={2} style={{ padding: '10px 20px', textAlign: 'right', fontWeight: 500, fontSize: '13px' }}>
-                                Subtotal
-                              </td>
-                              <td style={{ padding: '10px 20px', textAlign: 'right', fontSize: '14px' }}>
-                                {formatCurrency(subtotal)}
-                              </td>
+                            <tr className="subtotal-row">
+                              <td colSpan={2} className="align-right">Subtotal</td>
+                              <td className="align-right">{formatCurrency(subtotal)}</td>
                             </tr>
-                            {/* Discount row (if applicable) */}
                             {discount > 0 && (
-                              <tr style={{ background: 'var(--bg-tertiary)' }}>
-                                <td colSpan={2} style={{ padding: '10px 20px', textAlign: 'right', fontSize: '13px', color: 'var(--accent-green)' }}>
+                              <tr className="discount-row">
+                                <td colSpan={2} className="align-right discount-text">
                                   Bulk Discount ({eligibleCount} fields × ${BULK_DISCOUNT_PER_FIELD})
                                 </td>
-                                <td style={{ padding: '10px 20px', textAlign: 'right', fontSize: '14px', color: 'var(--accent-green)' }}>
-                                  -{formatCurrency(discount)}
-                                </td>
+                                <td className="align-right discount-text">-{formatCurrency(discount)}</td>
                               </tr>
                             )}
-                            {/* Total row */}
-                            <tr style={{ background: 'var(--bg-secondary)' }}>
-                              <td colSpan={2} style={{ padding: '12px 20px', textAlign: 'right', fontWeight: 600, fontSize: '14px' }}>
-                                Total
-                              </td>
-                              <td style={{ padding: '12px 20px', textAlign: 'right', fontSize: '16px', fontWeight: 600 }}>
-                                {formatCurrency(total)}
-                              </td>
+                            <tr className="total-row">
+                              <td colSpan={2} className="align-right">Total</td>
+                              <td className="align-right">{formatCurrency(total)}</td>
                             </tr>
                           </tbody>
                         </table>
                       ) : (
-                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        <div className="entity-empty">
                           No line items yet. Enroll fields to add billing items.
                         </div>
                       )}
 
-                      {/* Footer: Notes + Dates */}
                       {invoice && (
-                        <div style={{ padding: '16px 20px', borderTop: '1px solid var(--border)', background: 'var(--bg-card)', display: 'flex', gap: '24px', flexWrap: 'wrap' }}>
-                          {/* Notes */}
-                          <div style={{ flex: '1 1 300px' }}>
-                            <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                              Notes
-                            </label>
-                            {editingNotes === invoice.id ? (
-                              <div style={{ display: 'flex', gap: '8px' }}>
-                                <textarea
-                                  value={notesValue}
-                                  onChange={(e) => setNotesValue(e.target.value)}
-                                  style={{
-                                    flex: 1,
-                                    padding: '8px',
-                                    fontSize: '13px',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: '4px',
-                                    background: 'var(--bg-secondary)',
-                                    resize: 'vertical',
-                                    minHeight: '60px',
-                                  }}
-                                  placeholder="Add notes..."
-                                />
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                  <button
-                                    className="btn btn-primary"
-                                    style={{ padding: '6px 12px', fontSize: '12px' }}
-                                    onClick={() => handleSaveNotes(invoice.id)}
-                                    disabled={saving}
-                                  >
-                                    {saving ? '...' : 'Save'}
-                                  </button>
-                                  <button
-                                    className="btn btn-secondary"
-                                    style={{ padding: '6px 12px', fontSize: '12px' }}
-                                    onClick={() => setEditingNotes(null)}
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div
-                                onClick={() => {
-                                  setEditingNotes(invoice.id);
-                                  setNotesValue(invoice.notes || '');
-                                }}
-                                style={{
-                                  padding: '8px',
-                                  fontSize: '13px',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '4px',
-                                  background: 'var(--bg-secondary)',
-                                  minHeight: '40px',
-                                  cursor: 'pointer',
-                                  color: invoice.notes ? 'var(--text-primary)' : 'var(--text-muted)',
-                                }}
-                              >
-                                {invoice.notes || 'Click to add notes...'}
-                              </div>
-                            )}
+                        <EntityFooter>
+                          <div className="entity-notes">
+                            <label className="form-group-label">Notes</label>
+                            <NotesField
+                              value={editingNotes === invoice.id ? notesValue : invoice.notes}
+                              isEditing={editingNotes === invoice.id}
+                              isSaving={saving}
+                              onStartEdit={() => {
+                                setEditingNotes(invoice.id);
+                                setNotesValue(invoice.notes || '');
+                              }}
+                              onSave={() => handleSaveNotes(invoice.id)}
+                              onCancel={() => setEditingNotes(null)}
+                              onChange={setNotesValue}
+                            />
                           </div>
 
-                          {/* Dates */}
-                          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                            <div>
-                              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                                Sent Date
-                              </label>
-                              <input
-                                type="date"
-                                value={invoice.sentAt?.split('T')[0] || ''}
-                                onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'sent_at', e.target.value)}
-                                style={{
-                                  padding: '8px',
-                                  fontSize: '13px',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '4px',
-                                  background: 'var(--bg-secondary)',
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                                Deposit Date
-                              </label>
-                              <input
-                                type="date"
-                                value={invoice.depositAt?.split('T')[0] || ''}
-                                onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'deposit_at', e.target.value)}
-                                style={{
-                                  padding: '8px',
-                                  fontSize: '13px',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '4px',
-                                  background: 'var(--bg-secondary)',
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <label style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-                                Paid Date
-                              </label>
-                              <input
-                                type="date"
-                                value={invoice.paidAt?.split('T')[0] || ''}
-                                onChange={(e) => handleUpdateInvoiceDate(invoice.id, 'paid_at', e.target.value)}
-                                style={{
-                                  padding: '8px',
-                                  fontSize: '13px',
-                                  border: '1px solid var(--border)',
-                                  borderRadius: '4px',
-                                  background: 'var(--bg-secondary)',
-                                }}
-                              />
-                            </div>
+                          <div className="entity-dates">
+                            <DateInputGroup
+                              label="Sent Date"
+                              value={invoice.sentAt?.split('T')[0] || ''}
+                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, 'sent_at', value)}
+                            />
+                            <DateInputGroup
+                              label="Deposit Date"
+                              value={invoice.depositAt?.split('T')[0] || ''}
+                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, 'deposit_at', value)}
+                            />
+                            <DateInputGroup
+                              label="Paid Date"
+                              value={invoice.paidAt?.split('T')[0] || ''}
+                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, 'paid_at', value)}
+                            />
                           </div>
-                        </div>
+                        </EntityFooter>
                       )}
-                    </div>
+                    </EntityContent>
                   )}
-                </div>
+                </EntityCard>
               );
             })}
           </div>

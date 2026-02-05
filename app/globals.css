@@ -2424,3 +2424,510 @@ input[type="date"]:focus {
     height: 52px;
   }
 }
+
+/* ============================================
+   SHARED UI COMPONENTS
+   ============================================ */
+
+/* Page Header - Used for settings and other standalone pages */
+.page-header {
+  margin-bottom: var(--space-6);
+}
+
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.page-header p {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: var(--space-2) 0 0 0;
+}
+
+/* Content Card - Reusable card container */
+.content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+
+.content-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Section Header - Used within content cards */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-4);
+}
+
+.section-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.section-header-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Section Description */
+.section-description {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+/* Saved Indicator - Animated save confirmation */
+.saved-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--accent-green);
+  font-size: 13px;
+  font-weight: 500;
+  animation: fadeInOut 2s ease;
+}
+
+.saved-indicator svg {
+  width: 16px;
+  height: 16px;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Column Tags Container - For settings column picker */
+.column-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius);
+  min-height: 44px;
+}
+
+/* Column Tag - Individual removable tag */
+.column-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  background: var(--accent-green-dim);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.column-tag.locked {
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+.column-tag-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  transition: color 0.15s;
+}
+
+.column-tag-remove:hover {
+  color: var(--accent-red);
+}
+
+/* Inline Select - Consistent inline select styling */
+.inline-select {
+  padding: var(--space-2) var(--space-3);
+  font-size: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  min-width: 160px;
+  cursor: pointer;
+}
+
+.inline-select:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+/* Form Field Row - Horizontal form layout */
+.form-field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.form-field-row .form-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.form-field-row label {
+  font-weight: 500;
+  color: var(--text-secondary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* Column Count Badge */
+.column-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
+/* Utility Classes */
+.mb-4 { margin-bottom: var(--space-4); }
+.mb-6 { margin-bottom: var(--space-6); }
+.mt-4 { margin-top: var(--space-4); }
+.mt-6 { margin-top: var(--space-6); }
+
+.align-right { text-align: right; }
+.align-center { text-align: center; }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+
+/* Entity List Container */
+.entity-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Form Group Label (stacked above input) */
+.form-group-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: var(--space-1);
+}
+
+/* Section Subtitle */
+.section-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-3);
+}
+
+/* Margin Preview (for forms showing calculated values) */
+.margin-preview {
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+  font-size: 13px;
+}
+
+.margin-preview span:first-child {
+  color: var(--text-muted);
+}
+
+/* ============================================
+   BILLING PAGE SPECIFIC STYLES
+   ============================================ */
+
+/* Entity Card - Expandable billing entity */
+.entity-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.entity-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Entity Header - Clickable header for expand/collapse */
+.entity-header {
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: var(--bg-secondary);
+  transition: background 0.15s;
+}
+
+.entity-header:hover {
+  background: var(--bg-tertiary);
+}
+
+.entity-header-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.entity-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.entity-expand-icon {
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.entity-expand-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.entity-title {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.entity-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.entity-amount {
+  text-align: right;
+}
+
+.entity-amount-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.entity-amount-detail {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Entity Content - Expanded content area */
+.entity-content {
+  border-top: 1px solid var(--border);
+}
+
+/* Entity Footer - Notes and dates section */
+.entity-footer {
+  padding: var(--space-4) var(--space-5);
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+  display: flex;
+  gap: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.entity-notes {
+  flex: 1 1 300px;
+}
+
+.entity-dates {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+/* Date Input Group */
+.date-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.date-input-group label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.date-input-group input[type="date"] {
+  padding: var(--space-2);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+/* Notes Field */
+.notes-field {
+  padding: var(--space-2);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  min-height: 40px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.notes-field:hover {
+  border-color: var(--border-strong);
+}
+
+.notes-field.empty {
+  color: var(--text-muted);
+}
+
+.notes-field.editing {
+  cursor: text;
+}
+
+/* Notes Edit Form */
+.notes-edit-form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.notes-edit-form textarea {
+  flex: 1;
+  padding: var(--space-2);
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  resize: vertical;
+  min-height: 60px;
+  font-family: inherit;
+}
+
+.notes-edit-form textarea:focus {
+  outline: none;
+  border-color: var(--accent-green);
+}
+
+.notes-edit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* Billing Table Styles */
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.billing-table th {
+  padding: var(--space-3) var(--space-5);
+  text-align: left;
+  font-weight: 500;
+  font-size: 13px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.billing-table th.align-right {
+  text-align: right;
+}
+
+.billing-table td {
+  padding: var(--space-3) var(--space-5);
+  font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.billing-table td.align-right {
+  text-align: right;
+}
+
+.billing-table tr.subtotal-row,
+.billing-table tr.discount-row {
+  background: var(--bg-tertiary);
+}
+
+.billing-table tr.total-row {
+  background: var(--bg-secondary);
+}
+
+.billing-table tr.total-row td {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.billing-table .discount-text {
+  color: var(--accent-green);
+}
+
+/* Sort Controls */
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.sort-controls .sort-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Season Badge Select */
+.season-badge-select {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+  border: none;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.season-badge-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-green-dim);
+}
+
+/* Empty Entity State */
+.entity-empty {
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .entity-footer {
+    flex-direction: column;
+  }
+
+  .entity-dates {
+    width: 100%;
+  }
+
+  .entity-header {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+
+  .entity-header-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

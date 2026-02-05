@@ -1,6 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  PageHeader,
+  ContentCard,
+  SectionHeader,
+  SavedIndicator,
+  ColumnTag,
+  ColumnTagsContainer,
+  FormFieldRow,
+} from '@/components/ui';
 
 export interface ProcessedServiceRate {
   id: number;
@@ -322,84 +331,51 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
 
   return (
     <>
-      <div className="page-header">
-        <h2>Settings</h2>
-      </div>
+      <PageHeader title="Settings" />
 
       {/* Application Settings */}
-      <div className="content-card" style={{ marginBottom: '24px' }}>
-        <h3 style={{ margin: '0 0 16px 0' }}>Application Settings</h3>
+      <ContentCard className="mb-6">
+        <SectionHeader title="Application Settings" />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <label style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>Default Season:</label>
+        <FormFieldRow>
+          <div className="form-field">
+            <label>Default Season:</label>
             <select
+              className="inline-select"
               value={globalSeason}
               onChange={(e) => handleSeasonChange(e.target.value)}
-              style={{
-                padding: '8px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
             >
               {availableSeasons.map((season) => (
                 <option key={season} value={season}>{season}</option>
               ))}
             </select>
-            {seasonSaved && (
-              <span style={{ color: 'var(--accent-green)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Saved
-              </span>
-            )}
+            <SavedIndicator show={seasonSaved} />
           </div>
-        </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '8px', marginBottom: 0 }}>
+        </FormFieldRow>
+        <p className="section-description" style={{ marginTop: '8px', marginBottom: 0 }}>
           This season will be pre-selected when you visit pages with season filters.
         </p>
-      </div>
+      </ContentCard>
 
       {/* Fields Tab Column Settings */}
-      <div className="content-card" style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ margin: 0 }}>Fields Tab Columns</h3>
-          {columnsSaved && (
-            <span style={{ color: 'var(--accent-green)', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              Saved
-            </span>
-          )}
-        </div>
+      <ContentCard className="mb-6">
+        <SectionHeader
+          title="Fields Tab Columns"
+          actions={<SavedIndicator show={columnsSaved} />}
+        />
 
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+        <p className="section-description">
           Configure which columns are visible for each tab on the Fields page.
         </p>
 
         {/* Tab and column dropdowns */}
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+        <FormFieldRow className="mb-4">
           <div>
-            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Tab</label>
+            <label className="form-group-label">Tab</label>
             <select
+              className="inline-select"
               value={selectedColumnTab}
               onChange={(e) => setSelectedColumnTab(e.target.value as TabView)}
-              style={{
-                padding: '8px 12px',
-                fontSize: '14px',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                minWidth: '160px',
-              }}
             >
               {TAB_INFO.map((tab) => (
                 <option key={tab.key} value={tab.key}>{tab.label}</option>
@@ -408,22 +384,14 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Add Column</label>
+            <label className="form-group-label">Add Column</label>
             <select
+              className="inline-select"
               value=""
               onChange={(e) => {
                 if (e.target.value) {
                   handleToggleColumn(e.target.value as FieldColumnKey);
                 }
-              }}
-              style={{
-                padding: '8px 12px',
-                fontSize: '14px',
-                border: '1px solid var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                minWidth: '180px',
               }}
             >
               <option value="">Select column to add...</option>
@@ -436,233 +404,203 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
           </div>
 
           <button
-            className="btn btn-secondary"
+            className="btn btn-secondary btn-sm"
             onClick={handleResetColumns}
-            style={{ fontSize: '13px', padding: '8px 12px' }}
           >
             Reset to Defaults
           </button>
-        </div>
+        </FormFieldRow>
 
         {/* Selected columns as removable tags */}
-        <div style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '8px',
-          padding: '12px',
-          background: 'var(--bg-tertiary)',
-          borderRadius: 'var(--radius)',
-          minHeight: '44px',
-        }}>
+        <ColumnTagsContainer>
           {tabColumns[selectedColumnTab].map((colKey) => {
             const col = ALL_COLUMN_DEFINITIONS.find(c => c.key === colKey);
             if (!col) return null;
             return (
-              <span
+              <ColumnTag
                 key={colKey}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '4px 8px',
-                  background: col.alwaysVisible ? 'var(--bg-secondary)' : 'var(--accent-green-dim)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '13px',
-                }}
-              >
-                {col.label}
-                {!col.alwaysVisible && (
-                  <button
-                    onClick={() => handleToggleColumn(colKey)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: '0',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: 'var(--text-muted)',
-                    }}
-                    title="Remove column"
-                  >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </span>
+                label={col.label}
+                locked={col.alwaysVisible}
+                onRemove={() => handleToggleColumn(colKey)}
+              />
             );
           })}
-        </div>
+        </ColumnTagsContainer>
 
-        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+        <div className="column-count">
           {tabColumns[selectedColumnTab].length} columns selected
         </div>
-      </div>
+      </ContentCard>
 
-      <div className="content-card" style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ margin: 0 }}>Service Rates</h3>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-            + Add Rate
-          </button>
-        </div>
+      {/* Service Rates */}
+      <ContentCard className="mb-6">
+        <SectionHeader
+          title="Service Rates"
+          actions={
+            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+              + Add Rate
+            </button>
+          }
+        />
 
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '16px' }}>
+        <p className="section-description">
           Define billing rates for each service type. These rates auto-fill when enrolling fields.
         </p>
 
-        <table>
-          <thead>
-            <tr>
-              <th>Service Type</th>
-              <th style={{ textAlign: 'right' }}>Customer Rate</th>
-              <th style={{ textAlign: 'right' }}>Dealer Fee</th>
-              <th style={{ textAlign: 'right' }}>Margin</th>
-              <th>Description</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {activeRates.length === 0 && inactiveRates.length === 0 && (
+        <div className="table-container">
+          <table>
+            <thead>
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-                  No service rates defined. Click &quot;Add Rate&quot; to create your first one.
-                </td>
+                <th>Service Type</th>
+                <th className="align-right">Customer Rate</th>
+                <th className="align-right">Dealer Fee</th>
+                <th className="align-right">Margin</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            )}
-            {activeRates.map((rate) => (
-              <tr key={rate.id}>
-                {editingId === rate.id ? (
-                  <>
-                    <td>
-                      <input
-                        type="text"
-                        value={editForm.serviceType || ''}
-                        onChange={(e) => setEditForm({ ...editForm, serviceType: e.target.value })}
-                        style={{ width: '100%', padding: '4px 8px' }}
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        value={editForm.rate || ''}
-                        onChange={(e) => setEditForm({ ...editForm, rate: parseFloat(e.target.value) || 0 })}
-                        style={{ width: '100px', padding: '4px 8px', textAlign: 'right' }}
-                        step="0.01"
-                      />
-                    </td>
-                    <td>
-                      <input
-                        type="number"
-                        value={editForm.dealerFee || ''}
-                        onChange={(e) => setEditForm({ ...editForm, dealerFee: parseFloat(e.target.value) || 0 })}
-                        style={{ width: '100px', padding: '4px 8px', textAlign: 'right' }}
-                        step="0.01"
-                      />
-                    </td>
-                    <td style={{ textAlign: 'right', color: 'var(--accent-green)' }}>
-                      {formatCurrency((editForm.rate || 0) - (editForm.dealerFee || 0))}
-                    </td>
-                    <td>
-                      <input
-                        type="text"
-                        value={editForm.description || ''}
-                        onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                        style={{ width: '100%', padding: '4px 8px' }}
-                        placeholder="Optional notes"
-                      />
-                    </td>
-                    <td>
-                      <span className="status-badge installed">
-                        <span className="status-dot"></span>
-                        Active
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={() => handleSaveEdit(rate.id)} disabled={savingEdit}>
-                          {savingEdit ? '...' : 'Save'}
-                        </button>
-                        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '12px' }} onClick={handleCancelEdit}>
-                          Cancel
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td style={{ fontWeight: 500 }}>{rate.serviceType}</td>
-                    <td style={{ textAlign: 'right',  }}>{formatCurrency(rate.rate)}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--accent-green)' }}>{formatCurrency(rate.rate - rate.dealerFee)}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
-                    <td>
-                      <span className="status-badge installed">
-                        <span className="status-dot"></span>
-                        Active
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button className="action-btn" title="Edit" onClick={() => handleStartEdit(rate)}>
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button className="action-btn" title="Deactivate" onClick={() => handleToggleStatus(rate)}>
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {activeRates.length === 0 && inactiveRates.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="entity-empty">
+                    No service rates defined. Click &quot;Add Rate&quot; to create your first one.
+                  </td>
+                </tr>
+              )}
+              {activeRates.map((rate) => (
+                <tr key={rate.id}>
+                  {editingId === rate.id ? (
+                    <>
+                      <td>
+                        <input
+                          type="text"
+                          className="form-group input"
+                          value={editForm.serviceType || ''}
+                          onChange={(e) => setEditForm({ ...editForm, serviceType: e.target.value })}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          className="form-group input align-right"
+                          value={editForm.rate || ''}
+                          onChange={(e) => setEditForm({ ...editForm, rate: parseFloat(e.target.value) || 0 })}
+                          step="0.01"
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          className="form-group input align-right"
+                          value={editForm.dealerFee || ''}
+                          onChange={(e) => setEditForm({ ...editForm, dealerFee: parseFloat(e.target.value) || 0 })}
+                          step="0.01"
+                        />
+                      </td>
+                      <td className="align-right discount-text">
+                        {formatCurrency((editForm.rate || 0) - (editForm.dealerFee || 0))}
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          className="form-group input"
+                          value={editForm.description || ''}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                          placeholder="Optional notes"
+                        />
+                      </td>
+                      <td>
+                        <span className="status-badge installed">
+                          <span className="status-dot"></span>
+                          Active
+                        </span>
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          <button className="btn btn-primary btn-sm" onClick={() => handleSaveEdit(rate.id)} disabled={savingEdit}>
+                            {savingEdit ? '...' : 'Save'}
+                          </button>
+                          <button className="btn btn-secondary btn-sm" onClick={handleCancelEdit}>
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="operation-name">{rate.serviceType}</td>
+                      <td className="align-right">{formatCurrency(rate.rate)}</td>
+                      <td className="align-right" style={{ color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
+                      <td className="align-right discount-text">{formatCurrency(rate.rate - rate.dealerFee)}</td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
+                      <td>
+                        <span className="status-badge installed">
+                          <span className="status-dot"></span>
+                          Active
+                        </span>
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          <button className="action-btn" title="Edit" onClick={() => handleStartEdit(rate)}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                          </button>
+                          <button className="action-btn" title="Deactivate" onClick={() => handleToggleStatus(rate)}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {inactiveRates.length > 0 && (
           <>
-            <h4 style={{ marginTop: '24px', marginBottom: '12px', color: 'var(--text-muted)' }}>Inactive Rates</h4>
-            <table>
-              <tbody>
-                {inactiveRates.map((rate) => (
-                  <tr key={rate.id} style={{ opacity: 0.6 }}>
-                    <td style={{ fontWeight: 500 }}>{rate.serviceType}</td>
-                    <td style={{ textAlign: 'right',  }}>{formatCurrency(rate.rate)}</td>
-                    <td style={{ textAlign: 'right', color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
-                    <td style={{ textAlign: 'right',  }}>{formatCurrency(rate.rate - rate.dealerFee)}</td>
-                    <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
-                    <td>
-                      <span className="status-badge pending">
-                        <span className="status-dot"></span>
-                        Inactive
-                      </span>
-                    </td>
-                    <td>
-                      <button className="action-btn" title="Reactivate" onClick={() => handleToggleStatus(rate)}>
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <h4 className="section-subtitle">Inactive Rates</h4>
+            <div className="table-container">
+              <table>
+                <tbody>
+                  {inactiveRates.map((rate) => (
+                    <tr key={rate.id} style={{ opacity: 0.6 }}>
+                      <td className="operation-name">{rate.serviceType}</td>
+                      <td className="align-right">{formatCurrency(rate.rate)}</td>
+                      <td className="align-right" style={{ color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
+                      <td className="align-right">{formatCurrency(rate.rate - rate.dealerFee)}</td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
+                      <td>
+                        <span className="status-badge pending">
+                          <span className="status-dot"></span>
+                          Inactive
+                        </span>
+                      </td>
+                      <td>
+                        <button className="action-btn" title="Reactivate" onClick={() => handleToggleStatus(rate)}>
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
-      </div>
+      </ContentCard>
 
       {/* Add Rate Modal */}
       {showAddModal && (
         <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="detail-panel" style={{ width: '500px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
               <h3>Add Service Rate</h3>
               <button className="close-btn" onClick={() => setShowAddModal(false)}>
@@ -705,9 +643,9 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
                   </div>
                 </div>
                 {addForm.rate && (
-                  <div style={{ padding: '8px 12px', background: 'var(--bg-tertiary)', borderRadius: '4px', marginBottom: '12px' }}>
-                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Margin: </span>
-                    <span style={{ color: 'var(--accent-green)' }}>
+                  <div className="margin-preview">
+                    <span>Margin: </span>
+                    <span className="discount-text">
                       {formatCurrency(parseFloat(addForm.rate || '0') - parseFloat(addForm.dealerFee || '0'))}
                     </span>
                   </div>
