@@ -239,6 +239,8 @@ export interface Repair {
   fix?: string;
   repaired_at?: string;
   notified_customer?: boolean;
+  probe_replaced?: boolean;
+  new_probe_serial?: string;
 }
 
 export interface ProbeAssignment {

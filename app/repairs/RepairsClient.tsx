@@ -17,6 +17,8 @@ export interface ProcessedRepair {
   probeAssignmentId?: number;
   probeNumber?: number;
   probeSerial?: string | null;
+  probeReplaced?: boolean;
+  newProbeSerial?: string;
 }
 
 export interface FieldSeasonOption {
@@ -81,6 +83,8 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
     fix: '',
     repaired_at: new Date().toISOString().split('T')[0],
     notified_customer: false,
+    probe_replaced: false,
+    new_probe_serial: '',
   });
 
   // Get probe assignments for the selected field_season
@@ -268,6 +272,8 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
       fix: repair.fix || '',
       repaired_at: new Date().toISOString().split('T')[0],
       notified_customer: repair.notifiedCustomer || false,
+      probe_replaced: repair.probeReplaced || false,
+      new_probe_serial: repair.newProbeSerial || '',
     });
     setShowCompleteModal(true);
   };
@@ -276,6 +282,10 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
     if (!repairToComplete) return;
     if (!completeForm.fix.trim()) {
       alert('Please describe how the issue was fixed');
+      return;
+    }
+    if (completeForm.probe_replaced && !completeForm.new_probe_serial.trim()) {
+      alert('Please enter the new probe serial number');
       return;
     }
     setSaving(true);
@@ -287,6 +297,8 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
           fix: completeForm.fix,
           repaired_at: completeForm.repaired_at,
           notified_customer: completeForm.notified_customer,
+          probe_replaced: completeForm.probe_replaced,
+          new_probe_serial: completeForm.probe_replaced ? completeForm.new_probe_serial : null,
         }),
       });
       if (response.ok) {
@@ -422,6 +434,11 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     </td>
                     <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
                       {formatDate(repair.repairedAt || '')}
+                      {repair.probeReplaced && repair.newProbeSerial && (
+                        <div style={{ fontSize: '11px', color: 'var(--accent-blue)', marginTop: '2px' }}>
+                          Replaced with #{repair.newProbeSerial}
+                        </div>
+                      )}
                     </td>
                     <td>
                       {repair.notifiedCustomer ? (
@@ -497,6 +514,11 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     )}
                     {repair.fix && (
                       <div className="mobile-card-row"><span>Fix:</span> {repair.fix}</div>
+                    )}
+                    {repair.probeReplaced && repair.newProbeSerial && (
+                      <div className="mobile-card-row" style={{ color: 'var(--accent-blue)' }}>
+                        <span>Replaced:</span> Probe #{repair.newProbeSerial}
+                      </div>
                     )}
                     <div className="mobile-card-row">
                       <span>Notified:</span> {repair.notifiedCustomer ? 'Yes' : 'No'}
@@ -767,6 +789,27 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     onChange={(e) => setCompleteForm({ ...completeForm, repaired_at: e.target.value })}
                   />
                 </div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={completeForm.probe_replaced}
+                      onChange={(e) => setCompleteForm({ ...completeForm, probe_replaced: e.target.checked, new_probe_serial: e.target.checked ? completeForm.new_probe_serial : '' })}
+                    />
+                    Probe was replaced
+                  </label>
+                </div>
+                {completeForm.probe_replaced && (
+                  <div className="form-group">
+                    <label>New Probe Serial # *</label>
+                    <input
+                      type="text"
+                      value={completeForm.new_probe_serial}
+                      onChange={(e) => setCompleteForm({ ...completeForm, new_probe_serial: e.target.value })}
+                      placeholder="Enter new probe serial number..."
+                    />
+                  </div>
+                )}
                 <div className="form-group">
                   <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                     <input

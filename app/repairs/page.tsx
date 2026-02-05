@@ -79,6 +79,8 @@ async function getRepairsData(): Promise<{
         probeAssignmentId: paLink?.id,
         probeNumber: probeAssignment?.probe_number,
         probeSerial,
+        probeReplaced: repair.probe_replaced || false,
+        newProbeSerial: repair.new_probe_serial,
       };
     }).sort((a, b) => {
       if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
