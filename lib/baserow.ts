@@ -162,6 +162,7 @@ export interface Field {
   drip_gpm?: number;
   drip_depth?: number;
   field_directions?: string;
+  nrcs_field?: boolean;
 }
 
 export interface Probe {
@@ -223,8 +224,6 @@ export interface FieldSeason {
   probe_2_install_notes?: string;
   probe_2_cropx_telemetry_id?: string;
   probe_2_signal_strength?: string;
-  // NRCS
-  NRCS_field?: boolean;
   // Other
   removal_date?: string;
   removal_notes?: string;

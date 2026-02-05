@@ -87,6 +87,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.drip_depth !== undefined) {
       updateData.drip_depth = body.drip_depth;
     }
+    if (body.nrcs_field !== undefined) {
+      updateData.nrcs_field = body.nrcs_field;
+    }
 
     // Make the PATCH request to Baserow
     const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/?user_field_names=true`;

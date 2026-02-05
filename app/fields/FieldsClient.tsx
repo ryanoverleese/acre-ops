@@ -405,7 +405,6 @@ export default function FieldsClient({
     route_order: '',
     planned_installer: '',
     ready_to_install: false,
-    nrcs_field: false,
     billing_rate: '',
   });
   const [savingSeasonFields, setSavingSeasonFields] = useState(false);
@@ -974,7 +973,6 @@ export default function FieldsClient({
       route_order: field.routeOrder?.toString() || '',
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
-      nrcs_field: field.nrcsField || false,
       billing_rate: getRateForServiceType(field.serviceType || ''),
     });
     setIsEditing(false);
@@ -3478,8 +3476,24 @@ export default function FieldsClient({
                         <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                           <input
                             type="checkbox"
-                            checked={seasonFieldsForm.nrcs_field}
-                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, nrcs_field: e.target.checked })}
+                            checked={selectedField.nrcsField || false}
+                            onChange={async (e) => {
+                              const checked = e.target.checked;
+                              try {
+                                const response = await fetch(`/api/fields/${selectedField.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ nrcs_field: checked }),
+                                });
+                                if (response.ok) {
+                                  setFields(prev => prev.map(f =>
+                                    f.id === selectedField.id ? { ...f, nrcsField: checked } : f
+                                  ));
+                                }
+                              } catch (error) {
+                                console.error('Failed to update NRCS field:', error);
+                              }
+                            }}
                             style={{ width: '18px', height: '18px' }}
                           />
                           NRCS Field
@@ -3506,7 +3520,6 @@ export default function FieldsClient({
                     route_order: selectedField.routeOrder?.toString() || '',
                     planned_installer: selectedField.plannedInstaller || '',
                     ready_to_install: selectedField.readyToInstall || false,
-                    nrcs_field: selectedField.nrcsField || false,
                     billing_rate: getRateForServiceType(selectedField.serviceType || ''),
                   });
                   setSelectedProbeId(selectedField.probeId?.toString() || '');
@@ -3539,7 +3552,6 @@ export default function FieldsClient({
                         route_order: seasonFieldsForm.route_order ? parseInt(seasonFieldsForm.route_order, 10) : null,
                         planned_installer: seasonFieldsForm.planned_installer || null,
                         ready_to_install: seasonFieldsForm.ready_to_install,
-                        NRCS_field: seasonFieldsForm.nrcs_field,
                       }),
                     });
                     if (response.ok) {

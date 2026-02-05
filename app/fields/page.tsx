@@ -329,7 +329,7 @@ async function getFieldsData(): Promise<{
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
             readyToInstall: fs.ready_to_install,
-            nrcsField: fs.NRCS_field,
+            nrcsField: field.nrcs_field,
             // Install details (after installation)
             installer: fs.installer,
             installDate: fs.install_date,
