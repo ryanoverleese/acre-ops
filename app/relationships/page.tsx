@@ -7,6 +7,8 @@ import {
 } from '@/lib/baserow';
 import RelationshipsClient from './RelationshipsClient';
 
+export const dynamic = 'force-dynamic';
+
 export interface ProcessedRelationship {
   operationId: number;
   operationName: string;
