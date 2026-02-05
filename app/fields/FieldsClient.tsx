@@ -1479,7 +1479,7 @@ export default function FieldsClient({
       return;
     }
 
-    if (!confirm(`This will remove ${selectedBatchFieldIds.size} field(s) from ${batchSeason}. This will also delete any probe assignments for these fields. Continue?`)) {
+    if (!confirm(`This will remove ${selectedBatchFieldIds.size} field(s) from ${batchSeason}. This will also delete any probe assignments and billing line items for these fields. Continue?`)) {
       return;
     }
 
@@ -1490,7 +1490,25 @@ export default function FieldsClient({
         .filter((f) => selectedBatchFieldIds.has(f.id) && f.fieldSeasonId)
         .map((f) => f.fieldSeasonId!);
 
-      // First, delete all probe_assignments for these field_seasons
+      // First, fetch and delete all invoice_lines for these field_seasons
+      const invoiceLinesResponse = await fetch('/api/invoice-lines');
+      if (invoiceLinesResponse.ok) {
+        const allInvoiceLines = await invoiceLinesResponse.json();
+        const invoiceLineIdsToDelete = allInvoiceLines
+          .filter((il: { field_season?: { id: number }[] }) =>
+            il.field_season?.[0]?.id && fieldSeasonIdsToDelete.includes(il.field_season[0].id)
+          )
+          .map((il: { id: number }) => il.id);
+
+        if (invoiceLineIdsToDelete.length > 0) {
+          const ilDeletePromises = invoiceLineIdsToDelete.map((ilId: number) =>
+            fetch(`/api/invoice-lines/${ilId}`, { method: 'DELETE' })
+          );
+          await Promise.all(ilDeletePromises);
+        }
+      }
+
+      // Next, delete all probe_assignments for these field_seasons
       const probeAssignmentIdsToDelete = probeAssignments
         .filter((pa) => fieldSeasonIdsToDelete.includes(pa.fieldSeasonId))
         .map((pa) => pa.id);
@@ -1511,7 +1529,7 @@ export default function FieldsClient({
       const failures = results.filter((r) => !r.ok);
 
       if (failures.length > 0) {
-        alert(`${failures.length} field(s) failed to unenroll. They may have linked repairs or billing records.`);
+        alert(`${failures.length} field(s) failed to unenroll. They may have linked repairs.`);
       }
 
       setShowBatchModal(false);
