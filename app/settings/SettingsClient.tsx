@@ -406,6 +406,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
           <button
             className="btn btn-secondary btn-sm"
             onClick={handleResetColumns}
+            style={{ alignSelf: 'flex-end' }}
           >
             Reset to Defaults
           </button>
