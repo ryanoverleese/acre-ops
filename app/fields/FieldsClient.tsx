@@ -3,12 +3,12 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import EmptyState from '@/components/EmptyState';
-import InlineCell from '@/components/InlineCell';
 import InlineProbeCell from '@/components/InlineProbeCell';
 import CreateProbeModal from '@/components/fields/CreateProbeModal';
 import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditSeasonModal';
 import AddFieldModal from '@/components/fields/AddFieldModal';
 import AddSeasonModal from '@/components/fields/AddSeasonModal';
+import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -1789,21 +1789,12 @@ export default function FieldsClient({
                           {visibleColumns.map((colKey) => {
                             const colDef = ALL_COLUMN_DEFINITIONS.find((c) => c.key === colKey);
                             if (!colDef) return null;
-                            const minWidths: Record<FieldColumnKey, string> = {
-                              field: '140px', operation: '100px', billingEntity: '120px', crop: '90px',
-                              service: '90px', cropConfirmed: '60px', hybrid: '100px', antenna: '90px',
-                              battery: '90px', sideDress: '80px', loggerId: '80px', probes: '100px',
-                              routeOrder: '60px', plannedInstaller: '110px', readyToInstall: '60px', nrcsField: '60px',
-                              probeStatus: '100px', installDate: '100px', installer: '100px',
-                              approvalStatus: '100px', removalDate: '100px', removalNotes: '150px',
-                              readyToRemove: '60px', earlyRemoval: '60px',
-                            };
                             const isSorted = sortColumn === colKey;
                             return (
                               <th
                                 key={colKey}
                                 className="sortable"
-                                style={{ minWidth: minWidths[colKey] || '80px', cursor: 'pointer' }}
+                                style={{ minWidth: COLUMN_MIN_WIDTHS[colKey] || '80px', cursor: 'pointer' }}
                                 onClick={() => handleSort(colKey)}
                               >
                                 {colDef.label}
@@ -1837,166 +1828,23 @@ export default function FieldsClient({
                             const hasProbeAssignments = fieldSeasonProbeAssignments.length > 0;
                             const needsSeasonStart = !field.fieldSeasonId && currentSeason !== 'all';
 
-                            // Helper to render cell content based on column key
-                            const renderCell = (colKey: FieldColumnKey) => {
-                              switch (colKey) {
-                                case 'field':
-                                  return (
-                                    <td key={colKey} style={{ fontWeight: 500, cursor: 'pointer' }} title="Click to view details" onClick={() => handleRowClick(field)}>
-                                      {field.name}
-                                    </td>
-                                  );
-                                case 'operation':
-                                  return <td key={colKey} style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>;
-                                case 'billingEntity':
-                                  return <td key={colKey} style={{ color: 'var(--text-secondary)' }}>{field.billingEntityName || '—'}</td>;
-                                case 'crop':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="crop" value={field.crop} type="select"
-                                        options={[{ value: 'Corn', label: 'Corn' }, { value: 'Soybeans', label: 'Soybeans' }, { value: 'Wheat', label: 'Wheat' }, { value: 'Seed Corn', label: 'Seed Corn' }, { value: 'Other', label: 'Other' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'service':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="serviceType" value={field.serviceType} type="select" options={serviceTypeOptions}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'cropConfirmed':
-                                  return <td key={colKey}>{field.crop && field.crop !== 'Unknown' ? '✓' : '—'}</td>;
-                                case 'hybrid':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="hybridVariety" value={field.hybridVariety} type="text"
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'antenna':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="antennaType" value={field.antennaType} type="select"
-                                        options={[{ value: 'Standard', label: 'Standard' }, { value: 'Extended', label: 'Extended' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'battery':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="batteryType" value={field.batteryType} type="select"
-                                        options={[{ value: 'Standard', label: 'Standard' }, { value: 'Extended', label: 'Extended' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'sideDress':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="sideDress" value={field.sideDress} type="select"
-                                        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'loggerId':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="loggerId" value={field.loggerId} type="text"
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'probes':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      {field.fieldSeasonId ? (
-                                        <button onClick={() => toggleFieldSeasonExpand(field.fieldSeasonId!)}
-                                          style={{ background: 'none', border: '1px solid var(--border)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
-                                            color: (hasProbeAssignments || field.probe) ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                          {hasProbeAssignments ? <>{fieldSeasonProbeAssignments.length} probe{fieldSeasonProbeAssignments.length !== 1 ? 's' : ''}</> : field.probe ? <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</> : <>+ Add</>}
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                          </svg>
-                                        </button>
-                                      ) : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                                    </td>
-                                  );
-                                case 'routeOrder':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="routeOrder" value={field.routeOrder} type="number"
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'plannedInstaller':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="plannedInstaller" value={field.plannedInstaller} type="select"
-                                        options={[{ value: 'Brian', label: 'Brian' }, { value: 'Daine', label: 'Daine' }, { value: 'Ryan', label: 'Ryan' }, { value: 'Ryan and Kasen', label: 'Ryan and Kasen' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'readyToInstall':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="readyToInstall" value={field.readyToInstall} type="checkbox"
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'nrcsField':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      {(() => {
-                                        const nrcsCellKey = `field-${field.id}-nrcs_field`;
-                                        const nrcsSaving = savingFields.has(nrcsCellKey);
-                                        const nrcsSaved = savedFields.has(nrcsCellKey);
-                                        return (
-                                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <input
-                                              type="checkbox"
-                                              checked={!!field.nrcsField}
-                                              onChange={(e) => handleInlineFieldSave(field.id, 'nrcs_field', e.target.checked)}
-                                              disabled={nrcsSaving}
-                                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                                            />
-                                            {nrcsSaving && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
-                                            {nrcsSaved && <span style={{ fontSize: '10px', color: 'var(--accent-green)' }}>✓</span>}
-                                          </div>
-                                        );
-                                      })()}
-                                    </td>
-                                  );
-                                case 'probeStatus':
-                                  return <td key={colKey}><span style={{ color: field.probeStatus === 'Installed' ? 'var(--accent-green)' : 'var(--text-muted)' }}>{field.probeStatus || '—'}</span></td>;
-                                case 'installDate':
-                                  return <td key={colKey}>{field.installDate || '—'}</td>;
-                                case 'installer':
-                                  return <td key={colKey}>{field.installer || '—'}</td>;
-                                case 'approvalStatus':
-                                  return <td key={colKey}><span style={{ color: field.approvalStatus === 'Approved' ? 'var(--accent-green)' : field.approvalStatus === 'Rejected' ? 'var(--accent-red)' : 'var(--text-muted)' }}>{field.approvalStatus || 'Pending'}</span></td>;
-                                case 'removalDate':
-                                  return <td key={colKey}>{field.removalDate || '—'}</td>;
-                                case 'removalNotes':
-                                  return <td key={colKey} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={field.removalNotes || ''}>{field.removalNotes || '—'}</td>;
-                                case 'readyToRemove':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="readyToRemove" value={field.readyToRemove} type="select"
-                                        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                case 'earlyRemoval':
-                                  return (
-                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
-                                      <InlineCell fieldSeasonId={field.fieldSeasonId} field="earlyRemoval" value={field.earlyRemoval} type="select"
-                                        options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
-                                        onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
-                                    </td>
-                                  );
-                                default:
-                                  return <td key={colKey}>—</td>;
-                              }
-                            };
+                            const renderCell = (colKey: FieldColumnKey) => (
+                              <FieldCell
+                                key={colKey}
+                                colKey={colKey}
+                                field={field}
+                                hasProbeAssignments={hasProbeAssignments}
+                                probeAssignmentCount={fieldSeasonProbeAssignments.length}
+                                isExpanded={isExpanded}
+                                serviceTypeOptions={serviceTypeOptions}
+                                savingFields={savingFields}
+                                savedFields={savedFields}
+                                onRowClick={handleRowClick}
+                                onInlineSave={handleInlineSave}
+                                onInlineFieldSave={handleInlineFieldSave}
+                                onToggleExpand={toggleFieldSeasonExpand}
+                              />
+                            );
 
                             return (
                               <React.Fragment key={`${field.id}-${field.fieldSeasonId || 'no-season'}`}>
