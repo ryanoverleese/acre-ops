@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 export interface ProcessedRelationship {
   operationId: number;
   operationName: string;
+  approvalToken?: string;
   contacts: {
     id: number;
     name: string;
@@ -30,7 +31,27 @@ export interface ProcessedRelationship {
   totalAcres: number;
 }
 
-async function getRelationshipsData(): Promise<ProcessedRelationship[]> {
+export interface ContactOption {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+}
+
+export interface OrphanedBillingEntity {
+  id: number;
+  name: string;
+  fieldCount: number;
+}
+
+interface RelationshipsData {
+  relationships: ProcessedRelationship[];
+  allContacts: ContactOption[];
+  orphanedBillingEntities: OrphanedBillingEntity[];
+  unlinkedContacts: ContactOption[];
+}
+
+async function getRelationshipsData(): Promise<RelationshipsData> {
   try {
     const [operations, contacts, billingEntities, fields, fieldSeasons] = await Promise.all([
       getOperations(),
@@ -71,6 +92,9 @@ async function getRelationshipsData(): Promise<ProcessedRelationship[]> {
       }
     });
 
+    // Track which billing entities are linked to contacts
+    const linkedBillingEntityIds = new Set<number>();
+
     // Build relationships per operation
     const relationships: ProcessedRelationship[] = operations.map((op) => {
       // Find contacts linked to this operation
@@ -88,6 +112,7 @@ async function getRelationshipsData(): Promise<ProcessedRelationship[]> {
 
         const contactBillingEntities = contactBeIds.map((beId) => {
           opBillingEntityIds.add(beId);
+          linkedBillingEntityIds.add(beId);
           const be = billingEntityMap.get(beId);
           const fieldCount = fieldCountPerBillingEntity.get(beId) || 0;
           const acres = acresPerBillingEntity.get(beId) || 0;
@@ -123,6 +148,7 @@ async function getRelationshipsData(): Promise<ProcessedRelationship[]> {
       return {
         operationId: op.id,
         operationName: op.name,
+        approvalToken: op.approval_token,
         contacts: processedContacts,
         totalBillingEntities: opBillingEntityIds.size,
         totalFields: opTotalFields,
@@ -133,15 +159,42 @@ async function getRelationshipsData(): Promise<ProcessedRelationship[]> {
     // Sort by operation name
     relationships.sort((a, b) => a.operationName.localeCompare(b.operationName));
 
-    return relationships;
+    // Find orphaned billing entities (not linked to any contact)
+    const orphanedBillingEntities: OrphanedBillingEntity[] = billingEntities
+      .filter((be) => !linkedBillingEntityIds.has(be.id))
+      .map((be) => ({
+        id: be.id,
+        name: be.name,
+        fieldCount: fieldCountPerBillingEntity.get(be.id) || 0,
+      }));
+
+    // All contacts for the dropdown
+    const allContacts: ContactOption[] = contacts.map((c) => ({
+      id: c.id,
+      name: c.name || '',
+      email: c.email || '',
+      phone: c.phone || '',
+    }));
+
+    // Contacts not linked to any operation
+    const unlinkedContacts: ContactOption[] = contacts
+      .filter((c) => !c.operations || c.operations.length === 0)
+      .map((c) => ({
+        id: c.id,
+        name: c.name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+      }));
+
+    return { relationships, allContacts, orphanedBillingEntities, unlinkedContacts };
   } catch (error) {
     console.error('Error fetching relationships data:', error);
-    return [];
+    return { relationships: [], allContacts: [], orphanedBillingEntities: [], unlinkedContacts: [] };
   }
 }
 
 export default async function RelationshipsPage() {
-  const relationships = await getRelationshipsData();
+  const { relationships, allContacts, orphanedBillingEntities, unlinkedContacts } = await getRelationshipsData();
 
   return (
     <>
@@ -152,7 +205,12 @@ export default async function RelationshipsPage() {
       </header>
 
       <div className="content">
-        <RelationshipsClient relationships={relationships} />
+        <RelationshipsClient
+          relationships={relationships}
+          allContacts={allContacts}
+          orphanedBillingEntities={orphanedBillingEntities}
+          unlinkedContacts={unlinkedContacts}
+        />
       </div>
     </>
   );
