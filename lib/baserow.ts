@@ -16,6 +16,7 @@ export const TABLE_IDS = {
   probe_assignments: 819350,
   service_rates: 826849,
   inventory: 827222,
+  users: 828606,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -333,3 +334,16 @@ export interface InventoryItem {
 }
 
 export const getInventory = (options?: FetchOptions) => getRows<InventoryItem>('inventory', options);
+
+export interface User {
+  id: number;
+  email: string;
+  password_hash: string;
+  name: string;
+  role: { id: number; value: string };
+  active: boolean;
+  created_at?: string;
+  last_login?: string;
+}
+
+export const getUsers = (options?: FetchOptions) => getRows<User>('users', options);

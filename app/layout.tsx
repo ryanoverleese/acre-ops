@@ -4,6 +4,7 @@ import './globals.css';
 import AppShell from '@/components/AppShell';
 import LoadingBar from '@/components/LoadingBar';
 import AskAI from '@/components/AskAI';
+import Providers from '@/components/Providers';
 
 export const metadata: Metadata = {
   title: 'Acre Insights Operation Center',
@@ -18,13 +19,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Suspense fallback={null}>
-          <LoadingBar />
-        </Suspense>
-        <div className="app">
-          <AppShell>{children}</AppShell>
-        </div>
-        <AskAI />
+        <Providers>
+          <Suspense fallback={null}>
+            <LoadingBar />
+          </Suspense>
+          <div className="app">
+            <AppShell>{children}</AppShell>
+          </div>
+          <AskAI />
+        </Providers>
       </body>
     </html>
   );

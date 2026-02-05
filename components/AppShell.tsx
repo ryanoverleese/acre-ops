@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 
 interface NavItem {
   name: string;
@@ -140,13 +141,29 @@ interface AppShellProps {
 export default function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session } = useSession();
 
-  // Don't show navigation on public approval pages
-  const isPublicPage = pathname?.startsWith('/approve');
+  // Don't show navigation on public approval pages or login page
+  const isPublicPage = pathname?.startsWith('/approve') || pathname === '/login';
 
   if (isPublicPage) {
     return <>{children}</>;
   }
+
+  const userRole = session?.user?.role;
+
+  // Filter nav sections based on role
+  const filteredNavSections = userRole === 'installer'
+    ? navSections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => {
+            const installerPages = ['/', '/install', '/route', '/approvals', '/repairs'];
+            return installerPages.includes(item.href);
+          }),
+        }))
+        .filter((section) => section.items.length > 0)
+    : navSections;
 
   const handleNavClick = () => {
     setMobileMenuOpen(false);
@@ -201,7 +218,7 @@ export default function AppShell({ children }: AppShellProps) {
           <span>Operation Center</span>
         </div>
 
-        {navSections.map((section) => (
+        {filteredNavSections.map((section) => (
           <nav key={section.title} className="nav-section">
             <div className="nav-section-title">{section.title}</div>
             {section.items.map((item) => (
@@ -217,6 +234,59 @@ export default function AppShell({ children }: AppShellProps) {
             ))}
           </nav>
         ))}
+
+        {session?.user && (
+          <div style={{
+            marginTop: 'auto',
+            padding: '12px 16px',
+            borderTop: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+          }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: 'var(--accent-green-dim)',
+              color: 'var(--accent-green)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '13px',
+              fontWeight: 600,
+              flexShrink: 0,
+            }}>
+              {session.user.name?.charAt(0).toUpperCase() || '?'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {session.user.name}
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+                {session.user.role}
+              </div>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              title="Sign out"
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                padding: '4px',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </button>
+          </div>
+        )}
       </aside>
 
       <main className="main">
