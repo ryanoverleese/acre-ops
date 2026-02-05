@@ -6,6 +6,7 @@ import EmptyState from '@/components/EmptyState';
 import InlineCell from '@/components/InlineCell';
 import InlineProbeCell from '@/components/InlineProbeCell';
 import CreateProbeModal from '@/components/fields/CreateProbeModal';
+import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditSeasonModal';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -167,23 +168,6 @@ export default function FieldsClient({
   const [createProbeOperationName, setCreateProbeOperationName] = useState('');
   const [localProbes, setLocalProbes] = useState(probes);
   const [showSeasonFieldsEdit, setShowSeasonFieldsEdit] = useState(false);
-  const [seasonFieldsForm, setSeasonFieldsForm] = useState({
-    crop: '',
-    service_type: '',
-    antenna_type: '',
-    battery_type: '',
-    side_dress: '',
-    logger_id: '',
-    early_removal: '',
-    hybrid_variety: '',
-    ready_to_remove: '',
-    planting_date: '',
-    route_order: '',
-    planned_installer: '',
-    ready_to_install: false,
-    billing_rate: '',
-  });
-  const [savingSeasonFields, setSavingSeasonFields] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add' | 'probeAssignment'>('edit');
   const [editingProbeAssignmentLocation, setEditingProbeAssignmentLocation] = useState<ProcessedProbeAssignment | null>(null);
@@ -773,22 +757,6 @@ export default function FieldsClient({
       dripGpm: field.dripGpm,
       dripDepth: field.dripDepth,
     });
-    setSeasonFieldsForm({
-      crop: field.crop || '',
-      service_type: field.serviceType || '',
-      antenna_type: field.antennaType || '',
-      battery_type: field.batteryType || '',
-      side_dress: field.sideDress || '',
-      logger_id: field.loggerId || '',
-      early_removal: field.earlyRemoval || '',
-      hybrid_variety: field.hybridVariety || '',
-      ready_to_remove: field.readyToRemove || '',
-      planting_date: field.plantingDate || '',
-      route_order: field.routeOrder?.toString() || '',
-      planned_installer: field.plannedInstaller || '',
-      ready_to_install: field.readyToInstall || false,
-      billing_rate: getRateForServiceType(field.serviceType || ''),
-    });
     setIsEditing(false);
     setShowProbeAssign(false);
     setShowSeasonFieldsEdit(false);
@@ -964,44 +932,6 @@ export default function FieldsClient({
       alert('Failed to assign probe');
     } finally {
       setSavingProbe(false);
-    }
-  };
-
-  const handleSaveSeasonFields = async () => {
-    if (!selectedField || !selectedField.fieldSeasonId) {
-      alert('Cannot update: No field season found');
-      return;
-    }
-    setSavingSeasonFields(true);
-    try {
-      const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          crop: seasonFieldsForm.crop || null,
-          service_type: seasonFieldsForm.service_type || null,
-          antenna_type: seasonFieldsForm.antenna_type || null,
-          battery_type: seasonFieldsForm.battery_type || null,
-          side_dress: seasonFieldsForm.side_dress || null,
-          logger_id: seasonFieldsForm.logger_id || null,
-          early_removal: seasonFieldsForm.early_removal || null,
-          hybrid_variety: seasonFieldsForm.hybrid_variety || null,
-          ready_to_remove: seasonFieldsForm.ready_to_remove || null,
-          planting_date: seasonFieldsForm.planting_date || null,
-        }),
-      });
-      if (response.ok) {
-        setShowSeasonFieldsEdit(false);
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to update season fields');
-      }
-    } catch (error) {
-      console.error('Save season fields error:', error);
-      alert('Failed to update season fields');
-    } finally {
-      setSavingSeasonFields(false);
     }
   };
 
@@ -3015,359 +2945,29 @@ export default function FieldsClient({
 
         {/* Edit Season Modal */}
         {showSeasonFieldsEdit && selectedField && (
-          <div className="detail-panel-overlay" onClick={() => setShowSeasonFieldsEdit(false)}>
-            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
-              <div className="detail-panel-header">
-                <h3>Edit {selectedField.season} Season</h3>
-                <button className="close-btn" onClick={() => setShowSeasonFieldsEdit(false)}>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="detail-panel-content">
-                <div className="edit-form">
-                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
-                    Edit seasonal data for <strong>{selectedField.name}</strong> in the {selectedField.season} season.
-                  </p>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Crop</label>
-                      <select value={seasonFieldsForm.crop} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, crop: e.target.value })}>
-                        <option value="">Select crop...</option>
-                        <option value="Corn">Corn</option>
-                        <option value="Soybeans">Soybeans</option>
-                        <option value="Wheat">Wheat</option>
-                        <option value="Seed Corn">Seed Corn</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Service Type</label>
-                      <select value={seasonFieldsForm.service_type} onChange={(e) => {
-                        const serviceType = e.target.value;
-                        const rate = getRateForServiceType(serviceType);
-                        setSeasonFieldsForm({ ...seasonFieldsForm, service_type: serviceType, billing_rate: rate });
-                      }}>
-                        <option value="">Select...</option>
-                        {serviceTypeOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Billing Rate ($)</label>
-                      <input
-                        type="number"
-                        value={seasonFieldsForm.billing_rate}
-                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, billing_rate: e.target.value })}
-                        placeholder="Auto-filled from service type"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Antenna Type</label>
-                      <select value={seasonFieldsForm.antenna_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, antenna_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
-                        <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                        <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
-                        <option value="ASK">ASK</option>
-                        <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
-                        <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                        <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Battery Type</label>
-                      <select value={seasonFieldsForm.battery_type} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, battery_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="CropX">CropX</option>
-                        <option value="Sentek Used">Sentek Used</option>
-                        <option value="Sentek New">Sentek New</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Side Dress</label>
-                      <select value={seasonFieldsForm.side_dress} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, side_dress: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="None">None</option>
-                        <option value="Cultivate">Cultivate</option>
-                        <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
-                        <option value="Cultivation Likely">Cultivation Likely</option>
-                        <option value="High Y-Drop">High Y-Drop</option>
-                        <option value="Coulter">Coulter</option>
-                        <option value="Sprayer Drops">Sprayer Drops</option>
-                        <option value="Pivot">Pivot</option>
-                        <option value="Low Y-Drop">Low Y-Drop</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Logger ID</label>
-                      <input
-                        type="text"
-                        value={seasonFieldsForm.logger_id}
-                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, logger_id: e.target.value })}
-                        placeholder="e.g., 7080859"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Early Removal</label>
-                      <select value={seasonFieldsForm.early_removal} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, early_removal: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Regular">Regular</option>
-                        <option value="Silage">Silage</option>
-                        <option value="Soybeans">Soybeans</option>
-                        <option value="HMC">HMC</option>
-                        <option value="HMC – Oct 1">HMC – Oct 1</option>
-                        <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
-                        <option value="Popcorn">Popcorn</option>
-                        <option value="HMC Maybe">HMC Maybe</option>
-                        <option value="Early Incentive Corn">Early Incentive Corn</option>
-                        <option value="Seed Corn">Seed Corn</option>
-                        <option value="Sorghum">Sorghum</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Hybrid/Variety</label>
-                      <input
-                        type="text"
-                        value={seasonFieldsForm.hybrid_variety}
-                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, hybrid_variety: e.target.value })}
-                        placeholder="e.g., P1185AM"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Ready to Remove</label>
-                      <select value={seasonFieldsForm.ready_to_remove} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, ready_to_remove: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Planting Date</label>
-                      <input
-                        type="date"
-                        value={seasonFieldsForm.planting_date}
-                        onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, planting_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group"></div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Probe 1</label>
-                      <select value={selectedProbeId} onChange={(e) => {
-                        if (e.target.value === '__create_new__') {
-                          setCreateProbeTarget('probe1');
-                          setCreateProbeAssignmentId(null);
-                          setCreateProbeOperationName(selectedField.operation);
-                          setShowCreateProbeModal(true);
-                        } else {
-                          setSelectedProbeId(e.target.value);
-                        }
-                      }}>
-                        <option value="">— No Probe —</option>
-                        {getProbesForField(selectedField.operation, selectedField.probeId).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity})
-                          </option>
-                        ))}
-                        <option value="__create_new__">+ Add New Probe</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Probe 2 (Optional)</label>
-                      <select value={selectedProbe2Id} onChange={(e) => {
-                        if (e.target.value === '__create_new__') {
-                          setCreateProbeTarget('probe2');
-                          setCreateProbeAssignmentId(null);
-                          setCreateProbeOperationName(selectedField.operation);
-                          setShowCreateProbeModal(true);
-                        } else {
-                          setSelectedProbe2Id(e.target.value);
-                        }
-                      }}>
-                        <option value="">— No Probe —</option>
-                        {getProbesForField(selectedField.operation, selectedField.probe2Id).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity})
-                          </option>
-                        ))}
-                        <option value="__create_new__">+ Add New Probe</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Install Planning Section */}
-                  <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Install Planning</h4>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label>Route Order</label>
-                        <input
-                          type="number"
-                          value={seasonFieldsForm.route_order}
-                          onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, route_order: e.target.value })}
-                          placeholder="e.g., 1, 2, 3..."
-                          min="1"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label>Planned Installer</label>
-                        <select value={seasonFieldsForm.planned_installer} onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, planned_installer: e.target.value })}>
-                          <option value="">Select...</option>
-                          <option value="Brian">Brian</option>
-                          <option value="Daine">Daine</option>
-                          <option value="Ryan">Ryan</option>
-                          <option value="Ryan and Kasen">Ryan and Kasen</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={seasonFieldsForm.ready_to_install}
-                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, ready_to_install: e.target.checked })}
-                            style={{ width: '18px', height: '18px' }}
-                          />
-                          Ready to Install
-                        </label>
-                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                          Check this when the field is confirmed and ready for the installer to visit.
-                        </p>
-                      </div>
-                      <div className="form-group">
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={selectedField.nrcsField || false}
-                            onChange={async (e) => {
-                              const checked = e.target.checked;
-                              try {
-                                const response = await fetch(`/api/fields/${selectedField.id}`, {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ nrcs_field: checked }),
-                                });
-                                if (response.ok) {
-                                  setFields(prev => prev.map(f =>
-                                    f.id === selectedField.id ? { ...f, nrcsField: checked } : f
-                                  ));
-                                }
-                              } catch (error) {
-                                console.error('Failed to update NRCS field:', error);
-                              }
-                            }}
-                            style={{ width: '18px', height: '18px' }}
-                          />
-                          NRCS Field
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="detail-panel-footer">
-                <button className="btn btn-secondary" onClick={() => {
-                  setShowSeasonFieldsEdit(false);
-                  setSeasonFieldsForm({
-                    crop: selectedField.crop || '',
-                    service_type: selectedField.serviceType || '',
-                    antenna_type: selectedField.antennaType || '',
-                    battery_type: selectedField.batteryType || '',
-                    side_dress: selectedField.sideDress || '',
-                    logger_id: selectedField.loggerId || '',
-                    early_removal: selectedField.earlyRemoval || '',
-                    hybrid_variety: selectedField.hybridVariety || '',
-                    ready_to_remove: selectedField.readyToRemove || '',
-                    planting_date: selectedField.plantingDate || '',
-                    route_order: selectedField.routeOrder?.toString() || '',
-                    planned_installer: selectedField.plannedInstaller || '',
-                    ready_to_install: selectedField.readyToInstall || false,
-                    billing_rate: getRateForServiceType(selectedField.serviceType || ''),
-                  });
-                  setSelectedProbeId(selectedField.probeId?.toString() || '');
-                  setSelectedProbe2Id(selectedField.probe2Id?.toString() || '');
-                }}>Cancel</button>
-                <button className="btn btn-primary" onClick={async () => {
-                  if (!selectedField.fieldSeasonId) return;
-                  setSavingSeasonFields(true);
-                  try {
-                    const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : null;
-                    const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : null;
-                    const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        crop: seasonFieldsForm.crop || null,
-                        service_type: seasonFieldsForm.service_type || null,
-                        antenna_type: seasonFieldsForm.antenna_type || null,
-                        battery_type: seasonFieldsForm.battery_type || null,
-                        side_dress: seasonFieldsForm.side_dress || null,
-                        logger_id: seasonFieldsForm.logger_id || null,
-                        early_removal: seasonFieldsForm.early_removal || null,
-                        hybrid_variety: seasonFieldsForm.hybrid_variety || null,
-                        ready_to_remove: seasonFieldsForm.ready_to_remove || null,
-                        planting_date: seasonFieldsForm.planting_date || null,
-                        probe: probeId,
-                        probe_status: probeId ? 'Assigned' : 'Unassigned',
-                        probe_2: probe2Id,
-                        probe_2_status: probe2Id ? 'Assigned' : 'Unassigned',
-                        route_order: seasonFieldsForm.route_order ? parseInt(seasonFieldsForm.route_order, 10) : null,
-                        planned_installer: seasonFieldsForm.planned_installer || null,
-                        ready_to_install: seasonFieldsForm.ready_to_install,
-                      }),
-                    });
-                    if (response.ok) {
-                      // Create/update invoice line if billing_rate is provided
-                      if (seasonFieldsForm.billing_rate && selectedField.billingEntityId) {
-                        try {
-                          await fetch('/api/billing/enroll', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              billing_entity_id: selectedField.billingEntityId,
-                              season: selectedField.season,
-                              field_season_id: selectedField.fieldSeasonId,
-                              service_type: seasonFieldsForm.service_type || '',
-                              rate: seasonFieldsForm.billing_rate,
-                            }),
-                          });
-                        } catch (billingError) {
-                          console.error('Failed to update billing entry:', billingError);
-                        }
-                      }
-
-                      setShowSeasonFieldsEdit(false);
-                      window.location.reload();
-                    } else {
-                      const error = await response.json();
-                      alert(error.error || 'Failed to update season');
-                    }
-                  } catch (error) {
-                    console.error('Save error:', error);
-                    alert('Failed to update season');
-                  } finally {
-                    setSavingSeasonFields(false);
-                  }
-                }} disabled={savingSeasonFields}>
-                  {savingSeasonFields ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <EditSeasonModal
+            field={selectedField}
+            initialForm={createEditSeasonForm(selectedField, getRateForServiceType)}
+            selectedProbeId={selectedProbeId}
+            selectedProbe2Id={selectedProbe2Id}
+            onProbeIdChange={setSelectedProbeId}
+            onProbe2IdChange={setSelectedProbe2Id}
+            serviceTypeOptions={serviceTypeOptions}
+            getRateForServiceType={getRateForServiceType}
+            getProbesForField={getProbesForField}
+            onClose={() => setShowSeasonFieldsEdit(false)}
+            onSaved={() => {
+              setShowSeasonFieldsEdit(false);
+              window.location.reload();
+            }}
+            onFieldsUpdate={setFields}
+            onOpenCreateProbe={(target, operationName) => {
+              setCreateProbeTarget(target);
+              setCreateProbeAssignmentId(null);
+              setCreateProbeOperationName(operationName);
+              setShowCreateProbeModal(true);
+            }}
+          />
         )}
 
         {/* Create New Probe Modal */}
