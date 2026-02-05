@@ -115,6 +115,7 @@ export interface ProbeOption {
   id: number;
   serialNumber: string;
   ownerBillingEntity: string;
+  ownerOperationName: string;
   status: string;
 }
 
@@ -363,15 +364,26 @@ async function getFieldsData(): Promise<{
       };
     });
 
-    // Probe options with billing entity
+    // Probe options with billing entity and operation
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
     const probeOptions: ProbeOption[] = probes.map((p) => {
       const beLink = p.billing_entity?.[0];
       const beName = beLink ? billingEntityMap.get(beLink.id) || beLink.value : 'Unassigned';
+      // Map probe to operation: first try owner_operation link, then billing_entity -> operation via contacts
+      let ownerOpName = '';
+      if (p.owner_operation?.[0]) {
+        ownerOpName = operationMap.get(p.owner_operation[0].id) || p.owner_operation[0].value || '';
+      } else if (beLink) {
+        const opId = billingToOperationMap.get(beLink.id);
+        if (opId) {
+          ownerOpName = operationMap.get(opId) || '';
+        }
+      }
       return {
         id: p.id,
         serialNumber: p.serial_number || '',
         ownerBillingEntity: beName,
+        ownerOperationName: ownerOpName,
         status: p.status?.value || 'Unknown',
       };
     });

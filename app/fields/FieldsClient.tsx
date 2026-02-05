@@ -741,8 +741,8 @@ export default function FieldsClient({
     return ids;
   }, [probeAssignments]);
 
-  // Sort probes by owner operation for the dropdown, with assignment status
-  const sortedProbes = useMemo(() => {
+  // All probes with assignment status
+  const allProbesWithStatus = useMemo(() => {
     return [...localProbes]
       .map(p => ({
         ...p,
@@ -755,6 +755,28 @@ export default function FieldsClient({
         return (a.serialNumber || '').localeCompare(b.serialNumber || '');
       });
   }, [localProbes, assignedProbeIds]);
+
+  // Filter probes for a specific field's operation: show probes owned by the same
+  // operation + Acre Insights inventory probes, plus any probe already assigned to this field
+  const getProbesForField = useCallback((fieldOperation: string, currentProbeId?: number | null) => {
+    const COMPANY_NAME = 'Acre Insights';
+    return allProbesWithStatus.filter(p => {
+      // Always include the currently assigned probe so it stays visible
+      if (currentProbeId && p.id === currentProbeId) return true;
+      // Include probes owned by the same operation
+      if (p.ownerOperationName && p.ownerOperationName === fieldOperation) return true;
+      // Include Acre Insights company inventory
+      if (p.ownerOperationName === COMPANY_NAME) return true;
+      if (p.ownerBillingEntity === COMPANY_NAME) return true;
+      // Include unassigned/no-owner probes (On Order with no operation set yet)
+      if (!p.ownerOperationName && !p.ownerBillingEntity) return true;
+      if (p.ownerBillingEntity === 'Unassigned') return true;
+      return false;
+    });
+  }, [allProbesWithStatus]);
+
+  // Legacy alias - sortedProbes now defaults to all probes (used only as fallback)
+  const sortedProbes = allProbesWithStatus;
 
   // Inline save handler for seasonal data
   const handleInlineSave = useCallback(async (fieldSeasonId: number, field: string, value: unknown) => {
@@ -1153,12 +1175,14 @@ export default function FieldsClient({
       if (response.ok) {
         const newProbe = await response.json();
         // Add the new probe to local probes list
+        const opName = createProbeForm.owner_operation
+          ? (operations.find(op => op.id === parseInt(createProbeForm.owner_operation, 10))?.name || '')
+          : '';
         const newProbeOption: ProbeOption = {
           id: newProbe.id,
           serialNumber: newProbe.serial_number || '',
-          ownerBillingEntity: createProbeForm.owner_operation
-            ? (operations.find(op => op.id === parseInt(createProbeForm.owner_operation, 10))?.name || 'On Order')
-            : 'On Order',
+          ownerBillingEntity: opName || 'On Order',
+          ownerOperationName: opName,
           status: 'On Order',
         };
         setLocalProbes(prev => [...prev, newProbeOption]);
@@ -2525,9 +2549,9 @@ export default function FieldsClient({
                                             field="probeId"
                                             value={pa.probeId?.toString() || ''}
                                             type="select"
-                                            options={sortedProbes.map(p => ({
+                                            options={getProbesForField(field.operation, pa.probeId).map(p => ({
                                               value: p.id.toString(),
-                                              label: `#${p.serialNumber} (${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity})`,
+                                              label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} (${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity})`,
                                             }))}
                                             onSave={handleProbeAssignmentSave}
                                             savingFields={savingFields}
@@ -3345,7 +3369,7 @@ export default function FieldsClient({
                         }
                       }}>
                         <option value="">— No Probe —</option>
-                        {sortedProbes.map((p) => (
+                        {getProbesForField(selectedField.operation, selectedField.probeId).map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity})
                           </option>
@@ -3369,7 +3393,7 @@ export default function FieldsClient({
                         }
                       }}>
                         <option value="">— No Probe —</option>
-                        {sortedProbes.map((p) => (
+                        {getProbesForField(selectedField.operation, selectedField.probe2Id).map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity})
                           </option>
