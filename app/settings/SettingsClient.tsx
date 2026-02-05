@@ -384,71 +384,120 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
           Configure which columns are visible for each tab on the Fields page.
         </p>
 
-        {/* Tab selector */}
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
-          {TAB_INFO.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setSelectedColumnTab(tab.key)}
-              className={selectedColumnTab === tab.key ? 'btn btn-primary' : 'btn btn-secondary'}
-              style={{ padding: '6px 12px', fontSize: '13px' }}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Column checkboxes */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '8px',
-          padding: '16px',
-          background: 'var(--bg-tertiary)',
-          borderRadius: 'var(--radius)',
-          marginBottom: '12px',
-        }}>
-          {ALL_COLUMN_DEFINITIONS.map((col) => (
-            <label
-              key={col.key}
+        {/* Tab and column dropdowns */}
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Tab</label>
+            <select
+              value={selectedColumnTab}
+              onChange={(e) => setSelectedColumnTab(e.target.value as TabView)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
                 padding: '8px 12px',
-                background: tabColumns[selectedColumnTab].includes(col.key) ? 'var(--accent-green-dim)' : 'var(--bg-card)',
-                borderRadius: 'var(--radius-sm)',
-                cursor: col.alwaysVisible ? 'not-allowed' : 'pointer',
-                opacity: col.alwaysVisible ? 0.7 : 1,
+                fontSize: '14px',
                 border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                minWidth: '160px',
               }}
             >
-              <input
-                type="checkbox"
-                checked={tabColumns[selectedColumnTab].includes(col.key)}
-                onChange={() => handleToggleColumn(col.key)}
-                disabled={col.alwaysVisible}
-                style={{ width: '16px', height: '16px', cursor: col.alwaysVisible ? 'not-allowed' : 'pointer' }}
-              />
-              <span style={{ fontSize: '13px', fontWeight: 500 }}>{col.label}</span>
-              {col.alwaysVisible && (
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto' }}>Required</span>
-              )}
-            </label>
-          ))}
-        </div>
+              {TAB_INFO.map((tab) => (
+                <option key={tab.key} value={tab.key}>{tab.label}</option>
+              ))}
+            </select>
+          </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            {tabColumns[selectedColumnTab].length} columns selected
-          </span>
+          <div>
+            <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Add Column</label>
+            <select
+              value=""
+              onChange={(e) => {
+                if (e.target.value) {
+                  handleToggleColumn(e.target.value as FieldColumnKey);
+                }
+              }}
+              style={{
+                padding: '8px 12px',
+                fontSize: '14px',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-sm)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                minWidth: '180px',
+              }}
+            >
+              <option value="">Select column to add...</option>
+              {ALL_COLUMN_DEFINITIONS
+                .filter(col => !col.alwaysVisible && !tabColumns[selectedColumnTab].includes(col.key))
+                .map((col) => (
+                  <option key={col.key} value={col.key}>{col.label}</option>
+                ))}
+            </select>
+          </div>
+
           <button
             className="btn btn-secondary"
             onClick={handleResetColumns}
-            style={{ fontSize: '13px', padding: '6px 12px' }}
+            style={{ fontSize: '13px', padding: '8px 12px' }}
           >
             Reset to Defaults
           </button>
+        </div>
+
+        {/* Selected columns as removable tags */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          padding: '12px',
+          background: 'var(--bg-tertiary)',
+          borderRadius: 'var(--radius)',
+          minHeight: '44px',
+        }}>
+          {tabColumns[selectedColumnTab].map((colKey) => {
+            const col = ALL_COLUMN_DEFINITIONS.find(c => c.key === colKey);
+            if (!col) return null;
+            return (
+              <span
+                key={colKey}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '4px 8px',
+                  background: col.alwaysVisible ? 'var(--bg-secondary)' : 'var(--accent-green-dim)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '13px',
+                }}
+              >
+                {col.label}
+                {!col.alwaysVisible && (
+                  <button
+                    onClick={() => handleToggleColumn(colKey)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: '0',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: 'var(--text-muted)',
+                    }}
+                    title="Remove column"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+              </span>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+          {tabColumns[selectedColumnTab].length} columns selected
         </div>
       </div>
 
