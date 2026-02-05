@@ -384,7 +384,7 @@ export default function FieldsClient({
   const [createProbeForm, setCreateProbeForm] = useState({
     brand: '',
     owner_operation: '',
-    year_new: '2025',
+    year_new: '',
   });
   const [savingNewProbe, setSavingNewProbe] = useState(false);
   const [localProbes, setLocalProbes] = useState(probes);
@@ -1199,7 +1199,7 @@ export default function FieldsClient({
           setSelectedProbe2Id(newProbe.id.toString());
         }
         setShowCreateProbeModal(false);
-        setCreateProbeForm({ brand: '', owner_operation: '', year_new: '2025' });
+        setCreateProbeForm({ brand: '', owner_operation: '', year_new: '' });
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to create probe');
@@ -2569,7 +2569,7 @@ export default function FieldsClient({
                                                 setCreateProbeForm({
                                                   brand: '',
                                                   owner_operation: field.operationId?.toString() || '',
-                                                  year_new: '2025',
+                                                  year_new: '',
                                                 });
                                                 setShowCreateProbeModal(true);
                                               }
@@ -3381,7 +3381,7 @@ export default function FieldsClient({
                           setCreateProbeForm({
                             brand: '',
                             owner_operation: selectedField?.operationId?.toString() || '',
-                            year_new: '2025',
+                            year_new: '',
                           });
                           setShowCreateProbeModal(true);
                         } else {
@@ -3405,7 +3405,7 @@ export default function FieldsClient({
                           setCreateProbeForm({
                             brand: '',
                             owner_operation: selectedField?.operationId?.toString() || '',
-                            year_new: '2025',
+                            year_new: '',
                           });
                           setShowCreateProbeModal(true);
                         } else {
