@@ -426,6 +426,14 @@ export default function FieldsClient({
   });
   const [rollingOver, setRollingOver] = useState(false);
 
+  // Batch enroll/unenroll modal state
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [batchMode, setBatchMode] = useState<'enroll' | 'unenroll'>('enroll');
+  const [batchSeason, setBatchSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
+  const [batchServiceType, setBatchServiceType] = useState('');
+  const [selectedBatchFieldIds, setSelectedBatchFieldIds] = useState<Set<number>>(new Set());
+  const [batchSaving, setBatchSaving] = useState(false);
+
   // Column picker state
   const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -569,6 +577,32 @@ export default function FieldsClient({
       fieldsToRollover,
     };
   }, [fields, rolloverForm.fromSeason, rolloverForm.toSeason]);
+
+  // Calculate fields available for batch enroll/unenroll
+  const batchFieldsList = useMemo(() => {
+    // Get unique fields (dedupe by field ID)
+    const uniqueFields = new Map<number, ProcessedField>();
+    fields.forEach((f) => {
+      if (!uniqueFields.has(f.id)) {
+        uniqueFields.set(f.id, f);
+      }
+    });
+
+    // For enroll: fields that DON'T have a field_season for batchSeason
+    // For unenroll: fields that DO have a field_season for batchSeason
+    const fieldsInSeason = fields.filter((f) => f.season === batchSeason && f.fieldSeasonId);
+    const fieldIdsInSeason = new Set(fieldsInSeason.map((f) => f.id));
+
+    if (batchMode === 'enroll') {
+      // Return fields NOT in the season
+      return Array.from(uniqueFields.values())
+        .filter((f) => !fieldIdsInSeason.has(f.id))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Return fields IN the season (with their fieldSeasonId for deletion)
+      return fieldsInSeason.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }, [fields, batchSeason, batchMode]);
 
   // Calculate which seasons each field has and is missing (with field_season IDs for deletion)
   const fieldSeasonsMap = useMemo(() => {
@@ -1397,6 +1431,88 @@ export default function FieldsClient({
     }
   };
 
+  // Handle batch enroll
+  const handleBatchEnroll = async () => {
+    if (selectedBatchFieldIds.size === 0) {
+      alert('Please select at least one field');
+      return;
+    }
+
+    if (!confirm(`This will enroll ${selectedBatchFieldIds.size} field(s) in ${batchSeason}. Continue?`)) {
+      return;
+    }
+
+    setBatchSaving(true);
+    try {
+      const items = Array.from(selectedBatchFieldIds).map((fieldId) => ({
+        field: fieldId,
+        season: batchSeason,
+        service_type: batchServiceType || undefined,
+      }));
+
+      const response = await fetch('/api/field-seasons/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      if (response.ok) {
+        setShowBatchModal(false);
+        setSelectedBatchFieldIds(new Set());
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to enroll fields');
+      }
+    } catch (error) {
+      console.error('Batch enroll error:', error);
+      alert('Failed to enroll fields');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
+  // Handle batch unenroll
+  const handleBatchUnenroll = async () => {
+    if (selectedBatchFieldIds.size === 0) {
+      alert('Please select at least one field');
+      return;
+    }
+
+    if (!confirm(`This will remove ${selectedBatchFieldIds.size} field(s) from ${batchSeason}. This cannot be undone. Continue?`)) {
+      return;
+    }
+
+    setBatchSaving(true);
+    try {
+      // Get the fieldSeasonIds for the selected fields
+      const fieldSeasonIdsToDelete = batchFieldsList
+        .filter((f) => selectedBatchFieldIds.has(f.id) && f.fieldSeasonId)
+        .map((f) => f.fieldSeasonId!);
+
+      // Delete each field_season
+      const deletePromises = fieldSeasonIdsToDelete.map((fsId) =>
+        fetch(`/api/field-seasons/${fsId}`, { method: 'DELETE' })
+      );
+
+      const results = await Promise.all(deletePromises);
+      const failures = results.filter((r) => !r.ok);
+
+      if (failures.length > 0) {
+        alert(`${failures.length} field(s) failed to unenroll`);
+      }
+
+      setShowBatchModal(false);
+      setSelectedBatchFieldIds(new Set());
+      window.location.reload();
+    } catch (error) {
+      console.error('Batch unenroll error:', error);
+      alert('Failed to unenroll fields');
+    } finally {
+      setBatchSaving(false);
+    }
+  };
+
   // Toggle expand/collapse for a field_season row
   const toggleFieldSeasonExpand = (fieldSeasonId: number) => {
     setExpandedFieldSeasons(prev => {
@@ -1864,6 +1980,12 @@ export default function FieldsClient({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
             Copy to New Season
+          </button>
+          <button className="btn btn-secondary" onClick={() => { setShowBatchModal(true); setSelectedBatchFieldIds(new Set()); }}>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Batch Enroll
           </button>
           <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
@@ -3856,6 +3978,187 @@ export default function FieldsClient({
                   disabled={rollingOver || rolloverStats.canRollover === 0}
                 >
                   {rollingOver ? 'Copying...' : `Copy ${rolloverStats.canRollover} Fields`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Batch Enroll/Unenroll Modal */}
+        {showBatchModal && (
+          <div className="detail-panel-overlay" onClick={() => setShowBatchModal(false)}>
+            <div className="detail-panel" style={{ maxWidth: '600px' }} onClick={(e) => e.stopPropagation()}>
+              <div className="detail-panel-header">
+                <h3>Batch {batchMode === 'enroll' ? 'Enroll' : 'Unenroll'} Fields</h3>
+                <button className="close-btn" onClick={() => setShowBatchModal(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                {/* Mode toggle */}
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                  <button
+                    className={`btn ${batchMode === 'enroll' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => { setBatchMode('enroll'); setSelectedBatchFieldIds(new Set()); }}
+                    style={{ flex: 1 }}
+                  >
+                    Enroll
+                  </button>
+                  <button
+                    className={`btn ${batchMode === 'unenroll' ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => { setBatchMode('unenroll'); setSelectedBatchFieldIds(new Set()); }}
+                    style={{ flex: 1 }}
+                  >
+                    Unenroll
+                  </button>
+                </div>
+
+                <div className="edit-form">
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                    {batchMode === 'enroll'
+                      ? 'Select fields to add to a season. Fields already in the selected season are not shown.'
+                      : 'Select fields to remove from a season. Only fields currently in the selected season are shown.'}
+                  </p>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Season</label>
+                      <select
+                        value={batchSeason}
+                        onChange={(e) => {
+                          setBatchSeason(e.target.value);
+                          setSelectedBatchFieldIds(new Set());
+                        }}
+                      >
+                        {allSeasons.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {batchMode === 'enroll' && (
+                      <div className="form-group">
+                        <label>Service Type (optional)</label>
+                        <select
+                          value={batchServiceType}
+                          onChange={(e) => setBatchServiceType(e.target.value)}
+                        >
+                          <option value="">— Select service —</option>
+                          {serviceRates.map((sr) => (
+                            <option key={sr.id} value={sr.serviceType}>{sr.serviceType}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Field selection list */}
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ fontWeight: 600 }}>
+                        {batchMode === 'enroll' ? 'Fields to Enroll' : 'Fields to Unenroll'} ({batchFieldsList.length} available)
+                      </label>
+                      {batchFieldsList.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ padding: '4px 8px', fontSize: '12px' }}
+                          onClick={() => {
+                            if (selectedBatchFieldIds.size === batchFieldsList.length) {
+                              setSelectedBatchFieldIds(new Set());
+                            } else {
+                              setSelectedBatchFieldIds(new Set(batchFieldsList.map((f) => f.id)));
+                            }
+                          }}
+                        >
+                          {selectedBatchFieldIds.size === batchFieldsList.length ? 'Deselect All' : 'Select All'}
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      background: 'var(--bg-tertiary)',
+                    }}>
+                      {batchFieldsList.length === 0 ? (
+                        <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                          {batchMode === 'enroll'
+                            ? `All fields are already enrolled in ${batchSeason}`
+                            : `No fields are enrolled in ${batchSeason}`}
+                        </div>
+                      ) : (
+                        batchFieldsList.map((field) => (
+                          <label
+                            key={field.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '12px',
+                              padding: '10px 12px',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid var(--border)',
+                              background: selectedBatchFieldIds.has(field.id) ? 'var(--accent-blue-dim)' : 'transparent',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedBatchFieldIds.has(field.id)}
+                              onChange={(e) => {
+                                const newSet = new Set(selectedBatchFieldIds);
+                                if (e.target.checked) {
+                                  newSet.add(field.id);
+                                } else {
+                                  newSet.delete(field.id);
+                                }
+                                setSelectedBatchFieldIds(newSet);
+                              }}
+                              style={{ width: '18px', height: '18px' }}
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 500 }}>{field.name}</div>
+                              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                {field.operation || 'Unknown Operation'}
+                                {field.serviceType && ` • ${field.serviceType}`}
+                              </div>
+                            </div>
+                          </label>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  {selectedBatchFieldIds.size > 0 && (
+                    <div style={{
+                      marginTop: '16px',
+                      padding: '12px',
+                      background: batchMode === 'enroll' ? 'var(--accent-green-dim)' : 'var(--accent-red-dim)',
+                      borderRadius: '8px',
+                      color: batchMode === 'enroll' ? 'var(--accent-green)' : 'var(--accent-red)',
+                      fontWeight: 500,
+                    }}>
+                      {selectedBatchFieldIds.size} field(s) selected to {batchMode === 'enroll' ? 'enroll in' : 'remove from'} {batchSeason}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => setShowBatchModal(false)}>Cancel</button>
+                <button
+                  className={`btn ${batchMode === 'enroll' ? 'btn-primary' : 'btn-primary'}`}
+                  style={batchMode === 'unenroll' ? { background: 'var(--accent-red)', borderColor: 'var(--accent-red)' } : {}}
+                  onClick={batchMode === 'enroll' ? handleBatchEnroll : handleBatchUnenroll}
+                  disabled={batchSaving || selectedBatchFieldIds.size === 0}
+                >
+                  {batchSaving
+                    ? (batchMode === 'enroll' ? 'Enrolling...' : 'Removing...')
+                    : (batchMode === 'enroll'
+                        ? `Enroll ${selectedBatchFieldIds.size} Field(s)`
+                        : `Remove ${selectedBatchFieldIds.size} Field(s)`)}
                 </button>
               </div>
             </div>
