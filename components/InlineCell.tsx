@@ -57,7 +57,7 @@ export default function InlineCell({ fieldSeasonId, field, value, type, options,
           }}
         >
           <option value="">—</option>
-          {options?.map((opt) => (
+          {options?.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>

@@ -62,7 +62,14 @@ export default function InlineProbeCell({ probeAssignmentId, field, value, type,
           }}
         >
           <option value="">—</option>
-          {options?.map((opt) => (
+          {options?.slice().sort((a, b) => {
+            // Keep special action items (like __create_new__) at the end
+            const aSpecial = a.value.startsWith('__');
+            const bSpecial = b.value.startsWith('__');
+            if (aSpecial && !bSpecial) return 1;
+            if (!aSpecial && bSpecial) return -1;
+            return a.label.localeCompare(b.label);
+          }).map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>

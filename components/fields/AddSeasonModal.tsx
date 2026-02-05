@@ -144,10 +144,10 @@ export default function AddSeasonModal({
                 <select value={form.crop} onChange={(e) => setForm({ ...form, crop: e.target.value })}>
                   <option value="">Select crop...</option>
                   <option value="Corn">Corn</option>
+                  <option value="Other">Other</option>
+                  <option value="Seed Corn">Seed Corn</option>
                   <option value="Soybeans">Soybeans</option>
                   <option value="Wheat">Wheat</option>
-                  <option value="Seed Corn">Seed Corn</option>
-                  <option value="Other">Other</option>
                 </select>
               </div>
             </div>
@@ -160,7 +160,7 @@ export default function AddSeasonModal({
                   setForm({ ...form, service_type: serviceType, billing_rate: rate });
                 }}>
                   <option value="">Select...</option>
-                  {serviceTypeOptions.map((opt) => (
+                  {serviceTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
@@ -181,13 +181,13 @@ export default function AddSeasonModal({
                 <label>Antenna Type</label>
                 <select value={form.antenna_type} onChange={(e) => setForm({ ...form, antenna_type: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
-                  <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
+                  <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
+                  <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
                   <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
                   <option value="ASK">ASK</option>
-                  <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
+                  <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
                   <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                  <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
+                  <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
                 </select>
               </div>
               <div className="form-group">
@@ -195,23 +195,23 @@ export default function AddSeasonModal({
                 <select value={form.battery_type} onChange={(e) => setForm({ ...form, battery_type: e.target.value })}>
                   <option value="">Select...</option>
                   <option value="CropX">CropX</option>
-                  <option value="Sentek Used">Sentek Used</option>
                   <option value="Sentek New">Sentek New</option>
+                  <option value="Sentek Used">Sentek Used</option>
                 </select>
               </div>
               <div className="form-group">
                 <label>Side Dress</label>
                 <select value={form.side_dress} onChange={(e) => setForm({ ...form, side_dress: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="None">None</option>
-                  <option value="Cultivate">Cultivate</option>
+                  <option value="Coulter">Coulter</option>
                   <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
+                  <option value="Cultivate">Cultivate</option>
                   <option value="Cultivation Likely">Cultivation Likely</option>
                   <option value="High Y-Drop">High Y-Drop</option>
-                  <option value="Coulter">Coulter</option>
-                  <option value="Sprayer Drops">Sprayer Drops</option>
-                  <option value="Pivot">Pivot</option>
                   <option value="Low Y-Drop">Low Y-Drop</option>
+                  <option value="None">None</option>
+                  <option value="Pivot">Pivot</option>
+                  <option value="Sprayer Drops">Sprayer Drops</option>
                 </select>
               </div>
             </div>
@@ -229,17 +229,17 @@ export default function AddSeasonModal({
                 <label>Early Removal</label>
                 <select value={form.early_removal} onChange={(e) => setForm({ ...form, early_removal: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Silage">Silage</option>
-                  <option value="Soybeans">Soybeans</option>
-                  <option value="HMC">HMC</option>
-                  <option value="HMC – Oct 1">HMC – Oct 1</option>
                   <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
-                  <option value="Popcorn">Popcorn</option>
-                  <option value="HMC Maybe">HMC Maybe</option>
                   <option value="Early Incentive Corn">Early Incentive Corn</option>
+                  <option value="HMC">HMC</option>
+                  <option value="HMC Maybe">HMC Maybe</option>
+                  <option value="HMC – Oct 1">HMC – Oct 1</option>
+                  <option value="Popcorn">Popcorn</option>
+                  <option value="Regular">Regular</option>
                   <option value="Seed Corn">Seed Corn</option>
+                  <option value="Silage">Silage</option>
                   <option value="Sorghum">Sorghum</option>
+                  <option value="Soybeans">Soybeans</option>
                 </select>
               </div>
             </div>

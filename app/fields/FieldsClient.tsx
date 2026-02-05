@@ -50,29 +50,29 @@ interface FieldColumnDefinition {
 // All available columns
 const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'field', label: 'Field', alwaysVisible: true },
-  { key: 'operation', label: 'Operation' },
+  { key: 'antenna', label: 'Antenna' },
+  { key: 'approvalStatus', label: 'Approval Status' },
+  { key: 'battery', label: 'Battery' },
   { key: 'billingEntity', label: 'Billing Entity' },
   { key: 'crop', label: 'Crop' },
   { key: 'cropConfirmed', label: 'Crop Confirmed' },
-  { key: 'service', label: 'Service Type' },
+  { key: 'earlyRemoval', label: 'Early Removal' },
   { key: 'hybrid', label: 'Hybrid/Variety' },
-  { key: 'antenna', label: 'Antenna' },
-  { key: 'battery', label: 'Battery' },
-  { key: 'sideDress', label: 'Side-dress' },
-  { key: 'loggerId', label: 'Logger ID' },
-  { key: 'probes', label: 'Probes' },
-  { key: 'routeOrder', label: 'Route #' },
-  { key: 'plannedInstaller', label: 'Planned Installer' },
-  { key: 'readyToInstall', label: 'Ready to Install' },
-  { key: 'nrcsField', label: 'NRCS Field' },
-  { key: 'probeStatus', label: 'Probe Status' },
   { key: 'installDate', label: 'Install Date' },
   { key: 'installer', label: 'Installer' },
-  { key: 'approvalStatus', label: 'Approval Status' },
+  { key: 'loggerId', label: 'Logger ID' },
+  { key: 'nrcsField', label: 'NRCS Field' },
+  { key: 'operation', label: 'Operation' },
+  { key: 'plannedInstaller', label: 'Planned Installer' },
+  { key: 'probeStatus', label: 'Probe Status' },
+  { key: 'probes', label: 'Probes' },
+  { key: 'readyToInstall', label: 'Ready to Install' },
+  { key: 'readyToRemove', label: 'Ready to Remove' },
   { key: 'removalDate', label: 'Removal Date' },
   { key: 'removalNotes', label: 'Removal Notes' },
-  { key: 'readyToRemove', label: 'Ready to Remove' },
-  { key: 'earlyRemoval', label: 'Early Removal' },
+  { key: 'routeOrder', label: 'Route #' },
+  { key: 'service', label: 'Service Type' },
+  { key: 'sideDress', label: 'Side-dress' },
 ];
 
 // Default columns for each tab
@@ -1751,16 +1751,16 @@ export default function FieldsClient({
                   </div>
                   <select value={currentOperation} onChange={(e) => setCurrentOperation(e.target.value)}>
                     <option value="all">All Operations</option>
-                    {operations.map((op) => (
+                    {operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => (
                       <option key={op.id} value={op.id.toString()}>{op.name}</option>
                     ))}
                   </select>
                   <select value={currentIrrigationType} onChange={(e) => setCurrentIrrigationType(e.target.value)}>
                     <option value="all">All Irrigation</option>
-                    <option value="Pivot">Pivot</option>
-                    <option value="Gravity">Gravity</option>
                     <option value="Drip">Drip</option>
                     <option value="Dryland">Dryland</option>
+                    <option value="Gravity">Gravity</option>
+                    <option value="Pivot">Pivot</option>
                     <option value="Unknown">Unknown</option>
                   </select>
                   <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
