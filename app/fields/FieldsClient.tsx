@@ -1479,7 +1479,7 @@ export default function FieldsClient({
       return;
     }
 
-    if (!confirm(`This will remove ${selectedBatchFieldIds.size} field(s) from ${batchSeason}. This cannot be undone. Continue?`)) {
+    if (!confirm(`This will remove ${selectedBatchFieldIds.size} field(s) from ${batchSeason}. This will also delete any probe assignments for these fields. Continue?`)) {
       return;
     }
 
@@ -1490,7 +1490,19 @@ export default function FieldsClient({
         .filter((f) => selectedBatchFieldIds.has(f.id) && f.fieldSeasonId)
         .map((f) => f.fieldSeasonId!);
 
-      // Delete each field_season
+      // First, delete all probe_assignments for these field_seasons
+      const probeAssignmentIdsToDelete = probeAssignments
+        .filter((pa) => fieldSeasonIdsToDelete.includes(pa.fieldSeasonId))
+        .map((pa) => pa.id);
+
+      if (probeAssignmentIdsToDelete.length > 0) {
+        const paDeletePromises = probeAssignmentIdsToDelete.map((paId) =>
+          fetch(`/api/probe-assignments/${paId}`, { method: 'DELETE' })
+        );
+        await Promise.all(paDeletePromises);
+      }
+
+      // Now delete each field_season
       const deletePromises = fieldSeasonIdsToDelete.map((fsId) =>
         fetch(`/api/field-seasons/${fsId}`, { method: 'DELETE' })
       );
@@ -1499,7 +1511,7 @@ export default function FieldsClient({
       const failures = results.filter((r) => !r.ok);
 
       if (failures.length > 0) {
-        alert(`${failures.length} field(s) failed to unenroll`);
+        alert(`${failures.length} field(s) failed to unenroll. They may have linked repairs or billing records.`);
       }
 
       setShowBatchModal(false);
