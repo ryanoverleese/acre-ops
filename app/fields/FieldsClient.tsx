@@ -3406,7 +3406,7 @@ export default function FieldsClient({
                     <label>Billing Entity *</label>
                     <select value={addForm.billing_entity} onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}>
                       <option value="">Select billing entity...</option>
-                      {billingEntities.map((be) => (
+                      {[...billingEntities].sort((a, b) => a.name.localeCompare(b.name)).map((be) => (
                         <option key={be.id} value={be.id}>{be.name} ({be.operationName})</option>
                       ))}
                     </select>
