@@ -131,16 +131,22 @@ interface InlineProbeCellProps {
   type: 'text' | 'select' | 'number' | 'checkbox';
   options?: { value: string; label: string }[];
   onSave: (probeAssignmentId: number, field: string, value: unknown) => Promise<void>;
+  onAction?: (actionValue: string) => void;
   savingFields: Set<string>;
   savedFields: Set<string>;
 }
 
-function InlineProbeCell({ probeAssignmentId, field, value, type, options, onSave, savingFields, savedFields }: InlineProbeCellProps) {
+function InlineProbeCell({ probeAssignmentId, field, value, type, options, onSave, onAction, savingFields, savedFields }: InlineProbeCellProps) {
   const cellKey = `pa-${probeAssignmentId}-${field}`;
   const isSaving = savingFields.has(cellKey);
   const justSaved = savedFields.has(cellKey);
 
   const handleChange = async (newValue: unknown) => {
+    // Intercept special action values (e.g., "__create_new__")
+    if (typeof newValue === 'string' && newValue.startsWith('__') && newValue.endsWith('__') && onAction) {
+      onAction(newValue);
+      return;
+    }
     await onSave(probeAssignmentId, field, newValue);
   };
 
@@ -2549,11 +2555,25 @@ export default function FieldsClient({
                                             field="probeId"
                                             value={pa.probeId?.toString() || ''}
                                             type="select"
-                                            options={getProbesForField(field.operation, pa.probeId).map(p => ({
-                                              value: p.id.toString(),
-                                              label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} (${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity})`,
-                                            }))}
+                                            options={[
+                                              ...getProbesForField(field.operation, pa.probeId).map(p => ({
+                                                value: p.id.toString(),
+                                                label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} (${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity})`,
+                                              })),
+                                              { value: '__create_new__', label: '+ Add New Probe' },
+                                            ]}
                                             onSave={handleProbeAssignmentSave}
+                                            onAction={(action) => {
+                                              if (action === '__create_new__') {
+                                                setCreateProbeTarget('probe1');
+                                                setCreateProbeForm({
+                                                  brand: '',
+                                                  owner_operation: field.operationId?.toString() || '',
+                                                  year_new: '2025',
+                                                });
+                                                setShowCreateProbeModal(true);
+                                              }
+                                            }}
                                             savingFields={savingFields}
                                             savedFields={savedFields}
                                           />
