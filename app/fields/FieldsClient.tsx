@@ -1590,6 +1590,8 @@ export default function FieldsClient({
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                     zIndex: 100,
                     minWidth: '180px',
+                    maxHeight: '70vh',
+                    overflowY: 'auto',
                     padding: '8px 0',
                   }}
                 >
