@@ -77,6 +77,8 @@ export interface ProcessedField {
   dripGpm?: number;
   dripDepth?: number;
   fieldDirections?: string;
+  // NRCS
+  nrcsField?: boolean;
   // Install planning fields
   routeOrder?: number;
   plannedInstaller?: string;
@@ -326,6 +328,7 @@ async function getFieldsData(): Promise<{
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
             readyToInstall: fs.ready_to_install,
+            nrcsField: fs.NRCS_field,
             // Install details (after installation)
             installer: fs.installer,
             installDate: fs.install_date,

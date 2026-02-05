@@ -373,6 +373,15 @@ export default function FieldsClient({
   const [selectedProbeId, setSelectedProbeId] = useState<string>('');
   const [selectedProbe2Id, setSelectedProbe2Id] = useState<string>('');
   const [savingProbe, setSavingProbe] = useState(false);
+  const [showCreateProbeModal, setShowCreateProbeModal] = useState(false);
+  const [createProbeTarget, setCreateProbeTarget] = useState<'probe1' | 'probe2'>('probe1');
+  const [createProbeForm, setCreateProbeForm] = useState({
+    brand: '',
+    owner_operation: '',
+    year_new: '2025',
+  });
+  const [savingNewProbe, setSavingNewProbe] = useState(false);
+  const [localProbes, setLocalProbes] = useState(probes);
   const [showSeasonFieldsEdit, setShowSeasonFieldsEdit] = useState(false);
   const [seasonFieldsForm, setSeasonFieldsForm] = useState({
     crop: '',
@@ -388,6 +397,7 @@ export default function FieldsClient({
     route_order: '',
     planned_installer: '',
     ready_to_install: false,
+    nrcs_field: false,
     billing_rate: '',
   });
   const [savingSeasonFields, setSavingSeasonFields] = useState(false);
@@ -733,7 +743,7 @@ export default function FieldsClient({
 
   // Sort probes by owner operation for the dropdown, with assignment status
   const sortedProbes = useMemo(() => {
-    return [...probes]
+    return [...localProbes]
       .map(p => ({
         ...p,
         isAssigned: assignedProbeIds.has(p.id),
@@ -744,7 +754,7 @@ export default function FieldsClient({
         if (opCompare !== 0) return opCompare;
         return (a.serialNumber || '').localeCompare(b.serialNumber || '');
       });
-  }, [probes, assignedProbeIds]);
+  }, [localProbes, assignedProbeIds]);
 
   // Inline save handler for seasonal data
   const handleInlineSave = useCallback(async (fieldSeasonId: number, field: string, value: unknown) => {
@@ -934,6 +944,7 @@ export default function FieldsClient({
       route_order: field.routeOrder?.toString() || '',
       planned_installer: field.plannedInstaller || '',
       ready_to_install: field.readyToInstall || false,
+      nrcs_field: field.nrcsField || false,
       billing_rate: getRateForServiceType(field.serviceType || ''),
     });
     setIsEditing(false);
@@ -1111,6 +1122,63 @@ export default function FieldsClient({
       alert('Failed to assign probe');
     } finally {
       setSavingProbe(false);
+    }
+  };
+
+  const handleCreateProbe = async () => {
+    if (!createProbeForm.brand) {
+      alert('Brand is required');
+      return;
+    }
+    if (!createProbeForm.year_new) {
+      alert('Year New is required');
+      return;
+    }
+    setSavingNewProbe(true);
+    try {
+      const payload: Record<string, unknown> = {
+        brand: createProbeForm.brand,
+        year_new: parseInt(createProbeForm.year_new, 10),
+        status: 'On Order',
+      };
+      if (createProbeForm.owner_operation) {
+        payload.owner_operation = parseInt(createProbeForm.owner_operation, 10);
+      }
+
+      const response = await fetch('/api/probes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) {
+        const newProbe = await response.json();
+        // Add the new probe to local probes list
+        const newProbeOption: ProbeOption = {
+          id: newProbe.id,
+          serialNumber: newProbe.serial_number || '',
+          ownerBillingEntity: createProbeForm.owner_operation
+            ? (operations.find(op => op.id === parseInt(createProbeForm.owner_operation, 10))?.name || 'On Order')
+            : 'On Order',
+          status: 'On Order',
+        };
+        setLocalProbes(prev => [...prev, newProbeOption]);
+        // Auto-select the new probe in the appropriate dropdown
+        if (createProbeTarget === 'probe1') {
+          setSelectedProbeId(newProbe.id.toString());
+        } else {
+          setSelectedProbe2Id(newProbe.id.toString());
+        }
+        setShowCreateProbeModal(false);
+        setCreateProbeForm({ brand: '', owner_operation: '', year_new: '2025' });
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to create probe');
+      }
+    } catch (error) {
+      console.error('Create probe error:', error);
+      alert('Failed to create probe');
+    } finally {
+      setSavingNewProbe(false);
     }
   };
 
@@ -3263,24 +3331,50 @@ export default function FieldsClient({
                   <div className="form-row">
                     <div className="form-group">
                       <label>Probe 1</label>
-                      <select value={selectedProbeId} onChange={(e) => setSelectedProbeId(e.target.value)}>
+                      <select value={selectedProbeId} onChange={(e) => {
+                        if (e.target.value === '__create_new__') {
+                          setCreateProbeTarget('probe1');
+                          setCreateProbeForm({
+                            brand: '',
+                            owner_operation: selectedField?.operationId?.toString() || '',
+                            year_new: '2025',
+                          });
+                          setShowCreateProbeModal(true);
+                        } else {
+                          setSelectedProbeId(e.target.value);
+                        }
+                      }}>
                         <option value="">— No Probe —</option>
                         {sortedProbes.map((p) => (
                           <option key={p.id} value={p.id}>
-                            #{p.serialNumber} ({p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity})
+                            {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity})
                           </option>
                         ))}
+                        <option value="__create_new__">+ Add New Probe</option>
                       </select>
                     </div>
                     <div className="form-group">
                       <label>Probe 2 (Optional)</label>
-                      <select value={selectedProbe2Id} onChange={(e) => setSelectedProbe2Id(e.target.value)}>
+                      <select value={selectedProbe2Id} onChange={(e) => {
+                        if (e.target.value === '__create_new__') {
+                          setCreateProbeTarget('probe2');
+                          setCreateProbeForm({
+                            brand: '',
+                            owner_operation: selectedField?.operationId?.toString() || '',
+                            year_new: '2025',
+                          });
+                          setShowCreateProbeModal(true);
+                        } else {
+                          setSelectedProbe2Id(e.target.value);
+                        }
+                      }}>
                         <option value="">— No Probe —</option>
                         {sortedProbes.map((p) => (
                           <option key={p.id} value={p.id}>
-                            #{p.serialNumber} ({p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity})
+                            {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity})
                           </option>
                         ))}
+                        <option value="__create_new__">+ Add New Probe</option>
                       </select>
                     </div>
                   </div>
@@ -3310,19 +3404,32 @@ export default function FieldsClient({
                         </select>
                       </div>
                     </div>
-                    <div className="form-group">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={seasonFieldsForm.ready_to_install}
-                          onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, ready_to_install: e.target.checked })}
-                          style={{ width: '18px', height: '18px' }}
-                        />
-                        Ready to Install
-                      </label>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                        Check this when the field is confirmed and ready for the installer to visit.
-                      </p>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={seasonFieldsForm.ready_to_install}
+                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, ready_to_install: e.target.checked })}
+                            style={{ width: '18px', height: '18px' }}
+                          />
+                          Ready to Install
+                        </label>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          Check this when the field is confirmed and ready for the installer to visit.
+                        </p>
+                      </div>
+                      <div className="form-group">
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={seasonFieldsForm.nrcs_field}
+                            onChange={(e) => setSeasonFieldsForm({ ...seasonFieldsForm, nrcs_field: e.target.checked })}
+                            style={{ width: '18px', height: '18px' }}
+                          />
+                          NRCS Field
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -3344,6 +3451,7 @@ export default function FieldsClient({
                     route_order: selectedField.routeOrder?.toString() || '',
                     planned_installer: selectedField.plannedInstaller || '',
                     ready_to_install: selectedField.readyToInstall || false,
+                    nrcs_field: selectedField.nrcsField || false,
                     billing_rate: getRateForServiceType(selectedField.serviceType || ''),
                   });
                   setSelectedProbeId(selectedField.probeId?.toString() || '');
@@ -3376,6 +3484,7 @@ export default function FieldsClient({
                         route_order: seasonFieldsForm.route_order ? parseInt(seasonFieldsForm.route_order, 10) : null,
                         planned_installer: seasonFieldsForm.planned_installer || null,
                         ready_to_install: seasonFieldsForm.ready_to_install,
+                        NRCS_field: seasonFieldsForm.nrcs_field,
                       }),
                     });
                     if (response.ok) {
@@ -3412,6 +3521,68 @@ export default function FieldsClient({
                   }
                 }} disabled={savingSeasonFields}>
                   {savingSeasonFields ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create New Probe Modal */}
+        {showCreateProbeModal && (
+          <div className="detail-panel-overlay" onClick={() => setShowCreateProbeModal(false)}>
+            <div className="detail-panel" onClick={(e) => e.stopPropagation()} style={{ width: '440px' }}>
+              <div className="detail-panel-header">
+                <h3>Create New Probe</h3>
+                <button className="close-btn" onClick={() => setShowCreateProbeModal(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                <div className="edit-form">
+                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                    Create a probe on order. Serial number and rack location will be filled in when the probe arrives.
+                  </p>
+                  <div className="form-group">
+                    <label>Brand *</label>
+                    <select
+                      value={createProbeForm.brand}
+                      onChange={(e) => setCreateProbeForm({ ...createProbeForm, brand: e.target.value })}
+                    >
+                      <option value="">Select brand...</option>
+                      <option value="CropX V4">CropX V4</option>
+                      <option value="Sentek 36&quot;/CropX Gateway">Sentek 36&quot;/CropX Gateway</option>
+                      <option value="Sentek 48&quot; Blue/Sentek Rocket">Sentek 48&quot; Blue/Sentek Rocket</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Owner Operation</label>
+                    <select
+                      value={createProbeForm.owner_operation}
+                      onChange={(e) => setCreateProbeForm({ ...createProbeForm, owner_operation: e.target.value })}
+                    >
+                      <option value="">Select operation...</option>
+                      {operations.map((op) => (
+                        <option key={op.id} value={op.id}>{op.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Year New *</label>
+                    <input
+                      type="number"
+                      value={createProbeForm.year_new}
+                      onChange={(e) => setCreateProbeForm({ ...createProbeForm, year_new: e.target.value })}
+                      placeholder="e.g., 2025"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => setShowCreateProbeModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleCreateProbe} disabled={savingNewProbe}>
+                  {savingNewProbe ? 'Creating...' : 'Create Probe'}
                 </button>
               </div>
             </div>

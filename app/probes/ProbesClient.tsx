@@ -49,6 +49,7 @@ interface ProbesClientProps {
 }
 
 const STATUS_OPTIONS = [
+  'On Order',
   'In Stock',
   'Assigned',
   'Installed',
@@ -79,7 +80,7 @@ const initialAddForm = {
 export default function ProbesClient({ probes: initialProbes, billingEntities, contacts, brandOptions, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
   const [probes, setProbes] = useState(initialProbes);
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'all' | 'rack'>('all');
+  const [viewMode, setViewMode] = useState<'all' | 'rack' | 'on-order'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedProbe, setSelectedProbe] = useState<ProcessedProbe | null>(null);
@@ -128,6 +129,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
 
   const filteredProbes = useMemo(() => {
     let filtered = probes;
+
+    // For on-order view, only show probes with status "On Order"
+    if (viewMode === 'on-order') {
+      filtered = filtered.filter((probe) => probe.status.toLowerCase() === 'on order');
+    }
 
     // For rack view, only show probes with rack and sort based on rackSortBy
     if (viewMode === 'rack') {
@@ -455,6 +461,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       className += 'repair';
     } else if (statusLower === 'retired') {
       className += 'retired';
+    } else if (statusLower === 'on order') {
+      className += 'pending';
     } else {
       className += 'pending';
     }
@@ -508,10 +516,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       </header>
 
       <div className="content">
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '24px' }}>
+        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: '24px' }}>
           <div className="stat-card">
             <div className="stat-label">Total Probes</div>
             <div className="stat-value blue">{statusCounts.all || 0}</div>
+          </div>
+          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setViewMode('on-order')}>
+            <div className="stat-label">On Order</div>
+            <div className="stat-value amber">{statusCounts['on-order'] || statusCounts['on order'] || 0}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">In Stock</div>
@@ -542,6 +554,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 className={viewMode === 'rack' ? 'active' : ''}
               >
                 Probe Rack
+              </button>
+              <button
+                onClick={() => setViewMode('on-order')}
+                className={viewMode === 'on-order' ? 'active' : ''}
+              >
+                On Order
               </button>
             </div>
             <div className="search-box" style={{ minWidth: '220px' }}>

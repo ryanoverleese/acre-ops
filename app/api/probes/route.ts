@@ -8,20 +8,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    if (!body.serial_number) {
-      return NextResponse.json(
-        { error: 'Serial number is required' },
-        { status: 400 }
-      );
-    }
+    // Serial number is optional (e.g., "On Order" probes don't have one yet)
+    const createData: Record<string, unknown> = {};
 
-    const createData: Record<string, unknown> = {
-      serial_number: body.serial_number,
-    };
-
+    if (body.serial_number) createData.serial_number = body.serial_number;
     if (body.brand) createData.brand = body.brand;
     if (body.billing_entity) createData.billing_entity = [body.billing_entity];
     if (body.contact) createData.contact = [body.contact];
+    if (body.owner_operation) createData.owner_operation = [body.owner_operation];
     if (body.year_new) createData.year_new = body.year_new;
     if (body.status) createData.status = body.status;
     if (body.rack) createData.rack = body.rack;

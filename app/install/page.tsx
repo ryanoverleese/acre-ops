@@ -61,7 +61,16 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
 
         // Probe must be assigned (has a probe) but not yet installed
         const status = pa.probe_status?.value?.toLowerCase() || 'unassigned';
-        return status === 'assigned';
+        if (status !== 'assigned') return false;
+
+        // Only show probes that have a serial number (not "On Order" probes without serial)
+        const probeId = pa.probe?.[0]?.id;
+        if (probeId) {
+          const probe = probeMap.get(probeId);
+          if (!probe?.serial_number) return false;
+        }
+
+        return true;
       })
       .map((pa) => {
         const fieldSeasonId = pa.field_season?.[0]?.id || 0;

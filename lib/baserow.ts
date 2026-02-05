@@ -170,6 +170,7 @@ export interface Probe {
   brand?: { id: number; value: string };
   billing_entity?: { id: number; value: string }[];
   contact?: { id: number; value: string }[];
+  owner_operation?: { id: number; value: string }[];
   year_new?: number;
   status?: { id: number; value: string };
   rack?: { id: number; value: string };
@@ -222,6 +223,8 @@ export interface FieldSeason {
   probe_2_install_notes?: string;
   probe_2_cropx_telemetry_id?: string;
   probe_2_signal_strength?: string;
+  // NRCS
+  NRCS_field?: boolean;
   // Other
   removal_date?: string;
   removal_notes?: string;

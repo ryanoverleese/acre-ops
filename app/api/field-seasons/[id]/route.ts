@@ -52,6 +52,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.route_order !== undefined) updateData.route_order = body.route_order;
     if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer;
     if (body.ready_to_install !== undefined) updateData.ready_to_install = body.ready_to_install;
+    // NRCS
+    if (body.NRCS_field !== undefined) updateData.NRCS_field = body.NRCS_field;
     // Approval
     if (body.approval_status !== undefined) updateData.approval_status = body.approval_status;
 
