@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { TABLE_IDS } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -113,6 +114,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updatedField = await response.json();
+
+    // Bust the Next.js cache so a page refresh picks up the change immediately
+    revalidatePath('/fields');
 
     return NextResponse.json(updatedField);
   } catch (error) {
