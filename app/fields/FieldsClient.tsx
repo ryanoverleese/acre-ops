@@ -381,6 +381,7 @@ export default function FieldsClient({
   const [savingProbe, setSavingProbe] = useState(false);
   const [showCreateProbeModal, setShowCreateProbeModal] = useState(false);
   const [createProbeTarget, setCreateProbeTarget] = useState<'probe1' | 'probe2'>('probe1');
+  const [createProbeAssignmentId, setCreateProbeAssignmentId] = useState<number | null>(null);
   const [createProbeForm, setCreateProbeForm] = useState({
     brand: '',
     billing_entity: '',
@@ -1189,11 +1190,17 @@ export default function FieldsClient({
           status: 'On Order',
         };
         setLocalProbes(prev => [...prev, newProbeOption]);
-        // Auto-select the new probe in the appropriate dropdown
-        if (createProbeTarget === 'probe1') {
-          setSelectedProbeId(newProbe.id.toString());
+        // If triggered from an inline probe assignment dropdown, auto-save to that assignment
+        if (createProbeAssignmentId) {
+          await handleProbeAssignmentSave(createProbeAssignmentId, 'probeId', newProbe.id.toString());
+          setCreateProbeAssignmentId(null);
         } else {
-          setSelectedProbe2Id(newProbe.id.toString());
+          // Edit Season modal flow: just select it in the dropdown
+          if (createProbeTarget === 'probe1') {
+            setSelectedProbeId(newProbe.id.toString());
+          } else {
+            setSelectedProbe2Id(newProbe.id.toString());
+          }
         }
         setShowCreateProbeModal(false);
         setCreateProbeForm({ brand: '', billing_entity: '', year_new: '' });
@@ -2563,6 +2570,7 @@ export default function FieldsClient({
                                             onAction={(action) => {
                                               if (action === '__create_new__') {
                                                 setCreateProbeTarget('probe1');
+                                                setCreateProbeAssignmentId(pa.id);
                                                 setCreateProbeForm({
                                                   brand: '',
                                                   billing_entity: '',
@@ -3375,6 +3383,7 @@ export default function FieldsClient({
                       <select value={selectedProbeId} onChange={(e) => {
                         if (e.target.value === '__create_new__') {
                           setCreateProbeTarget('probe1');
+                          setCreateProbeAssignmentId(null);
                           setCreateProbeForm({
                             brand: '',
                             billing_entity: '',
@@ -3399,6 +3408,7 @@ export default function FieldsClient({
                       <select value={selectedProbe2Id} onChange={(e) => {
                         if (e.target.value === '__create_new__') {
                           setCreateProbeTarget('probe2');
+                          setCreateProbeAssignmentId(null);
                           setCreateProbeForm({
                             brand: '',
                             billing_entity: '',
