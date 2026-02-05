@@ -231,6 +231,53 @@ export default function FieldsClient({
   // Get visible columns for current tab
   const visibleColumns = tabColumns[currentTab] || TAB_DEFAULT_COLUMNS[currentTab];
 
+  // Column label lookup
+  const columnLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    ALL_COLUMN_DEFINITIONS.forEach((col) => { map[col.key] = col.label; });
+    return map;
+  }, []);
+
+  // Get display value for a column key from a field (for mobile cards)
+  const getMobileCardValue = (field: ProcessedField, key: FieldColumnKey): string => {
+    switch (key) {
+      case 'field': return field.name;
+      case 'operation': return field.operation || '—';
+      case 'billingEntity': return field.billingEntityName || '—';
+      case 'crop': return field.crop || '—';
+      case 'cropConfirmed': return (field.crop && field.crop !== 'Unknown') ? 'Yes' : 'No';
+      case 'service': return field.serviceType || '—';
+      case 'hybrid': return field.hybridVariety || '—';
+      case 'antenna': return field.antennaType || '—';
+      case 'battery': return field.batteryType || '—';
+      case 'sideDress': return field.sideDress || '—';
+      case 'loggerId': return field.loggerId || '—';
+      case 'probes': return [field.probe, field.probe2].filter(Boolean).join(', ') || '—';
+      case 'probeStatus': return field.probeStatus || '—';
+      case 'routeOrder': return field.routeOrder?.toString() || '—';
+      case 'plannedInstaller': return field.plannedInstaller || '—';
+      case 'readyToInstall': return field.readyToInstall ? 'Yes' : 'No';
+      case 'nrcsField': return field.nrcsField ? 'Yes' : 'No';
+      case 'installDate': return field.installDate || '—';
+      case 'installer': return field.installer || '—';
+      case 'approvalStatus': return field.approvalStatus || '—';
+      case 'removalDate': return field.removalDate || '—';
+      case 'removalNotes': return field.removalNotes || '—';
+      case 'readyToRemove': return field.readyToRemove || '—';
+      case 'earlyRemoval': return field.earlyRemoval || '—';
+      case 'acres': return field.acres ? field.acres.toString() : '—';
+      case 'pivotAcres': return field.pivotAcres ? field.pivotAcres.toString() : '—';
+      case 'irrigationType': return field.irrigationType || '—';
+      case 'rowDirection': return field.rowDirection || '—';
+      case 'waterSource': return field.waterSource || '—';
+      case 'fuelSource': return field.fuelSource || '—';
+      case 'elevation': return field.elevation?.toString() || '—';
+      case 'soilType': return field.soilType || '—';
+      case 'fieldDirections': return field.fieldDirections || '—';
+      default: return '—';
+    }
+  };
+
   // Close column picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -2116,12 +2163,11 @@ export default function FieldsClient({
                             {getStatusBadge(field.probeStatus)}
                           </div>
                           <div className="mobile-card-body">
-                            <div className="mobile-card-row"><span>Operation:</span> {field.operation}</div>
-                            <div className="mobile-card-row"><span>Crop:</span> {field.crop}</div>
-                            <div className="mobile-card-row"><span>Probe:</span> {field.probe || '—'}</div>
-                            <div className="mobile-card-row"><span>Route #:</span> {field.routeOrder || '—'}</div>
-                            <div className="mobile-card-row"><span>Installer:</span> {field.plannedInstaller || '—'}</div>
-                            <div className="mobile-card-row"><span>Ready:</span> {field.readyToInstall ? 'Yes' : 'No'}</div>
+                            {visibleColumns.filter((col) => col !== 'field').map((col) => (
+                              <div key={col} className="mobile-card-row">
+                                <span>{columnLabelMap[col] || col}:</span> {getMobileCardValue(field, col)}
+                              </div>
+                            ))}
                           </div>
                           <div className="mobile-card-footer" style={{
                             marginTop: '12px',
