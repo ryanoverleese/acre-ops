@@ -8,6 +8,7 @@ import InlineProbeCell from '@/components/InlineProbeCell';
 import CreateProbeModal from '@/components/fields/CreateProbeModal';
 import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditSeasonModal';
 import AddFieldModal from '@/components/fields/AddFieldModal';
+import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -149,21 +150,6 @@ export default function FieldsClient({
   const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add' | 'probeAssignment'>('edit');
   const [editingProbeAssignmentLocation, setEditingProbeAssignmentLocation] = useState<ProcessedProbeAssignment | null>(null);
   const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
-  const [addSeasonForm, setAddSeasonForm] = useState({
-    season: '2026',
-    crop: '',
-    service_type: '',
-    antenna_type: '',
-    battery_type: '',
-    side_dress: '',
-    logger_id: '',
-    early_removal: '',
-    hybrid_variety: '',
-    ready_to_remove: '',
-    planting_date: '',
-    billing_rate: '',
-  });
-  const [savingSeason, setSavingSeason] = useState(false);
   // Removal logging
   const [showRemovalModal, setShowRemovalModal] = useState(false);
   const [removalForm, setRemovalForm] = useState({
@@ -909,69 +895,6 @@ export default function FieldsClient({
       alert('Failed to assign probe');
     } finally {
       setSavingProbe(false);
-    }
-  };
-
-  const handleAddSeason = async () => {
-    if (!selectedField) return;
-    if (!addSeasonForm.season) {
-      alert('Season is required');
-      return;
-    }
-    setSavingSeason(true);
-    try {
-      const response = await fetch('/api/field-seasons', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          field: selectedField.id,
-          season: addSeasonForm.season,
-          crop: addSeasonForm.crop || undefined,
-          service_type: addSeasonForm.service_type || undefined,
-          antenna_type: addSeasonForm.antenna_type || undefined,
-          battery_type: addSeasonForm.battery_type || undefined,
-          side_dress: addSeasonForm.side_dress || undefined,
-          logger_id: addSeasonForm.logger_id || undefined,
-          early_removal: addSeasonForm.early_removal || undefined,
-          hybrid_variety: addSeasonForm.hybrid_variety || undefined,
-          ready_to_remove: addSeasonForm.ready_to_remove || undefined,
-          planting_date: addSeasonForm.planting_date || undefined,
-        }),
-      });
-      if (response.ok) {
-        const result = await response.json();
-
-        // Create invoice line if billing_rate is provided
-        if (addSeasonForm.billing_rate && result.id && selectedField.billingEntityId) {
-          try {
-            await fetch('/api/billing/enroll', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                billing_entity_id: selectedField.billingEntityId,
-                season: addSeasonForm.season,
-                field_season_id: result.id,
-                service_type: addSeasonForm.service_type || '',
-                rate: addSeasonForm.billing_rate,
-              }),
-            });
-          } catch (billingError) {
-            console.error('Failed to create billing entry:', billingError);
-          }
-        }
-
-        setShowAddSeasonModal(false);
-        setAddSeasonForm({ season: '2026', crop: '', service_type: '', antenna_type: '', battery_type: '', side_dress: '', logger_id: '', early_removal: '', hybrid_variety: '', ready_to_remove: '', planting_date: '', billing_rate: '' });
-        window.location.reload();
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to create season');
-      }
-    } catch (error) {
-      console.error('Add season error:', error);
-      alert('Failed to create season');
-    } finally {
-      setSavingSeason(false);
     }
   };
 
@@ -2908,174 +2831,19 @@ export default function FieldsClient({
 
         {/* Add Season Modal */}
         {showAddSeasonModal && selectedField && (
-          <div className="detail-panel-overlay" onClick={() => setShowAddSeasonModal(false)}>
-            <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
-              <div className="detail-panel-header">
-                <h3>Add Season for {selectedField.name}</h3>
-                <button className="close-btn" onClick={() => setShowAddSeasonModal(false)}>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <div className="detail-panel-content">
-                <div className="edit-form">
-                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
-                    Create a new season entry for this field. This will allow you to assign a probe and track service for the new season.
-                  </p>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Season *</label>
-                      <select value={addSeasonForm.season} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, season: e.target.value })}>
-                        {missingSeasonsForField.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Crop</label>
-                      <select value={addSeasonForm.crop} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, crop: e.target.value })}>
-                        <option value="">Select crop...</option>
-                        <option value="Corn">Corn</option>
-                        <option value="Soybeans">Soybeans</option>
-                        <option value="Wheat">Wheat</option>
-                        <option value="Seed Corn">Seed Corn</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Service Type</label>
-                      <select value={addSeasonForm.service_type} onChange={(e) => {
-                        const serviceType = e.target.value;
-                        const rate = getRateForServiceType(serviceType);
-                        setAddSeasonForm({ ...addSeasonForm, service_type: serviceType, billing_rate: rate });
-                      }}>
-                        <option value="">Select...</option>
-                        {serviceTypeOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Billing Rate ($)</label>
-                      <input
-                        type="number"
-                        value={addSeasonForm.billing_rate}
-                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, billing_rate: e.target.value })}
-                        placeholder="Auto-filled from service type"
-                        step="0.01"
-                      />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Antenna Type</label>
-                      <select value={addSeasonForm.antenna_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, antenna_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
-                        <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                        <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
-                        <option value="ASK">ASK</option>
-                        <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
-                        <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                        <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Battery Type</label>
-                      <select value={addSeasonForm.battery_type} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, battery_type: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="CropX">CropX</option>
-                        <option value="Sentek Used">Sentek Used</option>
-                        <option value="Sentek New">Sentek New</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label>Side Dress</label>
-                      <select value={addSeasonForm.side_dress} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, side_dress: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="None">None</option>
-                        <option value="Cultivate">Cultivate</option>
-                        <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
-                        <option value="Cultivation Likely">Cultivation Likely</option>
-                        <option value="High Y-Drop">High Y-Drop</option>
-                        <option value="Coulter">Coulter</option>
-                        <option value="Sprayer Drops">Sprayer Drops</option>
-                        <option value="Pivot">Pivot</option>
-                        <option value="Low Y-Drop">Low Y-Drop</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Logger ID</label>
-                      <input
-                        type="text"
-                        value={addSeasonForm.logger_id}
-                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, logger_id: e.target.value })}
-                        placeholder="e.g., 7080859"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Early Removal</label>
-                      <select value={addSeasonForm.early_removal} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, early_removal: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Regular">Regular</option>
-                        <option value="Silage">Silage</option>
-                        <option value="Soybeans">Soybeans</option>
-                        <option value="HMC">HMC</option>
-                        <option value="HMC – Oct 1">HMC – Oct 1</option>
-                        <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
-                        <option value="Popcorn">Popcorn</option>
-                        <option value="HMC Maybe">HMC Maybe</option>
-                        <option value="Early Incentive Corn">Early Incentive Corn</option>
-                        <option value="Seed Corn">Seed Corn</option>
-                        <option value="Sorghum">Sorghum</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Hybrid/Variety</label>
-                      <input
-                        type="text"
-                        value={addSeasonForm.hybrid_variety}
-                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, hybrid_variety: e.target.value })}
-                        placeholder="e.g., P1185AM"
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label>Ready to Remove</label>
-                      <select value={addSeasonForm.ready_to_remove} onChange={(e) => setAddSeasonForm({ ...addSeasonForm, ready_to_remove: e.target.value })}>
-                        <option value="">Select...</option>
-                        <option value="Yes">Yes</option>
-                        <option value="No">No</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Planting Date</label>
-                      <input
-                        type="date"
-                        value={addSeasonForm.planting_date}
-                        onChange={(e) => setAddSeasonForm({ ...addSeasonForm, planting_date: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group"></div>
-                  </div>
-                </div>
-              </div>
-              <div className="detail-panel-footer">
-                <button className="btn btn-secondary" onClick={() => setShowAddSeasonModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleAddSeason} disabled={savingSeason}>
-                  {savingSeason ? 'Creating...' : 'Create Season'}
-                </button>
-              </div>
-            </div>
-          </div>
+          <AddSeasonModal
+            fieldId={selectedField.id}
+            fieldName={selectedField.name}
+            billingEntityId={selectedField.billingEntityId}
+            missingSeasons={missingSeasonsForField}
+            serviceTypeOptions={serviceTypeOptions}
+            getRateForServiceType={getRateForServiceType}
+            onClose={() => setShowAddSeasonModal(false)}
+            onSaved={() => {
+              setShowAddSeasonModal(false);
+              window.location.reload();
+            }}
+          />
         )}
 
         {/* Removal Logging Modal */}
