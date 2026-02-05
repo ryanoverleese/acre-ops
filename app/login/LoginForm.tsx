@@ -27,6 +27,8 @@ export default function LoginForm() {
       if (result?.error) {
         setError('Invalid email or password');
       } else {
+        // Reset fields page column selections to settings defaults on each login
+        try { localStorage.removeItem('fields-tab-columns'); } catch {}
         window.location.href = callbackUrl;
       }
     } catch {

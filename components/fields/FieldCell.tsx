@@ -9,7 +9,9 @@ type FieldColumnKey =
   | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
-  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval';
+  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval'
+  | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
+  | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
 
 export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
   field: '140px', operation: '100px', billingEntity: '120px', crop: '90px',
@@ -19,6 +21,9 @@ export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
   probeStatus: '100px', installDate: '100px', installer: '100px',
   approvalStatus: '100px', removalDate: '100px', removalNotes: '150px',
   readyToRemove: '60px', earlyRemoval: '60px',
+  acres: '80px', pivotAcres: '90px', irrigationType: '110px', rowDirection: '100px',
+  waterSource: '100px', fuelSource: '100px', elevation: '80px', soilType: '100px',
+  fieldDirections: '150px',
 };
 
 interface RenderCellProps {
@@ -201,6 +206,24 @@ export function FieldCell({
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
+    case 'acres':
+      return <td key={colKey}>{field.acres || '—'}</td>;
+    case 'pivotAcres':
+      return <td key={colKey}>{field.pivotAcres || '—'}</td>;
+    case 'irrigationType':
+      return <td key={colKey}>{field.irrigationType || '—'}</td>;
+    case 'rowDirection':
+      return <td key={colKey}>{field.rowDirection || '—'}</td>;
+    case 'waterSource':
+      return <td key={colKey}>{field.waterSource || '—'}</td>;
+    case 'fuelSource':
+      return <td key={colKey}>{field.fuelSource || '—'}</td>;
+    case 'elevation':
+      return <td key={colKey}>{field.elevation || '—'}</td>;
+    case 'soilType':
+      return <td key={colKey}>{field.soilType || '—'}</td>;
+    case 'fieldDirections':
+      return <td key={colKey} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={field.fieldDirections || ''}>{field.fieldDirections || '—'}</td>;
     default:
       return <td key={colKey}>—</td>;
   }

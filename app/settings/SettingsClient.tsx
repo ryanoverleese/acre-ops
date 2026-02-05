@@ -34,7 +34,9 @@ type FieldColumnKey =
   | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
-  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval';
+  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval'
+  | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
+  | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
 
 type TabView = 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
 
@@ -46,6 +48,7 @@ interface FieldColumnDefinition {
 
 const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'field', label: 'Field', alwaysVisible: true },
+  { key: 'acres', label: 'Acres' },
   { key: 'antenna', label: 'Antenna' },
   { key: 'approvalStatus', label: 'Approval Status' },
   { key: 'battery', label: 'Battery' },
@@ -53,12 +56,17 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'crop', label: 'Crop' },
   { key: 'cropConfirmed', label: 'Crop Confirmed' },
   { key: 'earlyRemoval', label: 'Early Removal' },
+  { key: 'elevation', label: 'Elevation' },
+  { key: 'fieldDirections', label: 'Field Directions' },
+  { key: 'fuelSource', label: 'Fuel Source' },
   { key: 'hybrid', label: 'Hybrid/Variety' },
   { key: 'installDate', label: 'Install Date' },
   { key: 'installer', label: 'Installer' },
+  { key: 'irrigationType', label: 'Irrigation Type' },
   { key: 'loggerId', label: 'Logger ID' },
   { key: 'operation', label: 'Operation' },
   { key: 'plannedInstaller', label: 'Planned Installer' },
+  { key: 'pivotAcres', label: 'Pivot Acres' },
   { key: 'probeStatus', label: 'Probe Status' },
   { key: 'probes', label: 'Probes' },
   { key: 'readyToInstall', label: 'Ready to Install' },
@@ -66,8 +74,11 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'removalDate', label: 'Removal Date' },
   { key: 'removalNotes', label: 'Removal Notes' },
   { key: 'routeOrder', label: 'Route #' },
+  { key: 'rowDirection', label: 'Row Direction' },
   { key: 'service', label: 'Service Type' },
   { key: 'sideDress', label: 'Side-dress' },
+  { key: 'soilType', label: 'Soil Type' },
+  { key: 'waterSource', label: 'Water Source' },
 ];
 
 const TAB_INFO: { key: TabView; label: string }[] = [
