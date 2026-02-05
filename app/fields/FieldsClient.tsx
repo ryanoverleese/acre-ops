@@ -386,6 +386,7 @@ export default function FieldsClient({
     brand: '',
     billing_entity: '',
     year_new: '',
+    _operationName: '',
   });
   const [savingNewProbe, setSavingNewProbe] = useState(false);
   const [localProbes, setLocalProbes] = useState(probes);
@@ -1203,7 +1204,7 @@ export default function FieldsClient({
           }
         }
         setShowCreateProbeModal(false);
-        setCreateProbeForm({ brand: '', billing_entity: '', year_new: '' });
+        setCreateProbeForm({ brand: '', billing_entity: '', year_new: '', _operationName: '' });
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to create probe');
@@ -2575,6 +2576,7 @@ export default function FieldsClient({
                                                   brand: '',
                                                   billing_entity: '',
                                                   year_new: '',
+                                                  _operationName: field.operation,
                                                 });
                                                 setShowCreateProbeModal(true);
                                               }
@@ -3388,6 +3390,7 @@ export default function FieldsClient({
                             brand: '',
                             billing_entity: '',
                             year_new: '',
+                            _operationName: selectedField.operation,
                           });
                           setShowCreateProbeModal(true);
                         } else {
@@ -3413,6 +3416,7 @@ export default function FieldsClient({
                             brand: '',
                             billing_entity: '',
                             year_new: '',
+                            _operationName: selectedField.operation,
                           });
                           setShowCreateProbeModal(true);
                         } else {
@@ -3614,7 +3618,9 @@ export default function FieldsClient({
                       onChange={(e) => setCreateProbeForm({ ...createProbeForm, billing_entity: e.target.value })}
                     >
                       <option value="">Select billing entity...</option>
-                      {billingEntities.map((be) => (
+                      {billingEntities
+                        .filter((be) => !createProbeForm._operationName || be.operationName === createProbeForm._operationName)
+                        .map((be) => (
                         <option key={be.id} value={be.id}>{be.name}</option>
                       ))}
                     </select>
