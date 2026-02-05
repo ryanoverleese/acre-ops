@@ -1,0 +1,95 @@
+'use client';
+
+import { useState } from 'react';
+import OperationsClient from '@/app/operations/OperationsClient';
+import ContactsClient from '@/app/contacts/ContactsClient';
+import BillingEntitiesClient from '@/app/billing-entities/BillingEntitiesClient';
+import type { ProcessedOperation, ContactOption as OpContactOption } from '@/app/operations/OperationsClient';
+import type { ProcessedContact, OperationOption, BillingEntityOption } from '@/app/contacts/page';
+import type { ProcessedBillingEntity, ContactOption as BEContactOption } from '@/app/billing-entities/page';
+
+type CRMTab = 'operations' | 'contacts' | 'billing';
+
+const TABS: { key: CRMTab; label: string }[] = [
+  { key: 'operations', label: 'Operations' },
+  { key: 'contacts', label: 'Contacts' },
+  { key: 'billing', label: 'Billing Entities' },
+];
+
+interface CRMClientProps {
+  operationsData: {
+    operations: ProcessedOperation[];
+    allContacts: OpContactOption[];
+  };
+  contactsData: {
+    contacts: ProcessedContact[];
+    operations: OperationOption[];
+    billingEntities: BillingEntityOption[];
+  };
+  billingEntitiesData: {
+    billingEntities: ProcessedBillingEntity[];
+    operations: OperationOption[];
+    contacts: BEContactOption[];
+  };
+}
+
+export default function CRMClient({ operationsData, contactsData, billingEntitiesData }: CRMClientProps) {
+  const [activeTab, setActiveTab] = useState<CRMTab>('operations');
+
+  return (
+    <>
+      <header className="header">
+        <div className="header-left">
+          <h2>CRM</h2>
+        </div>
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              style={{
+                padding: '6px 14px',
+                fontSize: '13px',
+                fontWeight: 500,
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border)',
+                background: activeTab === tab.key ? 'var(--accent-green)' : 'var(--bg-secondary)',
+                color: activeTab === tab.key ? 'white' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      <div className="content">
+        {activeTab === 'operations' && (
+          <OperationsClient
+            operations={operationsData.operations}
+            allContacts={operationsData.allContacts}
+            embedded
+          />
+        )}
+
+        {activeTab === 'contacts' && (
+          <ContactsClient
+            initialContacts={contactsData.contacts}
+            operations={contactsData.operations}
+            billingEntities={contactsData.billingEntities}
+          />
+        )}
+
+        {activeTab === 'billing' && (
+          <BillingEntitiesClient
+            initialEntities={billingEntitiesData.billingEntities}
+            operations={billingEntitiesData.operations}
+            contacts={billingEntitiesData.contacts}
+          />
+        )}
+      </div>
+    </>
+  );
+}

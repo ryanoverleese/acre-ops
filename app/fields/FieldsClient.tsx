@@ -1774,6 +1774,8 @@ export default function FieldsClient({
                     <option value="Dryland">Dryland</option>
                     <option value="Gravity">Gravity</option>
                     <option value="Pivot">Pivot</option>
+                    <option value="Pivot - Corner System">Pivot - Corner System</option>
+                    <option value="Pivot - Wiper">Pivot - Wiper</option>
                     <option value="Unknown">Unknown</option>
                   </select>
                   <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
@@ -2242,10 +2244,12 @@ export default function FieldsClient({
                           <label>Irrigation Type</label>
                           <select value={editForm.irrigationType || ''} onChange={(e) => setEditForm({ ...editForm, irrigationType: e.target.value })}>
                             <option value="">Select...</option>
-                            <option value="Pivot">Pivot</option>
-                            <option value="Gravity">Gravity</option>
                             <option value="Drip">Drip</option>
                             <option value="Dryland">Dryland</option>
+                            <option value="Gravity">Gravity</option>
+                            <option value="Pivot">Pivot</option>
+                            <option value="Pivot - Corner System">Pivot - Corner System</option>
+                            <option value="Pivot - Wiper">Pivot - Wiper</option>
                           </select>
                         </div>
                         <div className="form-group">

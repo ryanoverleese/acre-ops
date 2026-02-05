@@ -22,10 +22,7 @@ const navSections: NavSection[] = [
     title: 'Overview',
     items: [
       { name: 'Dashboard', href: '/', icon: 'grid' },
-      { name: 'Operations', href: '/operations', icon: 'building' },
-      { name: 'Relationships', href: '/relationships', icon: 'link' },
-      { name: 'Contacts', href: '/contacts', icon: 'users' },
-      { name: 'Billing Entities', href: '/billing-entities', icon: 'credit-card' },
+      { name: 'CRM', href: '/crm', icon: 'users' },
       { name: 'Fields', href: '/fields', icon: 'map' },
       { name: 'Probes', href: '/probes', icon: 'cpu' },
     ],

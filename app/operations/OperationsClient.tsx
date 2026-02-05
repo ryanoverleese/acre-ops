@@ -30,11 +30,12 @@ export interface ContactOption {
 interface OperationsClientProps {
   operations: ProcessedOperation[];
   allContacts: ContactOption[];
+  embedded?: boolean;
 }
 
 const initialAddForm = { name: '', notes: '' };
 
-export default function OperationsClient({ operations: initialOperations, allContacts }: OperationsClientProps) {
+export default function OperationsClient({ operations: initialOperations, allContacts, embedded }: OperationsClientProps) {
   const [operations, setOperations] = useState(initialOperations);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -306,14 +307,16 @@ export default function OperationsClient({ operations: initialOperations, allCon
 
   return (
     <>
-      <header className="header">
-        <div className="header-left">
-          <h2>Operations</h2>
-          <span className="season-badge">{operations.length} Total</span>
-        </div>
-      </header>
+      {!embedded && (
+        <header className="header">
+          <div className="header-left">
+            <h2>Operations</h2>
+            <span className="season-badge">{operations.length} Total</span>
+          </div>
+        </header>
+      )}
 
-      <div className="content">
+      <div className={embedded ? undefined : 'content'}>
         <div className="table-container">
           <div className="table-header">
             <h3 className="table-title">
