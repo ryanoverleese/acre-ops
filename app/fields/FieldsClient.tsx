@@ -383,7 +383,7 @@ export default function FieldsClient({
   const [createProbeTarget, setCreateProbeTarget] = useState<'probe1' | 'probe2'>('probe1');
   const [createProbeForm, setCreateProbeForm] = useState({
     brand: '',
-    owner_operation: '',
+    billing_entity: '',
     year_new: '',
   });
   const [savingNewProbe, setSavingNewProbe] = useState(false);
@@ -1158,19 +1158,17 @@ export default function FieldsClient({
       alert('Brand is required');
       return;
     }
-    if (!createProbeForm.year_new) {
-      alert('Year New is required');
-      return;
-    }
     setSavingNewProbe(true);
     try {
       const payload: Record<string, unknown> = {
         brand: createProbeForm.brand,
-        year_new: parseInt(createProbeForm.year_new, 10),
         status: 'On Order',
       };
-      if (createProbeForm.owner_operation) {
-        payload.owner_operation = parseInt(createProbeForm.owner_operation, 10);
+      if (createProbeForm.year_new) {
+        payload.year_new = parseInt(createProbeForm.year_new, 10);
+      }
+      if (createProbeForm.billing_entity) {
+        payload.billing_entity = parseInt(createProbeForm.billing_entity, 10);
       }
 
       const response = await fetch('/api/probes', {
@@ -1181,14 +1179,13 @@ export default function FieldsClient({
       if (response.ok) {
         const newProbe = await response.json();
         // Add the new probe to local probes list
-        const opName = createProbeForm.owner_operation
-          ? (operations.find(op => op.id === parseInt(createProbeForm.owner_operation, 10))?.name || '')
-          : '';
+        const beId = createProbeForm.billing_entity ? parseInt(createProbeForm.billing_entity, 10) : null;
+        const be = beId ? billingEntities.find(b => b.id === beId) : null;
         const newProbeOption: ProbeOption = {
           id: newProbe.id,
           serialNumber: newProbe.serial_number || '',
-          ownerBillingEntity: opName || 'On Order',
-          ownerOperationName: opName,
+          ownerBillingEntity: be?.name || 'On Order',
+          ownerOperationName: be?.operationName || '',
           status: 'On Order',
         };
         setLocalProbes(prev => [...prev, newProbeOption]);
@@ -1199,7 +1196,7 @@ export default function FieldsClient({
           setSelectedProbe2Id(newProbe.id.toString());
         }
         setShowCreateProbeModal(false);
-        setCreateProbeForm({ brand: '', owner_operation: '', year_new: '' });
+        setCreateProbeForm({ brand: '', billing_entity: '', year_new: '' });
       } else {
         const error = await response.json();
         alert(error.error || 'Failed to create probe');
@@ -2568,7 +2565,7 @@ export default function FieldsClient({
                                                 setCreateProbeTarget('probe1');
                                                 setCreateProbeForm({
                                                   brand: '',
-                                                  owner_operation: field.operationId?.toString() || '',
+                                                  billing_entity: '',
                                                   year_new: '',
                                                 });
                                                 setShowCreateProbeModal(true);
@@ -3380,7 +3377,7 @@ export default function FieldsClient({
                           setCreateProbeTarget('probe1');
                           setCreateProbeForm({
                             brand: '',
-                            owner_operation: selectedField?.operationId?.toString() || '',
+                            billing_entity: '',
                             year_new: '',
                           });
                           setShowCreateProbeModal(true);
@@ -3404,7 +3401,7 @@ export default function FieldsClient({
                           setCreateProbeTarget('probe2');
                           setCreateProbeForm({
                             brand: '',
-                            owner_operation: selectedField?.operationId?.toString() || '',
+                            billing_entity: '',
                             year_new: '',
                           });
                           setShowCreateProbeModal(true);
@@ -3601,14 +3598,14 @@ export default function FieldsClient({
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Owner Operation</label>
+                    <label>Billing Entity</label>
                     <select
-                      value={createProbeForm.owner_operation}
-                      onChange={(e) => setCreateProbeForm({ ...createProbeForm, owner_operation: e.target.value })}
+                      value={createProbeForm.billing_entity}
+                      onChange={(e) => setCreateProbeForm({ ...createProbeForm, billing_entity: e.target.value })}
                     >
-                      <option value="">Select operation...</option>
-                      {operations.map((op) => (
-                        <option key={op.id} value={op.id}>{op.name}</option>
+                      <option value="">Select billing entity...</option>
+                      {billingEntities.map((be) => (
+                        <option key={be.id} value={be.id}>{be.name}</option>
                       ))}
                     </select>
                   </div>
