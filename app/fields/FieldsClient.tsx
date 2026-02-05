@@ -21,7 +21,7 @@ const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   loading: () => <div className="location-picker-overlay"><div className="location-picker-modal"><div className="loading">Loading map...</div></div></div>,
 });
 
-type TabView = 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
+type TabView = 'fieldData' | 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
 
 interface FieldsClientProps {
   initialFields: ProcessedField[];
@@ -88,6 +88,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
 
 // Default columns for each tab
 const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
+  fieldData: ['field', 'operation', 'acres', 'pivotAcres', 'irrigationType', 'waterSource', 'fuelSource', 'soilType', 'elevation'],
   signup: ['field', 'operation', 'billingEntity', 'crop', 'service'],
   seasonSetup: ['field', 'crop', 'hybrid', 'antenna', 'battery', 'sideDress', 'loggerId', 'probes'],
   installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
@@ -97,6 +98,7 @@ const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
 
 // Tab display info
 const TAB_INFO: { key: TabView; label: string }[] = [
+  { key: 'fieldData', label: 'Field Data' },
   { key: 'signup', label: 'Signup' },
   { key: 'seasonSetup', label: 'Season Setup' },
   { key: 'installPlanning', label: 'Install Planning' },

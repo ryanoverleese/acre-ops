@@ -38,7 +38,7 @@ type FieldColumnKey =
   | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
   | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
 
-type TabView = 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
+type TabView = 'fieldData' | 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
 
 interface FieldColumnDefinition {
   key: FieldColumnKey;
@@ -82,6 +82,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
 ];
 
 const TAB_INFO: { key: TabView; label: string }[] = [
+  { key: 'fieldData', label: 'Field Data' },
   { key: 'signup', label: 'Signup' },
   { key: 'seasonSetup', label: 'Season Setup' },
   { key: 'installPlanning', label: 'Install Planning' },
@@ -90,6 +91,7 @@ const TAB_INFO: { key: TabView; label: string }[] = [
 ];
 
 const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
+  fieldData: ['field', 'operation', 'acres', 'pivotAcres', 'irrigationType', 'waterSource', 'fuelSource', 'soilType', 'elevation'],
   signup: ['field', 'operation', 'billingEntity', 'crop', 'service'],
   seasonSetup: ['field', 'crop', 'hybrid', 'antenna', 'battery', 'sideDress', 'loggerId', 'probes'],
   installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
