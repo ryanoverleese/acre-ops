@@ -277,7 +277,7 @@ const initialAddForm = {
 type FieldColumnKey =
   | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
   | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
-  | 'routeOrder' | 'plannedInstaller' | 'readyToInstall'
+  | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
   | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval';
 
@@ -304,6 +304,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'routeOrder', label: 'Route #' },
   { key: 'plannedInstaller', label: 'Planned Installer' },
   { key: 'readyToInstall', label: 'Ready to Install' },
+  { key: 'nrcsField', label: 'NRCS Field' },
   { key: 'probeStatus', label: 'Probe Status' },
   { key: 'installDate', label: 'Install Date' },
   { key: 'installer', label: 'Installer' },
@@ -690,6 +691,7 @@ export default function FieldsClient({
         case 'routeOrder': aVal = a.routeOrder || 999; bVal = b.routeOrder || 999; break;
         case 'plannedInstaller': aVal = (a.plannedInstaller || '').toLowerCase(); bVal = (b.plannedInstaller || '').toLowerCase(); break;
         case 'readyToInstall': aVal = a.readyToInstall ? 1 : 0; bVal = b.readyToInstall ? 1 : 0; break;
+        case 'nrcsField': aVal = a.nrcsField ? 1 : 0; bVal = b.nrcsField ? 1 : 0; break;
         case 'probeStatus': aVal = (a.probeStatus || '').toLowerCase(); bVal = (b.probeStatus || '').toLowerCase(); break;
         case 'installDate': aVal = a.installDate || ''; bVal = b.installDate || ''; break;
         case 'installer': aVal = (a.installer || '').toLowerCase(); bVal = (b.installer || '').toLowerCase(); break;
@@ -863,6 +865,43 @@ export default function FieldsClient({
       });
     }
   }, [probes]);
+
+  // Inline save handler for field-level data (not season-level)
+  const handleInlineFieldSave = useCallback(async (fieldId: number, fieldName: string, value: unknown) => {
+    const cellKey = `field-${fieldId}-${fieldName}`;
+    setSavingFields(prev => new Set(prev).add(cellKey));
+    try {
+      const body: Record<string, unknown> = { [fieldName]: value };
+      const response = await fetch(`/api/fields/${fieldId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (response.ok) {
+        setFields(prev => prev.map(f => {
+          if (f.id !== fieldId) return f;
+          const camelKey = fieldName === 'nrcs_field' ? 'nrcsField' : fieldName;
+          return { ...f, [camelKey]: value };
+        }));
+        setSavedFields(prev => new Set(prev).add(cellKey));
+        setTimeout(() => {
+          setSavedFields(prev => {
+            const next = new Set(prev);
+            next.delete(cellKey);
+            return next;
+          });
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Save field error:', error);
+    } finally {
+      setSavingFields(prev => {
+        const next = new Set(prev);
+        next.delete(cellKey);
+        return next;
+      });
+    }
+  }, []);
 
   // Delete a field season entry
   const handleDeleteFieldSeason = async (fieldSeasonId: number, fieldName: string, season: string) => {
@@ -2270,7 +2309,7 @@ export default function FieldsClient({
                               field: '140px', operation: '100px', billingEntity: '120px', crop: '90px',
                               service: '90px', cropConfirmed: '60px', hybrid: '100px', antenna: '90px',
                               battery: '90px', sideDress: '80px', loggerId: '80px', probes: '100px',
-                              routeOrder: '60px', plannedInstaller: '110px', readyToInstall: '60px',
+                              routeOrder: '60px', plannedInstaller: '110px', readyToInstall: '60px', nrcsField: '60px',
                               probeStatus: '100px', installDate: '100px', installer: '100px',
                               approvalStatus: '100px', removalDate: '100px', removalNotes: '150px',
                               readyToRemove: '60px', earlyRemoval: '60px',
@@ -2417,6 +2456,29 @@ export default function FieldsClient({
                                     <td key={colKey} onClick={(e) => e.stopPropagation()}>
                                       <InlineCell fieldSeasonId={field.fieldSeasonId} field="readyToInstall" value={field.readyToInstall} type="checkbox"
                                         onSave={handleInlineSave} savingFields={savingFields} savedFields={savedFields} />
+                                    </td>
+                                  );
+                                case 'nrcsField':
+                                  return (
+                                    <td key={colKey} onClick={(e) => e.stopPropagation()}>
+                                      {(() => {
+                                        const nrcsCellKey = `field-${field.id}-nrcs_field`;
+                                        const nrcsSaving = savingFields.has(nrcsCellKey);
+                                        const nrcsSaved = savedFields.has(nrcsCellKey);
+                                        return (
+                                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <input
+                                              type="checkbox"
+                                              checked={!!field.nrcsField}
+                                              onChange={(e) => handleInlineFieldSave(field.id, 'nrcs_field', e.target.checked)}
+                                              disabled={nrcsSaving}
+                                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                            />
+                                            {nrcsSaving && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+                                            {nrcsSaved && <span style={{ fontSize: '10px', color: 'var(--accent-green)' }}>✓</span>}
+                                          </div>
+                                        );
+                                      })()}
                                     </td>
                                   );
                                 case 'probeStatus':
