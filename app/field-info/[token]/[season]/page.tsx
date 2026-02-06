@@ -125,6 +125,7 @@ export default async function FieldInfoPage({ params }: PageProps) {
     <FieldInfoClient
       operationName={operation.name}
       season={seasonYear}
+      token={token}
       fields={items}
       selectOptions={selectOptions}
     />

@@ -205,6 +205,10 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
   const [editingOption, setEditingOption] = useState<{ key: string; optionId: number } | null>(null);
   const [editValue, setEditValue] = useState('');
 
+  // Drag-and-drop state for dropdown option reordering
+  const [dragSource, setDragSource] = useState<{ tableName: string; fieldName: string; index: number } | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
   const saveFieldOptions = async (tableName: string, fieldName: string, options: (SelectOption | { value: string; color: string })[]) => {
     const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
     const fieldMeta = tableOpts?.[fieldName];
@@ -308,6 +312,59 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
     await saveFieldOptions(tableName, fieldName, newOptions);
     setEditingOption(null);
     setEditValue('');
+  };
+
+  const handleDragStart = (e: React.DragEvent, tableName: string, fieldName: string, index: number) => {
+    setDragSource({ tableName, fieldName, index });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = async (tableName: string, fieldName: string, dropIndex: number) => {
+    if (!dragSource || dragSource.tableName !== tableName || dragSource.fieldName !== fieldName) {
+      setDragSource(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    if (dragSource.index === dropIndex) {
+      setDragSource(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
+    const fieldMeta = tableOpts?.[fieldName];
+    if (!fieldMeta) return;
+
+    const newOptions = [...fieldMeta.options];
+    const [movedItem] = newOptions.splice(dragSource.index, 1);
+    newOptions.splice(dropIndex, 0, movedItem);
+
+    // Update local state immediately for snappy feedback
+    setLocalOptions(prev => ({
+      ...prev,
+      [tableName]: {
+        ...prev[tableName as keyof SerializedSelectOptionsWithMeta],
+        [fieldName]: { fieldId: fieldMeta.fieldId, options: newOptions },
+      },
+    }));
+
+    setDragSource(null);
+    setDragOverIndex(null);
+
+    // Persist to Baserow
+    await saveFieldOptions(tableName, fieldName, newOptions);
+  };
+
+  const handleDragEnd = () => {
+    setDragSource(null);
+    setDragOverIndex(null);
   };
 
   // Load global season from localStorage on mount
@@ -971,8 +1028,10 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
                         {isSaving && <span style={{ fontSize: '11px', color: 'var(--accent)' }}>Saving...</span>}
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
-                        {meta.options.map((opt) => {
+                        {meta.options.map((opt, optIndex) => {
                           const isEditing = editingOption?.key === fieldKey && editingOption.optionId === opt.id;
+                          const isDragging = dragSource?.tableName === tableName && dragSource?.fieldName === fieldName && dragSource?.index === optIndex;
+                          const isDragOver = dragSource?.tableName === tableName && dragSource?.fieldName === fieldName && dragOverIndex === optIndex;
 
                           if (isEditing) {
                             return (
@@ -1004,6 +1063,11 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
                           return (
                             <span
                               key={opt.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, tableName, fieldName, optIndex)}
+                              onDragOver={(e) => handleDragOver(e, optIndex)}
+                              onDrop={() => handleDrop(tableName, fieldName, optIndex)}
+                              onDragEnd={handleDragEnd}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -1011,15 +1075,18 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
                                 padding: '2px 6px',
                                 borderRadius: '4px',
                                 fontSize: '12px',
-                                background: 'var(--bg-tertiary)',
-                                border: '1px solid var(--border)',
-                                color: 'var(--text-primary)',
+                                background: isDragOver ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                                border: isDragOver ? '2px solid var(--accent-green)' : '1px solid var(--border)',
+                                color: isDragOver ? '#fff' : 'var(--text-primary)',
+                                cursor: 'grab',
+                                opacity: isDragging ? 0.4 : 1,
+                                transition: 'all 0.15s ease',
                               }}
                             >
                               <span
                                 onClick={() => { setEditingOption({ key: fieldKey, optionId: opt.id }); setEditValue(opt.value); }}
                                 style={{ cursor: 'pointer' }}
-                                title="Click to rename"
+                                title="Click to rename, drag to reorder"
                               >
                                 {opt.value}
                               </span>
@@ -1029,7 +1096,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
                                 style={{
                                   background: 'none',
                                   border: 'none',
-                                  color: 'var(--text-muted)',
+                                  color: isDragOver ? '#fff' : 'var(--text-muted)',
                                   cursor: 'pointer',
                                   padding: '0 2px',
                                   fontSize: '14px',
