@@ -485,19 +485,52 @@ export default function FieldsClient({
   }, [fields, filteredFields, inlineEnrollSeason]);
 
   const mapFields = useMemo(() => {
-    return filteredFields.map((f) => ({
-      id: f.id,
-      name: f.name,
-      operation: f.operation,
-      operationId: f.operationId,
-      acres: f.acres,
-      crop: f.crop,
-      probe: f.probe,
-      status: (f.probeStatus || 'unassigned').toLowerCase().replace(' ', '-'),
-      lat: f.lat,
-      lng: f.lng,
-    }));
-  }, [filteredFields]);
+    const markers: { id: string; name: string; operation: string; operationId: number | null; acres: number; crop: string; probe: string | null; probeNumber: number; status: string; lat: number; lng: number }[] = [];
+
+    filteredFields.forEach((f) => {
+      // Probe 1
+      const pa1 = f.probeAssignmentId
+        ? probeAssignments.find((pa) => pa.id === f.probeAssignmentId)
+        : null;
+      const lat1 = pa1?.placementLat || f.lat;
+      const lng1 = pa1?.placementLng || f.lng;
+      markers.push({
+        id: `${f.id}-p1`,
+        name: f.name,
+        operation: f.operation,
+        operationId: f.operationId,
+        acres: f.acres,
+        crop: f.crop,
+        probe: f.probe,
+        probeNumber: 1,
+        status: (f.probeStatus || 'unassigned').toLowerCase().replace(' ', '-'),
+        lat: lat1,
+        lng: lng1,
+      });
+
+      // Probe 2
+      if (f.probe2AssignmentId) {
+        const pa2 = probeAssignments.find((pa) => pa.id === f.probe2AssignmentId);
+        const lat2 = pa2?.placementLat || f.lat;
+        const lng2 = pa2?.placementLng || (f.lng ? f.lng + 0.0003 : f.lng);
+        markers.push({
+          id: `${f.id}-p2`,
+          name: f.name,
+          operation: f.operation,
+          operationId: f.operationId,
+          acres: f.acres,
+          crop: f.crop,
+          probe: f.probe2,
+          probeNumber: 2,
+          status: (f.probe2Status || 'unassigned').toLowerCase().replace(' ', '-'),
+          lat: lat2,
+          lng: lng2,
+        });
+      }
+    });
+
+    return markers;
+  }, [filteredFields, probeAssignments]);
 
   // Calculate approval stats for the Active Season tab
   const approvalStats = useMemo(() => {
@@ -2263,7 +2296,7 @@ export default function FieldsClient({
           </div>
 
           {mapVisible && (
-            <FieldsMap fields={mapFields} visible={mapVisible} colorBy={colorBy} />
+            <FieldsMap fields={mapFields} visible={mapVisible} colorBy={colorBy} onClose={() => setMapVisible(false)} />
           )}
         </div>
 

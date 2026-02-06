@@ -17,13 +17,14 @@ const defaultIcon = L.icon({
 });
 
 interface FieldData {
-  id: number;
+  id: string;
   name: string;
   operation: string;
   operationId: number | null;
   acres: number;
   crop: string;
   probe: string | null;
+  probeNumber: number;
   status: string;
   lat: number;
   lng: number;
@@ -33,6 +34,7 @@ interface FieldsMapProps {
   fields: FieldData[];
   visible: boolean;
   colorBy?: 'none' | 'crop' | 'status' | 'operation';
+  onClose?: () => void;
 }
 
 // Color palettes for different groupings
@@ -91,9 +93,10 @@ const CircleMarker = dynamic(
   { ssr: false }
 );
 
-export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsMapProps) {
+export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }: FieldsMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -108,6 +111,26 @@ export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsM
       firstLayer.style.filter = `brightness(${brightness})`;
     }
   }, [brightness, isClient]);
+
+  // Handle escape key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen]);
+
+  // Invalidate map size when fullscreen changes
+  useEffect(() => {
+    if (!mapRef.current) return;
+    // Leaflet needs a resize event to recalculate
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
+  }, [isFullscreen]);
 
   if (!isClient || !visible) {
     return null;
@@ -150,20 +173,92 @@ export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsM
 
   const useColoredMarkers = colorBy !== 'none';
 
+  const controlStyle: React.CSSProperties = {
+    background: 'var(--bg-primary)',
+    borderRadius: '6px',
+    padding: '6px 10px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    fontSize: '11px',
+    color: 'var(--text-secondary)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+    cursor: 'pointer',
+    border: 'none',
+  };
+
+  const fullscreenStyle: React.CSSProperties = isFullscreen
+    ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        display: 'block',
+        borderRadius: 0,
+        border: 'none',
+      }
+    : { display: visible ? 'block' : 'none', position: 'relative' };
+
   return (
-    <div className="fields-map" style={{ display: visible ? 'block' : 'none', position: 'relative' }} ref={mapRef}>
-      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, background: 'var(--bg-primary)', borderRadius: '6px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
-        <span>Brightness</span>
-        <input
-          type="range"
-          min="0.8"
-          max="2"
-          step="0.1"
-          value={brightness}
-          onChange={(e) => setBrightness(parseFloat(e.target.value))}
-          style={{ width: '80px', cursor: 'pointer' }}
-        />
+    <div className={isFullscreen ? '' : 'fields-map'} style={fullscreenStyle} ref={mapRef}>
+      {/* Top-right controls */}
+      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {/* Brightness */}
+        <div style={controlStyle}>
+          <span>Brightness</span>
+          <input
+            type="range"
+            min="0.8"
+            max="2"
+            step="0.1"
+            value={brightness}
+            onChange={(e) => setBrightness(parseFloat(e.target.value))}
+            style={{ width: '80px', cursor: 'pointer' }}
+          />
+        </div>
+
+        {/* Fullscreen toggle */}
+        <button
+          onClick={() => setIsFullscreen(!isFullscreen)}
+          style={controlStyle}
+          title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+        >
+          {isFullscreen ? (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+            </svg>
+          ) : (
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+            </svg>
+          )}
+        </button>
+
+        {/* Close button */}
+        <button
+          onClick={() => {
+            if (isFullscreen) {
+              setIsFullscreen(false);
+            } else {
+              onClose?.();
+            }
+          }}
+          style={{ ...controlStyle, color: 'var(--text-primary)' }}
+          title="Close map"
+        >
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
+
+      {/* Probe count badge */}
+      <div style={{ position: 'absolute', top: '10px', left: '60px', zIndex: 1000, ...controlStyle }}>
+        {mappableFields.length} probes on map
+      </div>
+
       <MapContainer
         center={center}
         zoom={11}
@@ -177,7 +272,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsM
         {mappableFields.map((field) => {
           const popupContent = (
             <Popup>
-              <div className="popup-title">{field.name}</div>
+              <div className="popup-title">{field.name} - Probe {field.probeNumber}</div>
               <div className="popup-detail">
                 {field.operation} • {field.acres} ac
               </div>
