@@ -51,6 +51,9 @@ export async function POST(request: NextRequest) {
     if (body.irrigation_type) {
       createData.irrigation_type = body.irrigation_type;
     }
+    if (body.row_direction) {
+      createData.row_direction = body.row_direction;
+    }
     // Skip water_source and fuel_source on create - they can be edited after
 
     console.log('Creating field with data:', JSON.stringify(createData, null, 2));
