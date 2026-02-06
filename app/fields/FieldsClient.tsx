@@ -1969,6 +1969,13 @@ export default function FieldsClient({
                                 field={field}
                                 hasProbeAssignments={hasProbeAssignments}
                                 probeAssignmentCount={fieldSeasonProbeAssignments.length}
+                                hasDuplicateProbeLocation={fieldSeasonProbeAssignments.length >= 2 && fieldSeasonProbeAssignments.some((pa, i) =>
+                                  pa.placementLat && pa.placementLng && fieldSeasonProbeAssignments.some((other, j) =>
+                                    i !== j && other.placementLat && other.placementLng
+                                    && Number(other.placementLat).toFixed(6) === Number(pa.placementLat).toFixed(6)
+                                    && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
+                                  )
+                                )}
                                 isExpanded={isExpanded}
                                 serviceTypeOptions={serviceTypeOptions}
                                 savingFields={savingFields}
