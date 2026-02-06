@@ -335,7 +335,6 @@ export default function ApprovalClient({ operationName, season, fields: initialF
           <div className="approval-fields">
             {Object.entries(groupedProbeAssignments).map(([fieldName, probes]) => (
               <div key={fieldName} className="approval-field-group">
-                <h2 className="field-group-title">{fieldName}</h2>
                 {probes.map((pa) => {
                   const key = `pa-${pa.id}`;
                   const isLoading = loading[key];
@@ -345,7 +344,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                       {/* Card Header */}
                       <div className="card-header">
                         <div className="card-title">
-                          <h3>Probe {pa.probeNumber}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
+                          <h3>{fieldName} - Probe {pa.probeNumber}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
                           <span className={getStatusBadgeClass(pa.approvalStatus)}>
                             {pa.approvalStatus}
                           </span>
