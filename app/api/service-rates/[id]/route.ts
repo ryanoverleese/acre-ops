@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, ensureSelectOption } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -18,6 +18,11 @@ export async function PATCH(
     if (body.dealer_fee !== undefined) updateData.dealer_fee = body.dealer_fee;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.status !== undefined) updateData.status = body.status;
+
+    // Sync: ensure renamed service_type exists as a select option on field_seasons
+    if (body.service_type && typeof body.service_type === 'string') {
+      await ensureSelectOption('field_seasons', 'service_type', body.service_type);
+    }
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.service_rates}/${id}/?user_field_names=true`;
     const response = await fetch(url, {
