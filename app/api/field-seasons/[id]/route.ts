@@ -57,6 +57,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.approval_status !== undefined) updateData.approval_status = body.approval_status;
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
+    console.log('PATCH field-season:', fieldSeasonId, 'with data:', JSON.stringify(updateData));
+
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -70,7 +72,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to update field season' },
+        { error: 'Failed to update field season', status: response.status, details: errorText },
         { status: response.status }
       );
     }

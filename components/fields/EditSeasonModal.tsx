@@ -139,7 +139,8 @@ export default function EditSeasonModal({
         onSaved();
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to update season');
+        console.error('Field season update failed:', error);
+        alert(`Failed to update season: ${error.details || error.error || response.status}`);
       }
     } catch (error) {
       console.error('Save error:', error);
