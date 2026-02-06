@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, ensureSelectOption } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -62,6 +62,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.ready_to_install !== undefined) setField('ready_to_install', body.ready_to_install);
     // Approval
     if (body.approval_status !== undefined) setField('approval_status', body.approval_status);
+
+    // Auto-create select options for single_select fields if they don't exist yet
+    if (body.service_type && typeof body.service_type === 'string') {
+      await ensureSelectOption('field_seasons', 'service_type', body.service_type);
+    }
+    if (body.crop && typeof body.crop === 'string') {
+      await ensureSelectOption('field_seasons', 'crop', body.crop);
+    }
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
     console.log('PATCH field-season:', fieldSeasonId, 'with data:', JSON.stringify(updateData));

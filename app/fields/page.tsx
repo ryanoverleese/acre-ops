@@ -152,7 +152,8 @@ async function getFieldsData(): Promise<{
   selectOptions: SerializedSelectOptions;
 }> {
   try {
-    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawServiceRates, allSelectOptions] = await Promise.all([
+    // Fetch core data and select options separately so select options failure doesn't kill everything
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawServiceRates] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
@@ -161,8 +162,15 @@ async function getFieldsData(): Promise<{
       getProbeAssignments(),
       getContacts(),
       getServiceRates(),
-      getAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']),
     ]);
+
+    // Select options are nice-to-have; don't let failure wipe the page
+    let allSelectOptions: Record<string, import('@/lib/baserow').TableSelectOptions> = {};
+    try {
+      allSelectOptions = await getAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']);
+    } catch (e) {
+      console.error('Failed to fetch select options (non-fatal):', e);
+    }
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const probeMap = new Map(probes.map((p) => [p.id, p]));

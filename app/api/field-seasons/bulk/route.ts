@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, ensureSelectOption } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -26,6 +26,16 @@ export async function POST(request: NextRequest) {
         { error: 'Items array is required' },
         { status: 400 }
       );
+    }
+
+    // Auto-create select options for any new service_type or crop values
+    const uniqueServiceTypes = new Set(items.map(i => i.service_type).filter(Boolean));
+    for (const st of uniqueServiceTypes) {
+      await ensureSelectOption('field_seasons', 'service_type', st as string);
+    }
+    const uniqueCrops = new Set(items.map(i => i.crop).filter(Boolean));
+    for (const crop of uniqueCrops) {
+      await ensureSelectOption('field_seasons', 'crop', crop as string);
     }
 
     // Baserow batch API supports up to 200 items at a time

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, ensureSelectOption } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -39,6 +39,14 @@ export async function POST(request: NextRequest) {
     if (body.planting_date) createData.planting_date = body.planting_date;
     if (body.probe) createData.probe = [body.probe];
     createData.probe_status = body.probe_status || 'Unassigned';
+
+    // Auto-create select options for single_select fields if they don't exist yet
+    if (body.service_type && typeof body.service_type === 'string') {
+      await ensureSelectOption('field_seasons', 'service_type', body.service_type);
+    }
+    if (body.crop && typeof body.crop === 'string') {
+      await ensureSelectOption('field_seasons', 'crop', body.crop);
+    }
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/?user_field_names=true`;
     const response = await fetch(url, {

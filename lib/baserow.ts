@@ -48,6 +48,26 @@ function normalizeKeys(obj: Record<string, unknown>): Record<string, unknown> {
   return normalized;
 }
 
+// Retry helper for transient API errors (rate limiting, network issues)
+async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, init);
+    if (response.ok || (response.status < 500 && response.status !== 429)) {
+      return response;
+    }
+    // Retry on 429 (rate limit) or 5xx (server error)
+    if (attempt < maxRetries) {
+      const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+      console.warn(`Baserow API ${response.status} for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    } else {
+      return response;
+    }
+  }
+  // Unreachable, but TypeScript needs it
+  throw new Error('fetchWithRetry: exhausted retries');
+}
+
 async function baserowFetch<T>(
   tableId: number,
   options: FetchOptions = {}
@@ -70,7 +90,7 @@ async function baserowFetch<T>(
 
   const url = `${BASEROW_API_URL}/${tableId}/?${params.toString()}`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       'Authorization': `Token ${BASEROW_TOKEN}`,
       'Content-Type': 'application/json',
@@ -390,7 +410,7 @@ export async function getTableFieldOptions(tableName: TableName): Promise<TableS
   const tableId = TABLE_IDS[tableName];
   const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       'Authorization': `Token ${BASEROW_TOKEN}`,
     },
@@ -428,7 +448,7 @@ export async function getTableFieldOptionsWithMeta(tableName: TableName): Promis
   const tableId = TABLE_IDS[tableName];
   const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       'Authorization': `Token ${BASEROW_TOKEN}`,
     },
@@ -484,4 +504,74 @@ export async function getAllSelectOptionsWithMeta(tableNames: TableName[]): Prom
     })
   );
   return Object.fromEntries(results);
+}
+
+/**
+ * Ensure a value exists as a select option on a single_select field.
+ * If the value doesn't exist, it is added via PATCH before the row save.
+ * This prevents "not a valid select option" errors from Baserow.
+ */
+export async function ensureSelectOption(
+  tableName: TableName,
+  fieldName: string,
+  value: string
+): Promise<void> {
+  const tableId = TABLE_IDS[tableName];
+  const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
+
+  const response = await fetchWithRetry(url, {
+    headers: {
+      'Authorization': `Token ${BASEROW_TOKEN}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    console.error(`Failed to fetch fields for ${tableName}:`, response.status);
+    return;
+  }
+
+  const fields: Array<{
+    id: number;
+    name: string;
+    type: string;
+    select_options?: SelectOption[];
+  }> = await response.json();
+
+  // Find the field (try both underscore and space variants)
+  const spaceVariant = fieldName.replace(/_/g, ' ');
+  const field = fields.find(f =>
+    f.name === fieldName || f.name === spaceVariant
+  );
+
+  if (!field || field.type !== 'single_select') {
+    console.warn(`Field ${fieldName} not found or not a single_select in ${tableName}`);
+    return;
+  }
+
+  const existingOptions = field.select_options || [];
+  if (existingOptions.some(opt => opt.value === value)) {
+    return; // Already exists
+  }
+
+  // Add the new option
+  const updatedOptions = [...existingOptions, { value, color: 'light-gray' }];
+
+  const patchResponse = await fetchWithRetry(
+    `https://api.baserow.io/api/database/fields/${field.id}/`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Token ${BASEROW_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ select_options: updatedOptions }),
+    }
+  );
+
+  if (!patchResponse.ok) {
+    console.error(`Failed to add select option "${value}" to ${tableName}.${fieldName}:`, patchResponse.status);
+  } else {
+    console.log(`Auto-added select option "${value}" to ${tableName}.${fieldName}`);
+  }
 }
