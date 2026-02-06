@@ -2051,6 +2051,17 @@ export default function FieldsClient({
                                 {/* Expanded probe assignment sub-rows */}
                                 {isExpanded && field.fieldSeasonId && (
                                   <>
+                                    <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                                      <td style={{ paddingLeft: '32px', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}></td>
+                                      <td colSpan={2} style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Location</td>
+                                      <td colSpan={2} style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Probe</td>
+                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Status</td>
+                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Antenna</td>
+                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Battery</td>
+                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Notes</td>
+                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Approval</td>
+                                      <td></td>
+                                    </tr>
                                     {fieldSeasonProbeAssignments.map((pa) => (
                                       <tr key={`pa-${pa.id}`} style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                                         <td style={{ paddingLeft: '32px' }}>
