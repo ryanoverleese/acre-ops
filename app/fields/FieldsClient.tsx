@@ -195,6 +195,12 @@ export default function FieldsClient({
   const [selectedBatchFieldIds, setSelectedBatchFieldIds] = useState<Set<number>>(new Set());
   const [batchSaving, setBatchSaving] = useState(false);
 
+  // Inline enrollment selection mode (for All Seasons view)
+  const [inlineEnrollMode, setInlineEnrollMode] = useState(false);
+  const [inlineEnrollSeason, setInlineEnrollSeason] = useState(availableSeasons[0] || String(new Date().getFullYear()));
+  const [inlineEnrollSelected, setInlineEnrollSelected] = useState<Set<number>>(new Set());
+  const [inlineEnrollSaving, setInlineEnrollSaving] = useState(false);
+
   // Column picker state
   const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -237,7 +243,11 @@ export default function FieldsClient({
   }, [tabColumns]);
 
   // Get visible columns for current tab
-  const visibleColumns = tabColumns[currentTab] || TAB_DEFAULT_COLUMNS[currentTab];
+  // When "All Seasons" is selected, only show permanent field-level columns (no seasonal data)
+  const ALL_SEASONS_COLUMNS: FieldColumnKey[] = ['field', 'operation', 'billingEntity', 'acres', 'pivotAcres', 'irrigationType', 'rowDirection', 'waterSource', 'fuelSource', 'soilType', 'elevation', 'fieldDirections'];
+  const visibleColumns = currentSeason === 'all'
+    ? ALL_SEASONS_COLUMNS
+    : (tabColumns[currentTab] || TAB_DEFAULT_COLUMNS[currentTab]);
 
   // Column label lookup
   const columnLabelMap = useMemo(() => {
@@ -519,6 +529,16 @@ export default function FieldsClient({
 
     return filtered;
   }, [seasonFields, searchQuery, currentOperation, currentIrrigationType, sortColumn, sortDirection]);
+
+  // Fields eligible for inline enrollment (on All Seasons view, not already in target season)
+  const inlineEnrollEligibleIds = useMemo(() => {
+    const idsInSeason = new Set(
+      fields.filter((f) => f.season === inlineEnrollSeason && f.fieldSeasonId).map((f) => f.id)
+    );
+    return new Set(
+      filteredFields.filter((f) => !idsInSeason.has(f.id)).map((f) => f.id)
+    );
+  }, [fields, filteredFields, inlineEnrollSeason]);
 
   const mapFields = useMemo(() => {
     return filteredFields.map((f) => ({
@@ -1278,6 +1298,39 @@ export default function FieldsClient({
     }
   };
 
+  // Handle inline enrollment from All Seasons view
+  const handleInlineEnroll = async () => {
+    if (inlineEnrollSelected.size === 0) return;
+
+    setInlineEnrollSaving(true);
+    try {
+      const items = Array.from(inlineEnrollSelected).map((fieldId) => ({
+        field: fieldId,
+        season: inlineEnrollSeason,
+      }));
+
+      const response = await fetch('/api/field-seasons/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+
+      if (response.ok) {
+        setInlineEnrollMode(false);
+        setInlineEnrollSelected(new Set());
+        window.location.reload();
+      } else {
+        const error = await response.json();
+        alert(error.error || 'Failed to enroll fields');
+      }
+    } catch (error) {
+      console.error('Inline enroll error:', error);
+      alert('Failed to enroll fields');
+    } finally {
+      setInlineEnrollSaving(false);
+    }
+  };
+
   // Handle batch enroll
   const handleBatchEnroll = async () => {
     if (selectedBatchFieldIds.size === 0) {
@@ -1709,6 +1762,9 @@ export default function FieldsClient({
               } else {
                 setCurrentSeason(e.target.value);
               }
+              // Exit inline enrollment mode on season change
+              setInlineEnrollMode(false);
+              setInlineEnrollSelected(new Set());
             }}
             className="season-selector"
             style={{
@@ -1818,31 +1874,33 @@ export default function FieldsClient({
       </header>
 
       <div className="content">
-        {/* Tab Navigation */}
-        <div className="fields-filter-row">
-          {/* Desktop: Tab buttons */}
-          <div className="fields-tabs fields-tabs-desktop">
-            {TAB_INFO.map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setCurrentTab(tab.key)}
-                className={currentTab === tab.key ? 'active' : ''}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {/* Tab Navigation - hidden on All Seasons */}
+        {currentSeason !== 'all' && (
+          <div className="fields-filter-row">
+            {/* Desktop: Tab buttons */}
+            <div className="fields-tabs fields-tabs-desktop">
+              {TAB_INFO.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setCurrentTab(tab.key)}
+                  className={currentTab === tab.key ? 'active' : ''}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            {/* Mobile: Dropdown */}
+            <select
+              className="fields-tabs-mobile"
+              value={currentTab}
+              onChange={(e) => setCurrentTab(e.target.value as TabView)}
+            >
+              {TAB_INFO.map((tab) => (
+                <option key={tab.key} value={tab.key}>{tab.label}</option>
+              ))}
+            </select>
           </div>
-          {/* Mobile: Dropdown */}
-          <select
-            className="fields-tabs-mobile"
-            value={currentTab}
-            onChange={(e) => setCurrentTab(e.target.value as TabView)}
-          >
-            {TAB_INFO.map((tab) => (
-              <option key={tab.key} value={tab.key}>{tab.label}</option>
-            ))}
-          </select>
-        </div>
+        )}
 
         {/* Approval Summary - Active Season Tab */}
         {currentTab === 'activeSeason' && approvalStats.total > 0 && (
@@ -1945,6 +2003,45 @@ export default function FieldsClient({
                       <option value="operation">Operation</option>
                     </select>
                   )}
+                  {/* Enroll button - visible on All Seasons view */}
+                  {currentSeason === 'all' && !inlineEnrollMode && (
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: '12px', padding: '6px 12px' }}
+                      onClick={() => {
+                        setInlineEnrollMode(true);
+                        setInlineEnrollSelected(new Set());
+                      }}
+                    >
+                      Enroll in {inlineEnrollSeason}
+                    </button>
+                  )}
+                  {currentSeason === 'all' && inlineEnrollMode && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <select
+                        value={inlineEnrollSeason}
+                        onChange={(e) => {
+                          setInlineEnrollSeason(e.target.value);
+                          setInlineEnrollSelected(new Set());
+                        }}
+                        style={{ fontSize: '12px', padding: '4px 8px' }}
+                      >
+                        {allSeasons.map((s) => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '12px', padding: '6px 12px' }}
+                        onClick={() => {
+                          setInlineEnrollMode(false);
+                          setInlineEnrollSelected(new Set());
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Data View - Inline Editable */}
@@ -1952,6 +2049,23 @@ export default function FieldsClient({
                     <table className="desktop-table" style={{ fontSize: '12px' }}>
                       <thead>
                         <tr>
+                          {inlineEnrollMode && (
+                            <th style={{ width: '40px', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={inlineEnrollSelected.size > 0 && inlineEnrollSelected.size === inlineEnrollEligibleIds.size}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setInlineEnrollSelected(new Set(inlineEnrollEligibleIds));
+                                  } else {
+                                    setInlineEnrollSelected(new Set());
+                                  }
+                                }}
+                                style={{ width: '16px', height: '16px' }}
+                                title="Select all eligible fields"
+                              />
+                            </th>
+                          )}
                           {visibleColumns.map((colKey) => {
                             const colDef = ALL_COLUMN_DEFINITIONS.find((c) => c.key === colKey);
                             if (!colDef) return null;
@@ -1978,7 +2092,7 @@ export default function FieldsClient({
                       <tbody>
                         {filteredFields.length === 0 ? (
                           <tr>
-                            <td colSpan={visibleColumns.length + 1}>
+                            <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)}>
                               <EmptyState
                                 icon={searchQuery ? 'search' : currentSeason !== 'all' ? 'calendar' : 'fields'}
                                 title={searchQuery ? 'No matching fields' : currentSeason !== 'all' ? `No fields for ${currentSeason}` : 'No fields yet'}
@@ -2021,9 +2135,36 @@ export default function FieldsClient({
                               />
                             );
 
+                            const isEligibleForEnroll = inlineEnrollMode && inlineEnrollEligibleIds.has(field.id);
+                            const isAlreadyEnrolled = inlineEnrollMode && !inlineEnrollEligibleIds.has(field.id);
+
                             return (
                               <React.Fragment key={`${field.id}-${field.fieldSeasonId || 'no-season'}`}>
-                                <tr>
+                                <tr style={isAlreadyEnrolled ? { opacity: 0.5 } : undefined}>
+                                  {inlineEnrollMode && (
+                                    <td style={{ textAlign: 'center', width: '40px' }} onClick={(e) => e.stopPropagation()}>
+                                      {isEligibleForEnroll ? (
+                                        <input
+                                          type="checkbox"
+                                          checked={inlineEnrollSelected.has(field.id)}
+                                          onChange={(e) => {
+                                            const newSet = new Set(inlineEnrollSelected);
+                                            if (e.target.checked) {
+                                              newSet.add(field.id);
+                                            } else {
+                                              newSet.delete(field.id);
+                                            }
+                                            setInlineEnrollSelected(newSet);
+                                          }}
+                                          style={{ width: '16px', height: '16px' }}
+                                        />
+                                      ) : (
+                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} title={`Already in ${inlineEnrollSeason}`}>
+                                          &#10003;
+                                        </span>
+                                      )}
+                                    </td>
+                                  )}
                                   {needsSeasonStart ? (
                                     <>
                                       {visibleColumns.includes('field') && (
@@ -2092,7 +2233,7 @@ export default function FieldsClient({
                                 {/* Expanded probe assignment sub-rows */}
                                 {isExpanded && field.fieldSeasonId && (
                                   <tr>
-                                    <td colSpan={visibleColumns.length + 1} style={{ padding: 0 }}>
+                                    <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)} style={{ padding: 0 }}>
                                       <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
                                         <thead>
                                           <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -2355,6 +2496,45 @@ export default function FieldsClient({
             <FieldsMap fields={mapFields} visible={mapVisible} colorBy={colorBy} />
           )}
         </div>
+
+        {/* Inline Enrollment Action Bar */}
+        {inlineEnrollMode && inlineEnrollSelected.size > 0 && (
+          <div style={{
+            position: 'sticky',
+            bottom: '16px',
+            zIndex: 50,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            margin: '0 16px',
+            background: 'var(--accent-green)',
+            color: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+          }}>
+            <span style={{ fontWeight: 600 }}>
+              {inlineEnrollSelected.size} field{inlineEnrollSelected.size !== 1 ? 's' : ''} selected for {inlineEnrollSeason}
+            </span>
+            <button
+              onClick={handleInlineEnroll}
+              disabled={inlineEnrollSaving}
+              style={{
+                padding: '8px 20px',
+                background: 'white',
+                color: 'var(--accent-green)',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 600,
+                fontSize: '14px',
+                cursor: inlineEnrollSaving ? 'wait' : 'pointer',
+                opacity: inlineEnrollSaving ? 0.7 : 1,
+              }}
+            >
+              {inlineEnrollSaving ? 'Enrolling...' : `Confirm Enrollment`}
+            </button>
+          </div>
+        )}
 
         {/* Detail Panel */}
         {selectedField && (
