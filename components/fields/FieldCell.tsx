@@ -1,8 +1,57 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import InlineCell from '@/components/InlineCell';
 import type { ProcessedField } from '@/app/fields/page';
+
+// Inline editable cell for field-level (not season-level) data
+function InlineFieldSelect({ fieldId, apiField, value, options, savingFields, savedFields, onSave }: {
+  fieldId: number; apiField: string; value: string | null | undefined;
+  options: { value: string; label: string }[];
+  savingFields: Set<string>; savedFields: Set<string>;
+  onSave: (fieldId: number, field: string, value: unknown) => void;
+}) {
+  const cellKey = `field-${fieldId}-${apiField}`;
+  const isSaving = savingFields.has(cellKey);
+  const justSaved = savedFields.has(cellKey);
+  return (
+    <div style={{ position: 'relative' }}>
+      <select value={value || ''} onChange={(e) => onSave(fieldId, apiField, e.target.value || null)} disabled={isSaving}
+        style={{ width: '100%', padding: '4px 6px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px',
+          background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }}>
+        <option value="">—</option>
+        {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+      {isSaving && <span style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+    </div>
+  );
+}
+
+function InlineFieldNumber({ fieldId, apiField, value, savingFields, savedFields, onSave, step }: {
+  fieldId: number; apiField: string; value: number | string | null | undefined;
+  savingFields: Set<string>; savedFields: Set<string>;
+  onSave: (fieldId: number, field: string, value: unknown) => void;
+  step?: string;
+}) {
+  const cellKey = `field-${fieldId}-${apiField}`;
+  const isSaving = savingFields.has(cellKey);
+  const justSaved = savedFields.has(cellKey);
+  const [local, setLocal] = useState(value?.toString() || '');
+  useEffect(() => { setLocal(value?.toString() || ''); }, [value]);
+  return (
+    <div style={{ position: 'relative' }}>
+      <input type="number" step={step || 'any'} value={local} onChange={(e) => setLocal(e.target.value)} disabled={isSaving}
+        onBlur={() => {
+          const num = local ? parseFloat(local) : null;
+          if (num !== (value ?? null)) onSave(fieldId, apiField, num);
+        }}
+        onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        style={{ width: '100%', padding: '4px 6px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px',
+          background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }} />
+      {isSaving && <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+    </div>
+  );
+}
 
 type FieldColumnKey =
   | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
@@ -210,17 +259,51 @@ export function FieldCell({
         </td>
       );
     case 'acres':
-      return <td key={colKey}>{field.acres || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldNumber fieldId={field.id} apiField="acres" value={field.acres} step="0.01"
+            savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
     case 'pivotAcres':
-      return <td key={colKey}>{field.pivotAcres || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldNumber fieldId={field.id} apiField="pivot_acres" value={field.pivotAcres} step="0.01"
+            savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
     case 'irrigationType':
-      return <td key={colKey}>{field.irrigationType || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldSelect fieldId={field.id} apiField="irrigation_type" value={field.irrigationType}
+            options={[{ value: 'Drip', label: 'Drip' }, { value: 'Dryland', label: 'Dryland' }, { value: 'Gravity', label: 'Gravity' }, { value: 'Pivot', label: 'Pivot' }, { value: 'Pivot - Corner System', label: 'Pivot - Corner System' }, { value: 'Pivot - Wiper', label: 'Pivot - Wiper' }]}
+            savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
     case 'rowDirection':
-      return <td key={colKey}>{field.rowDirection || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldSelect fieldId={field.id} apiField="row_direction" value={field.rowDirection}
+            options={[{ value: 'N-S and E-W', label: 'N-S and E-W' }, { value: 'NW-SE', label: 'NW-SE' }, { value: 'SE-SW', label: 'SE-SW' }]}
+            savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
     case 'waterSource':
-      return <td key={colKey}>{field.waterSource || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldSelect fieldId={field.id} apiField="water_source" value={field.waterSource}
+            options={[{ value: 'Well', label: 'Well' }, { value: 'Canal', label: 'Canal' }, { value: 'Other', label: 'Other' }]}
+            savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
     case 'fuelSource':
-      return <td key={colKey}>{field.fuelSource || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldSelect fieldId={field.id} apiField="fuel_source" value={field.fuelSource}
+            options={[{ value: 'Electric', label: 'Electric' }, { value: 'Natural Gas', label: 'Natural Gas' }, { value: 'Diesel', label: 'Diesel' }, { value: 'Other', label: 'Other' }]}
+            savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
     case 'elevation':
       return <td key={colKey}>{field.elevation || '—'}</td>;
     case 'soilType':

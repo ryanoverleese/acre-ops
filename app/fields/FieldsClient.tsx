@@ -715,7 +715,15 @@ export default function FieldsClient({
       if (response.ok) {
         setFields(prev => prev.map(f => {
           if (f.id !== fieldId) return f;
-          const camelKey = fieldName === 'nrcs_field' ? 'nrcsField' : fieldName;
+          const snakeToCamel: Record<string, string> = {
+            nrcs_field: 'nrcsField',
+            pivot_acres: 'pivotAcres',
+            irrigation_type: 'irrigationType',
+            row_direction: 'rowDirection',
+            water_source: 'waterSource',
+            fuel_source: 'fuelSource',
+          };
+          const camelKey = snakeToCamel[fieldName] || fieldName;
           return { ...f, [camelKey]: value };
         }));
         setSavedFields(prev => new Set(prev).add(cellKey));
