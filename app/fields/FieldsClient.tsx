@@ -2100,7 +2100,7 @@ export default function FieldsClient({
                                           {pa.placementLat && pa.placementLng ? (
                                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                                               {hasDuplicateLocation && (
-                                                <span title="Same location as another probe" style={{ color: '#f59e0b', fontSize: '14px', lineHeight: 1 }}>&#9888;</span>
+                                                <span title="Same location" style={{ color: '#f59e0b', fontSize: '14px', lineHeight: 1 }}>&#9888;</span>
                                               )}
                                               {Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" style={{ opacity: 0.6 }}>
