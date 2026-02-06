@@ -63,7 +63,7 @@ async function baserowFetch<T>(
       'Authorization': `Token ${BASEROW_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    next: { revalidate: 60 }, // Cache for 60 seconds, then refresh in background
+    cache: 'no-store',
   });
 
   if (!response.ok) {
@@ -102,7 +102,7 @@ export async function getRow<T>(tableName: TableName, rowId: number): Promise<T>
       'Authorization': `Token ${BASEROW_TOKEN}`,
       'Content-Type': 'application/json',
     },
-    next: { revalidate: 60 },
+    cache: 'no-store',
   });
 
   if (!response.ok) {
