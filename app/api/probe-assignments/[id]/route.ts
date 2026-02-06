@@ -24,34 +24,42 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const updateData: Record<string, unknown> = {};
 
+    // Helper: set a field with both underscore and space variants
+    const setField = (key: string, value: unknown) => {
+      updateData[key] = value;
+      if (key.includes('_')) {
+        updateData[key.replace(/_/g, ' ')] = value;
+      }
+    };
+
     // Placement data
-    if (body.placement_lat !== undefined) updateData.placement_lat = body.placement_lat;
-    if (body.placement_lng !== undefined) updateData.placement_lng = body.placement_lng;
-    if (body.elevation !== undefined) updateData.elevation = body.elevation;
-    if (body.soil_type !== undefined) updateData.soil_type = body.soil_type;
-    if (body.placement_notes !== undefined) updateData.placement_notes = body.placement_notes;
+    if (body.placement_lat !== undefined) setField('placement_lat', body.placement_lat);
+    if (body.placement_lng !== undefined) setField('placement_lng', body.placement_lng);
+    if (body.elevation !== undefined) setField('elevation', body.elevation);
+    if (body.soil_type !== undefined) setField('soil_type', body.soil_type);
+    if (body.placement_notes !== undefined) setField('placement_notes', body.placement_notes);
 
     // Probe assignment - only update when explicitly provided with a numeric ID or 0/empty to clear
     if (body.probe !== undefined && body.probe !== null) {
-      updateData.probe = body.probe ? [body.probe] : [];
+      setField('probe', body.probe ? [body.probe] : []);
     }
-    if (body.probe_number !== undefined) updateData.probe_number = body.probe_number;
-    if (body.probe_status !== undefined) updateData.probe_status = body.probe_status;
-    if (body.antenna_type !== undefined) updateData.antenna_type = body.antenna_type;
+    if (body.probe_number !== undefined) setField('probe_number', body.probe_number);
+    if (body.probe_status !== undefined) setField('probe_status', body.probe_status);
+    if (body.antenna_type !== undefined) setField('antenna_type', body.antenna_type);
 
     // Install data
-    if (body.installer !== undefined) updateData.installer = body.installer;
-    if (body.install_date !== undefined) updateData.install_date = body.install_date;
-    if (body.install_lat !== undefined) updateData.install_lat = body.install_lat;
-    if (body.install_lng !== undefined) updateData.install_lng = body.install_lng;
-    if (body.install_notes !== undefined) updateData.install_notes = body.install_notes;
-    if (body.cropx_telemetry_id !== undefined) updateData.cropx_telemetry_id = body.cropx_telemetry_id;
-    if (body.signal_strength !== undefined) updateData.signal_strength = body.signal_strength;
+    if (body.installer !== undefined) setField('installer', body.installer);
+    if (body.install_date !== undefined) setField('install_date', body.install_date);
+    if (body.install_lat !== undefined) setField('install_lat', body.install_lat);
+    if (body.install_lng !== undefined) setField('install_lng', body.install_lng);
+    if (body.install_notes !== undefined) setField('install_notes', body.install_notes);
+    if (body.cropx_telemetry_id !== undefined) setField('cropx_telemetry_id', body.cropx_telemetry_id);
+    if (body.signal_strength !== undefined) setField('signal_strength', body.signal_strength);
 
     // Approval data
-    if (body.approval_status !== undefined) updateData.approval_status = body.approval_status;
-    if (body.approval_notes !== undefined) updateData.approval_notes = body.approval_notes;
-    if (body.approval_date !== undefined) updateData.approval_date = body.approval_date;
+    if (body.approval_status !== undefined) setField('approval_status', body.approval_status);
+    if (body.approval_notes !== undefined) setField('approval_notes', body.approval_notes);
+    if (body.approval_date !== undefined) setField('approval_date', body.approval_date);
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;
     console.log('PATCH probe assignment:', probeAssignmentId, 'with data:', JSON.stringify(updateData));

@@ -24,44 +24,47 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     const updateData: Record<string, unknown> = {};
 
-    if (body.probe_status !== undefined) updateData.probe_status = body.probe_status;
-    if (body.install_date !== undefined) updateData.install_date = body.install_date;
-    if (body.install_lat !== undefined) updateData.install_lat = body.install_lat;
-    if (body.install_lng !== undefined) updateData.install_lng = body.install_lng;
-    if (body.installer !== undefined) updateData.installer = body.installer;
-    if (body.install_notes !== undefined) updateData.install_notes = body.install_notes;
-    if (body.removal_date !== undefined) updateData.removal_date = body.removal_date;
-    if (body.removal_notes !== undefined) updateData.removal_notes = body.removal_notes;
-    if (body.crop !== undefined) updateData.crop = body.crop;
-    if (body.service_type !== undefined) updateData.service_type = body.service_type;
-    if (body.antenna_type !== undefined) updateData.antenna_type = body.antenna_type;
-    if (body.battery_type !== undefined) updateData.battery_type = body.battery_type;
-    if (body.side_dress !== undefined) updateData.side_dress = body.side_dress;
-    if (body.logger_id !== undefined) updateData.logger_id = body.logger_id;
-    if (body.early_removal !== undefined) updateData.early_removal = body.early_removal;
-    if (body.hybrid_variety !== undefined) updateData.hybrid_variety = body.hybrid_variety;
-    if (body.ready_to_remove !== undefined) updateData.ready_to_remove = body.ready_to_remove;
-    if (body.planting_date !== undefined) updateData.planting_date = body.planting_date;
+    // Helper: set a field with both underscore and space variants
+    // so Baserow matches whichever naming convention the field uses
+    const setField = (key: string, value: unknown) => {
+      updateData[key] = value;
+      if (key.includes('_')) {
+        updateData[key.replace(/_/g, ' ')] = value;
+      }
+    };
+
+    if (body.probe_status !== undefined) setField('probe_status', body.probe_status);
+    if (body.install_date !== undefined) setField('install_date', body.install_date);
+    if (body.install_lat !== undefined) setField('install_lat', body.install_lat);
+    if (body.install_lng !== undefined) setField('install_lng', body.install_lng);
+    if (body.installer !== undefined) setField('installer', body.installer);
+    if (body.install_notes !== undefined) setField('install_notes', body.install_notes);
+    if (body.removal_date !== undefined) setField('removal_date', body.removal_date);
+    if (body.removal_notes !== undefined) setField('removal_notes', body.removal_notes);
+    if (body.crop !== undefined) setField('crop', body.crop);
+    if (body.service_type !== undefined) setField('service_type', body.service_type);
+    if (body.antenna_type !== undefined) setField('antenna_type', body.antenna_type);
+    if (body.battery_type !== undefined) setField('battery_type', body.battery_type);
+    if (body.side_dress !== undefined) setField('side_dress', body.side_dress);
+    if (body.logger_id !== undefined) setField('logger_id', body.logger_id);
+    if (body.early_removal !== undefined) setField('early_removal', body.early_removal);
+    if (body.hybrid_variety !== undefined) setField('hybrid_variety', body.hybrid_variety);
+    if (body.ready_to_remove !== undefined) setField('ready_to_remove', body.ready_to_remove);
+    if (body.planting_date !== undefined) setField('planting_date', body.planting_date);
     // Only update probe links when explicitly provided with a numeric ID or 0/empty to clear
     if (body.probe !== undefined && body.probe !== null) {
-      updateData.probe = body.probe ? [body.probe] : [];
+      setField('probe', body.probe ? [body.probe] : []);
     }
     if (body.probe_2 !== undefined && body.probe_2 !== null) {
-      const val = body.probe_2 ? [body.probe_2] : [];
-      // Send both naming variants - Baserow field might use space or underscore
-      updateData['probe_2'] = val;
-      updateData['probe 2'] = val;
+      setField('probe_2', body.probe_2 ? [body.probe_2] : []);
     }
-    if (body.probe_2_status !== undefined) {
-      updateData['probe_2_status'] = body.probe_2_status;
-      updateData['probe 2 status'] = body.probe_2_status;
-    }
+    if (body.probe_2_status !== undefined) setField('probe_2_status', body.probe_2_status);
     // Install planning fields
-    if (body.route_order !== undefined) updateData.route_order = body.route_order;
-    if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer;
-    if (body.ready_to_install !== undefined) updateData.ready_to_install = body.ready_to_install;
+    if (body.route_order !== undefined) setField('route_order', body.route_order);
+    if (body.planned_installer !== undefined) setField('planned_installer', body.planned_installer);
+    if (body.ready_to_install !== undefined) setField('ready_to_install', body.ready_to_install);
     // Approval
-    if (body.approval_status !== undefined) updateData.approval_status = body.approval_status;
+    if (body.approval_status !== undefined) setField('approval_status', body.approval_status);
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
     console.log('PATCH field-season:', fieldSeasonId, 'with data:', JSON.stringify(updateData));

@@ -279,10 +279,7 @@ async function getFieldsData(): Promise<{
         fieldFieldSeasons.forEach((fs) => {
           const probeLink = fs.probe?.[0];
           const probeData = probeLink ? probeMap.get(probeLink.id) : null;
-          // Try both naming variants - Baserow field might use space ("probe 2") or underscore ("probe_2")
-          const fsAny = fs as unknown as Record<string, unknown>;
-          const probe2Raw = (fs.probe_2 || fsAny['probe 2']) as { id: number; value: string }[] | undefined;
-          const probe2Link = probe2Raw?.[0];
+          const probe2Link = fs.probe_2?.[0];
           const probe2Data = probe2Link ? probeMap.get(probe2Link.id) : null;
 
           processedFields.push({
@@ -310,7 +307,7 @@ async function getFieldsData(): Promise<{
             probeStatus: fs.probe_status?.value || 'Unassigned',
             probe2: probe2Data ? (probe2Data.serial_number ? `#${probe2Data.serial_number}` : `(On Order #${probe2Link!.id})`) : null,
             probe2Id: probe2Link?.id || null,
-            probe2Status: (fs.probe_2_status || fsAny['probe 2 status'] as { id: number; value: string } | undefined)?.value || 'Unassigned',
+            probe2Status: fs.probe_2_status?.value || 'Unassigned',
             lat: field.lat || 0,
             lng: field.lng || 0,
             waterSource: field.water_source?.value,

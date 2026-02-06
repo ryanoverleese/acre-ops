@@ -36,6 +36,18 @@ interface FetchOptions {
   filters?: Record<string, unknown>;
 }
 
+// Normalize Baserow field names: replace spaces with underscores and lowercase.
+// This ensures our TypeScript interfaces (which use snake_case) always match,
+// regardless of whether Baserow fields use spaces or underscores.
+function normalizeKeys(obj: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const normalizedKey = key.replace(/ /g, '_');
+    normalized[normalizedKey] = value;
+  }
+  return normalized;
+}
+
 async function baserowFetch<T>(
   tableId: number,
   options: FetchOptions = {}
@@ -70,7 +82,14 @@ async function baserowFetch<T>(
     throw new Error(`Baserow API error: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+
+  // Normalize field names in results: spaces → underscores
+  if (data.results) {
+    data.results = data.results.map((row: Record<string, unknown>) => normalizeKeys(row));
+  }
+
+  return data;
 }
 
 // Generic get all rows for a table (fetches ALL pages)
@@ -109,7 +128,8 @@ export async function getRow<T>(tableName: TableName, rowId: number): Promise<T>
     throw new Error(`Baserow API error: ${response.status} ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  return normalizeKeys(data) as T;
 }
 
 // Specific typed fetchers for each table
