@@ -29,8 +29,8 @@ export async function GET() {
       f.name.toLowerCase().includes('probe')
     );
 
-    // Also fetch one row to see actual key names in response
-    const rowUrl = `https://api.baserow.io/api/database/rows/table/${TABLE_IDS.field_seasons}/?user_field_names=true&size=1`;
+    // Also fetch a few rows to see actual key names and service_type values
+    const rowUrl = `https://api.baserow.io/api/database/rows/table/${TABLE_IDS.field_seasons}/?user_field_names=true&size=5`;
     const rowRes = await fetch(rowUrl, {
       headers: { 'Authorization': `Token ${BASEROW_TOKEN}` },
       cache: 'no-store',
@@ -39,12 +39,27 @@ export async function GET() {
     const sampleRow = rowData.results?.[0];
     const sampleKeys = sampleRow ? Object.keys(sampleRow) : [];
     const probeKeys = sampleKeys.filter(k => k.toLowerCase().includes('probe'));
+    const serviceTypeKeys = sampleKeys.filter(k => k.toLowerCase().includes('service'));
+
+    // Extract service_type data from all sample rows (raw, before normalizeKeys)
+    const serviceTypeData = (rowData.results || []).map((row: Record<string, unknown>) => {
+      // Check both "service_type" and "service type" keys
+      return {
+        id: row.id,
+        service_type_underscore: row['service_type'],
+        service_type_space: row['service type'],
+        // Also check if there's any key containing "service"
+        serviceKeys: Object.keys(row).filter(k => k.toLowerCase().includes('service')),
+      };
+    });
 
     return NextResponse.json({
       schemaProbeFields: probeFields,
       allSchemaFields: allFields,
       sampleRowProbeKeys: probeKeys,
       sampleRowAllKeys: sampleKeys,
+      serviceTypeKeys,
+      serviceTypeData,
     });
   } catch (error) {
     console.error('Debug field-names error:', error);
