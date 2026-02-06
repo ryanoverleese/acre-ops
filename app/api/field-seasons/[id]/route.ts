@@ -79,6 +79,20 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await response.json();
+
+    // Log probe-related keys from Baserow response to diagnose field name mismatches
+    const probeKeys = Object.keys(updated).filter(k => k.toLowerCase().includes('probe'));
+    console.log('Baserow response probe keys:', probeKeys);
+    if (updateData.probe_2 !== undefined) {
+      // Check if the response contains any key matching probe 2 variants
+      const probe2ResponseKeys = Object.keys(updated).filter(k =>
+        k.toLowerCase().replace(/[_ ]/g, '').includes('probe2')
+      );
+      console.log('Sent probe_2:', JSON.stringify(updateData.probe_2),
+        '| Response probe_2 keys:', probe2ResponseKeys,
+        '| Response values:', probe2ResponseKeys.map(k => JSON.stringify(updated[k])));
+    }
+
     revalidatePath('/fields');
     return NextResponse.json(updated);
   } catch (error) {

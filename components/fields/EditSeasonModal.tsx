@@ -74,6 +74,7 @@ export default function EditSeasonModal({
 }: EditSeasonModalProps) {
   const [form, setForm] = useState<EditSeasonForm>(initialForm);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   // Track original probe IDs so we only send them when changed
   const [initialProbeId] = useState(selectedProbeId);
@@ -114,12 +115,36 @@ export default function EditSeasonModal({
         patchBody.probe_2_status = probe2Id ? 'Assigned' : 'Unassigned';
       }
 
+      console.log('EditSeasonModal patchBody:', JSON.stringify(patchBody));
+
       const response = await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchBody),
       });
       if (response.ok) {
+        const responseData = await response.json();
+
+        // Verify probe_2 was saved if we sent it
+        if (patchBody.probe_2 !== undefined) {
+          // Check all response keys for probe 2 variants (field name might differ)
+          const probe2Keys = Object.keys(responseData).filter(k =>
+            k.toLowerCase().replace(/[_ ]/g, '').includes('probe2')
+          );
+          console.log('Probe 2 save verification - sent:', patchBody.probe_2,
+            '| response keys:', probe2Keys,
+            '| values:', probe2Keys.map(k => JSON.stringify(responseData[k])));
+
+          // Check if any key has the link we sent
+          const probe2Saved = probe2Keys.some(k => {
+            const val = responseData[k];
+            return Array.isArray(val) && val.length > 0 && val[0]?.id === patchBody.probe_2;
+          });
+          if (!probe2Saved && patchBody.probe_2) {
+            console.warn('Probe 2 may not have been saved! Response keys:', Object.keys(responseData).filter(k => k.toLowerCase().includes('probe')));
+          }
+        }
+
         // Create/update invoice line if billing_rate is provided
         if (form.billing_rate && field.billingEntityId) {
           try {
@@ -139,7 +164,11 @@ export default function EditSeasonModal({
           }
         }
 
-        onSaved();
+        // Show "Saved!" confirmation briefly before reloading
+        setSaved(true);
+        setTimeout(() => {
+          onSaved();
+        }, 800);
       } else {
         const error = await response.json();
         console.error('Field season update failed:', error);
@@ -420,8 +449,13 @@ export default function EditSeasonModal({
         </div>
         <div className="detail-panel-footer">
           <button className="btn btn-secondary" onClick={handleCancel}>Cancel</button>
-          <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save Changes'}
+          <button
+            className="btn btn-primary"
+            onClick={handleSave}
+            disabled={saving || saved}
+            style={saved ? { backgroundColor: 'var(--accent-green, #22c55e)' } : undefined}
+          >
+            {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>
