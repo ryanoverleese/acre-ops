@@ -51,10 +51,30 @@ export const createInitialAddFieldForm = (season: string): AddFieldForm => ({
   billing_rate: '',
 });
 
+type OptionList = { value: string; label: string }[];
+
+export interface DynamicFieldOptions {
+  irrigation_type: OptionList;
+  row_direction: OptionList;
+  water_source: OptionList;
+  fuel_source: OptionList;
+}
+
+export interface DynamicSeasonOptions {
+  crop: OptionList;
+  side_dress: OptionList;
+  early_removal: OptionList;
+  ready_to_remove: OptionList;
+  antenna_type: OptionList;
+  battery_type: OptionList;
+}
+
 export interface AddFieldModalProps {
   currentSeason: string;
   billingEntities: BillingEntityOption[];
   serviceTypeOptions: { value: string; label: string }[];
+  fieldOpts: DynamicFieldOptions;
+  seasonOpts: DynamicSeasonOptions;
   getRateForServiceType: (serviceType: string) => string;
   onClose: () => void;
   onSaved: () => void;
@@ -66,6 +86,8 @@ export default function AddFieldModal({
   currentSeason,
   billingEntities,
   serviceTypeOptions,
+  fieldOpts,
+  seasonOpts,
   getRateForServiceType,
   onClose,
   onSaved,
@@ -195,23 +217,18 @@ export default function AddFieldModal({
                 <label>Irrigation Type</label>
                 <select value={form.irrigation_type} onChange={(e) => setForm({ ...form, irrigation_type: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Drip">Drip</option>
-                  <option value="Dryland">Dryland</option>
-                  <option value="Gravity">Gravity</option>
-                  <option value="Pivot">Pivot</option>
-                  <option value="Pivot - Corner System">Pivot - Corner System</option>
-                  <option value="Pivot - Wiper">Pivot - Wiper</option>
+                  {fieldOpts.irrigation_type.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
                 <label>Row Direction</label>
                 <select value={form.row_direction} onChange={(e) => setForm({ ...form, row_direction: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="N-S">N-S</option>
-                  <option value="E-W">E-W</option>
-                  <option value="N-S and E-W">N-S and E-W</option>
-                  <option value="NW-SE">NW-SE</option>
-                  <option value="SE-SW">SE-SW</option>
+                  {fieldOpts.row_direction.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -242,19 +259,18 @@ export default function AddFieldModal({
                 <label>Water Source</label>
                 <select value={form.water_source} onChange={(e) => setForm({ ...form, water_source: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Well">Well</option>
-                  <option value="Canal">Canal</option>
-                  <option value="Other">Other</option>
+                  {fieldOpts.water_source.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
                 <label>Fuel Source</label>
                 <select value={form.fuel_source} onChange={(e) => setForm({ ...form, fuel_source: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Electric">Electric</option>
-                  <option value="Natural Gas">Natural Gas</option>
-                  <option value="Diesel">Diesel</option>
-                  <option value="Other">Other</option>
+                  {fieldOpts.fuel_source.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -279,11 +295,9 @@ export default function AddFieldModal({
                 <label>Crop</label>
                 <select value={form.crop} onChange={(e) => setForm({ ...form, crop: e.target.value })}>
                   <option value="">Select crop...</option>
-                  <option value="Corn">Corn</option>
-                  <option value="Other">Other</option>
-                  <option value="Seed Corn">Seed Corn</option>
-                  <option value="Soybeans">Soybeans</option>
-                  <option value="Wheat">Wheat</option>
+                  {seasonOpts.crop.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -317,15 +331,9 @@ export default function AddFieldModal({
                 <label>Side Dress</label>
                 <select value={form.side_dress} onChange={(e) => setForm({ ...form, side_dress: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Coulter">Coulter</option>
-                  <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
-                  <option value="Cultivate">Cultivate</option>
-                  <option value="Cultivation Likely">Cultivation Likely</option>
-                  <option value="High Y-Drop">High Y-Drop</option>
-                  <option value="Low Y-Drop">Low Y-Drop</option>
-                  <option value="None">None</option>
-                  <option value="Pivot">Pivot</option>
-                  <option value="Sprayer Drops">Sprayer Drops</option>
+                  {seasonOpts.side_dress.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -343,17 +351,9 @@ export default function AddFieldModal({
                 <label>Early Removal</label>
                 <select value={form.early_removal} onChange={(e) => setForm({ ...form, early_removal: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
-                  <option value="Early Incentive Corn">Early Incentive Corn</option>
-                  <option value="HMC">HMC</option>
-                  <option value="HMC Maybe">HMC Maybe</option>
-                  <option value="HMC – Oct 1">HMC – Oct 1</option>
-                  <option value="Popcorn">Popcorn</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Seed Corn">Seed Corn</option>
-                  <option value="Silage">Silage</option>
-                  <option value="Sorghum">Sorghum</option>
-                  <option value="Soybeans">Soybeans</option>
+                  {seasonOpts.early_removal.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -371,8 +371,9 @@ export default function AddFieldModal({
                 <label>Ready to Remove</label>
                 <select value={form.ready_to_remove} onChange={(e) => setForm({ ...form, ready_to_remove: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
+                  {seasonOpts.ready_to_remove.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>

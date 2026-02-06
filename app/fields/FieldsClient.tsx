@@ -9,7 +9,7 @@ import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditS
 import AddFieldModal from '@/components/fields/AddFieldModal';
 import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
-import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption } from './page';
+import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption, SerializedSelectOptions } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -31,6 +31,13 @@ interface FieldsClientProps {
   availableSeasons: string[];
   initialProbeAssignments: ProcessedProbeAssignment[];
   serviceRates: ServiceRateOption[];
+  selectOptions: SerializedSelectOptions;
+}
+
+// Convert Baserow select_options to the {value, label}[] format used by components
+function toOptions(opts: { id: number; value: string; color: string }[] | undefined): { value: string; label: string }[] {
+  if (!opts) return [];
+  return opts.map(o => ({ value: o.value, label: o.value }));
 }
 
 // Column definitions for all tabs
@@ -116,6 +123,7 @@ export default function FieldsClient({
   availableSeasons,
   initialProbeAssignments,
   serviceRates,
+  selectOptions,
 }: FieldsClientProps) {
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
@@ -337,6 +345,25 @@ export default function FieldsClient({
       .map((sr) => ({ value: sr.serviceType, label: sr.serviceType }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [serviceRates]);
+
+  // Dynamic select options from Baserow field metadata
+  const fieldOpts = useMemo(() => ({
+    irrigation_type: toOptions(selectOptions.fields.irrigation_type),
+    row_direction: toOptions(selectOptions.fields.row_direction),
+    water_source: toOptions(selectOptions.fields.water_source),
+    fuel_source: toOptions(selectOptions.fields.fuel_source),
+    drip_tubing_direction: toOptions(selectOptions.fields.drip_tubing_direction),
+  }), [selectOptions.fields]);
+
+  const seasonOpts = useMemo(() => ({
+    crop: toOptions(selectOptions.field_seasons.crop),
+    side_dress: toOptions(selectOptions.field_seasons.side_dress),
+    early_removal: toOptions(selectOptions.field_seasons.early_removal),
+    ready_to_remove: toOptions(selectOptions.field_seasons.ready_to_remove),
+    planned_installer: toOptions(selectOptions.field_seasons.planned_installer),
+    antenna_type: toOptions(selectOptions.field_seasons.antenna_type || selectOptions.probe_assignments.antenna_type),
+    battery_type: toOptions(selectOptions.field_seasons.battery_type || selectOptions.probe_assignments.battery_type),
+  }), [selectOptions.field_seasons, selectOptions.probe_assignments]);
 
   // Helper to get rate for a service type
   const getRateForServiceType = useCallback((serviceType: string): string => {
@@ -1895,12 +1922,9 @@ export default function FieldsClient({
                   </select>
                   <select value={currentIrrigationType} onChange={(e) => setCurrentIrrigationType(e.target.value)}>
                     <option value="all">All Irrigation</option>
-                    <option value="Drip">Drip</option>
-                    <option value="Dryland">Dryland</option>
-                    <option value="Gravity">Gravity</option>
-                    <option value="Pivot">Pivot</option>
-                    <option value="Pivot - Corner System">Pivot - Corner System</option>
-                    <option value="Pivot - Wiper">Pivot - Wiper</option>
+                    {fieldOpts.irrigation_type.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                     <option value="Unknown">Unknown</option>
                   </select>
                   <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
@@ -1986,6 +2010,8 @@ export default function FieldsClient({
                                 )}
                                 isExpanded={isExpanded}
                                 serviceTypeOptions={serviceTypeOptions}
+                                fieldOpts={fieldOpts}
+                                seasonOpts={seasonOpts}
                                 savingFields={savingFields}
                                 savedFields={savedFields}
                                 onRowClick={handleRowClick}
@@ -2389,19 +2415,18 @@ export default function FieldsClient({
                         <label>Water Source</label>
                         <select value={editForm.waterSource || ''} onChange={(e) => setEditForm({ ...editForm, waterSource: e.target.value })}>
                           <option value="">Select...</option>
-                          <option value="Well">Well</option>
-                          <option value="Canal">Canal</option>
-                          <option value="Other">Other</option>
+                          {fieldOpts.water_source.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
                         </select>
                       </div>
                       <div className="form-group">
                         <label>Fuel Source</label>
                         <select value={editForm.fuelSource || ''} onChange={(e) => setEditForm({ ...editForm, fuelSource: e.target.value })}>
                           <option value="">Select...</option>
-                          <option value="Electric">Electric</option>
-                          <option value="Natural Gas">Natural Gas</option>
-                          <option value="Diesel">Diesel</option>
-                          <option value="Other">Other</option>
+                          {fieldOpts.fuel_source.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2418,23 +2443,18 @@ export default function FieldsClient({
                           <label>Irrigation Type</label>
                           <select value={editForm.irrigationType || ''} onChange={(e) => setEditForm({ ...editForm, irrigationType: e.target.value })}>
                             <option value="">Select...</option>
-                            <option value="Drip">Drip</option>
-                            <option value="Dryland">Dryland</option>
-                            <option value="Gravity">Gravity</option>
-                            <option value="Pivot">Pivot</option>
-                            <option value="Pivot - Corner System">Pivot - Corner System</option>
-                            <option value="Pivot - Wiper">Pivot - Wiper</option>
+                            {fieldOpts.irrigation_type.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
                           </select>
                         </div>
                         <div className="form-group">
                           <label>Row Direction</label>
                           <select value={editForm.rowDirection || ''} onChange={(e) => setEditForm({ ...editForm, rowDirection: e.target.value })}>
                             <option value="">Select...</option>
-                            <option value="N-S">N-S</option>
-                            <option value="E-W">E-W</option>
-                            <option value="N-S and E-W">N-S and E-W</option>
-                            <option value="NW-SE">NW-SE</option>
-                            <option value="SE-SW">SE-SW</option>
+                            {fieldOpts.row_direction.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
                           </select>
                         </div>
                       </div>
@@ -2447,8 +2467,9 @@ export default function FieldsClient({
                               <label>Tubing Direction</label>
                               <select value={editForm.dripTubingDirection || ''} onChange={(e) => setEditForm({ ...editForm, dripTubingDirection: e.target.value })}>
                                 <option value="">Select...</option>
-                                <option value="N-S">N-S</option>
-                                <option value="E-W">E-W</option>
+                                {fieldOpts.drip_tubing_direction.map((opt) => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
                               </select>
                             </div>
                             <div className="form-group">
@@ -2822,6 +2843,7 @@ export default function FieldsClient({
             onProbeIdChange={setSelectedProbeId}
             onProbe2IdChange={setSelectedProbe2Id}
             serviceTypeOptions={serviceTypeOptions}
+            seasonOpts={seasonOpts}
             getRateForServiceType={getRateForServiceType}
             getProbesForField={getProbesForField}
             onClose={() => setShowSeasonFieldsEdit(false)}
@@ -2855,6 +2877,8 @@ export default function FieldsClient({
             currentSeason={currentSeason}
             billingEntities={billingEntities}
             serviceTypeOptions={serviceTypeOptions}
+            fieldOpts={fieldOpts}
+            seasonOpts={seasonOpts}
             getRateForServiceType={getRateForServiceType}
             onClose={() => {
               setShowAddModal(false);
@@ -2881,6 +2905,7 @@ export default function FieldsClient({
             billingEntityId={selectedField.billingEntityId}
             missingSeasons={missingSeasonsForField}
             serviceTypeOptions={serviceTypeOptions}
+            seasonOpts={seasonOpts}
             getRateForServiceType={getRateForServiceType}
             onClose={() => setShowAddSeasonModal(false)}
             onSaved={() => {

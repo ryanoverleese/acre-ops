@@ -20,10 +20,52 @@ export interface ProcessedServiceRate {
   status: string;
 }
 
+interface SelectOption {
+  id: number;
+  value: string;
+  color: string;
+}
+
+interface TableSelectOptions {
+  [fieldName: string]: SelectOption[];
+}
+
+interface SerializedSelectOptions {
+  fields: TableSelectOptions;
+  field_seasons: TableSelectOptions;
+  probe_assignments: TableSelectOptions;
+}
+
 interface SettingsClientProps {
   initialServiceRates: ProcessedServiceRate[];
   availableSeasons: string[];
+  selectOptions: SerializedSelectOptions;
 }
+
+// Friendly labels for table and field names
+const TABLE_LABELS: Record<string, string> = {
+  fields: 'Fields',
+  field_seasons: 'Field Seasons',
+  probe_assignments: 'Probe Assignments',
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  irrigation_type: 'Irrigation Type',
+  row_direction: 'Row Direction',
+  water_source: 'Water Source',
+  fuel_source: 'Fuel Source',
+  drip_tubing_direction: 'Drip Tubing Direction',
+  crop: 'Crop',
+  service_type: 'Service Type',
+  side_dress: 'Side Dress',
+  early_removal: 'Early Removal',
+  ready_to_remove: 'Ready to Remove',
+  planned_installer: 'Planned Installer',
+  antenna_type: 'Antenna Type',
+  battery_type: 'Battery Type',
+  probe_status: 'Probe Status',
+  approval_status: 'Approval Status',
+};
 
 const GLOBAL_SEASON_KEY = 'acre-ops-global-season';
 const FIELD_COLUMNS_STORAGE_KEY = 'fields-tab-columns';
@@ -115,7 +157,7 @@ const initialAddForm = {
   description: '',
 };
 
-export default function SettingsClient({ initialServiceRates, availableSeasons }: SettingsClientProps) {
+export default function SettingsClient({ initialServiceRates, availableSeasons, selectOptions }: SettingsClientProps) {
   const [serviceRates, setServiceRates] = useState(initialServiceRates);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState(initialAddForm);
@@ -685,6 +727,59 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
           </div>
         </div>
       )}
+
+      {/* Dropdown Options */}
+      <ContentCard className="mb-6">
+        <SectionHeader title="Dropdown Options" />
+        <p className="section-description">
+          These are the select options configured in Baserow. To add or edit options, update them directly in your Baserow tables. Changes will automatically appear in the app on next page load.
+        </p>
+
+        {(Object.entries(selectOptions) as [string, TableSelectOptions][]).map(([tableName, tableOpts]) => {
+          const fieldEntries = (Object.entries(tableOpts) as [string, SelectOption[]][]).filter(([, opts]) => opts.length > 0);
+          if (fieldEntries.length === 0) return null;
+
+          return (
+            <div key={tableName} style={{ marginTop: '16px' }}>
+              <h4 className="section-subtitle" style={{ marginBottom: '8px' }}>
+                {TABLE_LABELS[tableName] || tableName}
+              </h4>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
+                {fieldEntries.sort(([a], [b]) => a.localeCompare(b)).map(([fieldName, opts]) => (
+                  <div key={fieldName} style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '12px',
+                    background: 'var(--bg-secondary)',
+                  }}>
+                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--text-primary)' }}>
+                      {FIELD_LABELS[fieldName] || fieldName.replace(/_/g, ' ')}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {opts.map((opt) => (
+                        <span
+                          key={opt.id}
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            background: opt.color ? `${opt.color}22` : 'var(--bg-tertiary)',
+                            border: `1px solid ${opt.color || 'var(--border)'}`,
+                            color: 'var(--text-primary)',
+                          }}
+                        >
+                          {opt.value}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </ContentCard>
 
       {/* Data Backup */}
       <ContentCard className="mb-6">

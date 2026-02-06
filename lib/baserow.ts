@@ -357,3 +357,69 @@ export interface User {
 }
 
 export const getUsers = (options?: FetchOptions) => getRows<User>('users', options);
+
+// ────────────────────────────────────────────────────────────────────────────
+// Field metadata: fetch single_select options from Baserow table schema
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface SelectOption {
+  id: number;
+  value: string;
+  color: string;
+}
+
+export interface TableSelectOptions {
+  [fieldName: string]: SelectOption[];
+}
+
+/**
+ * Fetch all single_select field options for a given table.
+ * Uses Baserow's field metadata API: GET /api/database/fields/table/{table_id}/
+ * Returns a map of normalized_field_name → select_options[]
+ */
+export async function getTableFieldOptions(tableName: TableName): Promise<TableSelectOptions> {
+  const tableId = TABLE_IDS[tableName];
+  const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Token ${BASEROW_TOKEN}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    console.error(`Failed to fetch field options for ${tableName}:`, response.status);
+    return {};
+  }
+
+  const fields: Array<{
+    name: string;
+    type: string;
+    select_options?: SelectOption[];
+  }> = await response.json();
+
+  const result: TableSelectOptions = {};
+  for (const field of fields) {
+    if (field.type === 'single_select' && field.select_options) {
+      const normalizedName = field.name.replace(/ /g, '_');
+      result[normalizedName] = field.select_options;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Fetch select options for multiple tables at once.
+ * Returns { tableName: { fieldName: SelectOption[] } }
+ */
+export async function getAllSelectOptions(tableNames: TableName[]): Promise<Record<string, TableSelectOptions>> {
+  const results = await Promise.all(
+    tableNames.map(async (name) => {
+      const options = await getTableFieldOptions(name);
+      return [name, options] as const;
+    })
+  );
+  return Object.fromEntries(results);
+}

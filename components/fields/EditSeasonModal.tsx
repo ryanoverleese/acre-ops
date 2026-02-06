@@ -7,6 +7,18 @@ interface ProbeWithStatus extends ProbeOption {
   isAssigned: boolean;
 }
 
+type OptionList = { value: string; label: string }[];
+
+export interface DynamicSeasonOptions {
+  crop: OptionList;
+  side_dress: OptionList;
+  early_removal: OptionList;
+  ready_to_remove: OptionList;
+  planned_installer: OptionList;
+  antenna_type: OptionList;
+  battery_type: OptionList;
+}
+
 export interface EditSeasonModalProps {
   field: ProcessedField;
   initialForm: EditSeasonForm;
@@ -15,6 +27,7 @@ export interface EditSeasonModalProps {
   onProbeIdChange: (id: string) => void;
   onProbe2IdChange: (id: string) => void;
   serviceTypeOptions: { value: string; label: string }[];
+  seasonOpts: DynamicSeasonOptions;
   getRateForServiceType: (serviceType: string) => string;
   getProbesForField: (fieldOperation: string, currentProbeId?: number | null) => ProbeWithStatus[];
   onClose: () => void;
@@ -69,6 +82,7 @@ export default function EditSeasonModal({
   onProbeIdChange,
   onProbe2IdChange,
   serviceTypeOptions,
+  seasonOpts,
   getRateForServiceType,
   getProbesForField,
   onClose,
@@ -214,11 +228,9 @@ export default function EditSeasonModal({
                 <label>Crop</label>
                 <select value={form.crop} onChange={(e) => setForm({ ...form, crop: e.target.value })}>
                   <option value="">Select crop...</option>
-                  <option value="Corn">Corn</option>
-                  <option value="Other">Other</option>
-                  <option value="Seed Corn">Seed Corn</option>
-                  <option value="Soybeans">Soybeans</option>
-                  <option value="Wheat">Wheat</option>
+                  {seasonOpts.crop.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
@@ -250,36 +262,27 @@ export default function EditSeasonModal({
                 <label>Antenna Type</label>
                 <select value={form.antenna_type} onChange={(e) => setForm({ ...form, antenna_type: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Sentek Stub">Sentek Stub</option>
-                  <option value="CropX Stub">CropX Stub</option>
-                  <option value="Sentek 10'">Sentek 10&apos;</option>
-                  <option value="CropX 10'">CropX 10&apos;</option>
-                  <option value="CropX 6'">CropX 6&apos;</option>
-                  <option value="ASK">ASK</option>
+                  {seasonOpts.antenna_type.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
                 <label>Battery Type</label>
                 <select value={form.battery_type} onChange={(e) => setForm({ ...form, battery_type: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="CropX">CropX</option>
-                  <option value="Sentek New">Sentek New</option>
-                  <option value="Sentek Used">Sentek Used</option>
+                  {seasonOpts.battery_type.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
                 <label>Side Dress</label>
                 <select value={form.side_dress} onChange={(e) => setForm({ ...form, side_dress: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Coulter">Coulter</option>
-                  <option value="Coulter 7&quot; off Row">Coulter 7&quot; off Row</option>
-                  <option value="Cultivate">Cultivate</option>
-                  <option value="Cultivation Likely">Cultivation Likely</option>
-                  <option value="High Y-Drop">High Y-Drop</option>
-                  <option value="Low Y-Drop">Low Y-Drop</option>
-                  <option value="None">None</option>
-                  <option value="Pivot">Pivot</option>
-                  <option value="Sprayer Drops">Sprayer Drops</option>
+                  {seasonOpts.side_dress.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -297,17 +300,9 @@ export default function EditSeasonModal({
                 <label>Early Removal</label>
                 <select value={form.early_removal} onChange={(e) => setForm({ ...form, early_removal: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Dummy Probe – Drip">Dummy Probe – Drip</option>
-                  <option value="Early Incentive Corn">Early Incentive Corn</option>
-                  <option value="HMC">HMC</option>
-                  <option value="HMC Maybe">HMC Maybe</option>
-                  <option value="HMC – Oct 1">HMC – Oct 1</option>
-                  <option value="Popcorn">Popcorn</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Seed Corn">Seed Corn</option>
-                  <option value="Silage">Silage</option>
-                  <option value="Sorghum">Sorghum</option>
-                  <option value="Soybeans">Soybeans</option>
+                  {seasonOpts.early_removal.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -325,8 +320,9 @@ export default function EditSeasonModal({
                 <label>Ready to Remove</label>
                 <select value={form.ready_to_remove} onChange={(e) => setForm({ ...form, ready_to_remove: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
+                  {seasonOpts.ready_to_remove.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -386,21 +382,18 @@ export default function EditSeasonModal({
                   <label>Probe 2 Antenna Type</label>
                   <select value={form.probe2_antenna_type} onChange={(e) => setForm({ ...form, probe2_antenna_type: e.target.value })}>
                     <option value="">Select...</option>
-                    <option value="Sentek Stub">Sentek Stub</option>
-                    <option value="CropX Stub">CropX Stub</option>
-                    <option value="Sentek 10'">Sentek 10&apos;</option>
-                    <option value="CropX 10'">CropX 10&apos;</option>
-                    <option value="CropX 6'">CropX 6&apos;</option>
-                    <option value="ASK">ASK</option>
+                    {seasonOpts.antenna_type.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Probe 2 Battery Type</label>
                   <select value={form.probe2_battery_type} onChange={(e) => setForm({ ...form, probe2_battery_type: e.target.value })}>
                     <option value="">Select...</option>
-                    <option value="CropX">CropX</option>
-                    <option value="Sentek New">Sentek New</option>
-                    <option value="Sentek Used">Sentek Used</option>
+                    {seasonOpts.battery_type.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -424,11 +417,9 @@ export default function EditSeasonModal({
                   <label>Planned Installer</label>
                   <select value={form.planned_installer} onChange={(e) => setForm({ ...form, planned_installer: e.target.value })}>
                     <option value="">Select...</option>
-                    <option value="Brian">Brian</option>
-                    <option value="Daine">Daine</option>
-                    <option value="Ryan">Ryan</option>
-                    <option value="Ryan and Kasen">Ryan and Kasen</option>
-
+                    {seasonOpts.planned_installer.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>

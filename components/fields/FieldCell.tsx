@@ -75,6 +75,25 @@ export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
   fieldDirections: '150px',
 };
 
+type OptionList = { value: string; label: string }[];
+
+interface DynamicFieldOptions {
+  irrigation_type: OptionList;
+  row_direction: OptionList;
+  water_source: OptionList;
+  fuel_source: OptionList;
+}
+
+interface DynamicSeasonOptions {
+  crop: OptionList;
+  side_dress: OptionList;
+  early_removal: OptionList;
+  ready_to_remove: OptionList;
+  planned_installer: OptionList;
+  antenna_type: OptionList;
+  battery_type: OptionList;
+}
+
 interface RenderCellProps {
   colKey: FieldColumnKey;
   field: ProcessedField;
@@ -83,6 +102,8 @@ interface RenderCellProps {
   hasDuplicateProbeLocation: boolean;
   isExpanded: boolean;
   serviceTypeOptions: { value: string; label: string }[];
+  fieldOpts: DynamicFieldOptions;
+  seasonOpts: DynamicSeasonOptions;
   savingFields: Set<string>;
   savedFields: Set<string>;
   onRowClick: (field: ProcessedField) => void;
@@ -99,6 +120,8 @@ export function FieldCell({
   hasDuplicateProbeLocation,
   isExpanded,
   serviceTypeOptions,
+  fieldOpts,
+  seasonOpts,
   savingFields,
   savedFields,
   onRowClick,
@@ -121,7 +144,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="crop" value={field.crop} type="select"
-            options={[{ value: 'Corn', label: 'Corn' }, { value: 'Soybeans', label: 'Soybeans' }, { value: 'Wheat', label: 'Wheat' }, { value: 'Seed Corn', label: 'Seed Corn' }, { value: 'Other', label: 'Other' }]}
+            options={seasonOpts.crop}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -145,7 +168,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="antennaType" value={field.antennaType} type="select"
-            options={[{ value: 'Sentek Stub', label: 'Sentek Stub' }, { value: 'CropX Stub', label: 'CropX Stub' }, { value: "Sentek 10'", label: "Sentek 10'" }, { value: "CropX 10'", label: "CropX 10'" }, { value: "CropX 6'", label: "CropX 6'" }, { value: 'ASK', label: 'ASK' }]}
+            options={seasonOpts.antenna_type}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -153,7 +176,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="batteryType" value={field.batteryType} type="select"
-            options={[{ value: 'CropX', label: 'CropX' }, { value: 'Sentek New', label: 'Sentek New' }, { value: 'Sentek Used', label: 'Sentek Used' }]}
+            options={seasonOpts.battery_type}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -161,7 +184,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="sideDress" value={field.sideDress} type="select"
-            options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
+            options={seasonOpts.side_dress}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -199,7 +222,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="plannedInstaller" value={field.plannedInstaller} type="select"
-            options={[{ value: 'Brian', label: 'Brian' }, { value: 'Daine', label: 'Daine' }, { value: 'Ryan', label: 'Ryan' }, { value: 'Ryan and Kasen', label: 'Ryan and Kasen' }]}
+            options={seasonOpts.planned_installer}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -246,7 +269,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="readyToRemove" value={field.readyToRemove} type="select"
-            options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
+            options={seasonOpts.ready_to_remove}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -254,7 +277,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="earlyRemoval" value={field.earlyRemoval} type="select"
-            options={[{ value: 'Yes', label: 'Yes' }, { value: 'No', label: 'No' }]}
+            options={seasonOpts.early_removal}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -276,7 +299,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineFieldSelect fieldId={field.id} apiField="irrigation_type" value={field.irrigationType}
-            options={[{ value: 'Drip', label: 'Drip' }, { value: 'Dryland', label: 'Dryland' }, { value: 'Gravity', label: 'Gravity' }, { value: 'Pivot', label: 'Pivot' }, { value: 'Pivot - Corner System', label: 'Pivot - Corner System' }, { value: 'Pivot - Wiper', label: 'Pivot - Wiper' }]}
+            options={fieldOpts.irrigation_type}
             savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
         </td>
       );
@@ -284,7 +307,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineFieldSelect fieldId={field.id} apiField="row_direction" value={field.rowDirection}
-            options={[{ value: 'N-S', label: 'N-S' }, { value: 'E-W', label: 'E-W' }, { value: 'N-S and E-W', label: 'N-S and E-W' }, { value: 'NW-SE', label: 'NW-SE' }, { value: 'SE-SW', label: 'SE-SW' }]}
+            options={fieldOpts.row_direction}
             savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
         </td>
       );
@@ -292,7 +315,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineFieldSelect fieldId={field.id} apiField="water_source" value={field.waterSource}
-            options={[{ value: 'Well', label: 'Well' }, { value: 'Canal', label: 'Canal' }, { value: 'Other', label: 'Other' }]}
+            options={fieldOpts.water_source}
             savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
         </td>
       );
@@ -300,7 +323,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineFieldSelect fieldId={field.id} apiField="fuel_source" value={field.fuelSource}
-            options={[{ value: 'Electric', label: 'Electric' }, { value: 'Natural Gas', label: 'Natural Gas' }, { value: 'Diesel', label: 'Diesel' }, { value: 'Other', label: 'Other' }]}
+            options={fieldOpts.fuel_source}
             savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
         </td>
       );

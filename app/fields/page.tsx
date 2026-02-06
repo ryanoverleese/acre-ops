@@ -1,4 +1,5 @@
-import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getServiceRates } from '@/lib/baserow';
+import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getServiceRates, getAllSelectOptions } from '@/lib/baserow';
+import type { TableSelectOptions } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
 // Force dynamic rendering to always get fresh data
@@ -133,6 +134,13 @@ export interface ServiceRateOption {
   dealerFee: number;
 }
 
+// Serializable select options type (passed from server to client)
+export interface SerializedSelectOptions {
+  fields: TableSelectOptions;
+  field_seasons: TableSelectOptions;
+  probe_assignments: TableSelectOptions;
+}
+
 async function getFieldsData(): Promise<{
   fields: ProcessedField[];
   operations: OperationOption[];
@@ -141,9 +149,10 @@ async function getFieldsData(): Promise<{
   availableSeasons: string[];
   probeAssignments: ProcessedProbeAssignment[];
   serviceRates: ServiceRateOption[];
+  selectOptions: SerializedSelectOptions;
 }> {
   try {
-    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawServiceRates] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawServiceRates, allSelectOptions] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
@@ -152,6 +161,7 @@ async function getFieldsData(): Promise<{
       getProbeAssignments(),
       getContacts(),
       getServiceRates(),
+      getAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -484,6 +494,11 @@ async function getFieldsData(): Promise<{
       availableSeasons,
       probeAssignments,
       serviceRates,
+      selectOptions: {
+        fields: allSelectOptions.fields || {},
+        field_seasons: allSelectOptions.field_seasons || {},
+        probe_assignments: allSelectOptions.probe_assignments || {},
+      },
     };
   } catch (error) {
     console.error('Error fetching fields data:', error);
@@ -495,12 +510,13 @@ async function getFieldsData(): Promise<{
       availableSeasons: [String(new Date().getFullYear())],
       probeAssignments: [],
       serviceRates: [],
+      selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {} },
     };
   }
 }
 
 export default async function FieldsPage() {
-  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments, serviceRates } = await getFieldsData();
+  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments, serviceRates, selectOptions } = await getFieldsData();
 
   return (
     <FieldsClient
@@ -511,6 +527,7 @@ export default async function FieldsPage() {
       availableSeasons={availableSeasons}
       initialProbeAssignments={probeAssignments}
       serviceRates={serviceRates}
+      selectOptions={selectOptions}
     />
   );
 }

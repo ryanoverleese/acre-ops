@@ -1,18 +1,27 @@
-import { getServiceRates, getFieldSeasons } from '@/lib/baserow';
+import { getServiceRates, getFieldSeasons, getAllSelectOptions } from '@/lib/baserow';
+import type { TableSelectOptions } from '@/lib/baserow';
 import SettingsClient, { ProcessedServiceRate } from './SettingsClient';
 
 export const dynamic = 'force-dynamic';
 
+export interface SerializedSelectOptions {
+  fields: TableSelectOptions;
+  field_seasons: TableSelectOptions;
+  probe_assignments: TableSelectOptions;
+}
+
 interface SettingsData {
   serviceRates: ProcessedServiceRate[];
   availableSeasons: string[];
+  selectOptions: SerializedSelectOptions;
 }
 
 async function getSettingsData(): Promise<SettingsData> {
   try {
-    const [serviceRates, fieldSeasons] = await Promise.all([
+    const [serviceRates, fieldSeasons, allSelectOptions] = await Promise.all([
       getServiceRates(),
       getFieldSeasons(),
+      getAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']),
     ]);
 
     // Collect unique seasons from field_seasons
@@ -37,14 +46,23 @@ async function getSettingsData(): Promise<SettingsData> {
         status: sr.status?.value || 'Active',
       })),
       availableSeasons: Array.from(seasons).sort((a, b) => b.localeCompare(a)),
+      selectOptions: {
+        fields: allSelectOptions.fields || {},
+        field_seasons: allSelectOptions.field_seasons || {},
+        probe_assignments: allSelectOptions.probe_assignments || {},
+      },
     };
   } catch (error) {
     console.error('Error fetching settings data:', error);
-    return { serviceRates: [], availableSeasons: [String(new Date().getFullYear())] };
+    return {
+      serviceRates: [],
+      availableSeasons: [String(new Date().getFullYear())],
+      selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {} },
+    };
   }
 }
 
 export default async function SettingsPage() {
-  const { serviceRates, availableSeasons } = await getSettingsData();
-  return <SettingsClient initialServiceRates={serviceRates} availableSeasons={availableSeasons} />;
+  const { serviceRates, availableSeasons, selectOptions } = await getSettingsData();
+  return <SettingsClient initialServiceRates={serviceRates} availableSeasons={availableSeasons} selectOptions={selectOptions} />;
 }
