@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllSelectOptions } from '@/lib/baserow';
 import type { TableName } from '@/lib/baserow';
 
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
+// Field schema changes require an admin token (database tokens return 401)
+const BASEROW_ADMIN_TOKEN = process.env.BASEROW_ADMIN_TOKEN || process.env.BASEROW_API_TOKEN;
 const OPTION_TABLES: TableName[] = ['fields', 'field_seasons', 'probe_assignments'];
 
 export async function GET() {
@@ -32,7 +33,7 @@ export async function PATCH(request: NextRequest) {
     const response = await fetch(`https://api.baserow.io/api/database/fields/${fieldId}/`, {
       method: 'PATCH',
       headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
+        'Authorization': `Token ${BASEROW_ADMIN_TOKEN}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ select_options }),
