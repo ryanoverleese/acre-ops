@@ -450,25 +450,41 @@ async function getFieldsData(): Promise<{
       };
     });
 
+    // Build field_season → field lookup for fallback data
+    const fieldSeasonToField = new Map<number, typeof rawFields[0]>();
+    fieldSeasons.forEach((fs) => {
+      const fieldId = fs.field?.[0]?.id;
+      if (fieldId) {
+        const field = rawFields.find((f) => f.id === fieldId);
+        if (field) fieldSeasonToField.set(fs.id, field);
+      }
+    });
+
     // Process probe assignments
     const probeAssignments: ProcessedProbeAssignment[] = rawProbeAssignments.map((pa) => {
       const probeLink = pa.probe?.[0];
       const probeData = probeLink ? probeMap.get(probeLink.id) : null;
 
+      // Fall back to field-level elevation/soilType if probe assignment lacks them
+      const fsId = pa.field_season?.[0]?.id;
+      const parentField = fsId ? fieldSeasonToField.get(fsId) : undefined;
+      const paElevation = pa.elevation ?? (parentField ? (typeof parentField.elevation === 'object' ? (parentField.elevation as { value: string })?.value : parentField.elevation) : undefined);
+      const paSoilType = pa.soil_type ?? (parentField ? (typeof parentField.soil_type === 'object' ? (parentField.soil_type as { value: string })?.value : parentField.soil_type) : undefined);
+
       return {
         id: pa.id,
-        fieldSeasonId: pa.field_season?.[0]?.id || 0,
+        fieldSeasonId: fsId || 0,
         probeNumber: pa.probe_number || 1,
         probe: probeData ? `#${probeData.serial_number}` : null,
         probeId: probeLink?.id || null,
         probeStatus: pa.probe_status?.value || 'Unassigned',
         antennaType: pa.antenna_type?.value,
         batteryType: pa.battery_type?.value,
-        // Placement data
+        // Placement data (fall back to field-level for elevation/soilType)
         placementLat: pa.placement_lat,
         placementLng: pa.placement_lng,
-        elevation: pa.elevation,
-        soilType: pa.soil_type,
+        elevation: paElevation,
+        soilType: paSoilType,
         placementNotes: pa.placement_notes,
         // Install data
         installer: pa.installer,
