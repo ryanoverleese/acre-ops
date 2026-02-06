@@ -47,9 +47,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       updateData.probe = body.probe ? [body.probe] : [];
     }
     if (body.probe_2 !== undefined && body.probe_2 !== null) {
-      updateData.probe_2 = body.probe_2 ? [body.probe_2] : [];
+      const val = body.probe_2 ? [body.probe_2] : [];
+      // Send both naming variants - Baserow field might use space or underscore
+      updateData['probe_2'] = val;
+      updateData['probe 2'] = val;
     }
-    if (body.probe_2_status !== undefined) updateData.probe_2_status = body.probe_2_status;
+    if (body.probe_2_status !== undefined) {
+      updateData['probe_2_status'] = body.probe_2_status;
+      updateData['probe 2 status'] = body.probe_2_status;
+    }
     // Install planning fields
     if (body.route_order !== undefined) updateData.route_order = body.route_order;
     if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer;
