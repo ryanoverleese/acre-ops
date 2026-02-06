@@ -31,6 +31,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Allow debug API (diagnostic endpoints)
+  if (pathname.startsWith('/api/debug')) {
+    return NextResponse.next();
+  }
+
   // If not authenticated, redirect to login
   if (!req.auth) {
     const loginUrl = new URL('/login', req.url);
