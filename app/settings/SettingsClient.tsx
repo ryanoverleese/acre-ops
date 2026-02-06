@@ -182,10 +182,8 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
   const [selectedColumnTab, setSelectedColumnTab] = useState<TabView>('signup');
   const [columnsSaved, setColumnsSaved] = useState(false);
 
-  // Collapsible sections - all open by default
-  const [openSections, setOpenSections] = useState<Set<string>>(
-    new Set(['appSettings', 'tabColumns', 'serviceRates', 'dropdownOptions', 'backup'])
-  );
+  // Collapsible sections - all collapsed by default
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set());
 
   const toggleSection = (key: string) => {
     setOpenSections(prev => {
@@ -533,12 +531,14 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('appSettings')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         >
-          <SectionHeader title="Application Settings" />
+          <div style={{ flex: 1 }}>
+            <SectionHeader title="Application Settings" />
+          </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('appSettings') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+            style={{ transition: 'transform 0.2s', transform: openSections.has('appSettings') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -572,15 +572,17 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('tabColumns')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         >
-          <SectionHeader
-            title="Fields Tab Columns"
-            actions={<SavedIndicator show={columnsSaved} />}
-          />
+          <div style={{ flex: 1 }}>
+            <SectionHeader
+              title="Fields Tab Columns"
+              actions={<SavedIndicator show={columnsSaved} />}
+            />
+          </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('tabColumns') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+            style={{ transition: 'transform 0.2s', transform: openSections.has('tabColumns') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -663,21 +665,23 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('serviceRates')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         >
-          <SectionHeader
-            title="Service Rates"
-            actions={
-              openSections.has('serviceRates') ? (
-                <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }}>
-                  + Add Rate
-                </button>
-              ) : undefined
-            }
-          />
+          <div style={{ flex: 1 }}>
+            <SectionHeader
+              title="Service Rates"
+              actions={
+                openSections.has('serviceRates') ? (
+                  <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }} style={{ marginLeft: '12px' }}>
+                    + Add Rate
+                  </button>
+                ) : undefined
+              }
+            />
+          </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('serviceRates') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+            style={{ transition: 'transform 0.2s', transform: openSections.has('serviceRates') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -919,12 +923,14 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('dropdownOptions')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         >
-          <SectionHeader title="Dropdown Options" />
+          <div style={{ flex: 1 }}>
+            <SectionHeader title="Dropdown Options" />
+          </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('dropdownOptions') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+            style={{ transition: 'transform 0.2s', transform: openSections.has('dropdownOptions') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -1127,12 +1133,14 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('backup')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         >
-          <SectionHeader title="Data Backup" />
+          <div style={{ flex: 1 }}>
+            <SectionHeader title="Data Backup" />
+          </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('backup') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+            style={{ transition: 'transform 0.2s', transform: openSections.has('backup') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
