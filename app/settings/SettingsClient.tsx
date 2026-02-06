@@ -26,21 +26,31 @@ interface SelectOption {
   color: string;
 }
 
-interface TableSelectOptions {
-  [fieldName: string]: SelectOption[];
+interface FieldOptionsMeta {
+  fieldId: number;
+  options: SelectOption[];
 }
 
-interface SerializedSelectOptions {
-  fields: TableSelectOptions;
-  field_seasons: TableSelectOptions;
-  probe_assignments: TableSelectOptions;
+interface TableSelectOptionsWithMeta {
+  [fieldName: string]: FieldOptionsMeta;
+}
+
+interface SerializedSelectOptionsWithMeta {
+  fields: TableSelectOptionsWithMeta;
+  field_seasons: TableSelectOptionsWithMeta;
+  probe_assignments: TableSelectOptionsWithMeta;
 }
 
 interface SettingsClientProps {
   initialServiceRates: ProcessedServiceRate[];
   availableSeasons: string[];
-  selectOptions: SerializedSelectOptions;
+  selectOptions: SerializedSelectOptionsWithMeta;
 }
+
+const BASEROW_OPTION_COLORS = [
+  'light-blue', 'light-green', 'light-orange', 'light-red', 'light-cyan',
+  'blue', 'green', 'orange', 'red', 'cyan', 'yellow',
+];
 
 // Friendly labels for table and field names
 const TABLE_LABELS: Record<string, string> = {
@@ -171,6 +181,119 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
   const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
   const [selectedColumnTab, setSelectedColumnTab] = useState<TabView>('signup');
   const [columnsSaved, setColumnsSaved] = useState(false);
+
+  // Dropdown options editing state
+  const [localOptions, setLocalOptions] = useState<SerializedSelectOptionsWithMeta>(selectOptions);
+  const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [newOptionValue, setNewOptionValue] = useState('');
+  const [savingField, setSavingField] = useState<string | null>(null);
+  const [editingOption, setEditingOption] = useState<{ key: string; optionId: number } | null>(null);
+  const [editValue, setEditValue] = useState('');
+
+  const saveFieldOptions = async (tableName: string, fieldName: string, options: (SelectOption | { value: string; color: string })[]) => {
+    const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
+    const fieldMeta = tableOpts?.[fieldName];
+    if (!fieldMeta) return false;
+
+    const key = `${tableName}.${fieldName}`;
+    setSavingField(key);
+
+    try {
+      const response = await fetch('/api/select-options', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fieldId: fieldMeta.fieldId,
+          select_options: options,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const updatedOptions: SelectOption[] = data.select_options || options;
+        setLocalOptions(prev => ({
+          ...prev,
+          [tableName]: {
+            ...prev[tableName as keyof SerializedSelectOptionsWithMeta],
+            [fieldName]: { fieldId: fieldMeta.fieldId, options: updatedOptions },
+          },
+        }));
+        return true;
+      } else {
+        alert('Failed to update options');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error saving options:', error);
+      alert('Failed to save options');
+      return false;
+    } finally {
+      setSavingField(null);
+    }
+  };
+
+  const handleAddOption = async (tableName: string, fieldName: string) => {
+    if (!newOptionValue.trim()) return;
+    const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
+    const fieldMeta = tableOpts?.[fieldName];
+    if (!fieldMeta) return;
+
+    if (fieldMeta.options.some(o => o.value.toLowerCase() === newOptionValue.trim().toLowerCase())) {
+      alert('This option already exists');
+      return;
+    }
+
+    const color = BASEROW_OPTION_COLORS[fieldMeta.options.length % BASEROW_OPTION_COLORS.length];
+    const newOptions = [
+      ...fieldMeta.options,
+      { value: newOptionValue.trim(), color },
+    ];
+
+    const success = await saveFieldOptions(tableName, fieldName, newOptions);
+    if (success) {
+      setNewOptionValue('');
+      setAddingTo(null);
+    }
+  };
+
+  const handleRemoveOption = async (tableName: string, fieldName: string, optionId: number) => {
+    const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
+    const fieldMeta = tableOpts?.[fieldName];
+    if (!fieldMeta) return;
+
+    const optionToRemove = fieldMeta.options.find(o => o.id === optionId);
+    if (!confirm(`Remove "${optionToRemove?.value}"? Any rows using this value will be cleared.`)) return;
+
+    const newOptions = fieldMeta.options.filter(o => o.id !== optionId);
+    await saveFieldOptions(tableName, fieldName, newOptions);
+  };
+
+  const handleRenameOption = async (tableName: string, fieldName: string, optionId: number) => {
+    if (!editValue.trim()) {
+      setEditingOption(null);
+      setEditValue('');
+      return;
+    }
+
+    const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
+    const fieldMeta = tableOpts?.[fieldName];
+    if (!fieldMeta) return;
+
+    const currentOpt = fieldMeta.options.find(o => o.id === optionId);
+    if (currentOpt && currentOpt.value === editValue.trim()) {
+      setEditingOption(null);
+      setEditValue('');
+      return;
+    }
+
+    const newOptions = fieldMeta.options.map(o =>
+      o.id === optionId ? { ...o, value: editValue.trim() } : o
+    );
+
+    await saveFieldOptions(tableName, fieldName, newOptions);
+    setEditingOption(null);
+    setEditValue('');
+  };
 
   // Load global season from localStorage on mount
   useEffect(() => {
@@ -732,11 +855,11 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       <ContentCard className="mb-6">
         <SectionHeader title="Dropdown Options" />
         <p className="section-description">
-          These are the select options configured in Baserow. To add or edit options, update them directly in your Baserow tables. Changes will automatically appear in the app on next page load.
+          Manage dropdown options used across the application. Click an option to rename it, use &times; to remove, or + to add new options.
         </p>
 
-        {(Object.entries(selectOptions) as [string, TableSelectOptions][]).map(([tableName, tableOpts]) => {
-          const fieldEntries = (Object.entries(tableOpts) as [string, SelectOption[]][]).filter(([, opts]) => opts.length > 0);
+        {(Object.entries(localOptions) as [string, TableSelectOptionsWithMeta][]).map(([tableName, tableOpts]) => {
+          const fieldEntries = (Object.entries(tableOpts) as [string, FieldOptionsMeta][]).filter(([, meta]) => meta.options.length > 0);
           if (fieldEntries.length === 0) return null;
 
           return (
@@ -744,37 +867,177 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
               <h4 className="section-subtitle" style={{ marginBottom: '8px' }}>
                 {TABLE_LABELS[tableName] || tableName}
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }}>
-                {fieldEntries.sort(([a], [b]) => a.localeCompare(b)).map(([fieldName, opts]) => (
-                  <div key={fieldName} style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: '8px',
-                    padding: '12px',
-                    background: 'var(--bg-secondary)',
-                  }}>
-                    <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px', color: 'var(--text-primary)' }}>
-                      {FIELD_LABELS[fieldName] || fieldName.replace(/_/g, ' ')}
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                      {opts.map((opt) => (
-                        <span
-                          key={opt.id}
-                          style={{
-                            display: 'inline-block',
-                            padding: '2px 8px',
-                            borderRadius: '4px',
-                            fontSize: '12px',
-                            background: opt.color ? `${opt.color}22` : 'var(--bg-tertiary)',
-                            border: `1px solid ${opt.color || 'var(--border)'}`,
-                            color: 'var(--text-primary)',
-                          }}
-                        >
-                          {opt.value}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                {fieldEntries.sort(([a], [b]) => a.localeCompare(b)).map(([fieldName, meta]) => {
+                  const fieldKey = `${tableName}.${fieldName}`;
+                  const isSaving = savingField === fieldKey;
+                  const isAdding = addingTo === fieldKey;
+
+                  return (
+                    <div key={fieldName} style={{
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                      background: 'var(--bg-secondary)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
+                          {FIELD_LABELS[fieldName] || fieldName.replace(/_/g, ' ')}
                         </span>
-                      ))}
+                        {isSaving && <span style={{ fontSize: '11px', color: 'var(--accent)' }}>Saving...</span>}
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                        {meta.options.map((opt) => {
+                          const isEditing = editingOption?.key === fieldKey && editingOption.optionId === opt.id;
+
+                          if (isEditing) {
+                            return (
+                              <input
+                                key={opt.id}
+                                type="text"
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={() => handleRenameOption(tableName, fieldName, opt.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleRenameOption(tableName, fieldName, opt.id);
+                                  if (e.key === 'Escape') { setEditingOption(null); setEditValue(''); }
+                                }}
+                                autoFocus
+                                style={{
+                                  padding: '2px 6px',
+                                  borderRadius: '4px',
+                                  fontSize: '12px',
+                                  border: '2px solid var(--accent)',
+                                  background: 'var(--bg-primary)',
+                                  color: 'var(--text-primary)',
+                                  outline: 'none',
+                                  width: `${Math.max(60, editValue.length * 8 + 20)}px`,
+                                }}
+                              />
+                            );
+                          }
+
+                          return (
+                            <span
+                              key={opt.id}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                background: 'var(--bg-tertiary)',
+                                border: '1px solid var(--border)',
+                                color: 'var(--text-primary)',
+                              }}
+                            >
+                              <span
+                                onClick={() => { setEditingOption({ key: fieldKey, optionId: opt.id }); setEditValue(opt.value); }}
+                                style={{ cursor: 'pointer' }}
+                                title="Click to rename"
+                              >
+                                {opt.value}
+                              </span>
+                              <button
+                                onClick={() => handleRemoveOption(tableName, fieldName, opt.id)}
+                                disabled={isSaving}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: 'var(--text-muted)',
+                                  cursor: 'pointer',
+                                  padding: '0 2px',
+                                  fontSize: '14px',
+                                  lineHeight: 1,
+                                  opacity: 0.6,
+                                }}
+                                title="Remove option"
+                              >
+                                &times;
+                              </button>
+                            </span>
+                          );
+                        })}
+
+                        {isAdding ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                            <input
+                              type="text"
+                              value={newOptionValue}
+                              onChange={(e) => setNewOptionValue(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAddOption(tableName, fieldName);
+                                if (e.key === 'Escape') { setAddingTo(null); setNewOptionValue(''); }
+                              }}
+                              autoFocus
+                              placeholder="New option..."
+                              style={{
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                border: '2px solid var(--accent)',
+                                background: 'var(--bg-primary)',
+                                color: 'var(--text-primary)',
+                                outline: 'none',
+                                width: '120px',
+                              }}
+                            />
+                            <button
+                              onClick={() => handleAddOption(tableName, fieldName)}
+                              disabled={isSaving || !newOptionValue.trim()}
+                              style={{
+                                background: 'var(--accent)',
+                                border: 'none',
+                                color: 'white',
+                                cursor: 'pointer',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                              }}
+                            >
+                              Add
+                            </button>
+                            <button
+                              onClick={() => { setAddingTo(null); setNewOptionValue(''); }}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                cursor: 'pointer',
+                                padding: '0 4px',
+                                fontSize: '14px',
+                              }}
+                            >
+                              &times;
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => { setAddingTo(fieldKey); setNewOptionValue(''); }}
+                            disabled={isSaving}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              width: '22px',
+                              height: '22px',
+                              borderRadius: '4px',
+                              fontSize: '14px',
+                              background: 'none',
+                              border: '1px dashed var(--border)',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                            }}
+                            title="Add option"
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

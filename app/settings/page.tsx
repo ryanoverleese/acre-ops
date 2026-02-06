@@ -1,19 +1,19 @@
-import { getServiceRates, getFieldSeasons, getAllSelectOptions } from '@/lib/baserow';
-import type { TableSelectOptions } from '@/lib/baserow';
+import { getServiceRates, getFieldSeasons, getAllSelectOptionsWithMeta } from '@/lib/baserow';
+import type { TableSelectOptionsWithMeta } from '@/lib/baserow';
 import SettingsClient, { ProcessedServiceRate } from './SettingsClient';
 
 export const dynamic = 'force-dynamic';
 
-export interface SerializedSelectOptions {
-  fields: TableSelectOptions;
-  field_seasons: TableSelectOptions;
-  probe_assignments: TableSelectOptions;
+export interface SerializedSelectOptionsWithMeta {
+  fields: TableSelectOptionsWithMeta;
+  field_seasons: TableSelectOptionsWithMeta;
+  probe_assignments: TableSelectOptionsWithMeta;
 }
 
 interface SettingsData {
   serviceRates: ProcessedServiceRate[];
   availableSeasons: string[];
-  selectOptions: SerializedSelectOptions;
+  selectOptions: SerializedSelectOptionsWithMeta;
 }
 
 async function getSettingsData(): Promise<SettingsData> {
@@ -21,7 +21,7 @@ async function getSettingsData(): Promise<SettingsData> {
     const [serviceRates, fieldSeasons, allSelectOptions] = await Promise.all([
       getServiceRates(),
       getFieldSeasons(),
-      getAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']),
+      getAllSelectOptionsWithMeta(['fields', 'field_seasons', 'probe_assignments']),
     ]);
 
     // Collect unique seasons from field_seasons

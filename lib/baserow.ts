@@ -372,6 +372,15 @@ export interface TableSelectOptions {
   [fieldName: string]: SelectOption[];
 }
 
+export interface FieldOptionsMeta {
+  fieldId: number;
+  options: SelectOption[];
+}
+
+export interface TableSelectOptionsWithMeta {
+  [fieldName: string]: FieldOptionsMeta;
+}
+
 /**
  * Fetch all single_select field options for a given table.
  * Uses Baserow's field metadata API: GET /api/database/fields/table/{table_id}/
@@ -394,6 +403,7 @@ export async function getTableFieldOptions(tableName: TableName): Promise<TableS
   }
 
   const fields: Array<{
+    id: number;
     name: string;
     type: string;
     select_options?: SelectOption[];
@@ -411,6 +421,44 @@ export async function getTableFieldOptions(tableName: TableName): Promise<TableS
 }
 
 /**
+ * Fetch select options with Baserow field IDs (needed for PATCH updates).
+ * Returns a map of normalized_field_name → { fieldId, options[] }
+ */
+export async function getTableFieldOptionsWithMeta(tableName: TableName): Promise<TableSelectOptionsWithMeta> {
+  const tableId = TABLE_IDS[tableName];
+  const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Token ${BASEROW_TOKEN}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    console.error(`Failed to fetch field options for ${tableName}:`, response.status);
+    return {};
+  }
+
+  const fields: Array<{
+    id: number;
+    name: string;
+    type: string;
+    select_options?: SelectOption[];
+  }> = await response.json();
+
+  const result: TableSelectOptionsWithMeta = {};
+  for (const field of fields) {
+    if (field.type === 'single_select' && field.select_options) {
+      const normalizedName = field.name.replace(/ /g, '_');
+      result[normalizedName] = { fieldId: field.id, options: field.select_options };
+    }
+  }
+
+  return result;
+}
+
+/**
  * Fetch select options for multiple tables at once.
  * Returns { tableName: { fieldName: SelectOption[] } }
  */
@@ -418,6 +466,20 @@ export async function getAllSelectOptions(tableNames: TableName[]): Promise<Reco
   const results = await Promise.all(
     tableNames.map(async (name) => {
       const options = await getTableFieldOptions(name);
+      return [name, options] as const;
+    })
+  );
+  return Object.fromEntries(results);
+}
+
+/**
+ * Fetch select options with field IDs for multiple tables.
+ * Returns { tableName: { fieldName: { fieldId, options[] } } }
+ */
+export async function getAllSelectOptionsWithMeta(tableNames: TableName[]): Promise<Record<string, TableSelectOptionsWithMeta>> {
+  const results = await Promise.all(
+    tableNames.map(async (name) => {
+      const options = await getTableFieldOptionsWithMeta(name);
       return [name, options] as const;
     })
   );
