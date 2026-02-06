@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export interface InlineProbeCellProps {
   probeAssignmentId: number;
@@ -107,29 +107,49 @@ export default function InlineProbeCell({ probeAssignmentId, field, value, type,
   }
 
   if (type === 'text') {
-    return (
-      <div style={{ position: 'relative' }}>
-        <input
-          type="text"
-          value={value as string || ''}
-          onChange={(e) => handleChange(e.target.value || null)}
-          disabled={isSaving}
-          style={{
-            width: '100%',
-            padding: '4px 6px',
-            fontSize: '12px',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
-            transition: 'background 0.3s',
-          }}
-        />
-        {isSaving && (
-          <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
-        )}
-      </div>
-    );
+    return <InlineTextInput value={value as string || ''} onSave={handleChange} isSaving={isSaving} justSaved={justSaved} />;
   }
 
   return <span>{value?.toString() || '—'}</span>;
+}
+
+function InlineTextInput({ value, onSave, isSaving, justSaved }: { value: string; onSave: (v: unknown) => Promise<void>; isSaving: boolean; justSaved: boolean }) {
+  const [local, setLocal] = useState(value);
+
+  useEffect(() => {
+    setLocal(value);
+  }, [value]);
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={local}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={() => {
+          if (local !== value) {
+            onSave(local || null);
+          }
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        disabled={isSaving}
+        style={{
+          width: '100%',
+          padding: '4px 6px',
+          fontSize: '12px',
+          border: '1px solid var(--border)',
+          borderRadius: '4px',
+          background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+          transition: 'background 0.3s',
+        }}
+      />
+      {isSaving && (
+        <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
+      )}
+    </div>
+  );
 }
