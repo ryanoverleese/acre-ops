@@ -2430,6 +2430,8 @@ export default function FieldsClient({
                           <label>Row Direction</label>
                           <select value={editForm.rowDirection || ''} onChange={(e) => setEditForm({ ...editForm, rowDirection: e.target.value })}>
                             <option value="">Select...</option>
+                            <option value="N-S">N-S</option>
+                            <option value="E-W">E-W</option>
                             <option value="N-S and E-W">N-S and E-W</option>
                             <option value="NW-SE">NW-SE</option>
                             <option value="SE-SW">SE-SW</option>

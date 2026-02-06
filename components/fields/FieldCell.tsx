@@ -284,7 +284,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineFieldSelect fieldId={field.id} apiField="row_direction" value={field.rowDirection}
-            options={[{ value: 'N-S and E-W', label: 'N-S and E-W' }, { value: 'NW-SE', label: 'NW-SE' }, { value: 'SE-SW', label: 'SE-SW' }]}
+            options={[{ value: 'N-S', label: 'N-S' }, { value: 'E-W', label: 'E-W' }, { value: 'N-S and E-W', label: 'N-S and E-W' }, { value: 'NW-SE', label: 'NW-SE' }, { value: 'SE-SW', label: 'SE-SW' }]}
             savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
         </td>
       );

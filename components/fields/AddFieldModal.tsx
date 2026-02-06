@@ -207,6 +207,8 @@ export default function AddFieldModal({
                 <label>Row Direction</label>
                 <select value={form.row_direction} onChange={(e) => setForm({ ...form, row_direction: e.target.value })}>
                   <option value="">Select...</option>
+                  <option value="N-S">N-S</option>
+                  <option value="E-W">E-W</option>
                   <option value="N-S and E-W">N-S and E-W</option>
                   <option value="NW-SE">NW-SE</option>
                   <option value="SE-SW">SE-SW</option>
