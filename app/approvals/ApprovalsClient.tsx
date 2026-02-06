@@ -36,6 +36,12 @@ export default function ApprovalsClient({
   const [loading, setLoading] = useState<Record<number, boolean>>({});
   const [bulkLoading, setBulkLoading] = useState(false);
 
+  // Approval link state (per operation)
+  const [linkOperationId, setLinkOperationId] = useState<number | null>(null);
+  const [approvalToken, setApprovalToken] = useState<string | null>(null);
+  const [approvalLoading, setApprovalLoading] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
   // Filter items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -261,6 +267,55 @@ export default function ApprovalsClient({
     }
   };
 
+  const handleGenerateApprovalLink = async (operationId: number, regenerate: boolean = false) => {
+    setApprovalLoading(true);
+    setLinkOperationId(operationId);
+    setLinkCopied(false);
+    try {
+      const response = await fetch(`/api/operations/${operationId}/approval-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ regenerate }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setApprovalToken(data.token);
+      } else {
+        alert('Failed to generate approval link');
+        setLinkOperationId(null);
+      }
+    } catch {
+      alert('Failed to generate approval link');
+      setLinkOperationId(null);
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const getApprovalUrl = () => {
+    if (!approvalToken) return '';
+    const year = selectedSeason !== 'all' ? selectedSeason : new Date().getFullYear();
+    return `${window.location.origin}/approve/${approvalToken}/${year}`;
+  };
+
+  const handleCopyLink = async () => {
+    const url = getApprovalUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+
   return (
     <>
       {/* Stats */}
@@ -425,7 +480,90 @@ export default function ApprovalsClient({
                         {groupPendingCount} pending
                       </span>
                     )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (linkOperationId === group.operationId && approvalToken) {
+                          setLinkOperationId(null);
+                          setApprovalToken(null);
+                        } else {
+                          handleGenerateApprovalLink(group.operationId);
+                        }
+                      }}
+                      disabled={approvalLoading && linkOperationId === group.operationId}
+                      style={{
+                        marginLeft: 'auto',
+                        background: 'none',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius)',
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                      title="Generate customer approval link"
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      {approvalLoading && linkOperationId === group.operationId ? 'Loading...' : 'Generate Link'}
+                    </button>
                   </div>
+
+                  {/* Approval Link */}
+                  {linkOperationId === group.operationId && approvalToken && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: '12px 16px',
+                        background: 'var(--bg-card)',
+                        borderTop: '1px solid var(--border)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                      }}
+                    >
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                        Share this link with your customer to approve probe placements:
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          value={getApprovalUrl()}
+                          readOnly
+                          style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)' }}
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                        />
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleCopyLink}
+                          style={{ flexShrink: 0, fontSize: '12px', padding: '6px 12px' }}
+                        >
+                          {linkCopied ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--accent-green)' }}>
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Link generated
+                        </span>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleGenerateApprovalLink(group.operationId, true)}
+                          disabled={approvalLoading}
+                          style={{ fontSize: '12px', padding: '4px 8px' }}
+                        >
+                          Regenerate
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Items */}
                   {isExpanded && (
