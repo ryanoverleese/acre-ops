@@ -60,6 +60,7 @@ export interface ProcessedField {
   probe2: string | null;
   probe2Id: number | null;
   probe2Status: string;
+  probe2AssignmentId: number | null;
   lat: number;
   lng: number;
   waterSource?: string;
@@ -204,6 +205,15 @@ async function getFieldsData(): Promise<{
     // Process fields - create one entry per field_season
     const processedFields: ProcessedField[] = [];
 
+    // Build probe_assignments lookup by field_season_id for probe 2 data
+    const probe2ByFieldSeason = new Map<number, typeof rawProbeAssignments[0]>();
+    rawProbeAssignments.forEach((pa) => {
+      const fsId = pa.field_season?.[0]?.id;
+      if (fsId && pa.probe_number === 2) {
+        probe2ByFieldSeason.set(fsId, pa);
+      }
+    });
+
     rawFields.forEach((field) => {
       const billingEntityLink = field.billing_entity?.[0];
       let operationName = 'Unknown';
@@ -249,6 +259,7 @@ async function getFieldsData(): Promise<{
           probe2: null,
           probe2Id: null,
           probe2Status: 'Unassigned',
+          probe2AssignmentId: null,
           lat: field.lat || 0,
           lng: field.lng || 0,
           waterSource: field.water_source?.value,
@@ -279,7 +290,9 @@ async function getFieldsData(): Promise<{
         fieldFieldSeasons.forEach((fs) => {
           const probeLink = fs.probe?.[0];
           const probeData = probeLink ? probeMap.get(probeLink.id) : null;
-          const probe2Link = fs.probe_2?.[0];
+          // Probe 2 comes from probe_assignments table (probe_number=2), not field_season
+          const probe2Assignment = probe2ByFieldSeason.get(fs.id);
+          const probe2Link = probe2Assignment?.probe?.[0];
           const probe2Data = probe2Link ? probeMap.get(probe2Link.id) : null;
 
           processedFields.push({
@@ -307,7 +320,8 @@ async function getFieldsData(): Promise<{
             probeStatus: fs.probe_status?.value || 'Unassigned',
             probe2: probe2Data ? (probe2Data.serial_number ? `#${probe2Data.serial_number}` : `(On Order #${probe2Link!.id})`) : null,
             probe2Id: probe2Link?.id || null,
-            probe2Status: fs.probe_2_status?.value || 'Unassigned',
+            probe2Status: probe2Assignment?.probe_status?.value || 'Unassigned',
+            probe2AssignmentId: probe2Assignment?.id || null,
             lat: field.lat || 0,
             lng: field.lng || 0,
             waterSource: field.water_source?.value,

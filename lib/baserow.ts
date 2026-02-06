@@ -233,18 +233,7 @@ export interface FieldSeason {
   install_notes?: string;
   cropx_telemetry_id?: string;
   signal_strength?: string;
-  // Probe 2
-  probe_2?: { id: number; value: string }[];
-  probe_2_status?: { id: number; value: string };
-  probe_2_installer?: string;
-  probe_2_install_date?: string;
-  probe_2_install_lat?: number;
-  probe_2_install_lng?: number;
-  probe_2_install_photo_field_end_url?: { url: string; name: string }[];
-  probe_2_install_photo_extra_url?: { url: string; name: string }[];
-  probe_2_install_notes?: string;
-  probe_2_cropx_telemetry_id?: string;
-  probe_2_signal_strength?: string;
+  // Probe 2+ data lives in the probe_assignments table, not here
   // Other
   removal_date?: string;
   removal_notes?: string;

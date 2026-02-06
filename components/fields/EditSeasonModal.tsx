@@ -83,10 +83,8 @@ export default function EditSeasonModal({
       // Helper: treat 'Unknown' the same as empty (it's a display-only default, not a real Baserow value)
       const clean = (val: string | undefined) => (val && val !== 'Unknown') ? val : null;
 
-      // Always include probe data - use current selection values
-      // If user didn't touch a probe dropdown, it still holds the correct current value
+      // Probe 1 is stored directly on field_season
       const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
-      const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
 
       const patchBody: Record<string, unknown> = {
         crop: clean(form.crop),
@@ -104,8 +102,6 @@ export default function EditSeasonModal({
         ready_to_install: form.ready_to_install,
         probe: probeId,
         probe_status: probeId ? 'Assigned' : 'Unassigned',
-        probe_2: probe2Id,
-        probe_2_status: probe2Id ? 'Assigned' : 'Unassigned',
       };
 
       console.log('EditSeasonModal patchBody:', JSON.stringify(patchBody));
@@ -115,6 +111,31 @@ export default function EditSeasonModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patchBody),
       });
+
+      // Probe 2 is stored in probe_assignments table (probe_number=2)
+      const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
+      if (field.probe2AssignmentId) {
+        // Update existing probe_assignment (send 0 to clear, not null)
+        await fetch(`/api/probe-assignments/${field.probe2AssignmentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            probe: probe2Id,
+            probe_status: probe2Id ? 'Assigned' : 'Unassigned',
+          }),
+        });
+      } else if (probe2Id) {
+        // Create new probe_assignment with probe_number=2
+        await fetch('/api/probe-assignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            field_season: field.fieldSeasonId,
+            probe_number: 2,
+            probe: probe2Id,
+          }),
+        });
+      }
       if (response.ok) {
         // Create/update invoice line if billing_rate is provided
         if (form.billing_rate && field.billingEntityId) {

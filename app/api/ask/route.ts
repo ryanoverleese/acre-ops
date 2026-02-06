@@ -224,14 +224,12 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
     // Get probe info for each season
     const seasonData = relevantSeasons.map(s => {
       const probe = s.probe?.[0] ? probeMap.get(s.probe[0].id) : null;
-      const probe2 = s.probe_2?.[0] ? probeMap.get(s.probe_2[0].id) : null;
       return {
         season: s.season,
         crop: s.crop?.value,
         service_type: s.service_type?.value,
         probe_status: s.probe_status?.value,
         probe: probe ? `#${probe.serial_number}` : null,
-        probe_2: probe2 ? `#${probe2.serial_number}` : null,
         installer: s.installer,
         install_date: s.install_date
       };
@@ -365,7 +363,6 @@ async function executeSearchFieldSeasons(params: { field_name_contains?: string;
     total_found: results.length,
     field_seasons: results.slice(0, 50).map(fs => {
       const probe = fs.probe?.[0] ? probeMap.get(fs.probe[0].id) : null;
-      const probe2 = fs.probe_2?.[0] ? probeMap.get(fs.probe_2[0].id) : null;
       return {
         field_name: fs.field?.[0]?.value || 'Unknown',
         season: fs.season,
@@ -373,7 +370,6 @@ async function executeSearchFieldSeasons(params: { field_name_contains?: string;
         service_type: fs.service_type?.value,
         probe_status: fs.probe_status?.value,
         probe: probe ? `#${probe.serial_number}` : null,
-        probe_2: probe2 ? `#${probe2.serial_number}` : null,
         installer: fs.installer,
         install_date: fs.install_date,
         antenna_type: fs.antenna_type?.value

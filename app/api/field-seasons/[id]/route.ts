@@ -55,10 +55,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.probe !== undefined && body.probe !== null) {
       setField('probe', body.probe ? [body.probe] : []);
     }
-    if (body.probe_2 !== undefined && body.probe_2 !== null) {
-      setField('probe_2', body.probe_2 ? [body.probe_2] : []);
-    }
-    if (body.probe_2_status !== undefined) setField('probe_2_status', body.probe_2_status);
+    // Note: probe_2 is stored in the probe_assignments table, not on field_seasons
     // Install planning fields
     if (body.route_order !== undefined) setField('route_order', body.route_order);
     if (body.planned_installer !== undefined) setField('planned_installer', body.planned_installer);
@@ -88,19 +85,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await response.json();
-
-    // Log probe-related keys from Baserow response to diagnose field name mismatches
-    const probeKeys = Object.keys(updated).filter(k => k.toLowerCase().includes('probe'));
-    console.log('Baserow response probe keys:', probeKeys);
-    if (updateData.probe_2 !== undefined) {
-      // Check if the response contains any key matching probe 2 variants
-      const probe2ResponseKeys = Object.keys(updated).filter(k =>
-        k.toLowerCase().replace(/[_ ]/g, '').includes('probe2')
-      );
-      console.log('Sent probe_2:', JSON.stringify(updateData.probe_2),
-        '| Response probe_2 keys:', probe2ResponseKeys,
-        '| Response values:', probe2ResponseKeys.map(k => JSON.stringify(updated[k])));
-    }
 
     revalidatePath('/fields');
     return NextResponse.json(updated);

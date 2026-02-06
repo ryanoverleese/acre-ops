@@ -1,4 +1,4 @@
-import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations } from '@/lib/baserow';
+import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations, getProbeAssignments } from '@/lib/baserow';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
 async function getProbesData(): Promise<{
@@ -11,13 +11,14 @@ async function getProbesData(): Promise<{
   probeFieldAssignments: ProbeFieldAssignment[];
 }> {
   try {
-    const [probes, billingEntities, fieldSeasons, fields, contacts, operations] = await Promise.all([
+    const [probes, billingEntities, fieldSeasons, fields, contacts, operations, probeAssignments] = await Promise.all([
       getProbes(),
       getBillingEntities(),
       getFieldSeasons(),
       getFields(),
       getContacts(),
       getOperations(),
+      getProbeAssignments(),
     ]);
 
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
@@ -97,9 +98,10 @@ async function getProbesData(): Promise<{
     });
     const availableSeasons = Array.from(seasons).sort((a, b) => b.localeCompare(a));
 
-    // Build probe-to-field assignments from field_seasons
-    // Each field_season can have probe and probe_2 assigned
+    // Build probe-to-field assignments from field_seasons and probe_assignments
     const probeFieldAssignments: ProbeFieldAssignment[] = [];
+    // Build field_season lookup for probe_assignments
+    const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     fieldSeasons.forEach((fs) => {
       const fieldId = fs.field?.[0]?.id;
       const fieldName = fieldId ? fieldMap.get(fieldId) || 'Unknown' : null;
@@ -107,7 +109,7 @@ async function getProbesData(): Promise<{
 
       if (!fieldName || !season) return;
 
-      // Check probe 1
+      // Probe 1 is directly on field_season
       const probe1Id = fs.probe?.[0]?.id;
       if (probe1Id) {
         probeFieldAssignments.push({
@@ -116,16 +118,19 @@ async function getProbesData(): Promise<{
           fieldName,
         });
       }
-
-      // Check probe 2
-      const probe2Id = fs.probe_2?.[0]?.id;
-      if (probe2Id) {
-        probeFieldAssignments.push({
-          probeId: probe2Id,
-          season,
-          fieldName,
-        });
-      }
+    });
+    // Probe 2+ from probe_assignments table
+    probeAssignments.forEach((pa) => {
+      const fsId = pa.field_season?.[0]?.id;
+      const probeId = pa.probe?.[0]?.id;
+      if (!fsId || !probeId) return;
+      const fs = fieldSeasonMap.get(fsId);
+      if (!fs) return;
+      const fieldId = fs.field?.[0]?.id;
+      const fieldName = fieldId ? fieldMap.get(fieldId) || 'Unknown' : null;
+      const season = fs.season ? String(fs.season) : null;
+      if (!fieldName || !season) return;
+      probeFieldAssignments.push({ probeId, season, fieldName });
     });
 
     return {

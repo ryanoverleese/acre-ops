@@ -92,13 +92,12 @@ async function getRepairsData(): Promise<{
       const fieldLink = fs.field?.[0];
       const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
       const probe1Id = fs.probe?.[0]?.id;
-      const probe2Id = fs.probe_2?.[0]?.id;
       return {
         id: fs.id,
         fieldName: field?.name || fieldLink?.value || 'Unknown Field',
         operation: getOperationName(field),
         probe1Serial: probe1Id ? probeMap.get(probe1Id) : undefined,
-        probe2Serial: probe2Id ? probeMap.get(probe2Id) : undefined,
+        probe2Serial: undefined, // Probe 2 data is in probe_assignments table
       };
     }).sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 
