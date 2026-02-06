@@ -53,6 +53,31 @@ export async function GET() {
       };
     });
 
+    // Also fetch probe_assignments schema + sample to check elevation/soil_type format
+    const paSchemaUrl = `https://api.baserow.io/api/database/fields/table/${TABLE_IDS.probe_assignments}/`;
+    const paSchemaRes = await fetch(paSchemaUrl, {
+      headers: { 'Authorization': `Token ${BASEROW_TOKEN}` },
+      cache: 'no-store',
+    });
+    const paFields = paSchemaRes.ok ? await paSchemaRes.json() : [];
+    const paElevationField = paFields.find((f: { name: string }) => f.name.toLowerCase().includes('elevation'));
+    const paSoilTypeField = paFields.find((f: { name: string }) => f.name.toLowerCase().includes('soil'));
+
+    const paRowUrl = `https://api.baserow.io/api/database/rows/table/${TABLE_IDS.probe_assignments}/?user_field_names=true&size=3`;
+    const paRowRes = await fetch(paRowUrl, {
+      headers: { 'Authorization': `Token ${BASEROW_TOKEN}` },
+      cache: 'no-store',
+    });
+    const paRowData = paRowRes.ok ? await paRowRes.json() : { results: [] };
+    const paSamples = (paRowData.results || []).map((row: Record<string, unknown>) => ({
+      id: row.id,
+      elevation: row['elevation'],
+      soil_type: row['soil_type'],
+      'soil type': row['soil type'],
+      elevationKeys: Object.keys(row).filter(k => k.toLowerCase().includes('elev')),
+      soilKeys: Object.keys(row).filter(k => k.toLowerCase().includes('soil')),
+    }));
+
     return NextResponse.json({
       schemaProbeFields: probeFields,
       allSchemaFields: allFields,
@@ -60,6 +85,11 @@ export async function GET() {
       sampleRowAllKeys: sampleKeys,
       serviceTypeKeys,
       serviceTypeData,
+      probeAssignments: {
+        elevationField: paElevationField ? { id: paElevationField.id, name: paElevationField.name, type: paElevationField.type } : null,
+        soilTypeField: paSoilTypeField ? { id: paSoilTypeField.id, name: paSoilTypeField.name, type: paSoilTypeField.type } : null,
+        samples: paSamples,
+      },
     });
   } catch (error) {
     console.error('Debug field-names error:', error);
