@@ -57,6 +57,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   const [soilType, setSoilType] = useState<string | null>(null);
   const [soilLoading, setSoilLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
+  const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
     setIsClient(true);
@@ -112,24 +113,39 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
             </svg>
           </button>
         </div>
-        <div style={{ padding: '0 16px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0 16px', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', margin: 0 }}>
             Click on the map to set the field location
           </p>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={showSoilLayer}
-              onChange={(e) => setShowSoilLayer(e.target.checked)}
-            />
-            Show SSURGO Soil Map
-          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+              Brightness
+              <input
+                type="range"
+                min="0.8"
+                max="2"
+                step="0.1"
+                value={brightness}
+                onChange={(e) => setBrightness(parseFloat(e.target.value))}
+                style={{ width: '80px', cursor: 'pointer' }}
+              />
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showSoilLayer}
+                onChange={(e) => setShowSoilLayer(e.target.checked)}
+              />
+              Show SSURGO Soil Map
+            </label>
+          </div>
         </div>
         <div className="location-picker-map">
           <LocationPickerMap
             position={position}
             onPositionChange={handlePositionChange}
             showSoilLayer={showSoilLayer}
+            brightness={brightness}
           />
         </div>
         <div className="location-picker-coords">

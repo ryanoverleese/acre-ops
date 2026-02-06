@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -93,10 +93,21 @@ const CircleMarker = dynamic(
 
 export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsMapProps) {
   const [isClient, setIsClient] = useState(false);
+  const [brightness, setBrightness] = useState(1.2);
+  const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Apply brightness filter to satellite tile layer only
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const firstLayer = mapRef.current.querySelector('.leaflet-tile-pane .leaflet-layer') as HTMLElement;
+    if (firstLayer) {
+      firstLayer.style.filter = `brightness(${brightness})`;
+    }
+  }, [brightness, isClient]);
 
   if (!isClient || !visible) {
     return null;
@@ -140,7 +151,19 @@ export default function FieldsMap({ fields, visible, colorBy = 'none' }: FieldsM
   const useColoredMarkers = colorBy !== 'none';
 
   return (
-    <div className="fields-map" style={{ display: visible ? 'block' : 'none' }}>
+    <div className="fields-map" style={{ display: visible ? 'block' : 'none', position: 'relative' }} ref={mapRef}>
+      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, background: 'var(--bg-primary)', borderRadius: '6px', padding: '6px 10px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: 'var(--text-secondary)', boxShadow: '0 2px 6px rgba(0,0,0,0.3)' }}>
+        <span>Brightness</span>
+        <input
+          type="range"
+          min="0.8"
+          max="2"
+          step="0.1"
+          value={brightness}
+          onChange={(e) => setBrightness(parseFloat(e.target.value))}
+          style={{ width: '80px', cursor: 'pointer' }}
+        />
+      </div>
       <MapContainer
         center={center}
         zoom={11}

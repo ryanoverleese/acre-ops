@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, WMSTileLayer } from 'react-leaflet';
+import { useEffect, useState, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents, WMSTileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -20,6 +20,24 @@ interface LocationPickerMapProps {
   position: [number, number] | null;
   onPositionChange: (lat: number, lng: number) => void;
   showSoilLayer?: boolean;
+  brightness?: number;
+}
+
+// Component to apply brightness filter to the satellite tile layer
+function BrightnessFilter({ brightness }: { brightness: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const tilePane = container.querySelector('.leaflet-tile-pane') as HTMLElement;
+    if (tilePane) {
+      // Apply filter only to the first tile layer (satellite), not overlays
+      const firstLayer = tilePane.querySelector('.leaflet-layer') as HTMLElement;
+      if (firstLayer) {
+        firstLayer.style.filter = `brightness(${brightness})`;
+      }
+    }
+  }, [map, brightness]);
+  return null;
 }
 
 // Component to handle map clicks - must be a child of MapContainer
@@ -32,7 +50,7 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
   return null;
 }
 
-export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false }: LocationPickerMapProps) {
+export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, brightness = 1.2 }: LocationPickerMapProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -59,6 +77,7 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
         attribution='&copy; Google'
         url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
       />
+      <BrightnessFilter brightness={brightness} />
       {showSoilLayer && (
         <>
           <WMSTileLayer
