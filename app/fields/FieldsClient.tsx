@@ -1102,6 +1102,7 @@ export default function FieldsClient({
         season: rolloverForm.toSeason,
         service_type: f.serviceType || undefined,
         antenna_type: f.antennaType || undefined,
+        battery_type: f.batteryType || undefined,
         probe: f.probeId || undefined,
         copy_probe: rolloverForm.copyProbes,
         source_field_season_id: f.fieldSeasonId, // Track source for probe_assignment copying

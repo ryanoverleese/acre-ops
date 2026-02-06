@@ -1,11 +1,14 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import type { ProcessedInventoryItem } from './page';
+import type { ProcessedInventoryItem, EquipmentCount } from './page';
 
 interface InventoryClientProps {
   initialItems: ProcessedInventoryItem[];
   categoryOptions: string[];
+  antennaNeeds: EquipmentCount[];
+  batteryNeeds: EquipmentCount[];
+  equipmentSeason: string;
 }
 
 const initialForm = {
@@ -14,7 +17,7 @@ const initialForm = {
   quantity: '',
 };
 
-export default function InventoryClient({ initialItems, categoryOptions }: InventoryClientProps) {
+export default function InventoryClient({ initialItems, categoryOptions, antennaNeeds, batteryNeeds, equipmentSeason }: InventoryClientProps) {
   const [items, setItems] = useState<ProcessedInventoryItem[]>(initialItems);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -216,6 +219,79 @@ export default function InventoryClient({ initialItems, categoryOptions }: Inven
           <div className="stat-value green">{totalQuantity}</div>
         </div>
       </div>
+
+      {/* Equipment Needs for Current Season */}
+      {(antennaNeeds.length > 0 || batteryNeeds.length > 0) && (
+        <div className="table-container" style={{ marginBottom: '24px' }}>
+          <div className="table-header">
+            <h3 className="table-title">Equipment Needed - {equipmentSeason} Season</h3>
+          </div>
+          <div style={{ padding: '16px', display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+            {antennaNeeds.length > 0 && (
+              <div style={{ flex: '1', minWidth: '250px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Antennas</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {antennaNeeds.map((item) => (
+                    <div key={item.type} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      background: 'var(--bg-secondary)',
+                      borderRadius: 'var(--radius)',
+                    }}>
+                      <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
+                      <strong style={{ fontSize: '14px', color: 'var(--accent-blue)' }}>{item.count}</strong>
+                    </div>
+                  ))}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderTop: '1px solid var(--border)',
+                    marginTop: '4px',
+                  }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total</span>
+                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{antennaNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+            {batteryNeeds.length > 0 && (
+              <div style={{ flex: '1', minWidth: '250px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Batteries</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {batteryNeeds.map((item) => (
+                    <div key={item.type} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      background: 'var(--bg-secondary)',
+                      borderRadius: 'var(--radius)',
+                    }}>
+                      <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
+                      <strong style={{ fontSize: '14px', color: 'var(--accent-green)' }}>{item.count}</strong>
+                    </div>
+                  ))}
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderTop: '1px solid var(--border)',
+                    marginTop: '4px',
+                  }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total</span>
+                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{batteryNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="table-container">
         <div className="table-header">

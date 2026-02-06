@@ -12,6 +12,7 @@ export interface ProcessedProbeAssignment {
   probeId: number | null;
   probeStatus: string;
   antennaType?: string;
+  batteryType?: string;
   // Placement data
   placementLat?: number;
   placementLng?: number;
@@ -61,6 +62,8 @@ export interface ProcessedField {
   probe2Id: number | null;
   probe2Status: string;
   probe2AssignmentId: number | null;
+  probe2AntennaType: string;
+  probe2BatteryType: string;
   lat: number;
   lng: number;
   waterSource?: string;
@@ -261,6 +264,8 @@ async function getFieldsData(): Promise<{
           probe2Id: null,
           probe2Status: 'Unassigned',
           probe2AssignmentId: null,
+          probe2AntennaType: '',
+          probe2BatteryType: '',
           lat: field.lat || 0,
           lng: field.lng || 0,
           waterSource: field.water_source?.value,
@@ -323,6 +328,8 @@ async function getFieldsData(): Promise<{
             probe2Id: probe2Link?.id || null,
             probe2Status: probe2Assignment?.probe_status?.value || 'Unassigned',
             probe2AssignmentId: probe2Assignment?.id || null,
+            probe2AntennaType: probe2Assignment?.antenna_type?.value || '',
+            probe2BatteryType: probe2Assignment?.battery_type?.value || '',
             lat: field.lat || 0,
             lng: field.lng || 0,
             waterSource: field.water_source?.value,
@@ -416,6 +423,7 @@ async function getFieldsData(): Promise<{
         probeId: probeLink?.id || null,
         probeStatus: pa.probe_status?.value || 'Unassigned',
         antennaType: pa.antenna_type?.value,
+        batteryType: pa.battery_type?.value,
         // Placement data
         placementLat: pa.placement_lat,
         placementLng: pa.placement_lng,

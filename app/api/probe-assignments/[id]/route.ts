@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.probe_number !== undefined) setField('probe_number', body.probe_number);
     if (body.probe_status !== undefined) setField('probe_status', body.probe_status);
     if (body.antenna_type !== undefined) setField('antenna_type', body.antenna_type);
+    if (body.battery_type !== undefined) setField('battery_type', body.battery_type);
 
     // Install data
     if (body.installer !== undefined) setField('installer', body.installer);

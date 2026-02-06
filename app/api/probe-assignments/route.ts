@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     // Other optional fields
     if (body.probe) createData.probe = [body.probe];
     if (body.antenna_type) createData.antenna_type = body.antenna_type;
+    if (body.battery_type) createData.battery_type = body.battery_type;
     if (body.installer) createData.installer = body.installer;
     if (body.install_date) createData.install_date = body.install_date;
     if (body.install_lat !== undefined) createData.install_lat = body.install_lat;

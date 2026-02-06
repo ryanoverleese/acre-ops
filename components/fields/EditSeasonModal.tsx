@@ -28,6 +28,8 @@ export interface EditSeasonForm {
   service_type: string;
   antenna_type: string;
   battery_type: string;
+  probe2_antenna_type: string;
+  probe2_battery_type: string;
   side_dress: string;
   logger_id: string;
   early_removal: string;
@@ -45,6 +47,8 @@ export const createEditSeasonForm = (field: ProcessedField, getRateForServiceTyp
   service_type: field.serviceType || '',
   antenna_type: field.antennaType || '',
   battery_type: field.batteryType || '',
+  probe2_antenna_type: field.probe2AntennaType || '',
+  probe2_battery_type: field.probe2BatteryType || '',
   side_dress: field.sideDress || '',
   logger_id: field.loggerId || '',
   early_removal: field.earlyRemoval || '',
@@ -115,13 +119,15 @@ export default function EditSeasonModal({
       // Probe 2 is stored in probe_assignments table (probe_number=2)
       const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
       if (field.probe2AssignmentId) {
-        // Update existing probe_assignment (send 0 to clear, not null)
+        // Update existing probe_assignment
         await fetch(`/api/probe-assignments/${field.probe2AssignmentId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             probe: probe2Id,
             probe_status: probe2Id ? 'Assigned' : 'Unassigned',
+            antenna_type: clean(form.probe2_antenna_type),
+            battery_type: clean(form.probe2_battery_type),
           }),
         });
       } else if (probe2Id) {
@@ -133,6 +139,8 @@ export default function EditSeasonModal({
             field_season: field.fieldSeasonId,
             probe_number: 2,
             probe: probe2Id,
+            antenna_type: clean(form.probe2_antenna_type),
+            battery_type: clean(form.probe2_battery_type),
           }),
         });
       }
@@ -366,6 +374,33 @@ export default function EditSeasonModal({
                 </select>
               </div>
             </div>
+            {/* Probe 2 Equipment - only shown when probe 2 is assigned */}
+            {selectedProbe2Id && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Probe 2 Antenna Type</label>
+                  <select value={form.probe2_antenna_type} onChange={(e) => setForm({ ...form, probe2_antenna_type: e.target.value })}>
+                    <option value="">Select...</option>
+                    <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
+                    <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
+                    <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
+                    <option value="ASK">ASK</option>
+                    <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
+                    <option value="Stub CropX Antenna">Stub CropX Antenna</option>
+                    <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Probe 2 Battery Type</label>
+                  <select value={form.probe2_battery_type} onChange={(e) => setForm({ ...form, probe2_battery_type: e.target.value })}>
+                    <option value="">Select...</option>
+                    <option value="CropX">CropX</option>
+                    <option value="Sentek New">Sentek New</option>
+                    <option value="Sentek Used">Sentek Used</option>
+                  </select>
+                </div>
+              </div>
+            )}
 
             {/* Install Planning Section */}
             <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>

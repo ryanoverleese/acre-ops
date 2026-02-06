@@ -261,6 +261,7 @@ export interface ProbeAssignment {
   probe?: { id: number; value: string }[];
   probe_number?: number; // 1, 2, 3, etc.
   antenna_type?: { id: number; value: string };
+  battery_type?: { id: number; value: string };
   // Placement data (defaulted from field, can be overridden)
   placement_lat?: number;
   placement_lng?: number;

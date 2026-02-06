@@ -10,6 +10,7 @@ interface BulkCreateItem {
   crop?: string;
   service_type?: string;
   antenna_type?: string;
+  battery_type?: string;
   probe?: number;
   copy_probe?: boolean;
   source_field_season_id?: number; // For rollover - to track which field_season this came from
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
         if (item.crop) data.crop = item.crop;
         if (item.service_type) data.service_type = item.service_type;
         if (item.antenna_type) data.antenna_type = item.antenna_type;
+        if (item.battery_type) data.battery_type = item.battery_type;
         if (item.probe && item.copy_probe) {
           data.probe = [item.probe];
           data.probe_status = 'Assigned';
