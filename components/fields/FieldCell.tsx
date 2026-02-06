@@ -94,7 +94,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="antennaType" value={field.antennaType} type="select"
-            options={[{ value: 'Standard', label: 'Standard' }, { value: 'Extended', label: 'Extended' }]}
+            options={[{ value: 'Sentek Stub', label: 'Sentek Stub' }, { value: 'CropX Stub', label: 'CropX Stub' }, { value: "Sentek 10'", label: "Sentek 10'" }, { value: "CropX 10'", label: "CropX 10'" }, { value: "CropX 6'", label: "CropX 6'" }, { value: 'ASK', label: 'ASK' }]}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
@@ -102,7 +102,7 @@ export function FieldCell({
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="batteryType" value={field.batteryType} type="select"
-            options={[{ value: 'Standard', label: 'Standard' }, { value: 'Extended', label: 'Extended' }]}
+            options={[{ value: 'CropX', label: 'CropX' }, { value: 'Sentek New', label: 'Sentek New' }, { value: 'Sentek Used', label: 'Sentek Used' }]}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );

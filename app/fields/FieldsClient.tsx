@@ -2133,13 +2133,12 @@ export default function FieldsClient({
                                             value={pa.antennaType}
                                             type="select"
                                             options={[
-                                              { value: 'Stub Sentek Antenna', label: 'Stub Sentek Antenna' },
-                                              { value: 'CropX Stub - White Flag', label: 'CropX Stub - White Flag' },
-                                              { value: "6' CropX Antenna", label: "6' CropX Antenna" },
+                                              { value: 'Sentek Stub', label: 'Sentek Stub' },
+                                              { value: 'CropX Stub', label: 'CropX Stub' },
+                                              { value: "Sentek 10'", label: "Sentek 10'" },
+                                              { value: "CropX 10'", label: "CropX 10'" },
+                                              { value: "CropX 6'", label: "CropX 6'" },
                                               { value: 'ASK', label: 'ASK' },
-                                              { value: "10' CropX Antenna", label: "10' CropX Antenna" },
-                                              { value: 'Stub CropX Antenna', label: 'Stub CropX Antenna' },
-                                              { value: "10' Sentek Antenna", label: "10' Sentek Antenna" },
                                             ]}
                                             onSave={handleProbeAssignmentSave}
                                             savingFields={savingFields}

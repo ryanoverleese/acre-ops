@@ -250,13 +250,12 @@ export default function EditSeasonModal({
                 <label>Antenna Type</label>
                 <select value={form.antenna_type} onChange={(e) => setForm({ ...form, antenna_type: e.target.value })}>
                   <option value="">Select...</option>
-                  <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
-                  <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
-                  <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
+                  <option value="Sentek Stub">Sentek Stub</option>
+                  <option value="CropX Stub">CropX Stub</option>
+                  <option value="Sentek 10'">Sentek 10&apos;</option>
+                  <option value="CropX 10'">CropX 10&apos;</option>
+                  <option value="CropX 6'">CropX 6&apos;</option>
                   <option value="ASK">ASK</option>
-                  <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                  <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                  <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
                 </select>
               </div>
               <div className="form-group">
@@ -387,13 +386,12 @@ export default function EditSeasonModal({
                   <label>Probe 2 Antenna Type</label>
                   <select value={form.probe2_antenna_type} onChange={(e) => setForm({ ...form, probe2_antenna_type: e.target.value })}>
                     <option value="">Select...</option>
-                    <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
-                    <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
-                    <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
+                    <option value="Sentek Stub">Sentek Stub</option>
+                    <option value="CropX Stub">CropX Stub</option>
+                    <option value="Sentek 10'">Sentek 10&apos;</option>
+                    <option value="CropX 10'">CropX 10&apos;</option>
+                    <option value="CropX 6'">CropX 6&apos;</option>
                     <option value="ASK">ASK</option>
-                    <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                    <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                    <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
                   </select>
                 </div>
                 <div className="form-group">
