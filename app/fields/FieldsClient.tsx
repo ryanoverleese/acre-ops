@@ -2050,18 +2050,23 @@ export default function FieldsClient({
                                 </tr>
                                 {/* Expanded probe assignment sub-rows */}
                                 {isExpanded && field.fieldSeasonId && (
-                                  <>
-                                    <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                      <td style={{ paddingLeft: '32px', fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}></td>
-                                      <td colSpan={2} style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Location</td>
-                                      <td colSpan={2} style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Probe</td>
-                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Status</td>
-                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Antenna</td>
-                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Battery</td>
-                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Notes</td>
-                                      <td style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px' }}>Approval</td>
-                                      <td></td>
-                                    </tr>
+                                  <tr>
+                                    <td colSpan={visibleColumns.length + 1} style={{ padding: 0 }}>
+                                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                        <thead>
+                                          <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                                            <th style={{ paddingLeft: '32px', width: '80px' }}></th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '140px' }}>Location</th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '200px' }}>Probe</th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '120px' }}>Status</th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '110px' }}>Antenna</th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '100px' }}>Battery</th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left' }}>Notes</th>
+                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '100px' }}>Approval</th>
+                                            <th style={{ width: '36px' }}></th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
                                     {fieldSeasonProbeAssignments.map((pa) => (
                                       <tr key={`pa-${pa.id}`} style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                                         <td style={{ paddingLeft: '32px' }}>
@@ -2070,7 +2075,6 @@ export default function FieldsClient({
                                           </span>
                                         </td>
                                         <td
-                                          colSpan={2}
                                           style={{ fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer' }}
                                           onClick={(e) => {
                                             e.stopPropagation();
@@ -2091,7 +2095,7 @@ export default function FieldsClient({
                                             <span style={{ color: 'var(--accent-blue)' }}>Set location</span>
                                           )}
                                         </td>
-                                        <td colSpan={2} onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="probeId"
@@ -2216,7 +2220,7 @@ export default function FieldsClient({
                                     ))}
                                     {/* Add probe assignment row */}
                                     <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                      <td colSpan={11} style={{ paddingLeft: '32px' }}>
+                                      <td colSpan={9} style={{ paddingLeft: '32px' }}>
                                         <button
                                           onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
                                           disabled={savingProbeAssignment}
@@ -2234,7 +2238,10 @@ export default function FieldsClient({
                                         </button>
                                       </td>
                                     </tr>
-                                  </>
+                                        </tbody>
+                                      </table>
+                                    </td>
+                                  </tr>
                                 )}
                               </React.Fragment>
                             );
