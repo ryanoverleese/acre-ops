@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { TABLE_IDS } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -78,6 +79,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await response.json();
+    revalidatePath('/fields');
     return NextResponse.json(updated);
   } catch (error) {
     console.error('Error updating field season:', error);
