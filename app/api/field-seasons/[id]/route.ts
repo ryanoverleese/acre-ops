@@ -64,17 +64,21 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.approval_status !== undefined) setField('approval_status', body.approval_status);
 
     // Auto-create select options for single_select fields if they don't exist yet
+    const selectFieldsToEnsure: [string, string][] = [];
     if (body.service_type && typeof body.service_type === 'string') {
-      await ensureSelectOption('field_seasons', 'service_type', body.service_type);
+      selectFieldsToEnsure.push(['service_type', body.service_type]);
     }
     if (body.crop && typeof body.crop === 'string') {
-      await ensureSelectOption('field_seasons', 'crop', body.crop);
+      selectFieldsToEnsure.push(['crop', body.crop]);
+    }
+    for (const [fieldName, value] of selectFieldsToEnsure) {
+      await ensureSelectOption('field_seasons', fieldName, value);
     }
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
     console.log('PATCH field-season:', fieldSeasonId, 'with data:', JSON.stringify(updateData));
 
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       method: 'PATCH',
       headers: {
         'Authorization': `Token ${BASEROW_TOKEN}`,
@@ -82,6 +86,32 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       },
       body: JSON.stringify(updateData),
     });
+
+    // If save failed due to invalid select option, force-add it and retry once
+    if (!response.ok && response.status === 400) {
+      const errorText = await response.text();
+      if (errorText.includes('not a valid select option')) {
+        console.warn('Select option missing, auto-creating and retrying...', errorText);
+        for (const [fieldName, value] of selectFieldsToEnsure) {
+          await ensureSelectOption('field_seasons', fieldName, value);
+        }
+        // Retry the save
+        response = await fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(updateData),
+        });
+      } else {
+        console.error('Baserow API error:', response.status, errorText);
+        return NextResponse.json(
+          { error: 'Failed to update field season', status: response.status, details: errorText },
+          { status: response.status }
+        );
+      }
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

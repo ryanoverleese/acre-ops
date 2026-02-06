@@ -516,62 +516,71 @@ export async function ensureSelectOption(
   fieldName: string,
   value: string
 ): Promise<void> {
-  const tableId = TABLE_IDS[tableName];
-  const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
+  try {
+    const tableId = TABLE_IDS[tableName];
+    const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
+    console.log(`ensureSelectOption: checking "${value}" exists on ${tableName}.${fieldName} (table ${tableId})`);
 
-  const response = await fetchWithRetry(url, {
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    console.error(`Failed to fetch fields for ${tableName}:`, response.status);
-    return;
-  }
-
-  const fields: Array<{
-    id: number;
-    name: string;
-    type: string;
-    select_options?: SelectOption[];
-  }> = await response.json();
-
-  // Find the field (try both underscore and space variants)
-  const spaceVariant = fieldName.replace(/_/g, ' ');
-  const field = fields.find(f =>
-    f.name === fieldName || f.name === spaceVariant
-  );
-
-  if (!field || field.type !== 'single_select') {
-    console.warn(`Field ${fieldName} not found or not a single_select in ${tableName}`);
-    return;
-  }
-
-  const existingOptions = field.select_options || [];
-  if (existingOptions.some(opt => opt.value === value)) {
-    return; // Already exists
-  }
-
-  // Add the new option
-  const updatedOptions = [...existingOptions, { value, color: 'light-gray' }];
-
-  const patchResponse = await fetchWithRetry(
-    `https://api.baserow.io/api/database/fields/${field.id}/`,
-    {
-      method: 'PATCH',
+    const response = await fetchWithRetry(url, {
       headers: {
         'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ select_options: updatedOptions }),
-    }
-  );
+      cache: 'no-store',
+    });
 
-  if (!patchResponse.ok) {
-    console.error(`Failed to add select option "${value}" to ${tableName}.${fieldName}:`, patchResponse.status);
-  } else {
-    console.log(`Auto-added select option "${value}" to ${tableName}.${fieldName}`);
+    if (!response.ok) {
+      console.error(`ensureSelectOption: failed to fetch fields for ${tableName}:`, response.status);
+      return;
+    }
+
+    const fields: Array<{
+      id: number;
+      name: string;
+      type: string;
+      select_options?: SelectOption[];
+    }> = await response.json();
+
+    // Find the field (try both underscore and space variants)
+    const spaceVariant = fieldName.replace(/_/g, ' ');
+    const field = fields.find(f =>
+      f.name === fieldName || f.name === spaceVariant
+    );
+
+    if (!field || field.type !== 'single_select') {
+      const fieldNames = fields.map(f => `${f.name}(${f.type})`).join(', ');
+      console.warn(`ensureSelectOption: field "${fieldName}" not found or not single_select in ${tableName}. Available: ${fieldNames}`);
+      return;
+    }
+
+    const existingOptions = field.select_options || [];
+    if (existingOptions.some(opt => opt.value === value)) {
+      console.log(`ensureSelectOption: "${value}" already exists on ${tableName}.${field.name} (field ${field.id})`);
+      return;
+    }
+
+    // Add the new option - preserve existing option IDs so Baserow doesn't recreate them
+    const updatedOptions = [...existingOptions, { value, color: 'light-gray' }];
+    console.log(`ensureSelectOption: adding "${value}" to ${tableName}.${field.name} (field ${field.id}), now ${updatedOptions.length} options`);
+
+    const patchResponse = await fetchWithRetry(
+      `https://api.baserow.io/api/database/fields/${field.id}/`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ select_options: updatedOptions }),
+      }
+    );
+
+    if (!patchResponse.ok) {
+      const errText = await patchResponse.text();
+      console.error(`ensureSelectOption: PATCH failed for "${value}" on ${tableName}.${fieldName}:`, patchResponse.status, errText);
+    } else {
+      console.log(`ensureSelectOption: successfully added "${value}" to ${tableName}.${field.name}`);
+    }
+  } catch (error) {
+    console.error(`ensureSelectOption: unexpected error for "${value}" on ${tableName}.${fieldName}:`, error);
   }
 }
