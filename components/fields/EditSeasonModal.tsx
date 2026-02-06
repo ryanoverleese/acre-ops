@@ -83,16 +83,19 @@ export default function EditSeasonModal({
     if (!field.fieldSeasonId) return;
     setSaving(true);
     try {
+      // Helper: treat 'Unknown' the same as empty (it's a display-only default, not a real Baserow value)
+      const clean = (val: string | undefined) => (val && val !== 'Unknown') ? val : null;
+
       const patchBody: Record<string, unknown> = {
-        crop: form.crop || null,
-        service_type: form.service_type || null,
-        antenna_type: form.antenna_type || null,
-        battery_type: form.battery_type || null,
-        side_dress: form.side_dress || null,
+        crop: clean(form.crop),
+        service_type: clean(form.service_type),
+        antenna_type: clean(form.antenna_type),
+        battery_type: clean(form.battery_type),
+        side_dress: clean(form.side_dress),
         logger_id: form.logger_id || null,
-        early_removal: form.early_removal || null,
+        early_removal: clean(form.early_removal),
         hybrid_variety: form.hybrid_variety || null,
-        ready_to_remove: form.ready_to_remove || null,
+        ready_to_remove: clean(form.ready_to_remove),
         planting_date: form.planting_date || null,
         route_order: form.route_order ? parseInt(form.route_order, 10) : null,
         planned_installer: form.planned_installer || null,
