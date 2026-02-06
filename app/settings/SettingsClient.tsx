@@ -1071,16 +1071,16 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
                               onClick={() => handleAddOption(tableName, fieldName)}
                               disabled={isSaving || !newOptionValue.trim()}
                               style={{
-                                background: 'var(--accent)',
+                                background: 'none',
                                 border: 'none',
-                                color: 'white',
+                                color: 'var(--text-primary)',
                                 cursor: 'pointer',
                                 padding: '2px 8px',
-                                borderRadius: '4px',
                                 fontSize: '12px',
+                                fontWeight: 700,
                               }}
                             >
-                              Add
+                              Save
                             </button>
                             <button
                               onClick={() => { setAddingTo(null); setNewOptionValue(''); }}
