@@ -1385,6 +1385,7 @@ export default function FieldsClient({
         probeId: 'probe',
         probeStatus: 'probe_status',
         antennaType: 'antenna_type',
+        batteryType: 'battery_type',
         placementLat: 'placement_lat',
         placementLng: 'placement_lng',
         elevation: 'elevation',
@@ -2145,7 +2146,23 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td colSpan={2} onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="batteryType"
+                                            value={pa.batteryType}
+                                            type="select"
+                                            options={[
+                                              { value: 'CropX', label: 'CropX' },
+                                              { value: 'Sentek New', label: 'Sentek New' },
+                                              { value: 'Sentek Used', label: 'Sentek Used' },
+                                            ]}
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="placementNotes"
