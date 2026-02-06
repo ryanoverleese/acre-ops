@@ -151,7 +151,7 @@ export function FieldCell({
     case 'service':
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
-          <InlineCell fieldSeasonId={field.fieldSeasonId} field="serviceType" value={field.serviceType} type="select" options={serviceTypeOptions}
+          <InlineCell fieldSeasonId={field.fieldSeasonId} field="serviceType" value={field.serviceTypeId ? String(field.serviceTypeId) : ''} type="select" options={serviceTypeOptions}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );

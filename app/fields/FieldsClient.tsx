@@ -664,6 +664,12 @@ export default function FieldsClient({
         // Update local state
         setFields(prev => prev.map(f => {
           if (f.fieldSeasonId === fieldSeasonId) {
+            // For serviceType (Link field), update both display name and ID
+            if (field === 'serviceType') {
+              const stId = value ? parseInt(value as string, 10) : null;
+              const stLabel = serviceTypeOptions.find(o => o.value === String(value))?.label || '';
+              return { ...f, serviceType: stLabel, serviceTypeId: stId };
+            }
             return { ...f, [field]: value };
           }
           return f;
@@ -690,7 +696,7 @@ export default function FieldsClient({
         return next;
       });
     }
-  }, [probes]);
+  }, [probes, serviceTypeOptions]);
 
   // Inline save handler for field-level data (not season-level)
   const handleInlineFieldSave = useCallback(async (fieldId: number, fieldName: string, value: unknown) => {

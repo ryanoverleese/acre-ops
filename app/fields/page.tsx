@@ -173,31 +173,6 @@ async function getFieldsData(): Promise<{
       console.error('Failed to fetch select options (non-fatal):', e);
     }
 
-    // DEBUG: Log service_type data from a sample field season to diagnose Link field read issue
-    const sampleWithST = fieldSeasons.find(fs => {
-      // Check all possible key variations
-      const raw = fs as unknown as Record<string, unknown>;
-      return raw['service_type'] || raw['service type'];
-    });
-    if (sampleWithST) {
-      const raw = sampleWithST as unknown as Record<string, unknown>;
-      console.log('DEBUG service_type sample:', JSON.stringify({
-        id: sampleWithST.id,
-        service_type: raw['service_type'],
-        'service type': raw['service type'],
-        allKeys: Object.keys(raw).filter(k => k.toLowerCase().includes('service')),
-        rawValue: sampleWithST.service_type,
-        type: typeof sampleWithST.service_type,
-        isArray: Array.isArray(sampleWithST.service_type),
-      }));
-    } else {
-      console.log('DEBUG: No field_season found with service_type data. Sample keys:', fieldSeasons[0] ? Object.keys(fieldSeasons[0] as unknown as Record<string, unknown>).filter(k => k.toLowerCase().includes('service')) : 'no rows');
-      // Log ALL keys from first row to see what's available
-      if (fieldSeasons[0]) {
-        console.log('DEBUG: All field_season keys:', Object.keys(fieldSeasons[0] as unknown as Record<string, unknown>).join(', '));
-      }
-    }
-
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const probeMap = new Map(probes.map((p) => [p.id, p]));
 
