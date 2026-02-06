@@ -182,6 +182,23 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
   const [selectedColumnTab, setSelectedColumnTab] = useState<TabView>('signup');
   const [columnsSaved, setColumnsSaved] = useState(false);
 
+  // Collapsible sections - all open by default
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    new Set(['appSettings', 'tabColumns', 'serviceRates', 'dropdownOptions', 'backup'])
+  );
+
+  const toggleSection = (key: string) => {
+    setOpenSections(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
   // Dropdown options editing state
   const [localOptions, setLocalOptions] = useState<SerializedSelectOptionsWithMeta>(selectOptions);
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -514,115 +531,160 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
 
       {/* Application Settings */}
       <ContentCard className="mb-6">
-        <SectionHeader title="Application Settings" />
+        <div
+          onClick={() => toggleSection('appSettings')}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <SectionHeader title="Application Settings" />
+          <svg
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+            style={{ transition: 'transform 0.2s', transform: openSections.has('appSettings') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
 
-        <FormFieldRow>
-          <div className="form-field">
-            <label>Default Season:</label>
-            <select
-              className="inline-select"
-              value={globalSeason}
-              onChange={(e) => handleSeasonChange(e.target.value)}
-            >
-              {availableSeasons.map((season) => (
-                <option key={season} value={season}>{season}</option>
-              ))}
-            </select>
-            <SavedIndicator show={seasonSaved} />
-          </div>
-        </FormFieldRow>
-        <p className="section-description" style={{ marginTop: '8px', marginBottom: 0 }}>
-          This season will be pre-selected when you visit pages with season filters.
-        </p>
+        {openSections.has('appSettings') && (
+          <>
+            <FormFieldRow>
+              <div className="form-field">
+                <label>Default Season:</label>
+                <select
+                  className="inline-select"
+                  value={globalSeason}
+                  onChange={(e) => handleSeasonChange(e.target.value)}
+                >
+                  {availableSeasons.map((season) => (
+                    <option key={season} value={season}>{season}</option>
+                  ))}
+                </select>
+                <SavedIndicator show={seasonSaved} />
+              </div>
+            </FormFieldRow>
+            <p className="section-description" style={{ marginTop: '8px', marginBottom: 0 }}>
+              This season will be pre-selected when you visit pages with season filters.
+            </p>
+          </>
+        )}
       </ContentCard>
 
       {/* Fields Tab Column Settings */}
       <ContentCard className="mb-6">
-        <SectionHeader
-          title="Fields Tab Columns"
-          actions={<SavedIndicator show={columnsSaved} />}
-        />
-
-        <p className="section-description">
-          Configure which columns are visible for each tab on the Fields page.
-        </p>
-
-        {/* Tab and column dropdowns */}
-        <FormFieldRow className="mb-4">
-          <div>
-            <label className="form-group-label">Tab</label>
-            <select
-              className="inline-select"
-              value={selectedColumnTab}
-              onChange={(e) => setSelectedColumnTab(e.target.value as TabView)}
-            >
-              {TAB_INFO.map((tab) => (
-                <option key={tab.key} value={tab.key}>{tab.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="form-group-label">Add Column</label>
-            <select
-              className="inline-select"
-              value=""
-              onChange={(e) => {
-                if (e.target.value) {
-                  handleToggleColumn(e.target.value as FieldColumnKey);
-                }
-              }}
-            >
-              <option value="">Select column to add...</option>
-              {ALL_COLUMN_DEFINITIONS
-                .filter(col => !col.alwaysVisible && !tabColumns[selectedColumnTab].includes(col.key))
-                .map((col) => (
-                  <option key={col.key} value={col.key}>{col.label}</option>
-                ))}
-            </select>
-          </div>
-
-          <button
-            className="btn btn-secondary btn-sm"
-            onClick={handleResetColumns}
-            style={{ alignSelf: 'flex-end' }}
+        <div
+          onClick={() => toggleSection('tabColumns')}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <SectionHeader
+            title="Fields Tab Columns"
+            actions={<SavedIndicator show={columnsSaved} />}
+          />
+          <svg
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+            style={{ transition: 'transform 0.2s', transform: openSections.has('tabColumns') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
           >
-            Reset to Defaults
-          </button>
-        </FormFieldRow>
-
-        {/* Selected columns as removable tags */}
-        <ColumnTagsContainer>
-          {tabColumns[selectedColumnTab].map((colKey) => {
-            const col = ALL_COLUMN_DEFINITIONS.find(c => c.key === colKey);
-            if (!col) return null;
-            return (
-              <ColumnTag
-                key={colKey}
-                label={col.label}
-                locked={col.alwaysVisible}
-                onRemove={() => handleToggleColumn(colKey)}
-              />
-            );
-          })}
-        </ColumnTagsContainer>
-
-        <div className="column-count">
-          {tabColumns[selectedColumnTab].length} columns selected
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
+
+        {openSections.has('tabColumns') && (
+          <>
+            <p className="section-description">
+              Configure which columns are visible for each tab on the Fields page.
+            </p>
+
+            {/* Tab and column dropdowns */}
+            <FormFieldRow className="mb-4">
+              <div>
+                <label className="form-group-label">Tab</label>
+                <select
+                  className="inline-select"
+                  value={selectedColumnTab}
+                  onChange={(e) => setSelectedColumnTab(e.target.value as TabView)}
+                >
+                  {TAB_INFO.map((tab) => (
+                    <option key={tab.key} value={tab.key}>{tab.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-group-label">Add Column</label>
+                <select
+                  className="inline-select"
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      handleToggleColumn(e.target.value as FieldColumnKey);
+                    }
+                  }}
+                >
+                  <option value="">Select column to add...</option>
+                  {ALL_COLUMN_DEFINITIONS
+                    .filter(col => !col.alwaysVisible && !tabColumns[selectedColumnTab].includes(col.key))
+                    .map((col) => (
+                      <option key={col.key} value={col.key}>{col.label}</option>
+                    ))}
+                </select>
+              </div>
+
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={handleResetColumns}
+                style={{ alignSelf: 'flex-end' }}
+              >
+                Reset to Defaults
+              </button>
+            </FormFieldRow>
+
+            {/* Selected columns as removable tags */}
+            <ColumnTagsContainer>
+              {tabColumns[selectedColumnTab].map((colKey) => {
+                const col = ALL_COLUMN_DEFINITIONS.find(c => c.key === colKey);
+                if (!col) return null;
+                return (
+                  <ColumnTag
+                    key={colKey}
+                    label={col.label}
+                    locked={col.alwaysVisible}
+                    onRemove={() => handleToggleColumn(colKey)}
+                  />
+                );
+              })}
+            </ColumnTagsContainer>
+
+            <div className="column-count">
+              {tabColumns[selectedColumnTab].length} columns selected
+            </div>
+          </>
+        )}
       </ContentCard>
 
       {/* Service Rates */}
       <ContentCard className="mb-6">
-        <SectionHeader
-          title="Service Rates"
-          actions={
-            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
-              + Add Rate
-            </button>
-          }
-        />
+        <div
+          onClick={() => toggleSection('serviceRates')}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <SectionHeader
+            title="Service Rates"
+            actions={
+              openSections.has('serviceRates') ? (
+                <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }}>
+                  + Add Rate
+                </button>
+              ) : undefined
+            }
+          />
+          <svg
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+            style={{ transition: 'transform 0.2s', transform: openSections.has('serviceRates') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
 
+        {openSections.has('serviceRates') && (
+          <>
         <p className="section-description">
           Define billing rates for each service type. These rates auto-fill when enrolling fields.
         </p>
@@ -775,6 +837,8 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
             </div>
           </>
         )}
+          </>
+        )}
       </ContentCard>
 
       {/* Add Rate Modal */}
@@ -853,7 +917,21 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
 
       {/* Dropdown Options */}
       <ContentCard className="mb-6">
-        <SectionHeader title="Dropdown Options" />
+        <div
+          onClick={() => toggleSection('dropdownOptions')}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <SectionHeader title="Dropdown Options" />
+          <svg
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+            style={{ transition: 'transform 0.2s', transform: openSections.has('dropdownOptions') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+
+        {openSections.has('dropdownOptions') && (
+          <>
         <p className="section-description">
           Manage dropdown options used across the application. Click an option to rename it, use &times; to remove, or + to add new options.
         </p>
@@ -1019,19 +1097,18 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              justifyContent: 'center',
-                              width: '22px',
-                              height: '22px',
+                              gap: '2px',
+                              padding: '2px 8px',
                               borderRadius: '4px',
-                              fontSize: '14px',
+                              fontSize: '12px',
                               background: 'none',
                               border: '1px dashed var(--border)',
                               color: 'var(--text-muted)',
                               cursor: 'pointer',
+                              whiteSpace: 'nowrap',
                             }}
-                            title="Add option"
                           >
-                            +
+                            + Add New
                           </button>
                         )}
                       </div>
@@ -1042,42 +1119,60 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
             </div>
           );
         })}
+          </>
+        )}
       </ContentCard>
 
       {/* Data Backup */}
       <ContentCard className="mb-6">
-        <SectionHeader title="Data Backup" />
-        <p className="section-description">
-          Download a full backup of all your data as a CSV file. Opens in Excel or Google Sheets.
-        </p>
-        <div style={{ marginTop: '12px' }}>
-          <button
-            className="btn btn-primary"
-            disabled={backupLoading}
-            onClick={async () => {
-              setBackupLoading(true);
-              try {
-                const response = await fetch('/api/backup');
-                if (!response.ok) throw new Error('Backup failed');
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'acre-ops-backup.csv';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              } catch {
-                alert('Failed to download backup. Please try again.');
-              } finally {
-                setBackupLoading(false);
-              }
-            }}
+        <div
+          onClick={() => toggleSection('backup')}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+        >
+          <SectionHeader title="Data Backup" />
+          <svg
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+            style={{ transition: 'transform 0.2s', transform: openSections.has('backup') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0 }}
           >
-            {backupLoading ? 'Downloading...' : 'Download Backup'}
-          </button>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
+
+        {openSections.has('backup') && (
+          <>
+            <p className="section-description">
+              Download a full backup of all your data as a CSV file. Opens in Excel or Google Sheets.
+            </p>
+            <div style={{ marginTop: '12px' }}>
+              <button
+                className="btn btn-primary"
+                disabled={backupLoading}
+                onClick={async () => {
+                  setBackupLoading(true);
+                  try {
+                    const response = await fetch('/api/backup');
+                    if (!response.ok) throw new Error('Backup failed');
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'acre-ops-backup.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  } catch {
+                    alert('Failed to download backup. Please try again.');
+                  } finally {
+                    setBackupLoading(false);
+                  }
+                }}
+              >
+                {backupLoading ? 'Downloading...' : 'Download Backup'}
+              </button>
+            </div>
+          </>
+        )}
       </ContentCard>
     </>
   );
