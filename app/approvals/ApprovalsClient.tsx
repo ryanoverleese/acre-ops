@@ -38,6 +38,7 @@ export default function ApprovalsClient({
 
   // Approval link state (per operation)
   const [linkOperationId, setLinkOperationId] = useState<number | null>(null);
+  const [linkType, setLinkType] = useState<'approval' | 'field-info'>('approval');
   const [approvalToken, setApprovalToken] = useState<string | null>(null);
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -267,9 +268,10 @@ export default function ApprovalsClient({
     }
   };
 
-  const handleGenerateApprovalLink = async (operationId: number, regenerate: boolean = false) => {
+  const handleGenerateApprovalLink = async (operationId: number, type: 'approval' | 'field-info' = 'approval', regenerate: boolean = false) => {
     setApprovalLoading(true);
     setLinkOperationId(operationId);
+    setLinkType(type);
     setLinkCopied(false);
     try {
       const response = await fetch(`/api/operations/${operationId}/approval-token`, {
@@ -295,7 +297,8 @@ export default function ApprovalsClient({
   const getApprovalUrl = () => {
     if (!approvalToken) return '';
     const year = selectedSeason !== 'all' ? selectedSeason : new Date().getFullYear();
-    return `${window.location.origin}/approve/${approvalToken}/${year}`;
+    const path = linkType === 'field-info' ? 'field-info' : 'approve';
+    return `${window.location.origin}/${path}/${approvalToken}/${year}`;
   };
 
   const handleCopyLink = async () => {
@@ -481,37 +484,68 @@ export default function ApprovalsClient({
                       </span>
                     )}
 
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (linkOperationId === group.operationId && approvalToken) {
-                          setLinkOperationId(null);
-                          setApprovalToken(null);
-                        } else {
-                          handleGenerateApprovalLink(group.operationId);
-                        }
-                      }}
-                      disabled={approvalLoading && linkOperationId === group.operationId}
-                      style={{
-                        marginLeft: 'auto',
-                        background: 'none',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius)',
-                        padding: '4px 10px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
-                      title="Generate customer approval link"
-                    >
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                      </svg>
-                      {approvalLoading && linkOperationId === group.operationId ? 'Loading...' : 'Generate Link'}
-                    </button>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (linkOperationId === group.operationId && approvalToken && linkType === 'approval') {
+                            setLinkOperationId(null);
+                            setApprovalToken(null);
+                          } else {
+                            handleGenerateApprovalLink(group.operationId, 'approval');
+                          }
+                        }}
+                        disabled={approvalLoading && linkOperationId === group.operationId}
+                        style={{
+                          background: 'none',
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius)',
+                          padding: '4px 10px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                        title="Generate customer approval link"
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Approval Link
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (linkOperationId === group.operationId && approvalToken && linkType === 'field-info') {
+                            setLinkOperationId(null);
+                            setApprovalToken(null);
+                          } else {
+                            handleGenerateApprovalLink(group.operationId, 'field-info');
+                          }
+                        }}
+                        disabled={approvalLoading && linkOperationId === group.operationId}
+                        style={{
+                          background: 'none',
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius)',
+                          padding: '4px 10px',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          color: 'var(--text-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                        title="Generate field info link for customer"
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Field Info Link
+                      </button>
+                    </div>
                   </div>
 
                   {/* Approval Link */}
@@ -528,7 +562,9 @@ export default function ApprovalsClient({
                       }}
                     >
                       <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-                        Share this link with your customer to approve probe placements:
+                        {linkType === 'field-info'
+                          ? 'Share this link with your customer to fill in field details:'
+                          : 'Share this link with your customer to approve probe placements:'}
                       </p>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <input
@@ -555,7 +591,7 @@ export default function ApprovalsClient({
                         </span>
                         <button
                           className="btn btn-secondary"
-                          onClick={() => handleGenerateApprovalLink(group.operationId, true)}
+                          onClick={() => handleGenerateApprovalLink(group.operationId, linkType, true)}
                           disabled={approvalLoading}
                           style={{ fontSize: '12px', padding: '4px 8px' }}
                         >
