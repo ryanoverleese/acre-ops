@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { TABLE_IDS, getRow, Field, FieldSeason } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
+
+// Add both underscore and space variants so Baserow matches whichever naming it uses
+function addSpaceVariants(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...data };
+  for (const [key, value] of Object.entries(data)) {
+    if (key.includes('_')) {
+      result[key.replace(/_/g, ' ')] = value;
+    }
+  }
+  return result;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -64,14 +76,18 @@ export async function POST(request: NextRequest) {
     if (body.cropx_telemetry_id) createData.cropx_telemetry_id = body.cropx_telemetry_id;
     if (body.signal_strength) createData.signal_strength = body.signal_strength;
 
+    // Send both underscore and space variants for Baserow field name compatibility
+    const postData = addSpaceVariants(createData);
+
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/?user_field_names=true`;
+    console.log('POST probe-assignment data:', JSON.stringify(postData));
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Token ${BASEROW_TOKEN}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(createData),
+      body: JSON.stringify(postData),
     });
 
     if (!response.ok) {
@@ -84,6 +100,8 @@ export async function POST(request: NextRequest) {
     }
 
     const created = await response.json();
+    console.log('Created probe assignment:', created.id, 'probe_number:', created.probe_number ?? created['probe number']);
+    revalidatePath('/fields');
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
     console.error('Error creating probe assignment:', error);

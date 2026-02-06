@@ -209,7 +209,8 @@ async function getFieldsData(): Promise<{
     const probe2ByFieldSeason = new Map<number, typeof rawProbeAssignments[0]>();
     rawProbeAssignments.forEach((pa) => {
       const fsId = pa.field_season?.[0]?.id;
-      if (fsId && pa.probe_number === 2) {
+      // Use == for probe_number in case Baserow returns it as string "2"
+      if (fsId && pa.probe_number == 2) {
         probe2ByFieldSeason.set(fsId, pa);
       }
     });

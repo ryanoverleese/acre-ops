@@ -4,6 +4,17 @@ import { TABLE_IDS } from '@/lib/baserow';
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
+// Add both underscore and space variants so Baserow matches whichever naming it uses
+function addSpaceVariants(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...data };
+  for (const [key, value] of Object.entries(data)) {
+    if (key.includes('_')) {
+      result[key.replace(/_/g, ' ')] = value;
+    }
+  }
+  return result;
+}
+
 // Bulk create probe assignments (for season rollover)
 export async function POST(request: NextRequest) {
   try {
@@ -51,7 +62,7 @@ export async function POST(request: NextRequest) {
         if (item.soil_type !== undefined) record.soil_type = item.soil_type;
         if (item.placement_notes !== undefined) record.placement_notes = item.placement_notes;
 
-        return record;
+        return addSpaceVariants(record);
       });
 
       const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/batch/?user_field_names=true`;
