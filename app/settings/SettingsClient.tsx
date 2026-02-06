@@ -120,6 +120,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState(initialAddForm);
   const [saving, setSaving] = useState(false);
+  const [backupLoading, setBackupLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProcessedServiceRate>>({});
   const [savingEdit, setSavingEdit] = useState(false);
@@ -684,6 +685,42 @@ export default function SettingsClient({ initialServiceRates, availableSeasons }
           </div>
         </div>
       )}
+
+      {/* Data Backup */}
+      <ContentCard className="mb-6">
+        <SectionHeader title="Data Backup" />
+        <p className="section-description">
+          Download a full backup of all your data as a CSV file. Opens in Excel or Google Sheets.
+        </p>
+        <div style={{ marginTop: '12px' }}>
+          <button
+            className="btn btn-primary"
+            disabled={backupLoading}
+            onClick={async () => {
+              setBackupLoading(true);
+              try {
+                const response = await fetch('/api/backup');
+                if (!response.ok) throw new Error('Backup failed');
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'acre-ops-backup.csv';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+              } catch {
+                alert('Failed to download backup. Please try again.');
+              } finally {
+                setBackupLoading(false);
+              }
+            }}
+          >
+            {backupLoading ? 'Downloading...' : 'Download Backup'}
+          </button>
+        </div>
+      </ContentCard>
     </>
   );
 }
