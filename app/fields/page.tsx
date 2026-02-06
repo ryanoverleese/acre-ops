@@ -55,9 +55,12 @@ export interface ProcessedField {
   hybridVariety: string;
   readyToRemove: string;
   plantingDate: string;
+  // Probe 1 (from probe_assignments, probe_number=1)
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
+  probeAssignmentId: number | null;
+  // Probe 2 (from probe_assignments, probe_number=2)
   probe2: string | null;
   probe2Id: number | null;
   probe2Status: string;
@@ -208,12 +211,17 @@ async function getFieldsData(): Promise<{
     // Process fields - create one entry per field_season
     const processedFields: ProcessedField[] = [];
 
-    // Build probe_assignments lookup by field_season_id for probe 2 data
+    // Build probe_assignments lookup by field_season_id for probe 1 and probe 2 data
+    // All probes are now stored in probe_assignments table
+    const probe1ByFieldSeason = new Map<number, typeof rawProbeAssignments[0]>();
     const probe2ByFieldSeason = new Map<number, typeof rawProbeAssignments[0]>();
     rawProbeAssignments.forEach((pa) => {
       const fsId = pa.field_season?.[0]?.id;
-      // Use == for probe_number in case Baserow returns it as string "2"
-      if (fsId && pa.probe_number == 2) {
+      if (!fsId) return;
+      // Use == for probe_number in case Baserow returns it as string
+      if (pa.probe_number == 1) {
+        probe1ByFieldSeason.set(fsId, pa);
+      } else if (pa.probe_number == 2) {
         probe2ByFieldSeason.set(fsId, pa);
       }
     });
@@ -260,6 +268,7 @@ async function getFieldsData(): Promise<{
           probe: null,
           probeId: null,
           probeStatus: 'Unassigned',
+          probeAssignmentId: null,
           probe2: null,
           probe2Id: null,
           probe2Status: 'Unassigned',
@@ -294,9 +303,17 @@ async function getFieldsData(): Promise<{
       } else {
         // Create entry for each season
         fieldFieldSeasons.forEach((fs) => {
-          const probeLink = fs.probe?.[0];
-          const probeData = probeLink ? probeMap.get(probeLink.id) : null;
-          // Probe 2 comes from probe_assignments table (probe_number=2), not field_season
+          // All probes come from probe_assignments table
+          const probe1Assignment = probe1ByFieldSeason.get(fs.id);
+          const probe1Link = probe1Assignment?.probe?.[0];
+          const probe1Data = probe1Link ? probeMap.get(probe1Link.id) : null;
+          // Fallback: if no probe_assignment exists yet, check field_season directly (pre-migration data)
+          const fsProbeLink = fs.probe?.[0];
+          const fsProbeData = fsProbeLink ? probeMap.get(fsProbeLink.id) : null;
+          // Use probe_assignment data if available, otherwise fall back to field_season
+          const probeLink = probe1Link || fsProbeLink;
+          const probeData = probe1Data || fsProbeData;
+
           const probe2Assignment = probe2ByFieldSeason.get(fs.id);
           const probe2Link = probe2Assignment?.probe?.[0];
           const probe2Data = probe2Link ? probeMap.get(probe2Link.id) : null;
@@ -313,8 +330,9 @@ async function getFieldsData(): Promise<{
             season: fs.season ? String(fs.season) : '',
             crop: fs.crop?.value || 'Unknown',
             serviceType: fs.service_type?.value || '',
-            antennaType: fs.antenna_type?.value || '',
-            batteryType: fs.battery_type?.value || '',
+            // Antenna/battery: prefer probe_assignment, fall back to field_season (pre-migration)
+            antennaType: probe1Assignment?.antenna_type?.value || fs.antenna_type?.value || '',
+            batteryType: probe1Assignment?.battery_type?.value || fs.battery_type?.value || '',
             sideDress: fs.side_dress?.value || '',
             loggerId: fs.logger_id || '',
             earlyRemoval: fs.early_removal?.value || '',
@@ -323,7 +341,8 @@ async function getFieldsData(): Promise<{
             plantingDate: fs.planting_date || '',
             probe: probeData ? (probeData.serial_number ? `#${probeData.serial_number}` : `(On Order #${probeLink!.id})`) : null,
             probeId: probeLink?.id || null,
-            probeStatus: fs.probe_status?.value || 'Unassigned',
+            probeStatus: probe1Assignment?.probe_status?.value || fs.probe_status?.value || 'Unassigned',
+            probeAssignmentId: probe1Assignment?.id || null,
             probe2: probe2Data ? (probe2Data.serial_number ? `#${probe2Data.serial_number}` : `(On Order #${probe2Link!.id})`) : null,
             probe2Id: probe2Link?.id || null,
             probe2Status: probe2Assignment?.probe_status?.value || 'Unassigned',

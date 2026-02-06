@@ -1,4 +1,7 @@
 import { getInventory, getFieldSeasons, getProbeAssignments } from '@/lib/baserow';
+
+// Force dynamic rendering to always get fresh data
+export const dynamic = 'force-dynamic';
 import InventoryClient from './InventoryClient';
 
 export interface ProcessedInventoryItem {
@@ -44,19 +47,11 @@ export default async function InventoryPage() {
 
     categoryOptions = Array.from(categories).sort();
 
-    // Compute equipment needs from active season field_seasons + probe_assignments
+    // Compute equipment needs from probe_assignments for current season
+    // All probes (1, 2, etc.) are stored in probe_assignments
     const currentYear = String(new Date().getFullYear());
     const antennaCounts = new Map<string, number>();
     const batteryCounts = new Map<string, number>();
-
-    // Probe 1 equipment from field_seasons (current year only)
-    fieldSeasons.forEach((fs) => {
-      if (String(fs.season) !== currentYear) return;
-      const antenna = fs.antenna_type?.value;
-      const battery = fs.battery_type?.value;
-      if (antenna) antennaCounts.set(antenna, (antennaCounts.get(antenna) || 0) + 1);
-      if (battery) batteryCounts.set(battery, (batteryCounts.get(battery) || 0) + 1);
-    });
 
     // Build a set of current-year field_season IDs for filtering probe_assignments
     const currentYearFsIds = new Set<number>();
@@ -66,7 +61,7 @@ export default async function InventoryPage() {
       }
     });
 
-    // Probe 2+ equipment from probe_assignments (only those linked to current year field_seasons)
+    // All equipment from probe_assignments (only those linked to current year field_seasons)
     probeAssignments.forEach((pa) => {
       const fsId = pa.field_season?.[0]?.id;
       if (!fsId || !currentYearFsIds.has(fsId)) return;

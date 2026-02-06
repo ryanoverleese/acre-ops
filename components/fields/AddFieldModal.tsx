@@ -16,8 +16,6 @@ export interface AddFieldForm {
   season: string;
   crop: string;
   service_type: string;
-  antenna_type: string;
-  battery_type: string;
   side_dress: string;
   logger_id: string;
   early_removal: string;
@@ -40,8 +38,6 @@ export const createInitialAddFieldForm = (season: string): AddFieldForm => ({
   season,
   crop: '',
   service_type: '',
-  antenna_type: '',
-  battery_type: '',
   side_dress: '',
   logger_id: '',
   early_removal: '',
@@ -109,8 +105,6 @@ export default function AddFieldModal({
           season: form.season,
           crop: form.crop || undefined,
           service_type: form.service_type || undefined,
-          antenna_type: form.antenna_type || undefined,
-          battery_type: form.battery_type || undefined,
           side_dress: form.side_dress || undefined,
           logger_id: form.logger_id || undefined,
           early_removal: form.early_removal || undefined,
@@ -288,30 +282,6 @@ export default function AddFieldModal({
               </div>
             </div>
             <div className="form-row">
-              <div className="form-group">
-                <label>Antenna Type</label>
-                <select value={form.antenna_type} onChange={(e) => setForm({ ...form, antenna_type: e.target.value })}>
-                  <option value="">Select...</option>
-                  <option value="10' CropX Antenna">10&apos; CropX Antenna</option>
-                  <option value="10' Sentek Antenna">10&apos; Sentek Antenna</option>
-                  <option value="6' CropX Antenna">6&apos; CropX Antenna</option>
-                  <option value="ASK">ASK</option>
-                  <option value="CropX Stub - White Flag">CropX Stub - White Flag</option>
-                  <option value="Stub CropX Antenna">Stub CropX Antenna</option>
-                  <option value="Stub Sentek Antenna">Stub Sentek Antenna</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-row">
-              <div className="form-group">
-                <label>Battery Type</label>
-                <select value={form.battery_type} onChange={(e) => setForm({ ...form, battery_type: e.target.value })}>
-                  <option value="">Select...</option>
-                  <option value="CropX">CropX</option>
-                  <option value="Sentek New">Sentek New</option>
-                  <option value="Sentek Used">Sentek Used</option>
-                </select>
-              </div>
               <div className="form-group">
                 <label>Side Dress</label>
                 <select value={form.side_dress} onChange={(e) => setForm({ ...form, side_dress: e.target.value })}>

@@ -98,28 +98,9 @@ async function getProbesData(): Promise<{
     });
     const availableSeasons = Array.from(seasons).sort((a, b) => b.localeCompare(a));
 
-    // Build probe-to-field assignments from field_seasons and probe_assignments
+    // Build probe-to-field assignments from probe_assignments (all probes)
     const probeFieldAssignments: ProbeFieldAssignment[] = [];
-    // Build field_season lookup for probe_assignments
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
-    fieldSeasons.forEach((fs) => {
-      const fieldId = fs.field?.[0]?.id;
-      const fieldName = fieldId ? fieldMap.get(fieldId) || 'Unknown' : null;
-      const season = fs.season ? String(fs.season) : null;
-
-      if (!fieldName || !season) return;
-
-      // Probe 1 is directly on field_season
-      const probe1Id = fs.probe?.[0]?.id;
-      if (probe1Id) {
-        probeFieldAssignments.push({
-          probeId: probe1Id,
-          season,
-          fieldName,
-        });
-      }
-    });
-    // Probe 2+ from probe_assignments table
     probeAssignments.forEach((pa) => {
       const fsId = pa.field_season?.[0]?.id;
       const probeId = pa.probe?.[0]?.id;

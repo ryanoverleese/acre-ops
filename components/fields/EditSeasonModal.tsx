@@ -87,14 +87,10 @@ export default function EditSeasonModal({
       // Helper: treat 'Unknown' the same as empty (it's a display-only default, not a real Baserow value)
       const clean = (val: string | undefined) => (val && val !== 'Unknown') ? val : null;
 
-      // Probe 1 is stored directly on field_season
-      const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
-
+      // Season-level data goes to field_seasons (no probe data here)
       const patchBody: Record<string, unknown> = {
         crop: clean(form.crop),
         service_type: clean(form.service_type),
-        antenna_type: clean(form.antenna_type),
-        battery_type: clean(form.battery_type),
         side_dress: clean(form.side_dress),
         logger_id: form.logger_id || null,
         early_removal: clean(form.early_removal),
@@ -104,11 +100,7 @@ export default function EditSeasonModal({
         route_order: form.route_order ? parseInt(form.route_order, 10) : null,
         planned_installer: form.planned_installer || null,
         ready_to_install: form.ready_to_install,
-        probe: probeId,
-        probe_status: probeId ? 'Assigned' : 'Unassigned',
       };
-
-      console.log('EditSeasonModal patchBody:', JSON.stringify(patchBody));
 
       const response = await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
         method: 'PATCH',
@@ -116,34 +108,48 @@ export default function EditSeasonModal({
         body: JSON.stringify(patchBody),
       });
 
-      // Probe 2 is stored in probe_assignments table (probe_number=2)
-      const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
-      if (field.probe2AssignmentId) {
-        // Update existing probe_assignment
-        await fetch(`/api/probe-assignments/${field.probe2AssignmentId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            probe: probe2Id,
-            probe_status: probe2Id ? 'Assigned' : 'Unassigned',
-            antenna_type: clean(form.probe2_antenna_type),
-            battery_type: clean(form.probe2_battery_type),
-          }),
-        });
-      } else if (probe2Id) {
-        // Create new probe_assignment with probe_number=2
-        await fetch('/api/probe-assignments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            field_season: field.fieldSeasonId,
-            probe_number: 2,
-            probe: probe2Id,
-            antenna_type: clean(form.probe2_antenna_type),
-            battery_type: clean(form.probe2_battery_type),
-          }),
-        });
-      }
+      // Helper to save a probe via probe_assignments
+      const saveProbeAssignment = async (
+        assignmentId: number | null,
+        probeNumber: number,
+        selectedId: string,
+        antennaType: string | undefined,
+        batteryType: string | undefined,
+      ) => {
+        const probeId = selectedId ? parseInt(selectedId, 10) : 0;
+        if (assignmentId) {
+          // Update existing probe_assignment
+          await fetch(`/api/probe-assignments/${assignmentId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              probe: probeId,
+              probe_status: probeId ? 'Assigned' : 'Unassigned',
+              antenna_type: clean(antennaType),
+              battery_type: clean(batteryType),
+            }),
+          });
+        } else if (probeId) {
+          // Create new probe_assignment
+          await fetch('/api/probe-assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              field_season: field.fieldSeasonId,
+              probe_number: probeNumber,
+              probe: probeId,
+              antenna_type: clean(antennaType),
+              battery_type: clean(batteryType),
+            }),
+          });
+        }
+      };
+
+      // Save probe 1 and probe 2 via probe_assignments (both use same pattern)
+      await Promise.all([
+        saveProbeAssignment(field.probeAssignmentId, 1, selectedProbeId, form.antenna_type, form.battery_type),
+        saveProbeAssignment(field.probe2AssignmentId, 2, selectedProbe2Id, form.probe2_antenna_type, form.probe2_battery_type),
+      ]);
       if (response.ok) {
         // Create/update invoice line if billing_rate is provided
         if (form.billing_rate && field.billingEntityId) {

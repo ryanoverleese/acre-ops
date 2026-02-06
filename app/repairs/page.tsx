@@ -91,13 +91,17 @@ async function getRepairsData(): Promise<{
     const fieldSeasonOptions: FieldSeasonOption[] = fieldSeasons.map((fs) => {
       const fieldLink = fs.field?.[0];
       const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
-      const probe1Id = fs.probe?.[0]?.id;
+      // Find probe 1 from probe_assignments
+      const probe1Assignment = probeAssignments.find(
+        pa => pa.field_season?.[0]?.id === fs.id && pa.probe_number == 1
+      );
+      const probe1Id = probe1Assignment?.probe?.[0]?.id;
       return {
         id: fs.id,
         fieldName: field?.name || fieldLink?.value || 'Unknown Field',
         operation: getOperationName(field),
         probe1Serial: probe1Id ? probeMap.get(probe1Id) : undefined,
-        probe2Serial: undefined, // Probe 2 data is in probe_assignments table
+        probe2Serial: undefined,
       };
     }).sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 

@@ -581,25 +581,87 @@ export default function FieldsClient({
       const apiFieldMap: Record<string, string> = {
         crop: 'crop',
         serviceType: 'service_type',
-        antennaType: 'antenna_type',
-        probeId: 'probe',
-        probeStatus: 'probe_status',
         routeOrder: 'route_order',
         plannedInstaller: 'planned_installer',
         readyToInstall: 'ready_to_install',
         approvalStatus: 'approval_status',
       };
 
-      const apiField = apiFieldMap[field] || field;
-      const body: Record<string, unknown> = {};
-
-      // Handle probe assignment specially - use 0 to explicitly clear (null is ignored by API)
+      // Probe 1 changes go to probe_assignments, not field_seasons
       if (field === 'probeId') {
-        body.probe = value ? parseInt(value as string, 10) : 0;
-        body.probe_status = value ? 'Assigned' : 'Unassigned';
-      } else {
-        body[apiField] = value;
+        const probeId = value ? parseInt(value as string, 10) : 0;
+        const currentField = fields.find(f => f.fieldSeasonId === fieldSeasonId);
+        const assignmentId = currentField?.probeAssignmentId;
+
+        let response: Response;
+        if (assignmentId) {
+          response = await fetch(`/api/probe-assignments/${assignmentId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              probe: probeId,
+              probe_status: probeId ? 'Assigned' : 'Unassigned',
+            }),
+          });
+        } else if (probeId) {
+          response = await fetch('/api/probe-assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              field_season: fieldSeasonId,
+              probe_number: 1,
+              probe: probeId,
+            }),
+          });
+        } else {
+          // No assignment exists and no probe selected - nothing to do
+          setSavingFields(prev => { const n = new Set(prev); n.delete(cellKey); return n; });
+          return;
+        }
+
+        if (response.ok) {
+          const probe = probes.find(p => p.id === (value ? parseInt(value as string, 10) : 0));
+          setFields(prev => prev.map(f => {
+            if (f.fieldSeasonId === fieldSeasonId) {
+              return {
+                ...f,
+                probeId: value ? parseInt(value as string, 10) : null,
+                probe: probe ? `#${probe.serialNumber}` : null,
+                probeStatus: value ? 'Assigned' : 'Unassigned',
+              };
+            }
+            return f;
+          }));
+          setSavedFields(prev => new Set(prev).add(cellKey));
+          setTimeout(() => setSavedFields(prev => { const n = new Set(prev); n.delete(cellKey); return n; }), 1500);
+        }
+        setSavingFields(prev => { const n = new Set(prev); n.delete(cellKey); return n; });
+        return;
       }
+
+      // Antenna/battery type changes go to probe_assignments (probe 1)
+      if (field === 'antennaType' || field === 'batteryType') {
+        const currentField = fields.find(f => f.fieldSeasonId === fieldSeasonId);
+        const assignmentId = currentField?.probeAssignmentId;
+        if (assignmentId) {
+          const apiName = field === 'antennaType' ? 'antenna_type' : 'battery_type';
+          const response = await fetch(`/api/probe-assignments/${assignmentId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ [apiName]: value || null }),
+          });
+          if (response.ok) {
+            setFields(prev => prev.map(f => f.fieldSeasonId === fieldSeasonId ? { ...f, [field]: value } : f));
+            setSavedFields(prev => new Set(prev).add(cellKey));
+            setTimeout(() => setSavedFields(prev => { const n = new Set(prev); n.delete(cellKey); return n; }), 1500);
+          }
+        }
+        setSavingFields(prev => { const n = new Set(prev); n.delete(cellKey); return n; });
+        return;
+      }
+
+      const apiField = apiFieldMap[field] || field;
+      const body: Record<string, unknown> = { [apiField]: value };
 
       const response = await fetch(`/api/field-seasons/${fieldSeasonId}`, {
         method: 'PATCH',
@@ -611,16 +673,7 @@ export default function FieldsClient({
         // Update local state
         setFields(prev => prev.map(f => {
           if (f.fieldSeasonId === fieldSeasonId) {
-            const updated = { ...f };
-            if (field === 'probeId') {
-              const probe = probes.find(p => p.id === parseInt(value as string, 10));
-              updated.probeId = value ? parseInt(value as string, 10) : null;
-              updated.probe = probe ? `#${probe.serialNumber}` : null;
-              updated.probeStatus = value ? 'Assigned' : 'Unassigned';
-            } else {
-              (updated as Record<string, unknown>)[field] = value;
-            }
-            return updated;
+            return { ...f, [field]: value };
           }
           return f;
         }));
@@ -935,14 +988,34 @@ export default function FieldsClient({
     setSavingProbe(true);
     try {
       const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
-      const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          probe: probeId,
-          probe_status: probeId ? 'Assigned' : 'Unassigned',
-        }),
-      });
+      let response: Response;
+      if (selectedField.probeAssignmentId) {
+        // Update existing probe_assignment
+        response = await fetch(`/api/probe-assignments/${selectedField.probeAssignmentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            probe: probeId,
+            probe_status: probeId ? 'Assigned' : 'Unassigned',
+          }),
+        });
+      } else if (probeId) {
+        // Create new probe_assignment with probe_number=1
+        response = await fetch('/api/probe-assignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            field_season: selectedField.fieldSeasonId,
+            probe_number: 1,
+            probe: probeId,
+          }),
+        });
+      } else {
+        // No assignment and no probe - nothing to do
+        setShowProbeAssign(false);
+        setSavingProbe(false);
+        return;
+      }
       if (response.ok) {
         setShowProbeAssign(false);
         window.location.reload();
@@ -1097,15 +1170,12 @@ export default function FieldsClient({
 
     setRollingOver(true);
     try {
+      // Season-level data only (no probe/antenna/battery - those go to probe_assignments)
       const items = rolloverStats.fieldsToRollover.map((f) => ({
         field: f.id,
         season: rolloverForm.toSeason,
         service_type: f.serviceType || undefined,
-        antenna_type: f.antennaType || undefined,
-        battery_type: f.batteryType || undefined,
-        probe: f.probeId || undefined,
-        copy_probe: rolloverForm.copyProbes,
-        source_field_season_id: f.fieldSeasonId, // Track source for probe_assignment copying
+        source_field_season_id: f.fieldSeasonId,
       }));
 
       const response = await fetch('/api/field-seasons/bulk', {
@@ -1117,7 +1187,7 @@ export default function FieldsClient({
       if (response.ok) {
         const result = await response.json();
 
-        // Copy probe_assignments for each new field_season
+        // Copy ALL probe_assignments (probe 1, 2, etc.) for each new field_season
         if (result.results && result.results.length > 0) {
           const probeAssignmentsToCopy: {
             field_season: number;
@@ -1129,7 +1199,6 @@ export default function FieldsClient({
             placement_notes?: string;
           }[] = [];
 
-          // For each created field_season, find probe_assignments from the source
           for (const createdFs of result.results) {
             if (createdFs.source_field_season_id) {
               const sourceProbeAssignments = probeAssignments.filter(
@@ -1150,7 +1219,6 @@ export default function FieldsClient({
             }
           }
 
-          // Create the new probe_assignments
           if (probeAssignmentsToCopy.length > 0) {
             await fetch('/api/probe-assignments/bulk', {
               method: 'POST',

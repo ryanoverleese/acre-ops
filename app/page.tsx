@@ -1,28 +1,35 @@
-import { getOperations, getFields, getProbes, getRepairs, getFieldSeasons } from '@/lib/baserow';
+import { getOperations, getFields, getProbes, getRepairs, getFieldSeasons, getProbeAssignments } from '@/lib/baserow';
 import DashboardClient, { DashboardStats, DashboardOperation } from './DashboardClient';
 
 async function getDashboardData(): Promise<{ stats: DashboardStats; operations: DashboardOperation[] }> {
   try {
-    const [operations, fields, probes, repairs, fieldSeasons] = await Promise.all([
+    const [operations, fields, probes, repairs, fieldSeasons, probeAssignments] = await Promise.all([
       getOperations(),
       getFields(),
       getProbes(),
       getRepairs(),
       getFieldSeasons(),
+      getProbeAssignments(),
     ]);
 
     const needsRepair = repairs.filter((r) => r.repaired_at === null || r.repaired_at === undefined).length;
 
-    // Calculate install stats for current season (2026)
-    const currentSeasonRecords = fieldSeasons.filter(fs => fs.season === 2026);
-    const installedCount = currentSeasonRecords.filter(fs =>
-      fs.probe_status?.value?.toLowerCase() === 'installed'
+    // Calculate install stats from probe_assignments for current season
+    const currentSeasonFsIds = new Set(
+      fieldSeasons.filter(fs => fs.season == 2026).map(fs => fs.id)
+    );
+    const currentSeasonAssignments = probeAssignments.filter(pa => {
+      const fsId = pa.field_season?.[0]?.id;
+      return fsId && currentSeasonFsIds.has(fsId);
+    });
+    const installedCount = currentSeasonAssignments.filter(pa =>
+      pa.probe_status?.value?.toLowerCase() === 'installed'
     ).length;
-    const assignedCount = currentSeasonRecords.filter(fs =>
-      fs.probe_status?.value?.toLowerCase() === 'assigned'
+    const assignedCount = currentSeasonAssignments.filter(pa =>
+      pa.probe_status?.value?.toLowerCase() === 'assigned'
     ).length;
-    const unassignedCount = currentSeasonRecords.filter(fs =>
-      !fs.probe_status?.value || fs.probe_status?.value?.toLowerCase() === 'unassigned'
+    const unassignedCount = currentSeasonAssignments.filter(pa =>
+      !pa.probe_status?.value || pa.probe_status?.value?.toLowerCase() === 'unassigned'
     ).length;
 
     const stats: DashboardStats = {
