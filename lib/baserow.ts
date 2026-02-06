@@ -274,7 +274,7 @@ export interface FieldSeason {
   season?: number;
   crop?: { id: number; value: string };
   crop_confirmed?: boolean;
-  service_type?: { id: number; value: string };
+  service_type?: { id: number; value: string }[];
   antenna_type?: { id: number; value: string };
   battery_type?: { id: number; value: string };
   side_dress?: { id: number; value: string };

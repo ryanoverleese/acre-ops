@@ -322,22 +322,21 @@ export default function FieldsClient({
     return Array.from(combined).sort((a, b) => b.localeCompare(a));
   }, [availableSeasons, customYears]);
 
-  // Create service rate lookup map by service type name
+  // Create service rate lookup map by service_rate row ID
   const serviceRateMap = useMemo(() => {
     const map = new Map<string, number>();
     serviceRates.forEach((sr) => {
-      if (sr.serviceType) {
-        map.set(sr.serviceType, sr.rate);
-      }
+      map.set(String(sr.id), sr.rate);
     });
     return map;
   }, [serviceRates]);
 
   // Create service type options from service rates
+  // value = service_rate row ID (for Link field), label = display name
   const serviceTypeOptions = useMemo(() => {
     return serviceRates
       .filter((sr) => sr.serviceType)
-      .map((sr) => ({ value: sr.serviceType, label: sr.serviceType }))
+      .map((sr) => ({ value: String(sr.id), label: sr.serviceType }))
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [serviceRates]);
 
@@ -1107,6 +1106,7 @@ export default function FieldsClient({
             season: season,
             crop: 'Unknown',
             serviceType: '',
+            serviceTypeId: null,
             antennaType: '',
             batteryType: '',
             sideDress: '',

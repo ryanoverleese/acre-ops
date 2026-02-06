@@ -28,7 +28,8 @@ export async function POST(request: NextRequest) {
     };
 
     if (body.crop) createData.crop = body.crop;
-    if (body.service_type) createData.service_type = body.service_type;
+    // service_type is a Link field to service_rates — needs array of row IDs
+    if (body.service_type) createData.service_type = [parseInt(body.service_type, 10)];
     if (body.antenna_type) createData.antenna_type = body.antenna_type;
     if (body.battery_type) createData.battery_type = body.battery_type;
     if (body.side_dress) createData.side_dress = body.side_dress;

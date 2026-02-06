@@ -110,7 +110,7 @@ export default async function ApprovePage({ params }: PageProps) {
       soilType: typeof field?.soil_type === 'object' ? field?.soil_type?.value : field?.soil_type,
       placementNotes: field?.placement_notes,
       crop: fs.crop?.value || 'Not Set',
-      serviceType: fs.service_type?.value || 'Not Set',
+      serviceType: fs.service_type?.[0]?.value || 'Not Set',
       approvalStatus: fs.approval_status?.value || 'Pending',
       approvalNotes: fs.approval_notes,
       approvalDate: fs.approval_date,

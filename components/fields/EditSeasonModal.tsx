@@ -57,7 +57,7 @@ export interface EditSeasonForm {
 
 export const createEditSeasonForm = (field: ProcessedField, getRateForServiceType: (st: string) => string): EditSeasonForm => ({
   crop: field.crop || '',
-  service_type: field.serviceType || '',
+  service_type: field.serviceTypeId ? String(field.serviceTypeId) : '',
   antenna_type: field.antennaType || '',
   battery_type: field.batteryType || '',
   probe2_antenna_type: field.probe2AntennaType || '',
@@ -71,7 +71,7 @@ export const createEditSeasonForm = (field: ProcessedField, getRateForServiceTyp
   route_order: field.routeOrder?.toString() || '',
   planned_installer: field.plannedInstaller || '',
   ready_to_install: field.readyToInstall || false,
-  billing_rate: getRateForServiceType(field.serviceType || ''),
+  billing_rate: getRateForServiceType(field.serviceTypeId ? String(field.serviceTypeId) : ''),
 });
 
 export default function EditSeasonModal({
@@ -175,7 +175,7 @@ export default function EditSeasonModal({
                 billing_entity_id: field.billingEntityId,
                 season: field.season,
                 field_season_id: field.fieldSeasonId,
-                service_type: form.service_type || '',
+                service_type: serviceTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });

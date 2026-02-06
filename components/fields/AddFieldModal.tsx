@@ -154,7 +154,7 @@ export default function AddFieldModal({
                 billing_entity_id: parseInt(form.billing_entity, 10),
                 season: form.season,
                 field_season_id: result.fieldSeason.id,
-                service_type: form.service_type || '',
+                service_type: serviceTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });

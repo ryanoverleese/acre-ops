@@ -227,7 +227,7 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
       return {
         season: s.season,
         crop: s.crop?.value,
-        service_type: s.service_type?.value,
+        service_type: s.service_type?.[0]?.value,
         probe_status: s.probe_status?.value,
         probe: probe ? `#${probe.serial_number}` : null,
         installer: s.installer,
@@ -367,7 +367,7 @@ async function executeSearchFieldSeasons(params: { field_name_contains?: string;
         field_name: fs.field?.[0]?.value || 'Unknown',
         season: fs.season,
         crop: fs.crop?.value,
-        service_type: fs.service_type?.value,
+        service_type: fs.service_type?.[0]?.value,
         probe_status: fs.probe_status?.value,
         probe: probe ? `#${probe.serial_number}` : null,
         installer: fs.installer,

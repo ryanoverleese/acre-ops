@@ -131,7 +131,7 @@ async function getApprovalsData(): Promise<ApprovalsData> {
           placementLng: pa.placement_lng,
           placementNotes: pa.placement_notes,
           crop: fieldSeason.crop?.value || 'Not Set',
-          serviceType: fieldSeason.service_type?.value || 'Not Set',
+          serviceType: fieldSeason.service_type?.[0]?.value || 'Not Set',
           approvalStatus: pa.approval_status?.value || 'Pending',
           approvalNotes: pa.approval_notes,
           approvalDate: pa.approval_date,

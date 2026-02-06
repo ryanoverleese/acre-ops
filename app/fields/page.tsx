@@ -48,6 +48,7 @@ export interface ProcessedField {
   season: string;
   crop: string;
   serviceType: string;
+  serviceTypeId: number | null;
   antennaType: string;
   batteryType: string;
   sideDress: string;
@@ -275,6 +276,7 @@ async function getFieldsData(): Promise<{
           season: '',
           crop: 'Unknown',
           serviceType: '',
+          serviceTypeId: null,
           antennaType: '',
           batteryType: '',
           sideDress: '',
@@ -347,7 +349,8 @@ async function getFieldsData(): Promise<{
             pivotAcres: field.pivot_acres,
             season: fs.season ? String(fs.season) : '',
             crop: fs.crop?.value || 'Unknown',
-            serviceType: fs.service_type?.value || '',
+            serviceType: fs.service_type?.[0]?.value || '',
+            serviceTypeId: fs.service_type?.[0]?.id || null,
             // Antenna/battery: prefer probe_assignment, fall back to field_season (pre-migration)
             antennaType: probe1Assignment?.antenna_type?.value || fs.antenna_type?.value || '',
             batteryType: probe1Assignment?.battery_type?.value || fs.battery_type?.value || '',

@@ -62,7 +62,7 @@ async function getBillingData(): Promise<BillingData> {
       const fieldId = fs.field?.[0]?.id;
       const fieldInfo = fieldId ? fieldMap.get(fieldId) : null;
       const fieldName = fieldInfo?.name || fs.field?.[0]?.value || 'Unknown';
-      const serviceType = fs.service_type?.value || '';
+      const serviceType = fs.service_type?.[0]?.value || '';
       const billingEntityId = fieldInfo?.billingEntityId;
       // Ensure season is a number (Baserow may return it as string)
       const season = typeof fs.season === 'string' ? parseInt(fs.season, 10) : (fs.season || new Date().getFullYear());

@@ -97,7 +97,7 @@ export default function AddSeasonModal({
                 billing_entity_id: billingEntityId,
                 season: form.season,
                 field_season_id: result.id,
-                service_type: form.service_type || '',
+                service_type: serviceTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });
