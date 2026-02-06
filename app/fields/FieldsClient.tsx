@@ -2067,7 +2067,13 @@ export default function FieldsClient({
                                           </tr>
                                         </thead>
                                         <tbody>
-                                    {fieldSeasonProbeAssignments.map((pa) => (
+                                    {fieldSeasonProbeAssignments.map((pa) => {
+                                      const hasDuplicateLocation = pa.placementLat && pa.placementLng && fieldSeasonProbeAssignments.some(
+                                        (other) => other.id !== pa.id && other.placementLat && other.placementLng
+                                          && Number(other.placementLat).toFixed(6) === Number(pa.placementLat).toFixed(6)
+                                          && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
+                                      );
+                                      return (
                                       <tr key={`pa-${pa.id}`} style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                                         <td style={{ paddingLeft: '32px' }}>
                                           <span style={{ color: 'var(--accent-green)', fontWeight: 500 }}>
@@ -2086,6 +2092,9 @@ export default function FieldsClient({
                                         >
                                           {pa.placementLat && pa.placementLng ? (
                                             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                              {hasDuplicateLocation && (
+                                                <span title="Same location as another probe" style={{ color: '#f59e0b', fontSize: '14px', lineHeight: 1 }}>&#9888;</span>
+                                              )}
                                               {Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" style={{ opacity: 0.6 }}>
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -2217,7 +2226,8 @@ export default function FieldsClient({
                                           </button>
                                         </td>
                                       </tr>
-                                    ))}
+                                      );
+                                    })}
                                     {/* Add probe assignment row */}
                                     <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                                       <td colSpan={9} style={{ paddingLeft: '32px' }}>
