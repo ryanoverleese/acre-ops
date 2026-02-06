@@ -8,6 +8,7 @@ interface InventoryClientProps {
   categoryOptions: string[];
   antennaNeeds: EquipmentCount[];
   batteryNeeds: EquipmentCount[];
+  flagNeeds: EquipmentCount[];
   equipmentSeason: string;
 }
 
@@ -17,7 +18,7 @@ const initialForm = {
   quantity: '',
 };
 
-export default function InventoryClient({ initialItems, categoryOptions, antennaNeeds, batteryNeeds, equipmentSeason }: InventoryClientProps) {
+export default function InventoryClient({ initialItems, categoryOptions, antennaNeeds, batteryNeeds, flagNeeds, equipmentSeason }: InventoryClientProps) {
   const [items, setItems] = useState<ProcessedInventoryItem[]>(initialItems);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -221,7 +222,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
       </div>
 
       {/* Equipment Needs for Current Season */}
-      {(antennaNeeds.length > 0 || batteryNeeds.length > 0) && (
+      {(antennaNeeds.length > 0 || batteryNeeds.length > 0 || flagNeeds.length > 0) && (
         <div className="table-container" style={{ marginBottom: '24px' }}>
           <div className="table-header">
             <h3 className="table-title">Equipment Needed - {equipmentSeason} Season</h3>
@@ -286,6 +287,26 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total</span>
                     <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{batteryNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
                   </div>
+                </div>
+              </div>
+            )}
+            {flagNeeds.length > 0 && (
+              <div style={{ flex: '1', minWidth: '250px' }}>
+                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flags</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {flagNeeds.map((item) => (
+                    <div key={item.type} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px 12px',
+                      background: 'var(--bg-secondary)',
+                      borderRadius: 'var(--radius)',
+                    }}>
+                      <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
+                      <strong style={{ fontSize: '14px', color: 'var(--accent-orange, #f59e0b)' }}>{item.count}</strong>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

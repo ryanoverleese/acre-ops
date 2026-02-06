@@ -21,6 +21,7 @@ export default async function InventoryPage() {
   let categoryOptions: string[] = [];
   let antennaNeeds: EquipmentCount[] = [];
   let batteryNeeds: EquipmentCount[] = [];
+  let flagNeeds: EquipmentCount[] = [];
   let equipmentSeason = String(new Date().getFullYear());
 
   try {
@@ -62,6 +63,7 @@ export default async function InventoryPage() {
     });
 
     // All equipment from probe_assignments (only those linked to current year field_seasons)
+    let stubAntennaCount = 0;
     probeAssignments.forEach((pa) => {
       const fsId = pa.field_season?.[0]?.id;
       if (!fsId || !currentYearFsIds.has(fsId)) return;
@@ -69,7 +71,12 @@ export default async function InventoryPage() {
       const battery = pa.battery_type?.value;
       if (antenna) antennaCounts.set(antenna, (antennaCounts.get(antenna) || 0) + 1);
       if (battery) batteryCounts.set(battery, (batteryCounts.get(battery) || 0) + 1);
+      if (antenna === 'CropX Stub' || antenna === 'Sentek Stub') stubAntennaCount++;
     });
+
+    flagNeeds = stubAntennaCount > 0
+      ? [{ type: "4' White Flag", count: stubAntennaCount }]
+      : [];
 
     antennaNeeds = Array.from(antennaCounts.entries())
       .map(([type, count]) => ({ type, count }))
@@ -98,6 +105,7 @@ export default async function InventoryPage() {
           categoryOptions={categoryOptions}
           antennaNeeds={antennaNeeds}
           batteryNeeds={batteryNeeds}
+          flagNeeds={flagNeeds}
           equipmentSeason={equipmentSeason}
         />
       </div>
