@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     const createData: Record<string, unknown> = {
       name: body.name,
       billing_entity: [body.billing_entity], // Link field format
+      'billing entity': [body.billing_entity],
     };
 
     // Only add optional fields if they have valid values
@@ -36,6 +37,7 @@ export async function POST(request: NextRequest) {
     }
     if (body.pivot_acres !== undefined && body.pivot_acres !== null && body.pivot_acres !== '') {
       createData.pivot_acres = Number(body.pivot_acres);
+      createData['pivot acres'] = Number(body.pivot_acres);
     }
     if (body.lat !== undefined && body.lat !== null && body.lat !== '') {
       // Round to 6 decimal places (Baserow limit)
@@ -50,9 +52,11 @@ export async function POST(request: NextRequest) {
     }
     if (body.irrigation_type) {
       createData.irrigation_type = body.irrigation_type;
+      createData['irrigation type'] = body.irrigation_type;
     }
     if (body.row_direction) {
       createData.row_direction = body.row_direction;
+      createData['row direction'] = body.row_direction;
     }
     // Skip water_source and fuel_source on create - they can be edited after
 
