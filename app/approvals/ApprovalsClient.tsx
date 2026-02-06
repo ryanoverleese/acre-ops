@@ -572,7 +572,6 @@ export default function ApprovalsClient({
                         <thead>
                           <tr style={{ background: 'var(--bg-card)' }}>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Field</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Probe #</th>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Serial</th>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Crop</th>
                             <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Status</th>
@@ -584,10 +583,7 @@ export default function ApprovalsClient({
                           {group.items.map((item) => (
                             <tr key={item.id} style={{ borderTop: '1px solid var(--border)' }}>
                               <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 500 }}>
-                                {item.fieldName}
-                              </td>
-                              <td style={{ padding: '10px 12px', fontSize: '13px' }}>
-                                #{item.probeNumber}
+                                {item.fieldName} - Probe {item.probeNumber}
                               </td>
                               <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-muted)' }}>
                                 {item.probeSerial || '—'}
