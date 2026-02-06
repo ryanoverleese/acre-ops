@@ -8,6 +8,7 @@ export interface AddFieldForm {
   name: string;
   acres: string;
   pivot_acres: string;
+  irrigation_type: string;
   lat: string;
   lng: string;
   water_source: string;
@@ -30,6 +31,7 @@ export const createInitialAddFieldForm = (season: string): AddFieldForm => ({
   name: '',
   acres: '',
   pivot_acres: '',
+  irrigation_type: '',
   lat: '',
   lng: '',
   water_source: '',
@@ -97,6 +99,7 @@ export default function AddFieldModal({
           name: form.name,
           acres: form.acres ? parseFloat(form.acres) : undefined,
           pivot_acres: form.pivot_acres ? parseFloat(form.pivot_acres) : undefined,
+          irrigation_type: form.irrigation_type || undefined,
           lat: form.lat ? parseFloat(form.lat) : undefined,
           lng: form.lng ? parseFloat(form.lng) : undefined,
           water_source: form.water_source || undefined,
@@ -183,6 +186,18 @@ export default function AddFieldModal({
                 <label>Pivot Acres</label>
                 <input type="number" value={form.pivot_acres} onChange={(e) => setForm({ ...form, pivot_acres: e.target.value })} />
               </div>
+            </div>
+            <div className="form-group">
+              <label>Irrigation Type</label>
+              <select value={form.irrigation_type} onChange={(e) => setForm({ ...form, irrigation_type: e.target.value })}>
+                <option value="">Select...</option>
+                <option value="Drip">Drip</option>
+                <option value="Dryland">Dryland</option>
+                <option value="Gravity">Gravity</option>
+                <option value="Pivot">Pivot</option>
+                <option value="Pivot - Corner System">Pivot - Corner System</option>
+                <option value="Pivot - Wiper">Pivot - Wiper</option>
+              </select>
             </div>
             <div className="form-row">
               <div className="form-group">

@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
     if (body.notes && body.notes.trim() !== '') {
       createData.notes = body.notes;
     }
+    if (body.irrigation_type) {
+      createData.irrigation_type = body.irrigation_type;
+    }
     // Skip water_source and fuel_source on create - they can be edited after
 
     console.log('Creating field with data:', JSON.stringify(createData, null, 2));
