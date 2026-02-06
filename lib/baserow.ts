@@ -12,25 +12,35 @@ const BASEROW_PASSWORD = process.env.BASEROW_PASSWORD;
  * Returns null if credentials aren't configured or auth fails.
  */
 export async function getBaserowJwt(): Promise<string | null> {
+  const hasEmail = !!BASEROW_EMAIL;
+  const hasPassword = !!BASEROW_PASSWORD;
+  console.log(`getBaserowJwt: BASEROW_EMAIL=${hasEmail ? `set (${BASEROW_EMAIL?.substring(0, 3)}...)` : 'MISSING'}, BASEROW_PASSWORD=${hasPassword ? 'set' : 'MISSING'}`);
+
   if (!BASEROW_EMAIL || !BASEROW_PASSWORD) {
     console.error('getBaserowJwt: BASEROW_EMAIL and BASEROW_PASSWORD are required for field schema changes');
     return null;
   }
 
   try {
-    const response = await fetch('https://api.baserow.io/api/user/token-auth/', {
+    const authUrl = 'https://api.baserow.io/api/user/token-auth/';
+    console.log(`getBaserowJwt: requesting JWT from ${authUrl}`);
+
+    const response = await fetch(authUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: BASEROW_EMAIL, password: BASEROW_PASSWORD }),
     });
 
     if (!response.ok) {
-      console.error('getBaserowJwt: auth failed:', response.status);
+      const errorBody = await response.text();
+      console.error(`getBaserowJwt: auth failed: ${response.status} ${response.statusText}`, errorBody);
       return null;
     }
 
     const data = await response.json();
-    return data.token || null;
+    const token = data.token || data.access_token || null;
+    console.log(`getBaserowJwt: success, token=${token ? `${token.substring(0, 10)}...` : 'NULL'}, response keys: ${Object.keys(data).join(',')}`);
+    return token;
   } catch (error) {
     console.error('getBaserowJwt: unexpected error:', error);
     return null;
