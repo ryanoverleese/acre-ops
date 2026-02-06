@@ -1,9 +1,41 @@
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-// Admin token for schema operations (field modifications). Falls back to BASEROW_API_TOKEN.
+// JWT auth for schema operations (field modifications).
 // Database tokens can CRUD rows but CANNOT modify field definitions (returns 401).
-// Set BASEROW_ADMIN_TOKEN to a Baserow "personal API token" or JWT for field schema changes.
-const BASEROW_ADMIN_TOKEN = process.env.BASEROW_ADMIN_TOKEN || BASEROW_TOKEN;
+// Set BASEROW_EMAIL + BASEROW_PASSWORD to enable JWT-based field schema changes.
+const BASEROW_EMAIL = process.env.BASEROW_EMAIL;
+const BASEROW_PASSWORD = process.env.BASEROW_PASSWORD;
+
+/**
+ * Get a JWT token for Baserow schema operations (adding select options, etc).
+ * Database tokens can only CRUD rows — field definition changes need JWT auth.
+ * Returns null if credentials aren't configured or auth fails.
+ */
+export async function getBaserowJwt(): Promise<string | null> {
+  if (!BASEROW_EMAIL || !BASEROW_PASSWORD) {
+    console.error('getBaserowJwt: BASEROW_EMAIL and BASEROW_PASSWORD are required for field schema changes');
+    return null;
+  }
+
+  try {
+    const response = await fetch('https://api.baserow.io/api/user/token-auth/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: BASEROW_EMAIL, password: BASEROW_PASSWORD }),
+    });
+
+    if (!response.ok) {
+      console.error('getBaserowJwt: auth failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.token || null;
+  } catch (error) {
+    console.error('getBaserowJwt: unexpected error:', error);
+    return null;
+  }
+}
 
 // Table IDs from your Baserow database
 export const TABLE_IDS = {
@@ -566,13 +598,19 @@ export async function ensureSelectOption(
     const updatedOptions = [...existingOptions, { value, color: 'light-gray' }];
     console.log(`ensureSelectOption: adding "${value}" to ${tableName}.${field.name} (field ${field.id}), now ${updatedOptions.length} options`);
 
-    // Field definition changes require an admin token (database tokens return 401)
+    // Field definition changes require JWT auth (database tokens return 401)
+    const jwt = await getBaserowJwt();
+    if (!jwt) {
+      console.error(`ensureSelectOption: cannot modify field - set BASEROW_EMAIL and BASEROW_PASSWORD env vars`);
+      return;
+    }
+
     const patchResponse = await fetchWithRetry(
       `https://api.baserow.io/api/database/fields/${field.id}/`,
       {
         method: 'PATCH',
         headers: {
-          'Authorization': `Token ${BASEROW_ADMIN_TOKEN}`,
+          'Authorization': `JWT ${jwt}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ select_options: updatedOptions }),
@@ -581,11 +619,7 @@ export async function ensureSelectOption(
 
     if (!patchResponse.ok) {
       const errText = await patchResponse.text();
-      if (patchResponse.status === 401) {
-        console.error(`ensureSelectOption: 401 Unauthorized - BASEROW_ADMIN_TOKEN is required for field schema changes. Set a Baserow personal API token as BASEROW_ADMIN_TOKEN in your environment.`);
-      } else {
-        console.error(`ensureSelectOption: PATCH failed for "${value}" on ${tableName}.${fieldName}:`, patchResponse.status, errText);
-      }
+      console.error(`ensureSelectOption: PATCH failed for "${value}" on ${tableName}.${fieldName}:`, patchResponse.status, errText);
     } else {
       console.log(`ensureSelectOption: successfully added "${value}" to ${tableName}.${field.name}`);
     }
