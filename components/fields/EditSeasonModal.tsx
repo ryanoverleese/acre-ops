@@ -76,16 +76,17 @@ export default function EditSeasonModal({
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Track original probe IDs so we only send them when changed
-  const [initialProbeId] = useState(selectedProbeId);
-  const [initialProbe2Id] = useState(selectedProbe2Id);
-
   const handleSave = async () => {
     if (!field.fieldSeasonId) return;
     setSaving(true);
     try {
       // Helper: treat 'Unknown' the same as empty (it's a display-only default, not a real Baserow value)
       const clean = (val: string | undefined) => (val && val !== 'Unknown') ? val : null;
+
+      // Always include probe data - use current selection values
+      // If user didn't touch a probe dropdown, it still holds the correct current value
+      const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
+      const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
 
       const patchBody: Record<string, unknown> = {
         crop: clean(form.crop),
@@ -101,19 +102,11 @@ export default function EditSeasonModal({
         route_order: form.route_order ? parseInt(form.route_order, 10) : null,
         planned_installer: form.planned_installer || null,
         ready_to_install: form.ready_to_install,
+        probe: probeId,
+        probe_status: probeId ? 'Assigned' : 'Unassigned',
+        probe_2: probe2Id,
+        probe_2_status: probe2Id ? 'Assigned' : 'Unassigned',
       };
-
-      // Only send probe fields if they actually changed - use 0 to explicitly clear
-      if (selectedProbeId !== initialProbeId) {
-        const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
-        patchBody.probe = probeId;
-        patchBody.probe_status = probeId ? 'Assigned' : 'Unassigned';
-      }
-      if (selectedProbe2Id !== initialProbe2Id) {
-        const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
-        patchBody.probe_2 = probe2Id;
-        patchBody.probe_2_status = probe2Id ? 'Assigned' : 'Unassigned';
-      }
 
       console.log('EditSeasonModal patchBody:', JSON.stringify(patchBody));
 
@@ -123,28 +116,6 @@ export default function EditSeasonModal({
         body: JSON.stringify(patchBody),
       });
       if (response.ok) {
-        const responseData = await response.json();
-
-        // Verify probe_2 was saved if we sent it
-        if (patchBody.probe_2 !== undefined) {
-          // Check all response keys for probe 2 variants (field name might differ)
-          const probe2Keys = Object.keys(responseData).filter(k =>
-            k.toLowerCase().replace(/[_ ]/g, '').includes('probe2')
-          );
-          console.log('Probe 2 save verification - sent:', patchBody.probe_2,
-            '| response keys:', probe2Keys,
-            '| values:', probe2Keys.map(k => JSON.stringify(responseData[k])));
-
-          // Check if any key has the link we sent
-          const probe2Saved = probe2Keys.some(k => {
-            const val = responseData[k];
-            return Array.isArray(val) && val.length > 0 && val[0]?.id === patchBody.probe_2;
-          });
-          if (!probe2Saved && patchBody.probe_2) {
-            console.warn('Probe 2 may not have been saved! Response keys:', Object.keys(responseData).filter(k => k.toLowerCase().includes('probe')));
-          }
-        }
-
         // Create/update invoice line if billing_rate is provided
         if (form.billing_rate && field.billingEntityId) {
           try {
