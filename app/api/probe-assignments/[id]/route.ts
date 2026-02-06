@@ -30,8 +30,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.soil_type !== undefined) updateData.soil_type = body.soil_type;
     if (body.placement_notes !== undefined) updateData.placement_notes = body.placement_notes;
 
-    // Probe assignment
-    if (body.probe !== undefined) {
+    // Probe assignment - only update when explicitly provided with a numeric ID or 0/empty to clear
+    if (body.probe !== undefined && body.probe !== null) {
       updateData.probe = body.probe ? [body.probe] : [];
     }
     if (body.probe_number !== undefined) updateData.probe_number = body.probe_number;

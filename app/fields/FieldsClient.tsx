@@ -593,9 +593,9 @@ export default function FieldsClient({
       const apiField = apiFieldMap[field] || field;
       const body: Record<string, unknown> = {};
 
-      // Handle probe assignment specially
+      // Handle probe assignment specially - use 0 to explicitly clear (null is ignored by API)
       if (field === 'probeId') {
-        body.probe = value ? parseInt(value as string, 10) : null;
+        body.probe = value ? parseInt(value as string, 10) : 0;
         body.probe_status = value ? 'Assigned' : 'Unassigned';
       } else {
         body[apiField] = value;
@@ -934,7 +934,7 @@ export default function FieldsClient({
     }
     setSavingProbe(true);
     try {
-      const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : null;
+      const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
       const response = await fetch(`/api/field-seasons/${selectedField.fieldSeasonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1334,9 +1334,9 @@ export default function FieldsClient({
       const apiField = apiFieldMap[field] || field;
       const body: Record<string, unknown> = {};
 
-      // Handle probe assignment specially
+      // Handle probe assignment specially - use 0 to explicitly clear (null is ignored by API)
       if (field === 'probeId') {
-        body.probe = value ? parseInt(value as string, 10) : null;
+        body.probe = value ? parseInt(value as string, 10) : 0;
         body.probe_status = value ? 'Assigned' : 'Unassigned';
       } else {
         body[apiField] = value;

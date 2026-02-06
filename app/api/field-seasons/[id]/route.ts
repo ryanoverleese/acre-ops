@@ -41,10 +41,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.hybrid_variety !== undefined) updateData.hybrid_variety = body.hybrid_variety;
     if (body.ready_to_remove !== undefined) updateData.ready_to_remove = body.ready_to_remove;
     if (body.planting_date !== undefined) updateData.planting_date = body.planting_date;
-    if (body.probe !== undefined) {
+    // Only update probe links when explicitly provided with a numeric ID or 0/empty to clear
+    if (body.probe !== undefined && body.probe !== null) {
       updateData.probe = body.probe ? [body.probe] : [];
     }
-    if (body.probe_2 !== undefined) {
+    if (body.probe_2 !== undefined && body.probe_2 !== null) {
       updateData.probe_2 = body.probe_2 ? [body.probe_2] : [];
     }
     if (body.probe_2_status !== undefined) updateData.probe_2_status = body.probe_2_status;

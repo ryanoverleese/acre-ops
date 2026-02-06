@@ -75,34 +75,46 @@ export default function EditSeasonModal({
   const [form, setForm] = useState<EditSeasonForm>(initialForm);
   const [saving, setSaving] = useState(false);
 
+  // Track original probe IDs so we only send them when changed
+  const [initialProbeId] = useState(selectedProbeId);
+  const [initialProbe2Id] = useState(selectedProbe2Id);
+
   const handleSave = async () => {
     if (!field.fieldSeasonId) return;
     setSaving(true);
     try {
-      const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : null;
-      const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : null;
+      const patchBody: Record<string, unknown> = {
+        crop: form.crop || null,
+        service_type: form.service_type || null,
+        antenna_type: form.antenna_type || null,
+        battery_type: form.battery_type || null,
+        side_dress: form.side_dress || null,
+        logger_id: form.logger_id || null,
+        early_removal: form.early_removal || null,
+        hybrid_variety: form.hybrid_variety || null,
+        ready_to_remove: form.ready_to_remove || null,
+        planting_date: form.planting_date || null,
+        route_order: form.route_order ? parseInt(form.route_order, 10) : null,
+        planned_installer: form.planned_installer || null,
+        ready_to_install: form.ready_to_install,
+      };
+
+      // Only send probe fields if they actually changed - use 0 to explicitly clear
+      if (selectedProbeId !== initialProbeId) {
+        const probeId = selectedProbeId ? parseInt(selectedProbeId, 10) : 0;
+        patchBody.probe = probeId;
+        patchBody.probe_status = probeId ? 'Assigned' : 'Unassigned';
+      }
+      if (selectedProbe2Id !== initialProbe2Id) {
+        const probe2Id = selectedProbe2Id ? parseInt(selectedProbe2Id, 10) : 0;
+        patchBody.probe_2 = probe2Id;
+        patchBody.probe_2_status = probe2Id ? 'Assigned' : 'Unassigned';
+      }
+
       const response = await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          crop: form.crop || null,
-          service_type: form.service_type || null,
-          antenna_type: form.antenna_type || null,
-          battery_type: form.battery_type || null,
-          side_dress: form.side_dress || null,
-          logger_id: form.logger_id || null,
-          early_removal: form.early_removal || null,
-          hybrid_variety: form.hybrid_variety || null,
-          ready_to_remove: form.ready_to_remove || null,
-          planting_date: form.planting_date || null,
-          probe: probeId,
-          probe_status: probeId ? 'Assigned' : 'Unassigned',
-          probe_2: probe2Id,
-          probe_2_status: probe2Id ? 'Assigned' : 'Unassigned',
-          route_order: form.route_order ? parseInt(form.route_order, 10) : null,
-          planned_installer: form.planned_installer || null,
-          ready_to_install: form.ready_to_install,
-        }),
+        body: JSON.stringify(patchBody),
       });
       if (response.ok) {
         // Create/update invoice line if billing_rate is provided
