@@ -35,9 +35,12 @@ export async function POST(request: NextRequest) {
           'field_season': rec.field_season ? [rec.field_season] : [],
           date: rec.date,
           recommendation: rec.recommendation || '',
-          suggested_water_day: rec.suggested_water_day || '',
-          'suggested water day': rec.suggested_water_day || '',
         };
+        // Single select fields: only include when non-empty (empty string is invalid)
+        if (rec.suggested_water_day) {
+          payload.suggested_water_day = rec.suggested_water_day;
+          payload['suggested water day'] = rec.suggested_water_day;
+        }
         // Only include these if they have values - Baserow silently ignores unknown fields
         if (rec.priority !== undefined) payload.priority = rec.priority;
         if (rec.report_type) payload.report_type = rec.report_type;
