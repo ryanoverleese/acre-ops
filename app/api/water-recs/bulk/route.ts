@@ -43,8 +43,10 @@ export async function POST(request: NextRequest) {
         }
         // Only include these if they have values - Baserow silently ignores unknown fields
         if (rec.priority !== undefined) payload.priority = rec.priority;
-        // Note: report_type omitted - if using single_select in Baserow, options must be
-        // pre-configured. Change to a text field in Baserow if you want to store this.
+        if (rec.report_type) {
+          payload.report_type = rec.report_type;
+          payload['report type'] = rec.report_type;
+        }
 
         const response = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.water_recs}/?user_field_names=true`, {
           method: 'POST',
