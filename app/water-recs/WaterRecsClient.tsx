@@ -52,13 +52,13 @@ export default function WaterRecsClient({
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Smart-order: start from report date's day of week, then wrap around
-  // Returns { value, label } where label includes "(today)", "(1 day)", etc.
+  // Days that wrap into next week get "Next" prefix in label
   const waterDayOptions = useMemo(() => {
     const date = new Date(reportDate + 'T12:00:00');
     const jsDay = date.getDay(); // 0=Sun, 1=Mon, ...
     const startIndex = jsDay === 0 ? 6 : jsDay - 1; // Convert to Mon=0 index
 
-    // Separate actual days from special options (like ASAP)
+    // Separate actual days from special options (like ASAP, Wait til next report)
     const days: string[] = [];
     const special: string[] = [];
     rawDayOptions.forEach(opt => {
@@ -75,11 +75,14 @@ export default function WaterRecsClient({
     const daySet = new Set(days);
     const filteredOrdered = ordered.filter(d => daySet.has(d));
 
-    // Build label with day count
-    const result = filteredOrdered.map((d, i) => ({
-      value: d,
-      label: i === 0 ? `${d} (today)` : i === 1 ? `${d} (1 day)` : `${d} (${i} days)`,
-    }));
+    // Build label with day count; days that wrapped = "Next [Day]"
+    const result = filteredOrdered.map((d, i) => {
+      const dayIndex = DAY_NAMES.indexOf(d);
+      const isNextWeek = dayIndex < startIndex; // wrapped past Sunday
+      const prefix = isNextWeek ? 'Next ' : '';
+      const count = i === 0 ? '(today)' : i === 1 ? '(1 day)' : `(${i} days)`;
+      return { value: d, label: `${prefix}${d} ${count}` };
+    });
 
     // Add special options without day counts
     special.forEach(s => result.push({ value: s, label: s }));
