@@ -1,83 +1,168 @@
-import { getWaterRecs, getFieldSeasons, getFields, getBillingEntities, getOperations, getContacts } from '@/lib/baserow';
-import WaterRecsClient, { ProcessedWaterRec, FieldSeasonOption } from './WaterRecsClient';
+import { getWaterRecs, getFieldSeasons, getFields, getOperations, getContacts, getProbeAssignments } from '@/lib/baserow';
+import WaterRecsClient from './WaterRecsClient';
 
-async function getWaterRecsData(): Promise<{ waterRecs: ProcessedWaterRec[]; fieldSeasons: FieldSeasonOption[] }> {
-  try {
-    const [waterRecs, fieldSeasons, fields, billingEntities, operations, contacts] = await Promise.all([
-      getWaterRecs(),
-      getFieldSeasons(),
-      getFields(),
-      getBillingEntities(),
-      getOperations(),
-      getContacts(),
-    ]);
+export const dynamic = 'force-dynamic';
 
-    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-    const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
-    const fieldMap = new Map(fields.map((f) => [f.id, f]));
+export interface ReportField {
+  fieldSeasonId: number;
+  fieldId: number;
+  fieldName: string;
+  crop: string;
+  acres: number;
+}
 
-    // Map billing entity to operation through contacts
-    const billingToOperationMap = new Map<number, number>();
-    contacts.forEach((contact) => {
-      const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
+export interface OperationGroup {
+  id: number;
+  name: string;
+  fields: ReportField[];
+}
 
-      contactBeIds.forEach((beId) => {
-        contactOpIds.forEach((opId) => {
-          if (!billingToOperationMap.has(beId)) {
-            billingToOperationMap.set(beId, opId);
-          }
-        });
-      });
-    });
-
-    const getOperationName = (field: typeof fields[0] | null | undefined): string => {
-      if (field?.billing_entity?.[0]) {
-        const opId = billingToOperationMap.get(field.billing_entity[0].id);
-        if (opId) {
-          return operationMap.get(opId) || 'Unknown';
-        }
-      }
-      return 'Unknown';
-    };
-
-    const processedRecs: ProcessedWaterRec[] = waterRecs.map((rec) => {
-      const fsLink = rec.field_season?.[0];
-      const fieldSeason = fsLink ? fieldSeasonMap.get(fsLink.id) : null;
-      const fieldLink = fieldSeason?.field?.[0];
-      const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
-
-      return {
-        id: rec.id,
-        fieldSeasonId: fsLink?.id || 0,
-        fieldName: field?.name || fsLink?.value || 'Unknown Field',
-        operation: getOperationName(field),
-        crop: fieldSeason?.crop?.value || 'Unknown',
-        date: rec.date || '',
-        recommendation: rec.recommendation || '',
-        suggestedWaterDay: rec.suggested_water_day?.value || '',
-      };
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-    // Build field season options for the dropdown
-    const fieldSeasonOptions: FieldSeasonOption[] = fieldSeasons.map((fs) => {
-      const fieldLink = fs.field?.[0];
-      const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
-      return {
-        id: fs.id,
-        fieldName: field?.name || fieldLink?.value || 'Unknown Field',
-        operation: getOperationName(field),
-      };
-    }).sort((a, b) => a.fieldName.localeCompare(b.fieldName));
-
-    return { waterRecs: processedRecs, fieldSeasons: fieldSeasonOptions };
-  } catch (error) {
-    console.error('Error fetching water recs data:', error);
-    return { waterRecs: [], fieldSeasons: [] };
-  }
+export interface WaterRecRecord {
+  id: number;
+  fieldSeasonId: number;
+  date: string;
+  recommendation: string;
+  suggestedWaterDay: string;
+  priority: boolean;
 }
 
 export default async function WaterRecsPage() {
-  const { waterRecs, fieldSeasons } = await getWaterRecsData();
-  return <WaterRecsClient waterRecs={waterRecs} fieldSeasons={fieldSeasons} />;
+  const currentYear = new Date().getFullYear();
+
+  try {
+    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments] = await Promise.all([
+      getOperations(),
+      getFields(),
+      getFieldSeasons(),
+      getContacts(),
+      getWaterRecs(),
+      getProbeAssignments(),
+    ]);
+
+    // Build billing entity → operation mapping via contacts
+    const operationMap = new Map(operations.map(op => [op.id, op.name]));
+    const billingToOperationMap = new Map<number, number>();
+    contacts.forEach(contact => {
+      const opIds = contact.operations?.map(o => o.id) || [];
+      const beIds = contact.billing_entity?.map(b => b.id) || [];
+      for (const beId of beIds) {
+        for (const opId of opIds) {
+          if (!billingToOperationMap.has(beId)) {
+            billingToOperationMap.set(beId, opId);
+          }
+        }
+      }
+    });
+
+    // Build field → operation mapping
+    const fieldToOperation = new Map<number, number>();
+    const fieldMap = new Map(rawFields.map(f => [f.id, f]));
+    rawFields.forEach(field => {
+      const beId = field.billing_entity?.[0]?.id;
+      if (beId && billingToOperationMap.has(beId)) {
+        fieldToOperation.set(field.id, billingToOperationMap.get(beId)!);
+      }
+    });
+
+    // Find field_seasons with at least one installed probe
+    const installedFieldSeasons = new Set<number>();
+    probeAssignments.forEach(pa => {
+      const status = pa.probe_status?.value;
+      if (status?.toLowerCase() === 'installed') {
+        const fsId = pa.field_season?.[0]?.id;
+        if (fsId) installedFieldSeasons.add(fsId);
+      }
+    });
+
+    // Group active field_seasons by operation
+    const opFieldsMap = new Map<number, ReportField[]>();
+
+    fieldSeasons.forEach(fs => {
+      const fieldId = fs.field?.[0]?.id;
+      if (!fieldId) return;
+      if (String(fs.season) !== String(currentYear)) return;
+      if (!installedFieldSeasons.has(fs.id)) return;
+
+      const opId = fieldToOperation.get(fieldId);
+      if (!opId) return;
+
+      const field = fieldMap.get(fieldId);
+      if (!field) return;
+
+      if (!opFieldsMap.has(opId)) opFieldsMap.set(opId, []);
+      opFieldsMap.get(opId)!.push({
+        fieldSeasonId: fs.id,
+        fieldId: field.id,
+        fieldName: field.name || 'Unknown',
+        crop: fs.crop?.value || '',
+        acres: field.acres || 0,
+      });
+    });
+
+    const operationGroups: OperationGroup[] = [];
+    for (const [opId, fields] of opFieldsMap) {
+      operationGroups.push({
+        id: opId,
+        name: operationMap.get(opId) || 'Unknown',
+        fields: fields.sort((a, b) => a.fieldName.localeCompare(b.fieldName)),
+      });
+    }
+    operationGroups.sort((a, b) => a.name.localeCompare(b.name));
+
+    // Process water recs
+    const fieldSeasonMap = new Map(fieldSeasons.map(fs => [fs.id, fs]));
+    const processedRecs: WaterRecRecord[] = waterRecs.map(wr => {
+      const fsId = wr.field_season?.[0]?.id || 0;
+      return {
+        id: wr.id,
+        fieldSeasonId: fsId,
+        date: wr.date || '',
+        recommendation: wr.recommendation || '',
+        suggestedWaterDay: wr.suggested_water_day?.value || '',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        priority: !!(wr as any).priority,
+      };
+    });
+
+    // Also build a fieldSeasonId → operation mapping for water rec filtering
+    const fsToOperation = new Map<number, number>();
+    fieldSeasons.forEach(fs => {
+      const fieldId = fs.field?.[0]?.id;
+      if (fieldId) {
+        const opId = fieldToOperation.get(fieldId);
+        if (opId) fsToOperation.set(fs.id, opId);
+      }
+    });
+
+    // Build fieldSeasonId → fieldName mapping for water recs display
+    const fsToFieldName = new Map<number, string>();
+    fieldSeasons.forEach(fs => {
+      const fieldId = fs.field?.[0]?.id;
+      if (fieldId) {
+        const field = fieldMap.get(fieldId);
+        if (field) fsToFieldName.set(fs.id, field.name || 'Unknown');
+      }
+    });
+
+    return (
+      <WaterRecsClient
+        operations={operationGroups}
+        waterRecs={processedRecs}
+        currentSeason={currentYear}
+        fsToOperation={Object.fromEntries(fsToOperation)}
+        fsToFieldName={Object.fromEntries(fsToFieldName)}
+      />
+    );
+  } catch (error) {
+    console.error('Error loading reports page:', error);
+    return (
+      <WaterRecsClient
+        operations={[]}
+        waterRecs={[]}
+        currentSeason={currentYear}
+        fsToOperation={{}}
+        fsToFieldName={{}}
+      />
+    );
+  }
 }
