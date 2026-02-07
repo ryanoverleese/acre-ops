@@ -1,4 +1,4 @@
-import { getWaterRecs, getFieldSeasons, getFields, getOperations, getContacts, getProbeAssignments } from '@/lib/baserow';
+import { getWaterRecs, getFieldSeasons, getFields, getOperations, getContacts, getProbeAssignments, getTableFieldOptions } from '@/lib/baserow';
 import WaterRecsClient from './WaterRecsClient';
 
 export const dynamic = 'force-dynamic';
@@ -30,14 +30,18 @@ export default async function WaterRecsPage() {
   const currentYear = new Date().getFullYear();
 
   try {
-    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments] = await Promise.all([
+    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, waterRecOptions] = await Promise.all([
       getOperations(),
       getFields(),
       getFieldSeasons(),
       getContacts(),
       getWaterRecs(),
       getProbeAssignments(),
+      getTableFieldOptions('water_recs'),
     ]);
+
+    // Get water day options from Baserow single_select field
+    const waterDayOptions = (waterRecOptions.suggested_water_day || []).map(o => o.value);
 
     // Build billing entity → operation mapping via contacts
     const operationMap = new Map(operations.map(op => [op.id, op.name]));
@@ -151,6 +155,7 @@ export default async function WaterRecsPage() {
         currentSeason={currentYear}
         fsToOperation={Object.fromEntries(fsToOperation)}
         fsToFieldName={Object.fromEntries(fsToFieldName)}
+        waterDayOptions={waterDayOptions}
       />
     );
   } catch (error) {
@@ -162,6 +167,7 @@ export default async function WaterRecsPage() {
         currentSeason={currentYear}
         fsToOperation={{}}
         fsToFieldName={{}}
+        waterDayOptions={['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']}
       />
     );
   }

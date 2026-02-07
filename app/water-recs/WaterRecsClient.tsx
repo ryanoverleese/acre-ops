@@ -3,14 +3,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { OperationGroup, WaterRecRecord } from './page';
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
 interface WaterRecsClientProps {
   operations: OperationGroup[];
   waterRecs: WaterRecRecord[];
   currentSeason: number;
   fsToOperation: Record<number, number>;
   fsToFieldName: Record<number, string>;
+  waterDayOptions: string[];
 }
 
 interface FieldForm {
@@ -42,11 +41,42 @@ export default function WaterRecsClient({
   currentSeason,
   fsToOperation,
   fsToFieldName,
+  waterDayOptions: rawDayOptions,
 }: WaterRecsClientProps) {
+  // Smart-order day options: start from report date's day, wrap around, non-days at end
+  const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
   const [selectedOperationId, setSelectedOperationId] = useState<number | null>(
     operations.length > 0 ? operations[0].id : null
   );
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Smart-order: start from report date's day of week, then wrap around
+  const waterDayOptions = useMemo(() => {
+    const date = new Date(reportDate + 'T12:00:00');
+    const jsDay = date.getDay(); // 0=Sun, 1=Mon, ...
+    const startIndex = jsDay === 0 ? 6 : jsDay - 1; // Convert to Mon=0 index
+
+    // Separate actual days from special options (like ASAP)
+    const days: string[] = [];
+    const special: string[] = [];
+    rawDayOptions.forEach(opt => {
+      if (DAY_NAMES.includes(opt)) {
+        days.push(opt);
+      } else {
+        special.push(opt);
+      }
+    });
+
+    // Reorder days starting from report date's day
+    const ordered = DAY_NAMES.slice(startIndex).concat(DAY_NAMES.slice(0, startIndex));
+    // Only include days that exist in Baserow options
+    const daySet = new Set(days);
+    const filteredOrdered = ordered.filter(d => daySet.has(d));
+
+    return [...filteredOrdered, ...special];
+  }, [reportDate, rawDayOptions]);
+
   const [mode, setMode] = useState<'full' | 'update'>('full');
   const [overview, setOverview] = useState('');
   const [fieldForms, setFieldForms] = useState<Record<number, FieldForm>>({});
@@ -292,7 +322,7 @@ export default function WaterRecsClient({
       });
     }
 
-    const scheduleDays = DAYS.filter(d => waterSchedule[d]?.length);
+    const scheduleDays = waterDayOptions.filter(d => waterSchedule[d]?.length);
     if (scheduleDays.length > 0) {
       lines.push('💧 Water Schedule:');
       scheduleDays.forEach(day => {
@@ -551,7 +581,7 @@ export default function WaterRecsClient({
                     }}
                   >
                     <option value="">Water day...</option>
-                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {waterDayOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
 
                   {/* Expand chevron */}
@@ -712,7 +742,7 @@ export default function WaterRecsClient({
                     }}
                   >
                     <option value="">New day...</option>
-                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    {waterDayOptions.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 )}
               </div>
