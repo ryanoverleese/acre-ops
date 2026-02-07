@@ -245,12 +245,17 @@ export default function WaterRecsClient({
     if (!currentOperation) return '';
     const lines: string[] = [];
 
+    // Title: Soil Moisture Reports - date
+    const dateObj = new Date(reportDate + 'T12:00:00');
+    const formatted = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    lines.push(`Soil Moisture Reports - ${formatted}`, '');
+
     if (overview.trim()) {
       lines.push(overview.trim(), '');
     }
 
     const priorityFields: { name: string; rec: string }[] = [];
-    const updateFields: { name: string; rec: string }[] = [];
+    const normalFields: { name: string; rec: string }[] = [];
     const waterSchedule: Record<string, string[]> = {};
 
     currentOperation.fields.forEach(field => {
@@ -266,26 +271,22 @@ export default function WaterRecsClient({
         if (form.priority) {
           priorityFields.push({ name: field.fieldName, rec: form.recommendation.trim() });
         } else {
-          updateFields.push({ name: field.fieldName, rec: form.recommendation.trim() });
+          normalFields.push({ name: field.fieldName, rec: form.recommendation.trim() });
         }
       }
     });
 
-    const hasPriority = priorityFields.length > 0;
-
-    if (hasPriority) {
-      lines.push('⚠️ PRIORITY FIELDS:', '');
+    if (priorityFields.length > 0) {
+      lines.push('⚠️ HIGH PRIORITY:', '');
       priorityFields.forEach(f => {
         lines.push(f.name.toUpperCase());
         lines.push(f.rec, '');
       });
     }
 
-    if (updateFields.length > 0) {
-      if (hasPriority) {
-        lines.push('FIELD UPDATES:', '');
-      }
-      updateFields.forEach(f => {
+    if (normalFields.length > 0) {
+      lines.push('NORMAL PRIORITY:', '');
+      normalFields.forEach(f => {
         lines.push(f.name.toUpperCase());
         lines.push(f.rec, '');
       });
@@ -306,6 +307,11 @@ export default function WaterRecsClient({
   const buildUpdateText = (): string => {
     if (!currentOperation) return '';
     const lines: string[] = [];
+
+    // Title: Soil Moisture Reports - date
+    const dateObj = new Date(reportDate + 'T12:00:00');
+    const formatted = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    lines.push(`Soil Moisture Reports - ${formatted}`, '');
 
     const continueFields: { name: string; day: string }[] = [];
     const updatedFields: { name: string; day: string }[] = [];
