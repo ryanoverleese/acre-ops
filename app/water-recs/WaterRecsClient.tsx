@@ -52,6 +52,7 @@ export default function WaterRecsClient({
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Smart-order: start from report date's day of week, then wrap around
+  // Returns { value, label } where label includes "(today)", "(1 day)", etc.
   const waterDayOptions = useMemo(() => {
     const date = new Date(reportDate + 'T12:00:00');
     const jsDay = date.getDay(); // 0=Sun, 1=Mon, ...
@@ -74,7 +75,16 @@ export default function WaterRecsClient({
     const daySet = new Set(days);
     const filteredOrdered = ordered.filter(d => daySet.has(d));
 
-    return [...filteredOrdered, ...special];
+    // Build label with day count
+    const result = filteredOrdered.map((d, i) => ({
+      value: d,
+      label: i === 0 ? `${d} (today)` : i === 1 ? `${d} (1 day)` : `${d} (${i} days)`,
+    }));
+
+    // Add special options without day counts
+    special.forEach(s => result.push({ value: s, label: s }));
+
+    return result;
   }, [reportDate, rawDayOptions]);
 
   const [mode, setMode] = useState<'full' | 'update'>('full');
@@ -322,11 +332,11 @@ export default function WaterRecsClient({
       });
     }
 
-    const scheduleDays = waterDayOptions.filter(d => waterSchedule[d]?.length);
+    const scheduleDays = waterDayOptions.filter(d => waterSchedule[d.value]?.length);
     if (scheduleDays.length > 0) {
       lines.push('💧 Water Schedule:');
-      scheduleDays.forEach(day => {
-        lines.push(`${day}: ${waterSchedule[day].join(', ')}`);
+      scheduleDays.forEach(d => {
+        lines.push(`${d.value}: ${waterSchedule[d.value].join(', ')}`);
       });
     }
 
@@ -581,7 +591,7 @@ export default function WaterRecsClient({
                     }}
                   >
                     <option value="">Water day...</option>
-                    {waterDayOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                    {waterDayOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                   </select>
 
                   {/* Expand chevron */}
@@ -742,7 +752,7 @@ export default function WaterRecsClient({
                     }}
                   >
                     <option value="">New day...</option>
-                    {waterDayOptions.map(d => <option key={d} value={d}>{d}</option>)}
+                    {waterDayOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                   </select>
                 )}
               </div>
