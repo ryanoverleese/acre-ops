@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { ApprovalField, ApprovalProbeAssignment } from './page';
 
@@ -25,7 +25,8 @@ export default function ApprovalClient({ operationName, season, fields: initialF
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [changeNotes, setChangeNotes] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState<Record<string, boolean>>({});
+  const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [bulkLoading, setBulkLoading] = useState(false);
 
   // Use probe assignments if available, otherwise fall back to fields
@@ -54,10 +55,15 @@ export default function ApprovalClient({ operationName, season, fields: initialF
     ? probeAssignments.filter((pa) => pa.approvalStatus === 'Change Requested').length
     : fields.filter((f) => f.approvalStatus === 'Change Requested').length;
 
-  // Approve a probe assignment
+  const showSaved = useCallback((key: string) => {
+    setSaved((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => setSaved((prev) => ({ ...prev, [key]: false })), 2000);
+  }, []);
+
+  // Auto-save approve for probe assignment
   const handleApproveProbeAssignment = async (probeAssignmentId: number) => {
     const key = `pa-${probeAssignmentId}`;
-    setLoading((prev) => ({ ...prev, [key]: true }));
+    setSaving((prev) => ({ ...prev, [key]: true }));
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
@@ -76,27 +82,49 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               : pa
           )
         );
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to approve');
+        showSaved(key);
       }
     } catch {
-      alert('Failed to approve');
+      // silent fail
     } finally {
-      setLoading((prev) => ({ ...prev, [key]: false }));
+      setSaving((prev) => ({ ...prev, [key]: false }));
     }
   };
 
-  // Request change for a probe assignment
-  const handleRequestChangeProbeAssignment = async (probeAssignmentId: number) => {
+  // Undo approve - set back to Pending
+  const handleUndoApproveProbeAssignment = async (probeAssignmentId: number) => {
     const key = `pa-${probeAssignmentId}`;
-    const notes = changeNotes[key];
-    if (!notes?.trim()) {
-      alert('Please enter notes describing the requested change');
-      return;
-    }
+    setSaving((prev) => ({ ...prev, [key]: true }));
+    try {
+      const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_status: 'Pending', approval_date: '' }),
+      });
 
-    setLoading((prev) => ({ ...prev, [key]: true }));
+      if (response.ok) {
+        setProbeAssignments((prev) =>
+          prev.map((pa) =>
+            pa.id === probeAssignmentId
+              ? { ...pa, approvalStatus: 'Pending', approvalDate: '' }
+              : pa
+          )
+        );
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setSaving((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  // Auto-save change request on blur for probe assignment
+  const handleChangeNotesBlur = async (probeAssignmentId: number) => {
+    const key = `pa-${probeAssignmentId}`;
+    const notes = changeNotes[key]?.trim();
+    if (!notes) return; // Don't save empty notes
+
+    setSaving((prev) => ({ ...prev, [key]: true }));
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
@@ -116,66 +144,24 @@ export default function ApprovalClient({ operationName, season, fields: initialF
           )
         );
         setChangeNotes((prev) => ({ ...prev, [key]: '' }));
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to request change');
+        showSaved(key);
       }
     } catch {
-      alert('Failed to request change');
+      // silent fail
     } finally {
-      setLoading((prev) => ({ ...prev, [key]: false }));
+      setSaving((prev) => ({ ...prev, [key]: false }));
     }
   };
 
-  // Bulk approve all pending probe assignments
-  const handleBulkApproveProbeAssignments = async () => {
-    const pendingAssignments = probeAssignments.filter((pa) => pa.approvalStatus === 'Pending');
-    if (pendingAssignments.length === 0) return;
-
-    if (!confirm(`Approve all ${pendingAssignments.length} pending probe locations?`)) return;
-
-    setBulkLoading(true);
-    try {
-      // Approve each one
-      const approvalDate = new Date().toISOString().split('T')[0];
-      await Promise.all(
-        pendingAssignments.map((pa) =>
-          fetch(`/api/probe-assignments/${pa.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              approval_status: 'Approved',
-              approval_date: approvalDate,
-            }),
-          })
-        )
-      );
-
-      setProbeAssignments((prev) =>
-        prev.map((pa) =>
-          pa.approvalStatus === 'Pending'
-            ? { ...pa, approvalStatus: 'Approved', approvalDate }
-            : pa
-        )
-      );
-    } catch {
-      alert('Failed to bulk approve');
-    } finally {
-      setBulkLoading(false);
-    }
-  };
-
+  // Auto-save approve for legacy field
   const handleApprove = async (fieldSeasonId: number) => {
     const key = `fs-${fieldSeasonId}`;
-    setLoading((prev) => ({ ...prev, [key]: true }));
+    setSaving((prev) => ({ ...prev, [key]: true }));
     try {
       const response = await fetch('/api/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fieldSeasonId,
-          action: 'approve',
-        }),
+        body: JSON.stringify({ fieldSeasonId, action: 'approve' }),
       });
 
       if (response.ok) {
@@ -186,37 +172,54 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               : f
           )
         );
-      } else {
-        const error = await response.json();
-        console.error('Approve error:', error);
-        alert(`Failed to approve field (ID: ${fieldSeasonId}): ${error.error || 'Unknown error'}`);
+        showSaved(key);
       }
-    } catch (err) {
-      console.error('Approve exception:', err);
-      alert('Failed to approve field');
+    } catch {
+      // silent fail
     } finally {
-      setLoading((prev) => ({ ...prev, [key]: false }));
+      setSaving((prev) => ({ ...prev, [key]: false }));
     }
   };
 
-  const handleRequestChange = async (fieldSeasonId: number) => {
+  // Undo approve for legacy field
+  const handleUndoApprove = async (fieldSeasonId: number) => {
     const key = `fs-${fieldSeasonId}`;
-    const notes = changeNotes[key];
-    if (!notes?.trim()) {
-      alert('Please enter notes describing the requested change');
-      return;
-    }
-
-    setLoading((prev) => ({ ...prev, [key]: true }));
+    setSaving((prev) => ({ ...prev, [key]: true }));
     try {
       const response = await fetch('/api/approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fieldSeasonId,
-          action: 'request_change',
-          notes,
-        }),
+        body: JSON.stringify({ fieldSeasonId, action: 'approve', undo: true }),
+      });
+
+      if (response.ok) {
+        setFields((prev) =>
+          prev.map((f) =>
+            f.fieldSeasonId === fieldSeasonId
+              ? { ...f, approvalStatus: 'Pending', approvalDate: '' }
+              : f
+          )
+        );
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setSaving((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
+  // Auto-save change request on blur for legacy field
+  const handleFieldChangeNotesBlur = async (fieldSeasonId: number) => {
+    const key = `fs-${fieldSeasonId}`;
+    const notes = changeNotes[key]?.trim();
+    if (!notes) return;
+
+    setSaving((prev) => ({ ...prev, [key]: true }));
+    try {
+      const response = await fetch('/api/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fieldSeasonId, action: 'request_change', notes }),
       });
 
       if (response.ok) {
@@ -228,66 +231,158 @@ export default function ApprovalClient({ operationName, season, fields: initialF
           )
         );
         setChangeNotes((prev) => ({ ...prev, [key]: '' }));
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to request change');
+        showSaved(key);
       }
     } catch {
-      alert('Failed to request change');
+      // silent fail
     } finally {
-      setLoading((prev) => ({ ...prev, [key]: false }));
+      setSaving((prev) => ({ ...prev, [key]: false }));
     }
   };
 
   const handleBulkApprove = async () => {
     if (hasProbeAssignments) {
-      return handleBulkApproveProbeAssignments();
-    }
+      const pendingAssignments = probeAssignments.filter((pa) => pa.approvalStatus === 'Pending');
+      if (pendingAssignments.length === 0) return;
 
-    const pendingFields = fields.filter((f) => f.approvalStatus === 'Pending');
-    if (pendingFields.length === 0) return;
-
-    if (!confirm(`Approve all ${pendingFields.length} pending fields?`)) return;
-
-    setBulkLoading(true);
-    try {
-      const response = await fetch('/api/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fieldSeasonIds: pendingFields.map((f) => f.fieldSeasonId),
-          action: 'bulk_approve',
-        }),
-      });
-
-      if (response.ok) {
-        setFields((prev) =>
-          prev.map((f) =>
-            f.approvalStatus === 'Pending'
-              ? { ...f, approvalStatus: 'Approved', approvalDate: new Date().toISOString().split('T')[0] }
-              : f
+      setBulkLoading(true);
+      try {
+        const approvalDate = new Date().toISOString().split('T')[0];
+        await Promise.all(
+          pendingAssignments.map((pa) =>
+            fetch(`/api/probe-assignments/${pa.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
+            })
           )
         );
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to bulk approve');
+
+        setProbeAssignments((prev) =>
+          prev.map((pa) =>
+            pa.approvalStatus === 'Pending'
+              ? { ...pa, approvalStatus: 'Approved', approvalDate }
+              : pa
+          )
+        );
+      } catch {
+        // silent fail
+      } finally {
+        setBulkLoading(false);
       }
-    } catch {
-      alert('Failed to bulk approve');
-    } finally {
-      setBulkLoading(false);
+    } else {
+      const pendingFields = fields.filter((f) => f.approvalStatus === 'Pending');
+      if (pendingFields.length === 0) return;
+
+      setBulkLoading(true);
+      try {
+        const response = await fetch('/api/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fieldSeasonIds: pendingFields.map((f) => f.fieldSeasonId),
+            action: 'bulk_approve',
+          }),
+        });
+
+        if (response.ok) {
+          setFields((prev) =>
+            prev.map((f) =>
+              f.approvalStatus === 'Pending'
+                ? { ...f, approvalStatus: 'Approved', approvalDate: new Date().toISOString().split('T')[0] }
+                : f
+            )
+          );
+        }
+      } catch {
+        // silent fail
+      } finally {
+        setBulkLoading(false);
+      }
     }
   };
 
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'Approved':
-        return 'status-badge status-approved';
-      case 'Change Requested':
-        return 'status-badge status-change-requested';
-      default:
-        return 'status-badge status-pending';
-    }
+  // Render status area for a card (approve button, approved badge, or change requested)
+  const renderStatusActions = (
+    status: string,
+    key: string,
+    approveHandler: () => void,
+    undoHandler: () => void,
+    blurHandler: () => void,
+    approvalDate?: string,
+    approvalNotes?: string,
+  ) => {
+    const isSaving = saving[key];
+    const isSaved = saved[key];
+
+    return (
+      <div className="card-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {/* Approve / Approved toggle */}
+        <button
+          onClick={status === 'Approved' ? undoHandler : approveHandler}
+          disabled={isSaving}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+            padding: '12px 24px', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
+            borderRadius: 'var(--radius)', border: 'none', width: '100%',
+            transition: 'all 0.2s',
+            background: status === 'Approved' ? '#16a34a' : status === 'Change Requested' ? 'var(--bg-tertiary)' : '#2563eb',
+            color: status === 'Approved' ? '#fff' : status === 'Change Requested' ? 'var(--text-muted)' : '#fff',
+            transform: status === 'Approved' ? 'scale(1.02)' : 'none',
+            boxShadow: status === 'Approved' ? '0 2px 8px rgba(22,163,74,0.3)' : 'none',
+          }}
+        >
+          {isSaving ? (
+            'Saving...'
+          ) : status === 'Approved' ? (
+            <>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              Approved{approvalDate ? ` on ${approvalDate}` : ''} (tap to undo)
+            </>
+          ) : (
+            'Approve Location'
+          )}
+        </button>
+
+        {/* Saved indicator */}
+        {isSaved && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Saved
+          </div>
+        )}
+
+        {/* Change request textarea - always visible for Pending, shows notes for Change Requested */}
+        {status === 'Change Requested' && approvalNotes && (
+          <div style={{
+            background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 'var(--radius)',
+            padding: '12px', fontSize: '13px',
+          }}>
+            <strong style={{ display: 'block', marginBottom: '4px' }}>Change Requested:</strong>
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{approvalNotes}</p>
+          </div>
+        )}
+
+        {(status === 'Pending' || status === 'Change Requested') && (
+          <textarea
+            placeholder={status === 'Change Requested' ? 'Add additional notes...' : 'Describe the change you\'d like... (saves automatically)'}
+            value={changeNotes[key] || ''}
+            onChange={(e) => setChangeNotes((prev) => ({ ...prev, [key]: e.target.value }))}
+            onBlur={blurHandler}
+            style={{
+              width: '100%', minHeight: '60px', padding: '10px', fontSize: '14px',
+              borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+              background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+              resize: 'vertical', boxSizing: 'border-box',
+            }}
+          />
+        )}
+      </div>
+    );
   };
 
   return (
@@ -325,7 +420,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               onClick={handleBulkApprove}
               disabled={bulkLoading}
             >
-              {bulkLoading ? 'Approving...' : 'Approve All Locations'}
+              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Locations`}
             </button>
           </div>
         )}
@@ -337,7 +432,6 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               <div key={fieldName} className="approval-field-group">
                 {probes.map((pa) => {
                   const key = `pa-${pa.id}`;
-                  const isLoading = loading[key];
 
                   return (
                     <div key={pa.id} className="approval-card expanded" style={{ marginBottom: '16px' }}>
@@ -345,7 +439,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                       <div className="card-header">
                         <div className="card-title">
                           <h3>{fieldName} - Probe {pa.probeNumber}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
-                          <span className={getStatusBadgeClass(pa.approvalStatus)}>
+                          <span className={`status-badge ${pa.approvalStatus === 'Approved' ? 'status-approved' : pa.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
                             {pa.approvalStatus}
                           </span>
                         </div>
@@ -390,49 +484,15 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                           )}
                         </div>
 
-                        {/* Actions */}
-                        {pa.approvalStatus === 'Pending' && (
-                          <div className="card-actions">
-                            <button
-                              className="btn btn-primary"
-                              onClick={() => handleApproveProbeAssignment(pa.id)}
-                              disabled={isLoading}
-                            >
-                              {isLoading ? 'Approving...' : 'Approve Location'}
-                            </button>
-                            <div className="change-request-form">
-                              <textarea
-                                placeholder="Describe the change you'd like..."
-                                value={changeNotes[key] || ''}
-                                onChange={(e) =>
-                                  setChangeNotes((prev) => ({ ...prev, [key]: e.target.value }))
-                                }
-                              />
-                              <button
-                                className="btn btn-secondary"
-                                onClick={() => handleRequestChangeProbeAssignment(pa.id)}
-                                disabled={isLoading}
-                              >
-                                Request Change
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {pa.approvalStatus === 'Approved' && pa.approvalDate && (
-                          <div className="card-approved-info">
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Approved on {pa.approvalDate}
-                          </div>
-                        )}
-
-                        {pa.approvalStatus === 'Change Requested' && pa.approvalNotes && (
-                          <div className="card-change-info">
-                            <strong>Change Requested:</strong>
-                            <p>{pa.approvalNotes}</p>
-                          </div>
+                        {/* Auto-save actions */}
+                        {renderStatusActions(
+                          pa.approvalStatus,
+                          key,
+                          () => handleApproveProbeAssignment(pa.id),
+                          () => handleUndoApproveProbeAssignment(pa.id),
+                          () => handleChangeNotesBlur(pa.id),
+                          pa.approvalDate,
+                          pa.approvalNotes,
                         )}
                       </div>
                     </div>
@@ -446,7 +506,6 @@ export default function ApprovalClient({ operationName, season, fields: initialF
           <div className="approval-fields">
             {fields.map((field) => {
               const key = `fs-${field.fieldSeasonId}`;
-              const isLoading = loading[key];
 
               return (
                 <div key={field.fieldSeasonId} className="approval-card expanded">
@@ -454,7 +513,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                   <div className="card-header">
                     <div className="card-title">
                       <h3>{field.name}</h3>
-                      <span className={getStatusBadgeClass(field.approvalStatus)}>
+                      <span className={`status-badge ${field.approvalStatus === 'Approved' ? 'status-approved' : field.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
                         {field.approvalStatus}
                       </span>
                     </div>
@@ -500,54 +559,20 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                       )}
                     </div>
 
-                    {/* Actions */}
-                    {field.approvalStatus === 'Pending' && (
-                      <div className="card-actions">
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleApprove(field.fieldSeasonId)}
-                          disabled={isLoading}
-                        >
-                          {isLoading ? 'Approving...' : 'Approve Location'}
-                        </button>
-                        <div className="change-request-form">
-                          <textarea
-                            placeholder="Describe the change you'd like..."
-                            value={changeNotes[key] || ''}
-                            onChange={(e) =>
-                              setChangeNotes((prev) => ({ ...prev, [key]: e.target.value }))
-                            }
-                          />
-                          <button
-                            className="btn btn-secondary"
-                            onClick={() => handleRequestChange(field.fieldSeasonId)}
-                            disabled={isLoading}
-                          >
-                            Request Change
-                          </button>
-                        </div>
-                      </div>
+                    {/* Auto-save actions */}
+                    {renderStatusActions(
+                      field.approvalStatus,
+                      key,
+                      () => handleApprove(field.fieldSeasonId),
+                      () => handleUndoApprove(field.fieldSeasonId),
+                      () => handleFieldChangeNotesBlur(field.fieldSeasonId),
+                      field.approvalDate,
+                      field.approvalNotes,
                     )}
-
-                    {field.approvalStatus === 'Approved' && field.approvalDate && (
-                    <div className="card-approved-info">
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Approved on {field.approvalDate}
-                    </div>
-                  )}
-
-                  {field.approvalStatus === 'Change Requested' && field.approvalNotes && (
-                    <div className="card-change-info">
-                      <strong>Change Requested:</strong>
-                      <p>{field.approvalNotes}</p>
-                    </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
           </div>
         )}
 
@@ -559,7 +584,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
               onClick={handleBulkApprove}
               disabled={bulkLoading}
             >
-              {bulkLoading ? 'Approving...' : 'Approve All Locations'}
+              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Locations`}
             </button>
           </div>
         )}

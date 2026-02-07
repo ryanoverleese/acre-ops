@@ -7,7 +7,7 @@ const FIELD_SEASONS_TABLE_ID = 817300;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { fieldSeasonId, fieldSeasonIds, action, notes } = body;
+    const { fieldSeasonId, fieldSeasonIds, action, notes, undo } = body;
 
     if (action === 'bulk_approve') {
       // Bulk approve multiple fields
@@ -42,17 +42,16 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'fieldSeasonId is required' }, { status: 400 });
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const patchBody = undo
+        ? { approval_status: 'Pending', approval_date: '' }
+        : { approval_status: 'Approved', approval_date: new Date().toISOString().split('T')[0] };
       const response = await fetch(`${BASEROW_API_URL}/${FIELD_SEASONS_TABLE_ID}/${fieldSeasonId}/?user_field_names=true`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Token ${BASEROW_TOKEN}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          approval_status: 'Approved',
-          approval_date: today,
-        }),
+        body: JSON.stringify(patchBody),
       });
 
       if (!response.ok) {
