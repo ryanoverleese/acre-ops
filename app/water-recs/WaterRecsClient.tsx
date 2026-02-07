@@ -337,9 +337,12 @@ export default function WaterRecsClient({
 
     const scheduleDays = waterDayOptions.filter(d => waterSchedule[d.value]?.length);
     if (scheduleDays.length > 0) {
-      lines.push('💧 Water Schedule:');
+      lines.push('💧 Water Schedule:', '');
       scheduleDays.forEach(d => {
-        lines.push(`${d.value}: ${waterSchedule[d.value].join(', ')}`);
+        const sorted = [...waterSchedule[d.value]].sort((a, b) => a.localeCompare(b));
+        lines.push(`${d.value}:`);
+        sorted.forEach(name => lines.push(name));
+        lines.push('');
       });
     }
 
