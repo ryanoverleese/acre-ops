@@ -224,9 +224,12 @@ export default function WaterRecsClient({
         body: JSON.stringify({ deleteIds, records }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
+      if (response.ok && data.created > 0) {
         showToast(`Saved ${data.created} water recommendations`);
+      } else if (response.ok && data.created === 0) {
+        console.error('Bulk save errors:', data.errors);
+        showToast(`Failed to save - ${data.errors?.[0]?.substring(0, 80) || 'Baserow rejected records'}`);
       } else {
         showToast('Failed to save - please try again');
       }
