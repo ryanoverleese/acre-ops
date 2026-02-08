@@ -57,7 +57,7 @@ export default async function OrdersPage() {
       .filter(p => p.active !== false)
       .map(p => ({
         id: p.id,
-        name: p.name || '',
+        name: p.service_type || '',
         category: p.category?.value || '',
         rate: p.rate || 0,
         unit: p.unit?.value || 'each',
