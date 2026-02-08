@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
         };
 
         if (item.crop) data.crop = item.crop;
-        // service_type is a Link field to service_rates — needs array of row IDs
+        // service_type is a Link field to products_services — needs array of row IDs
         if (item.service_type) data.service_type = [parseInt(item.service_type, 10)];
         if (item.antenna_type) data.antenna_type = item.antenna_type;
         if (item.battery_type) data.battery_type = item.battery_type;

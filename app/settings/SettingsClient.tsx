@@ -11,7 +11,7 @@ import {
   FormFieldRow,
 } from '@/components/ui';
 
-export interface ProcessedServiceRate {
+export interface ProcessedProductService {
   id: number;
   serviceType: string;
   rate: number;
@@ -42,7 +42,7 @@ interface SerializedSelectOptionsWithMeta {
 }
 
 interface SettingsClientProps {
-  initialServiceRates: ProcessedServiceRate[];
+  initialProductsServices: ProcessedProductService[];
   availableSeasons: string[];
   selectOptions: SerializedSelectOptionsWithMeta;
 }
@@ -167,14 +167,14 @@ const initialAddForm = {
   description: '',
 };
 
-export default function SettingsClient({ initialServiceRates, availableSeasons, selectOptions }: SettingsClientProps) {
-  const [serviceRates, setServiceRates] = useState(initialServiceRates);
+export default function SettingsClient({ initialProductsServices, availableSeasons, selectOptions }: SettingsClientProps) {
+  const [productsServices, setProductsServices] = useState(initialProductsServices);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState(initialAddForm);
   const [saving, setSaving] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Partial<ProcessedServiceRate>>({});
+  const [editForm, setEditForm] = useState<Partial<ProcessedProductService>>({});
   const [savingEdit, setSavingEdit] = useState(false);
   const [globalSeason, setGlobalSeason] = useState<string>(String(new Date().getFullYear()));
   const [seasonSaved, setSeasonSaved] = useState(false);
@@ -471,7 +471,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
 
     setSaving(true);
     try {
-      const response = await fetch('/api/service-rates', {
+      const response = await fetch('/api/products-services', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -485,7 +485,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
 
       if (response.ok) {
         const newRate = await response.json();
-        setServiceRates([...serviceRates, {
+        setProductsServices([...productsServices, {
           id: newRate.id,
           serviceType: newRate.service_type || '',
           rate: newRate.rate || 0,
@@ -497,17 +497,17 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
         setAddForm(initialAddForm);
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to create service rate');
+        alert(error.error || 'Failed to create product/service');
       }
     } catch (error) {
-      console.error('Error creating service rate:', error);
-      alert('Failed to create service rate');
+      console.error('Error creating product/service:', error);
+      alert('Failed to create product/service');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleStartEdit = (rate: ProcessedServiceRate) => {
+  const handleStartEdit = (rate: ProcessedProductService) => {
     setEditingId(rate.id);
     setEditForm({
       serviceType: rate.serviceType,
@@ -526,7 +526,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
   const handleSaveEdit = async (id: number) => {
     setSavingEdit(true);
     try {
-      const response = await fetch(`/api/service-rates/${id}`, {
+      const response = await fetch(`/api/products-services/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -539,34 +539,34 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
       });
 
       if (response.ok) {
-        setServiceRates(serviceRates.map((sr) =>
-          sr.id === id ? { ...sr, ...editForm } as ProcessedServiceRate : sr
+        setProductsServices(productsServices.map((sr) =>
+          sr.id === id ? { ...sr, ...editForm } as ProcessedProductService : sr
         ));
         setEditingId(null);
         setEditForm({});
       } else {
         const error = await response.json();
-        alert(error.error || 'Failed to update service rate');
+        alert(error.error || 'Failed to update product/service');
       }
     } catch (error) {
-      console.error('Error updating service rate:', error);
-      alert('Failed to update service rate');
+      console.error('Error updating product/service:', error);
+      alert('Failed to update product/service');
     } finally {
       setSavingEdit(false);
     }
   };
 
-  const handleToggleStatus = async (rate: ProcessedServiceRate) => {
+  const handleToggleStatus = async (rate: ProcessedProductService) => {
     const newStatus = rate.status === 'Active' ? 'Inactive' : 'Active';
     try {
-      const response = await fetch(`/api/service-rates/${rate.id}`, {
+      const response = await fetch(`/api/products-services/${rate.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
 
       if (response.ok) {
-        setServiceRates(serviceRates.map((sr) =>
+        setProductsServices(productsServices.map((sr) =>
           sr.id === rate.id ? { ...sr, status: newStatus } : sr
         ));
       } else {
@@ -577,8 +577,8 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
     }
   };
 
-  const activeRates = serviceRates.filter((sr) => sr.status === 'Active');
-  const inactiveRates = serviceRates.filter((sr) => sr.status !== 'Active');
+  const activeRates = productsServices.filter((sr) => sr.status === 'Active');
+  const inactiveRates = productsServices.filter((sr) => sr.status !== 'Active');
 
   return (
     <>
@@ -718,17 +718,17 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
         )}
       </ContentCard>
 
-      {/* Service Rates */}
+      {/* Products & Services */}
       <ContentCard className="mb-6">
         <div
-          onClick={() => toggleSection('serviceRates')}
+          onClick={() => toggleSection('productsServices')}
           style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
         >
           <div style={{ flex: 1 }}>
             <SectionHeader
-              title="Service Rates"
+              title="Products & Services"
               actions={
-                openSections.has('serviceRates') ? (
+                openSections.has('productsServices') ? (
                   <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }} style={{ marginLeft: '12px' }}>
                     + Add Rate
                   </button>
@@ -738,13 +738,13 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
           </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('serviceRates') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
+            style={{ transition: 'transform 0.2s', transform: openSections.has('productsServices') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
 
-        {openSections.has('serviceRates') && (
+        {openSections.has('productsServices') && (
           <>
         <p className="section-description">
           Define billing rates for each service type. These rates auto-fill when enrolling fields.
@@ -907,7 +907,7 @@ export default function SettingsClient({ initialServiceRates, availableSeasons, 
         <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
-              <h3>Add Service Rate</h3>
+              <h3>Add Product / Service</h3>
               <button className="close-btn" onClick={() => setShowAddModal(false)}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

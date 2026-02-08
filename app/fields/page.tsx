@@ -1,4 +1,4 @@
-import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getServiceRates, getAllSelectOptions } from '@/lib/baserow';
+import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getProductsServices, getAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
 import FieldsClient from './FieldsClient';
 
@@ -128,7 +128,7 @@ export interface ProbeOption {
   status: string;
 }
 
-export interface ServiceRateOption {
+export interface ProductServiceOption {
   id: number;
   serviceType: string;
   rate: number;
@@ -149,12 +149,12 @@ async function getFieldsData(): Promise<{
   probes: ProbeOption[];
   availableSeasons: string[];
   probeAssignments: ProcessedProbeAssignment[];
-  serviceRates: ServiceRateOption[];
+  productsServices: ProductServiceOption[];
   selectOptions: SerializedSelectOptions;
 }> {
   try {
     // Fetch core data and select options separately so select options failure doesn't kill everything
-    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawServiceRates] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawProductsServices] = await Promise.all([
       getFields(),
       getOperations(),
       getFieldSeasons(),
@@ -162,7 +162,7 @@ async function getFieldsData(): Promise<{
       getBillingEntities(),
       getProbeAssignments(),
       getContacts(),
-      getServiceRates(),
+      getProductsServices(),
     ]);
 
     // Select options are nice-to-have; don't let failure wipe the page
@@ -503,8 +503,8 @@ async function getFieldsData(): Promise<{
       };
     });
 
-    // Process service rates - filter to active only
-    const serviceRates: ServiceRateOption[] = rawServiceRates
+    // Process products/services - filter to active only
+    const productsServices: ProductServiceOption[] = rawProductsServices
       .filter((sr) => !sr.status || sr.status?.value === 'Active')
       .map((sr) => ({
         id: sr.id,
@@ -520,7 +520,7 @@ async function getFieldsData(): Promise<{
       probes: probeOptions,
       availableSeasons,
       probeAssignments,
-      serviceRates,
+      productsServices,
       selectOptions: {
         fields: allSelectOptions.fields || {},
         field_seasons: allSelectOptions.field_seasons || {},
@@ -536,14 +536,14 @@ async function getFieldsData(): Promise<{
       probes: [],
       availableSeasons: [String(new Date().getFullYear())],
       probeAssignments: [],
-      serviceRates: [],
+      productsServices: [],
       selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {} },
     };
   }
 }
 
 export default async function FieldsPage() {
-  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments, serviceRates, selectOptions } = await getFieldsData();
+  const { fields, operations, billingEntities, probes, availableSeasons, probeAssignments, productsServices, selectOptions } = await getFieldsData();
 
   return (
     <FieldsClient
@@ -553,7 +553,7 @@ export default async function FieldsPage() {
       probes={probes}
       availableSeasons={availableSeasons}
       initialProbeAssignments={probeAssignments}
-      serviceRates={serviceRates}
+      productsServices={productsServices}
       selectOptions={selectOptions}
     />
   );

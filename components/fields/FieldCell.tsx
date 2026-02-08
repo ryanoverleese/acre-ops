@@ -101,7 +101,7 @@ interface RenderCellProps {
   probeAssignmentCount: number;
   hasDuplicateProbeLocation: boolean;
   isExpanded: boolean;
-  serviceTypeOptions: { value: string; label: string }[];
+  productTypeOptions: { value: string; label: string }[];
   fieldOpts: DynamicFieldOptions;
   seasonOpts: DynamicSeasonOptions;
   savingFields: Set<string>;
@@ -119,7 +119,7 @@ export function FieldCell({
   probeAssignmentCount,
   hasDuplicateProbeLocation,
   isExpanded,
-  serviceTypeOptions,
+  productTypeOptions,
   fieldOpts,
   seasonOpts,
   savingFields,
@@ -151,7 +151,7 @@ export function FieldCell({
     case 'service':
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
-          <InlineCell fieldSeasonId={field.fieldSeasonId} field="serviceType" value={field.serviceTypeId ? String(field.serviceTypeId) : ''} type="select" options={serviceTypeOptions}
+          <InlineCell fieldSeasonId={field.fieldSeasonId} field="serviceType" value={field.serviceTypeId ? String(field.serviceTypeId) : ''} type="select" options={productTypeOptions}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );

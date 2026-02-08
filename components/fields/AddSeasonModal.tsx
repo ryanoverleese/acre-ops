@@ -29,7 +29,7 @@ export interface AddSeasonModalProps {
   fieldName: string;
   billingEntityId: number | null;
   missingSeasons: string[];
-  serviceTypeOptions: { value: string; label: string }[];
+  productTypeOptions: { value: string; label: string }[];
   seasonOpts: DynamicSeasonOptions;
   getRateForServiceType: (serviceType: string) => string;
   onClose: () => void;
@@ -41,7 +41,7 @@ export default function AddSeasonModal({
   fieldName,
   billingEntityId,
   missingSeasons,
-  serviceTypeOptions,
+  productTypeOptions,
   seasonOpts,
   getRateForServiceType,
   onClose,
@@ -97,7 +97,7 @@ export default function AddSeasonModal({
                 billing_entity_id: billingEntityId,
                 season: form.season,
                 field_season_id: result.id,
-                service_type: serviceTypeOptions.find(o => o.value === form.service_type)?.label || '',
+                service_type: productTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });
@@ -163,7 +163,7 @@ export default function AddSeasonModal({
                   setForm({ ...form, service_type: serviceType, billing_rate: rate });
                 }}>
                   <option value="">Select...</option>
-                  {serviceTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                  {productTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>

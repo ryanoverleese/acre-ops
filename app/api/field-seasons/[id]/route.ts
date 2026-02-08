@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.removal_date !== undefined) setField('removal_date', body.removal_date);
     if (body.removal_notes !== undefined) setField('removal_notes', body.removal_notes);
     if (body.crop !== undefined) setField('crop', body.crop);
-    // service_type is a Link field to service_rates — needs array of row IDs
+    // service_type is a Link field to products_services — needs array of row IDs
     if (body.service_type !== undefined) {
       const stVal = body.service_type;
       setField('service_type', stVal ? [parseInt(stVal, 10)] : []);

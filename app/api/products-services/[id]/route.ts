@@ -18,8 +18,11 @@ export async function PATCH(
     if (body.dealer_fee !== undefined) updateData.dealer_fee = body.dealer_fee;
     if (body.description !== undefined) updateData.description = body.description;
     if (body.status !== undefined) updateData.status = body.status;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.unit !== undefined) updateData.unit = body.unit;
+    if (body.active !== undefined) updateData.active = body.active;
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.service_rates}/${id}/?user_field_names=true`;
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.products_services}/${id}/?user_field_names=true`;
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -33,15 +36,15 @@ export async function PATCH(
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to update service rate' },
+        { error: 'Failed to update product/service' },
         { status: response.status }
       );
     }
 
-    const updatedRate = await response.json();
-    return NextResponse.json(updatedRate);
+    const updatedItem = await response.json();
+    return NextResponse.json(updatedItem);
   } catch (error) {
-    console.error('Error updating service rate:', error);
+    console.error('Error updating product/service:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

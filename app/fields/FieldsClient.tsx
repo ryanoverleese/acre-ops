@@ -9,7 +9,7 @@ import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditS
 import AddFieldModal from '@/components/fields/AddFieldModal';
 import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
-import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ServiceRateOption, SerializedSelectOptions } from './page';
+import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -30,7 +30,7 @@ interface FieldsClientProps {
   probes: ProbeOption[];
   availableSeasons: string[];
   initialProbeAssignments: ProcessedProbeAssignment[];
-  serviceRates: ServiceRateOption[];
+  productsServices: ProductServiceOption[];
   selectOptions: SerializedSelectOptions;
 }
 
@@ -122,7 +122,7 @@ export default function FieldsClient({
   probes,
   availableSeasons,
   initialProbeAssignments,
-  serviceRates,
+  productsServices,
   selectOptions,
 }: FieldsClientProps) {
   const [fields, setFields] = useState(initialFields);
@@ -322,23 +322,23 @@ export default function FieldsClient({
     return Array.from(combined).sort((a, b) => b.localeCompare(a));
   }, [availableSeasons, customYears]);
 
-  // Create service rate lookup map by service_rate row ID
-  const serviceRateMap = useMemo(() => {
+  // Create product/service rate lookup map by row ID
+  const productServiceMap = useMemo(() => {
     const map = new Map<string, number>();
-    serviceRates.forEach((sr) => {
+    productsServices.forEach((sr) => {
       map.set(String(sr.id), sr.rate);
     });
     return map;
-  }, [serviceRates]);
+  }, [productsServices]);
 
-  // Create service type options from service rates
-  // value = service_rate row ID (for Link field), label = display name
-  const serviceTypeOptions = useMemo(() => {
-    return serviceRates
+  // Create product type options from products/services
+  // value = row ID (for Link field), label = display name
+  const productTypeOptions = useMemo(() => {
+    return productsServices
       .filter((sr) => sr.serviceType)
       .map((sr) => ({ value: String(sr.id), label: sr.serviceType }))
       .sort((a, b) => a.label.localeCompare(b.label));
-  }, [serviceRates]);
+  }, [productsServices]);
 
   // Dynamic select options from Baserow field metadata
   const fieldOpts = useMemo(() => ({
@@ -361,9 +361,9 @@ export default function FieldsClient({
 
   // Helper to get rate for a service type
   const getRateForServiceType = useCallback((serviceType: string): string => {
-    const rate = serviceRateMap.get(serviceType);
+    const rate = productServiceMap.get(serviceType);
     return rate !== undefined ? rate.toString() : '';
-  }, [serviceRateMap]);
+  }, [productServiceMap]);
 
   // Filter fields by current season - only show fields that have actual season data
   const seasonFields = useMemo(() => {
@@ -700,7 +700,7 @@ export default function FieldsClient({
             // For serviceType (Link field), update both display name and ID
             if (field === 'serviceType') {
               const stId = value ? parseInt(value as string, 10) : null;
-              const stLabel = serviceTypeOptions.find(o => o.value === String(value))?.label || '';
+              const stLabel = productTypeOptions.find(o => o.value === String(value))?.label || '';
               return { ...f, serviceType: stLabel, serviceTypeId: stId };
             }
             return { ...f, [field]: value };
@@ -729,7 +729,7 @@ export default function FieldsClient({
         return next;
       });
     }
-  }, [probes, serviceTypeOptions]);
+  }, [probes, productTypeOptions]);
 
   // Inline save handler for field-level data (not season-level)
   const handleInlineFieldSave = useCallback(async (fieldId: number, fieldName: string, value: unknown) => {
@@ -1815,7 +1815,7 @@ export default function FieldsClient({
                         style={{ fontSize: '12px', padding: '4px 8px' }}
                       >
                         <option value="">Service Type (optional)</option>
-                        {serviceTypeOptions.map((opt) => (
+                        {productTypeOptions.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
@@ -1926,7 +1926,7 @@ export default function FieldsClient({
                                   )
                                 )}
                                 isExpanded={isExpanded}
-                                serviceTypeOptions={serviceTypeOptions}
+                                productTypeOptions={productTypeOptions}
                                 fieldOpts={fieldOpts}
                                 seasonOpts={seasonOpts}
                                 savingFields={savingFields}
@@ -2788,7 +2788,7 @@ export default function FieldsClient({
             selectedProbe2Id={selectedProbe2Id}
             onProbeIdChange={setSelectedProbeId}
             onProbe2IdChange={setSelectedProbe2Id}
-            serviceTypeOptions={serviceTypeOptions}
+            productTypeOptions={productTypeOptions}
             seasonOpts={seasonOpts}
             getRateForServiceType={getRateForServiceType}
             getProbesForField={getProbesForField}
@@ -2822,7 +2822,7 @@ export default function FieldsClient({
           <AddFieldModal
             currentSeason={currentSeason}
             billingEntities={billingEntities}
-            serviceTypeOptions={serviceTypeOptions}
+            productTypeOptions={productTypeOptions}
             fieldOpts={fieldOpts}
             seasonOpts={seasonOpts}
             getRateForServiceType={getRateForServiceType}
@@ -2850,7 +2850,7 @@ export default function FieldsClient({
             fieldName={selectedField.name}
             billingEntityId={selectedField.billingEntityId}
             missingSeasons={missingSeasonsForField}
-            serviceTypeOptions={serviceTypeOptions}
+            productTypeOptions={productTypeOptions}
             seasonOpts={seasonOpts}
             getRateForServiceType={getRateForServiceType}
             onClose={() => setShowAddSeasonModal(false)}

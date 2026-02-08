@@ -60,9 +60,10 @@ export const TABLE_IDS = {
   invoices: 817303,
   invoice_lines: 817304,
   probe_assignments: 819350,
-  service_rates: 826849,
+  products_services: 826849,
   inventory: 827222,
   users: 828606,
+  weather_stations: 0, // TODO: Replace with actual Baserow table ID after creating the table
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -379,12 +380,16 @@ export interface InvoiceLine {
   rate?: number;
 }
 
-export interface ServiceRate {
+export interface ProductService {
   id: number;
+  name?: string;
   service_type?: string;
   rate?: number;
   dealer_fee?: number;
   description?: string;
+  category?: { id: number; value: string };
+  unit?: { id: number; value: string };
+  active?: boolean;
   status?: { id: number; value: string };
 }
 
@@ -400,7 +405,7 @@ export const getWaterRecs = (options?: FetchOptions) => getRows<WaterRec>('water
 export const getInvoices = (options?: FetchOptions) => getRows<Invoice>('invoices', options);
 export const getInvoiceLines = (options?: FetchOptions) => getRows<InvoiceLine>('invoice_lines', options);
 export const getProbeAssignments = (options?: FetchOptions) => getRows<ProbeAssignment>('probe_assignments', options);
-export const getServiceRates = (options?: FetchOptions) => getRows<ServiceRate>('service_rates', options);
+export const getProductsServices = (options?: FetchOptions) => getRows<ProductService>('products_services', options);
 
 export interface InventoryItem {
   id: number;
@@ -410,6 +415,21 @@ export interface InventoryItem {
 }
 
 export const getInventory = (options?: FetchOptions) => getRows<InventoryItem>('inventory', options);
+
+export interface WeatherStation {
+  id: number;
+  model?: { id: number; value: string };
+  billing_entity?: { id: number; value: string }[];
+  install_lat?: number;
+  install_lng?: number;
+  install_date?: string;
+  connectivity_type?: { id: number; value: string };
+  status?: { id: number; value: string };
+  price_paid?: string;
+  notes?: string;
+}
+
+export const getWeatherStations = (options?: FetchOptions) => getRows<WeatherStation>('weather_stations', options);
 
 export interface User {
   id: number;

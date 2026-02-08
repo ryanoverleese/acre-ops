@@ -1,4 +1,4 @@
-import { getBillingEntities, getInvoices, getOperations, getContacts, getFieldSeasons, getFields, getServiceRates } from '@/lib/baserow';
+import { getBillingEntities, getInvoices, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices } from '@/lib/baserow';
 import BillingClient, { ProcessedBillingEntity } from './BillingClient';
 
 interface BillingData {
@@ -8,20 +8,20 @@ interface BillingData {
 
 async function getBillingData(): Promise<BillingData> {
   try {
-    const [billingEntities, invoices, operations, contacts, fieldSeasons, fields, serviceRates] = await Promise.all([
+    const [billingEntities, invoices, operations, contacts, fieldSeasons, fields, productsServices] = await Promise.all([
       getBillingEntities(),
       getInvoices(),
       getOperations(),
       getContacts(),
       getFieldSeasons(),
       getFields(),
-      getServiceRates(),
+      getProductsServices(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
 
     // Build service rate lookup by service type name (ensure rate is a number)
-    const rateMap = new Map(serviceRates.map((sr) => {
+    const rateMap = new Map(productsServices.map((sr) => {
       const rate = typeof sr.rate === 'string' ? parseFloat(sr.rate) : (sr.rate || 0);
       return [sr.service_type?.toLowerCase(), isNaN(rate) ? 0 : rate];
     }));

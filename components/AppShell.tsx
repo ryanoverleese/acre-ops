@@ -47,6 +47,7 @@ const navSections: NavSection[] = [
     title: 'Supplies',
     items: [
       { name: 'Inventory', href: '/inventory', icon: 'package' },
+      { name: 'Weather Stations', href: '/weather-stations', icon: 'cloud' },
     ],
   },
   {
@@ -127,6 +128,11 @@ const icons: Record<string, ReactNode> = {
   check: (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  cloud: (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
     </svg>
   ),
 };

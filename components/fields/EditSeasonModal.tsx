@@ -26,7 +26,7 @@ export interface EditSeasonModalProps {
   selectedProbe2Id: string;
   onProbeIdChange: (id: string) => void;
   onProbe2IdChange: (id: string) => void;
-  serviceTypeOptions: { value: string; label: string }[];
+  productTypeOptions: { value: string; label: string }[];
   seasonOpts: DynamicSeasonOptions;
   getRateForServiceType: (serviceType: string) => string;
   getProbesForField: (fieldOperation: string, currentProbeId?: number | null) => ProbeWithStatus[];
@@ -81,7 +81,7 @@ export default function EditSeasonModal({
   selectedProbe2Id,
   onProbeIdChange,
   onProbe2IdChange,
-  serviceTypeOptions,
+  productTypeOptions,
   seasonOpts,
   getRateForServiceType,
   getProbesForField,
@@ -175,7 +175,7 @@ export default function EditSeasonModal({
                 billing_entity_id: field.billingEntityId,
                 season: field.season,
                 field_season_id: field.fieldSeasonId,
-                service_type: serviceTypeOptions.find(o => o.value === form.service_type)?.label || '',
+                service_type: productTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });
@@ -241,7 +241,7 @@ export default function EditSeasonModal({
                   setForm({ ...form, service_type: serviceType, billing_rate: rate });
                 }}>
                   <option value="">Select...</option>
-                  {serviceTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
+                  {productTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
