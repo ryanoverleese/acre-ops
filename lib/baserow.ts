@@ -63,7 +63,7 @@ export const TABLE_IDS = {
   products_services: 826849,
   inventory: 827222,
   users: 828606,
-  weather_stations: 0, // TODO: Replace with actual Baserow table ID after creating the table
+  weather_stations: 831050,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
