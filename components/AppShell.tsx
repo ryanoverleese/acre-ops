@@ -46,6 +46,7 @@ const navSections: NavSection[] = [
   {
     title: 'Supplies',
     items: [
+      { name: 'Orders', href: '/orders', icon: 'credit-card' },
       { name: 'Inventory', href: '/inventory', icon: 'package' },
       { name: 'Weather Stations', href: '/weather-stations', icon: 'cloud' },
     ],

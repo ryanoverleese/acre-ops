@@ -64,6 +64,8 @@ export const TABLE_IDS = {
   inventory: 827222,
   users: 828606,
   weather_stations: 831050,
+  orders: 831072,
+  order_items: 831073,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -430,6 +432,29 @@ export interface WeatherStation {
 }
 
 export const getWeatherStations = (options?: FetchOptions) => getRows<WeatherStation>('weather_stations', options);
+
+export interface Order {
+  id: number;
+  billing_entity?: { id: number; value: string }[];
+  order_date?: string;
+  status?: { id: number; value: string };
+  notes?: string;
+  total?: string;
+  quote_valid_days?: number;
+}
+
+export interface OrderItem {
+  id: number;
+  order?: { id: number; value: string }[];
+  product?: { id: number; value: string }[];
+  quantity?: number;
+  unit_price?: string;
+  line_total?: string;
+  notes?: string;
+}
+
+export const getOrders = (options?: FetchOptions) => getRows<Order>('orders', options);
+export const getOrderItems = (options?: FetchOptions) => getRows<OrderItem>('order_items', options);
 
 export interface User {
   id: number;
