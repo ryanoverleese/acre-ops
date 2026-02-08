@@ -800,219 +800,100 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       {/* Create Quote Modal */}
       {showCreateModal && (
         <div className="detail-panel-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="detail-panel" style={{ maxWidth: '600px', maxHeight: 'calc(100vh - 40px)', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>New Quote</h2>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '20px' }}
-              >
-                &times;
+          <div className="detail-panel" onClick={e => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>New Quote</h3>
+              <button className="close-btn" onClick={() => setShowCreateModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
             </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>Customer</label>
+                  <select
+                    value={newBillingEntity || ''}
+                    onChange={e => setNewBillingEntity(parseInt(e.target.value) || null)}
+                  >
+                    <option value="">Select customer...</option>
+                    {billingEntities.map(be => (
+                      <option key={be.id} value={be.id}>{be.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input
+                    type="date"
+                    value={newDate}
+                    onChange={e => setNewDate(e.target.value)}
+                  />
+                </div>
 
-            {/* Customer */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>Customer</label>
-              <select
-                value={newBillingEntity || ''}
-                onChange={e => setNewBillingEntity(parseInt(e.target.value) || null)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '16px',
-                }}
-              >
-                <option value="">Select customer...</option>
-                {billingEntities.map(be => (
-                  <option key={be.id} value={be.id}>{be.name}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Date */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>Date</label>
-              <input
-                type="date"
-                value={newDate}
-                onChange={e => setNewDate(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '16px',
-                }}
-              />
-            </div>
-
-            {/* Line items */}
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>Items</label>
-              {newItems.map((item, idx) => (
-                <div key={idx} style={{ marginBottom: '12px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-primary)' }}>
-                  <div style={{ marginBottom: '8px' }}>
-                    <select
-                      value={item.productId || ''}
-                      onChange={e => updateNewItem(idx, 'productId', parseInt(e.target.value) || null)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg-secondary, #fff)',
-                        color: 'var(--text-primary)',
-                        fontSize: '16px',
-                      }}
-                    >
-                      <option value="">Select product...</option>
-                      {catalog.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.rate)})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Qty</div>
-                      <input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={e => updateNewItem(idx, 'quantity', parseInt(e.target.value) || 1)}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-secondary, #fff)',
-                          color: 'var(--text-primary)',
-                          fontSize: '16px',
-                        }}
-                      />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Price</div>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={item.unitPrice}
-                        onChange={e => updateNewItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: '100%',
-                          padding: '10px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-secondary, #fff)',
-                          color: 'var(--text-primary)',
-                          fontSize: '16px',
-                        }}
-                      />
-                    </div>
-                    <div style={{ textAlign: 'right', minWidth: '70px' }}>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>&nbsp;</div>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', padding: '10px 0' }}>
-                        {formatCurrency(item.quantity * item.unitPrice)}
+                <div className="form-group">
+                  <label>Items</label>
+                  {newItems.map((item, idx) => (
+                    <div key={idx} style={{ padding: '12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg-hover)', marginBottom: idx < newItems.length - 1 ? '8px' : 0 }}>
+                      <select
+                        value={item.productId || ''}
+                        onChange={e => updateNewItem(idx, 'productId', parseInt(e.target.value) || null)}
+                        style={{ marginBottom: '8px' }}
+                      >
+                        <option value="">Select product...</option>
+                        {catalog.map(p => (
+                          <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.rate)})</option>
+                        ))}
+                      </select>
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Qty</label>
+                          <input type="number" min="1" value={item.quantity} onChange={e => updateNewItem(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                        </div>
+                        <div className="form-group">
+                          <label>Price</label>
+                          <input type="number" step="0.01" value={item.unitPrice} onChange={e => updateNewItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '10px', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                            {formatCurrency(item.quantity * item.unitPrice)}
+                          </span>
+                          {newItems.length > 1 && (
+                            <button onClick={() => removeNewItem(idx)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '16px', padding: 0 }}>&times;</button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {newItems.length > 1 && (
-                      <button
-                        onClick={() => removeNewItem(idx)}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px', padding: '4px', marginTop: '14px' }}
-                      >
-                        &times;
-                      </button>
-                    )}
-                  </div>
+                  ))}
+                  <button
+                    onClick={addNewItemRow}
+                    className="btn btn-secondary"
+                    style={{ width: '100%', marginTop: '8px', borderStyle: 'dashed' }}
+                  >
+                    + Add Line
+                  </button>
                 </div>
-              ))}
-              <button
-                onClick={addNewItemRow}
-                style={{
-                  padding: '8px 14px',
-                  borderRadius: '6px',
-                  border: '1px dashed var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text-muted)',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  width: '100%',
-                }}
-              >
-                + Add Line
-              </button>
-            </div>
 
-            {/* Total */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              padding: '12px 0',
-              borderTop: '1px solid var(--border)',
-              marginBottom: '16px',
-            }}>
-              <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                Total: {formatCurrency(newItemsTotal)}
-              </span>
-            </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Total: {formatCurrency(newItemsTotal)}
+                  </span>
+                </div>
 
-            {/* Notes */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>Notes</label>
-              <textarea
-                value={newNotes}
-                onChange={e => setNewNotes(e.target.value)}
-                rows={2}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-primary)',
-                  color: 'var(--text-primary)',
-                  fontSize: '16px',
-                  resize: 'vertical',
-                }}
-              />
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea
+                    value={newNotes}
+                    onChange={e => setNewNotes(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              </div>
             </div>
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleCreateQuote}
-                disabled={saving}
-                style={{
-                  padding: '10px 20px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: 'var(--accent-green, #22c55e)',
-                  color: '#fff',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: saving ? 'not-allowed' : 'pointer',
-                  opacity: saving ? 0.6 : 1,
-                }}
-              >
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreateQuote} disabled={saving}>
                 {saving ? 'Creating...' : 'Create Quote'}
               </button>
             </div>
