@@ -800,7 +800,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       {/* Create Quote Modal */}
       {showCreateModal && (
         <div className="detail-panel-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="detail-panel" style={{ maxWidth: '600px', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+          <div className="detail-panel" style={{ maxWidth: '600px', maxHeight: 'calc(100vh - 40px)', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>New Quote</h2>
               <button
