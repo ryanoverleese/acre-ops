@@ -824,7 +824,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   border: '1px solid var(--border)',
                   background: 'var(--bg-primary)',
                   color: 'var(--text-primary)',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               >
                 <option value="">Select customer...</option>
@@ -848,7 +848,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   border: '1px solid var(--border)',
                   background: 'var(--bg-primary)',
                   color: 'var(--text-primary)',
-                  fontSize: '14px',
+                  fontSize: '16px',
                 }}
               />
             </div>
@@ -857,88 +857,92 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary)', marginBottom: '6px' }}>Items</label>
               {newItems.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-end' }}>
-                  <div style={{ flex: 2 }}>
-                    {idx === 0 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Product</div>}
+                <div key={idx} style={{ marginBottom: '12px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-primary)' }}>
+                  <div style={{ marginBottom: '8px' }}>
                     <select
                       value={item.productId || ''}
                       onChange={e => updateNewItem(idx, 'productId', parseInt(e.target.value) || null)}
                       style={{
                         width: '100%',
-                        padding: '8px',
+                        padding: '10px',
                         borderRadius: '6px',
                         border: '1px solid var(--border)',
-                        background: 'var(--bg-primary)',
+                        background: 'var(--bg-secondary, #fff)',
                         color: 'var(--text-primary)',
-                        fontSize: '13px',
+                        fontSize: '16px',
                       }}
                     >
-                      <option value="">Select...</option>
+                      <option value="">Select product...</option>
                       {catalog.map(p => (
                         <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.rate)})</option>
                       ))}
                     </select>
                   </div>
-                  <div style={{ width: '70px' }}>
-                    {idx === 0 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Qty</div>}
-                    <input
-                      type="number"
-                      min="1"
-                      value={item.quantity}
-                      onChange={e => updateNewItem(idx, 'quantity', parseInt(e.target.value) || 1)}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        fontSize: '13px',
-                      }}
-                    />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Qty</div>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={e => updateNewItem(idx, 'quantity', parseInt(e.target.value) || 1)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-secondary, #fff)',
+                          color: 'var(--text-primary)',
+                          fontSize: '16px',
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Price</div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={item.unitPrice}
+                        onChange={e => updateNewItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          borderRadius: '6px',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-secondary, #fff)',
+                          color: 'var(--text-primary)',
+                          fontSize: '16px',
+                        }}
+                      />
+                    </div>
+                    <div style={{ textAlign: 'right', minWidth: '70px' }}>
+                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>&nbsp;</div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', padding: '10px 0' }}>
+                        {formatCurrency(item.quantity * item.unitPrice)}
+                      </div>
+                    </div>
+                    {newItems.length > 1 && (
+                      <button
+                        onClick={() => removeNewItem(idx)}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '18px', padding: '4px', marginTop: '14px' }}
+                      >
+                        &times;
+                      </button>
+                    )}
                   </div>
-                  <div style={{ width: '90px' }}>
-                    {idx === 0 && <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Price</div>}
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={item.unitPrice}
-                      onChange={e => updateNewItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)}
-                      style={{
-                        width: '100%',
-                        padding: '8px',
-                        borderRadius: '6px',
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        fontSize: '13px',
-                      }}
-                    />
-                  </div>
-                  <div style={{ width: '80px', textAlign: 'right', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', paddingBottom: '8px' }}>
-                    {formatCurrency(item.quantity * item.unitPrice)}
-                  </div>
-                  {newItems.length > 1 && (
-                    <button
-                      onClick={() => removeNewItem(idx)}
-                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', paddingBottom: '8px' }}
-                    >
-                      &times;
-                    </button>
-                  )}
                 </div>
               ))}
               <button
                 onClick={addNewItemRow}
                 style={{
-                  padding: '6px 14px',
+                  padding: '8px 14px',
                   borderRadius: '6px',
                   border: '1px dashed var(--border)',
                   background: 'transparent',
                   color: 'var(--text-muted)',
-                  fontSize: '13px',
+                  fontSize: '14px',
                   cursor: 'pointer',
-                  marginTop: '4px',
+                  width: '100%',
                 }}
               >
                 + Add Line
@@ -972,7 +976,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   border: '1px solid var(--border)',
                   background: 'var(--bg-primary)',
                   color: 'var(--text-primary)',
-                  fontSize: '14px',
+                  fontSize: '16px',
                   resize: 'vertical',
                 }}
               />
