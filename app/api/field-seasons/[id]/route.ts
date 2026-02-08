@@ -33,12 +33,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     };
 
-    if (body.probe_status !== undefined) setField('probe_status', body.probe_status);
-    if (body.install_date !== undefined) setField('install_date', body.install_date);
-    if (body.install_lat !== undefined) setField('install_lat', body.install_lat);
-    if (body.install_lng !== undefined) setField('install_lng', body.install_lng);
-    if (body.installer !== undefined) setField('installer', body.installer);
-    if (body.install_notes !== undefined) setField('install_notes', body.install_notes);
+    // probe_status, installer, install_* fields are on probe_assignments, not here
     if (body.removal_date !== undefined) setField('removal_date', body.removal_date);
     if (body.removal_notes !== undefined) setField('removal_notes', body.removal_notes);
     if (body.crop !== undefined) setField('crop', body.crop);
@@ -47,19 +42,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       const stVal = body.service_type;
       setField('service_type', stVal ? [parseInt(stVal, 10)] : []);
     }
-    if (body.antenna_type !== undefined) setField('antenna_type', body.antenna_type);
-    if (body.battery_type !== undefined) setField('battery_type', body.battery_type);
+    // antenna_type, battery_type are on probe_assignments, not field_seasons
     if (body.side_dress !== undefined) setField('side_dress', body.side_dress);
     if (body.logger_id !== undefined) setField('logger_id', body.logger_id);
     if (body.early_removal !== undefined) setField('early_removal', body.early_removal);
     if (body.hybrid_variety !== undefined) setField('hybrid_variety', body.hybrid_variety);
     if (body.ready_to_remove !== undefined) setField('ready_to_remove', body.ready_to_remove);
     if (body.planting_date !== undefined) setField('planting_date', body.planting_date);
-    // Only update probe links when explicitly provided with a numeric ID or 0/empty to clear
-    if (body.probe !== undefined && body.probe !== null) {
-      setField('probe', body.probe ? [body.probe] : []);
-    }
-    // Note: probe_2 is stored in the probe_assignments table, not on field_seasons
+    // probe link field is on probe_assignments, not field_seasons
     // Install planning fields
     if (body.route_order !== undefined) setField('route_order', body.route_order);
     if (body.planned_installer !== undefined) setField('planned_installer', body.planned_installer);

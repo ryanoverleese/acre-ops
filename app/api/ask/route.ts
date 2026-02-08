@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFields, getProbes, getFieldSeasons, getRepairs, getContacts, getOperations, getProbeAssignments, getBillingEntities } from '@/lib/baserow';
+import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities } from '@/lib/baserow';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -188,14 +188,22 @@ function fuzzyMatch(searchTerm: string, targetString: string): boolean {
 
 // Tool execution functions
 async function executeSearchFields(params: { name_contains?: string; billing_entity_contains?: string; season?: string }) {
-  const [fields, fieldSeasons, probes] = await Promise.all([
+  const [fields, fieldSeasons, probes, probeAssignments] = await Promise.all([
     getFields(),
     getFieldSeasons(),
-    getProbes()
+    getProbes(),
+    getProbeAssignments()
   ]);
 
   // Create probe lookup
   const probeMap = new Map(probes.map(p => [p.id, p]));
+
+  // Build probe_assignment lookup by field_season_id (probe_number=1)
+  const probe1ByFs = new Map<number, typeof probeAssignments[0]>();
+  probeAssignments.forEach(pa => {
+    const fsId = pa.field_season?.[0]?.id;
+    if (fsId && pa.probe_number == 1) probe1ByFs.set(fsId, pa);
+  });
 
   let results = fields;
 
@@ -208,30 +216,29 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
   }
 
   return results.slice(0, 50).map(f => {
-    // Find field_seasons for this field - match by id OR by name in the link value
     const seasons = fieldSeasons.filter(fs => {
       const fieldLink = fs.field?.[0];
       if (!fieldLink) return false;
-      // Match by id or by name (in case link wasn't properly set up)
       return fieldLink.id === f.id || fieldLink.value === f.name;
     });
 
-    // If a specific season is requested, filter to that
     const relevantSeasons = params.season
       ? seasons.filter(s => String(s.season) === params.season)
       : seasons;
 
-    // Get probe info for each season
+    // Get probe info from probe_assignments
     const seasonData = relevantSeasons.map(s => {
-      const probe = s.probe?.[0] ? probeMap.get(s.probe[0].id) : null;
+      const pa = probe1ByFs.get(s.id);
+      const probeLink = pa?.probe?.[0];
+      const probe = probeLink ? probeMap.get(probeLink.id) : null;
       return {
         season: s.season,
         crop: s.crop?.value,
         service_type: s.service_type?.[0]?.value,
-        probe_status: s.probe_status?.value,
+        probe_status: pa?.probe_status?.value || 'Unassigned',
         probe: probe ? `#${probe.serial_number}` : null,
-        installer: s.installer,
-        install_date: s.install_date
+        installer: pa?.installer,
+        install_date: pa?.install_date
       };
     });
 
@@ -337,16 +344,23 @@ async function executeSearchOperations(params: { name_contains?: string }) {
 }
 
 async function executeSearchFieldSeasons(params: { field_name_contains?: string; season?: string }) {
-  const [fieldSeasons, probes] = await Promise.all([
+  const [fieldSeasons, probes, probeAssignments] = await Promise.all([
     getFieldSeasons(),
-    getProbes()
+    getProbes(),
+    getProbeAssignments()
   ]);
 
   const probeMap = new Map(probes.map(p => [p.id, p]));
 
+  // Build probe_assignment lookup by field_season_id (probe_number=1)
+  const probe1ByFs = new Map<number, typeof probeAssignments[0]>();
+  probeAssignments.forEach(pa => {
+    const fsId = pa.field_season?.[0]?.id;
+    if (fsId && pa.probe_number == 1) probe1ByFs.set(fsId, pa);
+  });
+
   let results = fieldSeasons;
 
-  // Filter by field name (from the link value)
   if (params.field_name_contains) {
     results = results.filter(fs => {
       const fieldName = fs.field?.[0]?.value || '';
@@ -354,7 +368,6 @@ async function executeSearchFieldSeasons(params: { field_name_contains?: string;
     });
   }
 
-  // Filter by season
   if (params.season) {
     results = results.filter(fs => String(fs.season) === params.season);
   }
@@ -362,17 +375,19 @@ async function executeSearchFieldSeasons(params: { field_name_contains?: string;
   return {
     total_found: results.length,
     field_seasons: results.slice(0, 50).map(fs => {
-      const probe = fs.probe?.[0] ? probeMap.get(fs.probe[0].id) : null;
+      const pa = probe1ByFs.get(fs.id);
+      const probeLink = pa?.probe?.[0];
+      const probe = probeLink ? probeMap.get(probeLink.id) : null;
       return {
         field_name: fs.field?.[0]?.value || 'Unknown',
         season: fs.season,
         crop: fs.crop?.value,
         service_type: fs.service_type?.[0]?.value,
-        probe_status: fs.probe_status?.value,
+        probe_status: pa?.probe_status?.value || 'Unassigned',
         probe: probe ? `#${probe.serial_number}` : null,
-        installer: fs.installer,
-        install_date: fs.install_date,
-        antenna_type: fs.antenna_type?.value
+        installer: pa?.installer,
+        install_date: pa?.install_date,
+        antenna_type: pa?.antenna_type?.value
       };
     })
   };

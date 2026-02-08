@@ -323,16 +323,10 @@ async function getFieldsData(): Promise<{
       } else {
         // Create entry for each season
         fieldFieldSeasons.forEach((fs) => {
-          // All probes come from probe_assignments table
+          // All probes come from probe_assignments table (no field_season fallback)
           const probe1Assignment = probe1ByFieldSeason.get(fs.id);
-          const probe1Link = probe1Assignment?.probe?.[0];
-          const probe1Data = probe1Link ? probeMap.get(probe1Link.id) : null;
-          // Fallback: if no probe_assignment exists yet, check field_season directly (pre-migration data)
-          const fsProbeLink = fs.probe?.[0];
-          const fsProbeData = fsProbeLink ? probeMap.get(fsProbeLink.id) : null;
-          // Use probe_assignment data if available, otherwise fall back to field_season
-          const probeLink = probe1Link || fsProbeLink;
-          const probeData = probe1Data || fsProbeData;
+          const probeLink = probe1Assignment?.probe?.[0];
+          const probeData = probeLink ? probeMap.get(probeLink.id) : null;
 
           const probe2Assignment = probe2ByFieldSeason.get(fs.id);
           const probe2Link = probe2Assignment?.probe?.[0];
@@ -351,9 +345,9 @@ async function getFieldsData(): Promise<{
             crop: fs.crop?.value || 'Unknown',
             serviceType: fs.service_type?.[0]?.value || '',
             serviceTypeId: fs.service_type?.[0]?.id || null,
-            // Antenna/battery: prefer probe_assignment, fall back to field_season (pre-migration)
-            antennaType: probe1Assignment?.antenna_type?.value || fs.antenna_type?.value || '',
-            batteryType: probe1Assignment?.battery_type?.value || fs.battery_type?.value || '',
+            // Antenna/battery from probe_assignments
+            antennaType: probe1Assignment?.antenna_type?.value || '',
+            batteryType: probe1Assignment?.battery_type?.value || '',
             sideDress: fs.side_dress?.value || '',
             loggerId: fs.logger_id || '',
             earlyRemoval: fs.early_removal?.value || '',
@@ -362,7 +356,7 @@ async function getFieldsData(): Promise<{
             plantingDate: fs.planting_date || '',
             probe: probeData ? (probeData.serial_number ? `#${probeData.serial_number}` : `(On Order #${probeLink!.id})`) : null,
             probeId: probeLink?.id || null,
-            probeStatus: probe1Assignment?.probe_status?.value || fs.probe_status?.value || 'Unassigned',
+            probeStatus: probe1Assignment?.probe_status?.value || 'Unassigned',
             probeAssignmentId: probe1Assignment?.id || null,
             probe2: probe2Data ? (probe2Data.serial_number ? `#${probe2Data.serial_number}` : `(On Order #${probe2Link!.id})`) : null,
             probe2Id: probe2Link?.id || null,
@@ -392,14 +386,14 @@ async function getFieldsData(): Promise<{
             plannedInstaller: fs.planned_installer?.value,
             readyToInstall: fs.ready_to_install,
             nrcsField: field.nrcs_field,
-            // Install details (after installation)
-            installer: fs.installer,
-            installDate: fs.install_date,
-            installLat: fs.install_lat,
-            installLng: fs.install_lng,
-            installNotes: fs.install_notes,
-            installPhotoFieldEndUrl: fs.install_photo_field_end_url?.[0]?.url,
-            installPhotoExtraUrl: fs.install_photo_extra_url?.[0]?.url,
+            // Install details from probe_assignment (probe 1)
+            installer: probe1Assignment?.installer,
+            installDate: probe1Assignment?.install_date,
+            installLat: probe1Assignment?.install_lat,
+            installLng: probe1Assignment?.install_lng,
+            installNotes: probe1Assignment?.install_notes,
+            installPhotoFieldEndUrl: probe1Assignment?.install_photo_field_end_url?.[0]?.url,
+            installPhotoExtraUrl: probe1Assignment?.install_photo_extra_url?.[0]?.url,
             // Approval
             approvalStatus: fs.approval_status?.value || 'Pending',
             // Removal

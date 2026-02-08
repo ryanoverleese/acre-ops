@@ -278,8 +278,6 @@ export interface FieldSeason {
   crop?: { id: number; value: string };
   crop_confirmed?: boolean;
   service_type?: { id: number; value: string }[];
-  antenna_type?: { id: number; value: string };
-  battery_type?: { id: number; value: string };
   side_dress?: { id: number; value: string };
   logger_id?: string;
   early_removal?: { id: number; value: string };
@@ -290,9 +288,13 @@ export interface FieldSeason {
   route_order?: number;
   planned_installer?: { id: number; value: string };
   ready_to_install?: boolean;
-  // Probe 1
+  // All probe data (probe, probe_status, antenna_type, battery_type,
+  // installer, install_*, cropx_telemetry_id, signal_strength) is on probe_assignments
+  // Legacy fields kept for migration reads only:
   probe?: { id: number; value: string }[];
   probe_status?: { id: number; value: string };
+  antenna_type?: { id: number; value: string };
+  battery_type?: { id: number; value: string };
   installer?: string;
   install_date?: string;
   install_lat?: number;
@@ -302,7 +304,6 @@ export interface FieldSeason {
   install_notes?: string;
   cropx_telemetry_id?: string;
   signal_strength?: string;
-  // Probe 2+ data lives in the probe_assignments table, not here
   // Other
   removal_date?: string;
   removal_notes?: string;
