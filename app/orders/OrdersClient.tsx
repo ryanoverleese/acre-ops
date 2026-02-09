@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ProcessedOrder, ProcessedOrderItem, CatalogProduct, BillingEntityOption } from './page';
 
@@ -43,6 +43,16 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
   const [orders, setOrders] = useState(initialOrders);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedOrder, setSelectedOrder] = useState<ProcessedOrder | null>(null);
+
+  // Sync orders state when server re-renders with fresh data (e.g., after router.refresh())
+  useEffect(() => {
+    setOrders(initialOrders);
+    // Also update selectedOrder if it exists, to reflect fresh item data
+    if (selectedOrder) {
+      const updated = initialOrders.find(o => o.id === selectedOrder.id);
+      if (updated) setSelectedOrder(updated);
+    }
+  }, [initialOrders]); // eslint-disable-line react-hooks/exhaustive-deps
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -153,7 +163,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
 
       // 2. Create line items
       for (const item of validItems) {
-        await fetch('/api/order-items', {
+        const itemResp = await fetch('/api/order-items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -163,6 +173,11 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             unit_price: item.unitPrice,
           }),
         });
+        if (!itemResp.ok) {
+          const err = await itemResp.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to create order item:', err);
+          throw new Error(`Failed to create line item: ${err.details || err.error}`);
+        }
       }
 
       showToast('Quote created');
