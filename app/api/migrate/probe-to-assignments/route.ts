@@ -106,7 +106,7 @@ export async function GET() {
         season: fs.season,
         probeId: fs.probe?.[0]?.id,
         probeValue: fs.probe?.[0]?.value,
-        antennaType: fs.antenna_type?.value,
+        antennaType: mapAntennaType(fs.antenna_type?.value),
         batteryType: fs.battery_type?.value,
         probeStatus: fs.probe_status?.value,
         installer: fs.installer,
