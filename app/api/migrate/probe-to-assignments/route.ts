@@ -15,6 +15,34 @@ function addSpaceVariants(data: Record<string, unknown>): Record<string, unknown
   return result;
 }
 
+// Extract a plain string from a value that might be a link row field (array/object) or plain string
+function toPlainString(value: unknown): string | undefined {
+  if (!value) return undefined;
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && value.length > 0) {
+    return value[0].value ?? String(value[0]);
+  }
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return String((value as { value: unknown }).value);
+  }
+  return String(value);
+}
+
+// Convert a date value to YYYY-MM-DD format for Baserow
+function toBaserowDate(value: unknown): string | undefined {
+  if (!value) return undefined;
+  const str = typeof value === 'string' ? value : String(value);
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  // Parse and reformat
+  const date = new Date(str);
+  if (isNaN(date.getTime())) return undefined;
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(date.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 // GET = dry run: show what would be migrated
 // POST = execute migration
 export async function GET() {
@@ -146,9 +174,11 @@ export async function POST(request: NextRequest) {
 
         if (fs.antenna_type?.value) record.antenna_type = fs.antenna_type.value;
         if (fs.battery_type?.value) record.battery_type = fs.battery_type.value;
-        // Copy ALL install data
-        if (fs.installer) record.installer = fs.installer;
-        if (fs.install_date) record.install_date = fs.install_date;
+        // Copy ALL install data - installer must be plain string, dates must be YYYY-MM-DD
+        const installerStr = toPlainString(fs.installer);
+        if (installerStr) record.installer = installerStr;
+        const installDateStr = toBaserowDate(fs.install_date);
+        if (installDateStr) record.install_date = installDateStr;
         if (fs.install_lat) record.install_lat = fs.install_lat;
         if (fs.install_lng) record.install_lng = fs.install_lng;
         if (fs.install_notes) record.install_notes = fs.install_notes;
@@ -191,8 +221,10 @@ export async function POST(request: NextRequest) {
       const pa = existingProbe1Map.get(fs.id)!;
       const updateData: Record<string, unknown> = {};
 
-      if (fs.installer) updateData.installer = fs.installer;
-      if (fs.install_date) updateData.install_date = fs.install_date;
+      const installerStr = toPlainString(fs.installer);
+      if (installerStr) updateData.installer = installerStr;
+      const installDateStr = toBaserowDate(fs.install_date);
+      if (installDateStr) updateData.install_date = installDateStr;
       if (fs.install_lat) updateData.install_lat = fs.install_lat;
       if (fs.install_lng) updateData.install_lng = fs.install_lng;
       if (fs.install_notes) updateData.install_notes = fs.install_notes;
