@@ -35,6 +35,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     const createData: Record<string, unknown> = {};
+    if (body.station_name !== undefined) {
+      createData.station_name = body.station_name;
+      createData['station name'] = body.station_name;
+    }
     if (body.model) createData.model = body.model;
     if (body.billing_entity) createData.billing_entity = Array.isArray(body.billing_entity) ? body.billing_entity : [parseInt(body.billing_entity, 10)];
     if (body.install_lat !== undefined) createData.install_lat = body.install_lat;

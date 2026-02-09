@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export interface ProcessedWeatherStation {
   id: number;
+  stationName: string;
   model: string;
   billingEntityId: number | null;
   billingEntityName: string;
@@ -36,6 +37,7 @@ export default async function WeatherStationsPage() {
       const beId = ws.billing_entity?.[0]?.id || null;
       return {
         id: ws.id,
+        stationName: ws.station_name || '',
         model: ws.model?.value || '',
         billingEntityId: beId,
         billingEntityName: beId ? (beMap.get(beId) || ws.billing_entity?.[0]?.value || 'Unknown') : '',

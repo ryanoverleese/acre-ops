@@ -22,6 +22,7 @@ interface WeatherStationsClientProps {
 }
 
 interface StationForm {
+  stationName: string;
   model: string;
   billingEntity: string;
   installLat: string;
@@ -34,6 +35,7 @@ interface StationForm {
 }
 
 const emptyForm: StationForm = {
+  stationName: '',
   model: '',
   billingEntity: '',
   installLat: '',
@@ -64,7 +66,7 @@ export default function WeatherStationsClient({
   const [form, setForm] = useState<StationForm>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [sortColumn, setSortColumn] = useState<string>('billingEntityName');
+  const [sortColumn, setSortColumn] = useState<string>('stationName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [toast, setToast] = useState<string | null>(null);
 
@@ -88,6 +90,7 @@ export default function WeatherStationsClient({
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(s =>
+        s.stationName.toLowerCase().includes(q) ||
         s.billingEntityName.toLowerCase().includes(q) ||
         s.model.toLowerCase().includes(q) ||
         s.notes.toLowerCase().includes(q)
@@ -99,6 +102,7 @@ export default function WeatherStationsClient({
       let aVal: string | number = '';
       let bVal: string | number = '';
       switch (sortColumn) {
+        case 'stationName': aVal = a.stationName; bVal = b.stationName; break;
         case 'billingEntityName': aVal = a.billingEntityName; bVal = b.billingEntityName; break;
         case 'model': aVal = a.model; bVal = b.model; break;
         case 'status': aVal = a.status; bVal = b.status; break;
@@ -144,6 +148,7 @@ export default function WeatherStationsClient({
   const handleStartEdit = () => {
     if (!selectedStation) return;
     setForm({
+      stationName: selectedStation.stationName,
       model: selectedStation.model,
       billingEntity: selectedStation.billingEntityId ? String(selectedStation.billingEntityId) : '',
       installLat: selectedStation.installLat ? String(selectedStation.installLat) : '',
@@ -168,6 +173,7 @@ export default function WeatherStationsClient({
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
+        station_name: form.stationName || undefined,
         model: form.model,
         connectivity_type: form.connectivityType || undefined,
         status: form.status || undefined,
@@ -201,6 +207,7 @@ export default function WeatherStationsClient({
 
       const processed: ProcessedWeatherStation = {
         id: saved.id || selectedStation?.id || 0,
+        stationName: form.stationName,
         model: form.model,
         billingEntityId: form.billingEntity ? parseInt(form.billingEntity, 10) : null,
         billingEntityName: beName,
@@ -256,7 +263,7 @@ export default function WeatherStationsClient({
       .filter(s => s.installLat && s.installLng)
       .map(s => ({
         id: s.id,
-        name: s.billingEntityName || `Station #${s.id}`,
+        name: s.stationName || s.billingEntityName || `Station #${s.id}`,
         model: s.model,
         status: s.status,
         lat: s.installLat!,
@@ -350,6 +357,7 @@ export default function WeatherStationsClient({
           <table>
             <thead>
               <tr>
+                <th onClick={() => handleSort('stationName')} style={{ cursor: 'pointer' }}>Station Name{sortIcon('stationName')}</th>
                 <th onClick={() => handleSort('billingEntityName')} style={{ cursor: 'pointer' }}>Billing Entity{sortIcon('billingEntityName')}</th>
                 <th onClick={() => handleSort('model')} style={{ cursor: 'pointer' }}>Model{sortIcon('model')}</th>
                 <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status{sortIcon('status')}</th>
@@ -361,14 +369,15 @@ export default function WeatherStationsClient({
             <tbody>
               {filteredStations.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="entity-empty">
+                  <td colSpan={7} className="entity-empty">
                     {stations.length === 0 ? 'No weather stations yet. Click "+ Add Station" to create one.' : 'No stations match your filters.'}
                   </td>
                 </tr>
               )}
               {filteredStations.map(station => (
                 <tr key={station.id} onClick={() => handleOpenDetail(station)} style={{ cursor: 'pointer' }}>
-                  <td style={{ fontWeight: 500 }}>{station.billingEntityName || '—'}</td>
+                  <td style={{ fontWeight: 500 }}>{station.stationName || '—'}</td>
+                  <td>{station.billingEntityName || '—'}</td>
                   <td>{station.model || '—'}</td>
                   <td>
                     <span
@@ -400,7 +409,7 @@ export default function WeatherStationsClient({
         <div className="detail-panel-overlay" onClick={() => setShowDetailModal(false)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
-              <h3>{selectedStation.billingEntityName || 'Weather Station'}</h3>
+              <h3>{selectedStation.stationName || 'Weather Station'}</h3>
               <button className="close-btn" onClick={() => setShowDetailModal(false)}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -409,6 +418,7 @@ export default function WeatherStationsClient({
             </div>
             <div className="detail-panel-content">
               <div style={{ display: 'grid', gap: '12px' }}>
+                <div className="detail-row"><span className="detail-label">Station Name</span><span>{selectedStation.stationName || '—'}</span></div>
                 <div className="detail-row"><span className="detail-label">Model</span><span>{selectedStation.model}</span></div>
                 <div className="detail-row"><span className="detail-label">Status</span>
                   <span className="status-badge" style={{ ...getStatusStyle(selectedStation.status), padding: '2px 8px', borderRadius: '12px', fontSize: '12px' }}>{selectedStation.status}</span>
@@ -450,6 +460,10 @@ export default function WeatherStationsClient({
             </div>
             <div className="detail-panel-content">
               <div className="edit-form">
+                <div className="form-group">
+                  <label>Station Name</label>
+                  <input type="text" value={form.stationName} onChange={(e) => setForm({ ...form, stationName: e.target.value })} placeholder="e.g., Smith Farm North" />
+                </div>
                 <div className="form-group">
                   <label>Model *</label>
                   <select value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>

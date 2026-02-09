@@ -14,6 +14,10 @@ export async function PATCH(
     const body = await request.json();
 
     const updateData: Record<string, unknown> = {};
+    if (body.station_name !== undefined) {
+      updateData.station_name = body.station_name;
+      updateData['station name'] = body.station_name;
+    }
     if (body.model !== undefined) updateData.model = body.model;
     if (body.billing_entity !== undefined) {
       updateData.billing_entity = Array.isArray(body.billing_entity) ? body.billing_entity : body.billing_entity ? [parseInt(body.billing_entity, 10)] : [];
