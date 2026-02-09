@@ -54,14 +54,14 @@ export default async function OrdersPage() {
 
     // Build catalog
     const catalog: CatalogProduct[] = rawProducts
-      .filter(p => p.active !== false)
+      .filter(p => !p.status || p.status?.value === 'Active')
       .map(p => ({
         id: p.id,
         name: p.service_type || '',
         category: p.category?.value || '',
         rate: p.rate || 0,
         unit: p.unit?.value || 'each',
-        active: p.active !== false,
+        active: !p.status || p.status?.value === 'Active',
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
