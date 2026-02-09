@@ -43,6 +43,21 @@ function toBaserowDate(value: unknown): string | undefined {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+// Map legacy antenna_type values to current select options
+const ANTENNA_TYPE_MAP: Record<string, string> = {
+  "10' CropX Antenna": 'CropX 10\'',
+  "10' Sentek Antenna": 'Sentek 10\'',
+  "6' CropX Antenna": 'CropX 6\'',
+  'CropX Stub - White Flag': 'CropX Stub',
+  'Stub CropX Antenna': 'CropX Stub',
+  'Stub Sentek Antenna': 'Sentek Stub',
+};
+
+function mapAntennaType(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return ANTENNA_TYPE_MAP[value] ?? value;
+}
+
 // GET = dry run: show what would be migrated
 // POST = execute migration
 export async function GET() {
@@ -172,7 +187,8 @@ export async function POST(request: NextRequest) {
           probe_status: fs.probe_status?.value || 'Assigned',
         };
 
-        if (fs.antenna_type?.value) record.antenna_type = fs.antenna_type.value;
+        const mappedAntenna = mapAntennaType(fs.antenna_type?.value);
+        if (mappedAntenna) record.antenna_type = mappedAntenna;
         if (fs.battery_type?.value) record.battery_type = fs.battery_type.value;
         // Copy ALL install data - installer must be plain string, dates must be YYYY-MM-DD
         const installerStr = toPlainString(fs.installer);
