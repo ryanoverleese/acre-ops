@@ -130,6 +130,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const dryRun = body.dry_run === true;
 
+    // Support ?batch=N query param to process in chunks of 50 (1-indexed)
+    const PAGE_SIZE = 50;
+    const batchParam = request.nextUrl.searchParams.get('batch');
+    const batchNum = batchParam ? parseInt(batchParam, 10) : null;
+
     const [fieldSeasons, probeAssignments] = await Promise.all([
       getFieldSeasons(),
       getProbeAssignments(),
@@ -144,24 +149,51 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const needsMigration = fieldSeasons.filter(
+    const allNeedsMigration = fieldSeasons.filter(
       (fs) => fs.probe?.[0]?.id && !existingProbe1Map.has(fs.id)
     );
 
     // Also find probe_assignments that need install data synced from field_seasons
-    const needsInstallSync = fieldSeasons.filter((fs) => {
+    const allNeedsInstallSync = fieldSeasons.filter((fs) => {
       if (!fs.probe?.[0]?.id) return false;
       const pa = existingProbe1Map.get(fs.id);
       if (!pa) return false;
-      // Sync if field_season has install data but probe_assignment doesn't
       return fs.installer && !pa.installer;
     });
+
+    // Slice to the requested batch (or process all if no batch param)
+    const totalCreateBatches = Math.ceil(allNeedsMigration.length / PAGE_SIZE) || 0;
+    const totalSyncBatches = Math.ceil(allNeedsInstallSync.length / PAGE_SIZE) || 0;
+    const totalBatches = Math.max(totalCreateBatches, totalSyncBatches);
+
+    let needsMigration = allNeedsMigration;
+    let needsInstallSync = allNeedsInstallSync;
+
+    if (batchNum !== null) {
+      if (batchNum < 1 || batchNum > totalBatches) {
+        return NextResponse.json({
+          error: `Invalid batch number. Must be 1-${totalBatches}`,
+          totalRecords: allNeedsMigration.length,
+          totalSyncRecords: allNeedsInstallSync.length,
+          totalBatches,
+          pageSize: PAGE_SIZE,
+        }, { status: 400 });
+      }
+      const start = (batchNum - 1) * PAGE_SIZE;
+      needsMigration = allNeedsMigration.slice(start, start + PAGE_SIZE);
+      needsInstallSync = allNeedsInstallSync.slice(start, start + PAGE_SIZE);
+    }
 
     if (dryRun) {
       return NextResponse.json({
         dry_run: true,
+        batch: batchNum,
+        totalBatches,
+        pageSize: PAGE_SIZE,
         would_create: needsMigration.length,
+        would_create_total: allNeedsMigration.length,
         would_sync_install_data: needsInstallSync.length,
+        would_sync_total: allNeedsInstallSync.length,
         items: needsMigration.map((fs) => ({
           fieldSeasonId: fs.id,
           probeId: fs.probe?.[0]?.id,
@@ -172,14 +204,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Phase 1: Create new probe_assignments (includes ALL data)
-    const batchSize = 200;
     let created = 0;
     const errors: string[] = [];
 
-    for (let i = 0; i < needsMigration.length; i += batchSize) {
-      const batch = needsMigration.slice(i, i + batchSize);
-
-      const items = batch.map((fs) => {
+    if (needsMigration.length > 0) {
+      const items = needsMigration.map((fs) => {
         const record: Record<string, unknown> = {
           field_season: [fs.id],
           probe_number: 1,
@@ -224,7 +253,7 @@ export async function POST(request: NextRequest) {
       if (!response.ok) {
         const errorText = await response.text();
         console.error('Migration batch error:', response.status, errorText);
-        errors.push(`Create batch ${Math.floor(i / batchSize) + 1}: ${errorText}`);
+        errors.push(`Create batch: ${errorText}`);
       } else {
         const result = await response.json();
         created += result.items?.length || 0;
@@ -273,10 +302,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: errors.length === 0,
+      batch: batchNum,
+      totalBatches,
+      pageSize: PAGE_SIZE,
       created,
       synced,
-      total: needsMigration.length,
-      totalToSync: needsInstallSync.length,
+      totalCreateRemaining: allNeedsMigration.length - (batchNum ? batchNum * PAGE_SIZE : allNeedsMigration.length),
+      totalSyncRemaining: allNeedsInstallSync.length - (batchNum ? batchNum * PAGE_SIZE : allNeedsInstallSync.length),
       errors: errors.length > 0 ? errors : undefined,
     }, { status: errors.length > 0 ? 207 : 200 });
   } catch (error) {
