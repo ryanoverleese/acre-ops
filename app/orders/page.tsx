@@ -1,41 +1,7 @@
-import { getOrders, getOrderItems, getBillingEntities, getProductsServices, getTableFieldOptions, TABLE_IDS } from '@/lib/baserow';
+import { getOrders, getOrderItems, getBillingEntities, getProductsServices, getTableFieldOptions } from '@/lib/baserow';
 import OrdersClient from './OrdersClient';
 
 export const dynamic = 'force-dynamic';
-
-// Resolve the actual Baserow field names for link fields on order_items
-let cachedItemFieldNames: { orderField: string; productField: string } | null = null;
-async function getItemFieldNames(): Promise<{ orderField: string; productField: string }> {
-  if (cachedItemFieldNames) return cachedItemFieldNames;
-  try {
-    const res = await fetch(
-      `https://api.baserow.io/api/database/fields/table/${TABLE_IDS.order_items}/`,
-      {
-        headers: { Authorization: `Token ${process.env.BASEROW_API_TOKEN}` },
-        cache: 'no-store',
-      }
-    );
-    if (res.ok) {
-      const fields = await res.json();
-      let orderField = 'order';
-      let productField = 'product';
-      for (const f of fields) {
-        if (f.type === 'link_row' && f.link_row_table_id === TABLE_IDS.orders) {
-          orderField = f.name.replace(/ /g, '_');
-        }
-        if (f.type === 'link_row' && f.link_row_table_id === TABLE_IDS.products_services) {
-          productField = f.name.replace(/ /g, '_');
-        }
-      }
-      cachedItemFieldNames = { orderField, productField };
-      console.log('[orders/page] Resolved order_items field names:', cachedItemFieldNames);
-      return cachedItemFieldNames;
-    }
-  } catch (e) {
-    console.error('[orders/page] Failed to fetch order_items schema:', e);
-  }
-  return { orderField: 'order', productField: 'product' };
-}
 
 export interface ProcessedOrder {
   id: number;
@@ -56,7 +22,6 @@ export interface ProcessedOrderItem {
   productName: string;
   quantity: number;
   unitPrice: number;
-  lineTotal: number;
   notes: string;
 }
 
@@ -99,25 +64,14 @@ export default async function OrdersPage() {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // Resolve actual Baserow field names for link fields
-    const { orderField, productField } = await getItemFieldNames();
-
     // Process items grouped by order
     const itemsByOrder = new Map<number, ProcessedOrderItem[]>();
     for (const item of rawItems) {
-      // Use resolved field names (after normalizeKeys, spaces become underscores)
-      const itemAny = item as unknown as Record<string, unknown>;
-      const orderLink = (itemAny[orderField] || item.order) as { id: number; value: string }[] | undefined;
-      const productLink = (itemAny[productField] || item.product) as { id: number; value: string }[] | undefined;
+      const orderId = item.order_link?.[0]?.id;
+      if (!orderId) continue;
 
-      const orderId = orderLink?.[0]?.id;
-      if (!orderId) {
-        console.warn('[orders/page] Skipping order item with no order link:', item.id, 'keys:', Object.keys(itemAny).join(', '));
-        continue;
-      }
-
-      const productId = productLink?.[0]?.id || null;
-      const productName = productLink?.[0]?.value || '';
+      const productId = item.product?.[0]?.id || null;
+      const productName = item.product?.[0]?.value || '';
 
       const processed: ProcessedOrderItem = {
         id: item.id,
@@ -126,7 +80,6 @@ export default async function OrdersPage() {
         productName,
         quantity: item.quantity || 0,
         unitPrice: item.unit_price ? parseFloat(item.unit_price) : 0,
-        lineTotal: item.line_total ? parseFloat(item.line_total) : 0,
         notes: item.notes || '',
       };
 

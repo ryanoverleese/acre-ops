@@ -433,11 +433,11 @@ export interface Order {
 
 export interface OrderItem {
   id: number;
-  order?: { id: number; value: string }[];
+  item_id?: number;
+  order_link?: { id: number; value: string }[];
   product?: { id: number; value: string }[];
   quantity?: number;
   unit_price?: string;
-  line_total?: string;
   notes?: string;
 }
 
