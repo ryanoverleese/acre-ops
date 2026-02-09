@@ -355,8 +355,8 @@ export default function FieldsClient({
     early_removal: toOptions(selectOptions.field_seasons.early_removal),
     ready_to_remove: toOptions(selectOptions.field_seasons.ready_to_remove),
     planned_installer: toOptions(selectOptions.field_seasons.planned_installer),
-    antenna_type: toOptions(selectOptions.field_seasons.antenna_type || selectOptions.probe_assignments.antenna_type),
-    battery_type: toOptions(selectOptions.field_seasons.battery_type || selectOptions.probe_assignments.battery_type),
+    antenna_type: toOptions(selectOptions.probe_assignments.antenna_type),
+    battery_type: toOptions(selectOptions.probe_assignments.battery_type),
   }), [selectOptions.field_seasons, selectOptions.probe_assignments]);
 
   // Helper to get rate for a service type

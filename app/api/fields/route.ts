@@ -88,16 +88,14 @@ export async function POST(request: NextRequest) {
     const newField = await fieldResponse.json();
 
     // Create the field_seasons record
+    // Note: probe_status, antenna_type, battery_type live on probe_assignments, not field_seasons
     const fieldSeasonData: Record<string, unknown> = {
       field: [newField.id], // Link to the new field
       season: parseInt(body.season, 10) || 2026,
-      probe_status: 'Unassigned',
     };
 
     if (body.crop) fieldSeasonData.crop = body.crop;
     if (body.service_type) fieldSeasonData.service_type = body.service_type;
-    if (body.antenna_type) fieldSeasonData.antenna_type = body.antenna_type;
-    if (body.battery_type) fieldSeasonData.battery_type = body.battery_type;
     if (body.side_dress) fieldSeasonData.side_dress = body.side_dress;
     if (body.logger_id) fieldSeasonData.logger_id = body.logger_id;
     if (body.early_removal) fieldSeasonData.early_removal = body.early_removal;
@@ -126,6 +124,37 @@ export async function POST(request: NextRequest) {
     }
 
     const newFieldSeason = await fieldSeasonResponse.json();
+
+    // Create probe_assignment (probe 1) if antenna/battery type provided
+    if (body.antenna_type || body.battery_type) {
+      try {
+        const paData: Record<string, unknown> = {
+          field_season: [newFieldSeason.id],
+          'field season': [newFieldSeason.id],
+          probe_number: 1,
+          'probe number': 1,
+        };
+        if (body.antenna_type) {
+          paData.antenna_type = body.antenna_type;
+          paData['antenna type'] = body.antenna_type;
+        }
+        if (body.battery_type) {
+          paData.battery_type = body.battery_type;
+          paData['battery type'] = body.battery_type;
+        }
+        const paUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/?user_field_names=true`;
+        await fetch(paUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(paData),
+        });
+      } catch (paError) {
+        console.error('Failed to create probe_assignment (non-fatal):', paError);
+      }
+    }
 
     return NextResponse.json({
       field: newField,
