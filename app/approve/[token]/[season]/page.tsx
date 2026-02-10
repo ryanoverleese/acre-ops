@@ -23,6 +23,8 @@ export interface ApprovalField {
   approvalStatus: string;
   approvalNotes?: string;
   approvalDate?: string;
+  waterSource?: string;
+  fuelSource?: string;
 }
 
 export interface ApprovalProbeAssignment {
@@ -39,6 +41,8 @@ export interface ApprovalProbeAssignment {
   approvalStatus: string;
   approvalNotes?: string;
   approvalDate?: string;
+  waterSource?: string;
+  fuelSource?: string;
 }
 
 export default async function ApprovePage({ params }: PageProps) {
@@ -114,6 +118,8 @@ export default async function ApprovePage({ params }: PageProps) {
       approvalStatus: fs.approval_status?.value || 'Pending',
       approvalNotes: fs.approval_notes,
       approvalDate: fs.approval_date,
+      waterSource: field?.water_source?.value,
+      fuelSource: field?.fuel_source?.value,
     };
   });
 
@@ -147,6 +153,8 @@ export default async function ApprovePage({ params }: PageProps) {
         approvalStatus: pa.approval_status?.value || 'Pending',
         approvalNotes: pa.approval_notes,
         approvalDate: pa.approval_date,
+        waterSource: field?.water_source?.value,
+        fuelSource: field?.fuel_source?.value,
       };
     })
     .sort((a, b) => {

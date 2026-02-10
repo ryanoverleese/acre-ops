@@ -476,6 +476,18 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                               <span className="detail-value">{pa.soilType}</span>
                             </div>
                           )}
+                          {pa.waterSource && (
+                            <div className="detail-row">
+                              <span className="detail-label">Primary Water Source</span>
+                              <span className="detail-value">{pa.waterSource}</span>
+                            </div>
+                          )}
+                          {pa.fuelSource && (
+                            <div className="detail-row">
+                              <span className="detail-label">Primary Fuel Source</span>
+                              <span className="detail-value">{pa.fuelSource}</span>
+                            </div>
+                          )}
                           {pa.placementNotes && (
                             <div className="detail-row full-width">
                               <span className="detail-label">Placement Notes</span>
@@ -549,6 +561,18 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                         <div className="detail-row">
                           <span className="detail-label">Soil Type</span>
                           <span className="detail-value">{field.soilType}</span>
+                        </div>
+                      )}
+                      {field.waterSource && (
+                        <div className="detail-row">
+                          <span className="detail-label">Primary Water Source</span>
+                          <span className="detail-value">{field.waterSource}</span>
+                        </div>
+                      )}
+                      {field.fuelSource && (
+                        <div className="detail-row">
+                          <span className="detail-label">Primary Fuel Source</span>
+                          <span className="detail-value">{field.fuelSource}</span>
                         </div>
                       )}
                       {field.placementNotes && (
