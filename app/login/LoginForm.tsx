@@ -41,6 +41,7 @@ export default function LoginForm() {
   return (
     <div style={{
       minHeight: '100vh',
+      flex: 1,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
