@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { TABLE_IDS } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-const FIELDS_TABLE_ID = 817299;
-const FIELD_SEASONS_TABLE_ID = 817300;
-const OPERATIONS_TABLE_ID = 826850;
+const FIELDS_TABLE_ID = TABLE_IDS.fields;           // 817298
+const FIELD_SEASONS_TABLE_ID = TABLE_IDS.field_seasons; // 817300
+const OPERATIONS_TABLE_ID = TABLE_IDS.operations;    // 817295
 
 // Fields that are on the fields table vs field_seasons table
 const FIELD_LEVEL_KEYS = ['irrigation_type', 'row_direction', 'water_source', 'fuel_source'];
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
     );
 
     if (!opsResponse.ok) {
+      const errText = await opsResponse.text();
+      console.error(`field-info: token validation failed: ${opsResponse.status}`, errText);
       return NextResponse.json({ error: 'Failed to validate token' }, { status: 500 });
     }
 
