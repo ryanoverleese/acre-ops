@@ -148,7 +148,7 @@ export default function AppShell({ children }: AppShellProps) {
   const { data: session } = useSession();
 
   // Don't show navigation on public approval pages or login page
-  const isPublicPage = pathname?.startsWith('/approve') || pathname === '/login';
+  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname === '/login';
 
   if (isPublicPage) {
     return <>{children}</>;
