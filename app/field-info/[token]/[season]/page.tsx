@@ -9,11 +9,17 @@ interface PageProps {
   }>;
 }
 
+export interface BillingEntityOption {
+  id: number;
+  name: string;
+}
+
 export interface FieldInfoItem {
   fieldId: number;
   fieldSeasonId: number;
   name: string;
   acres: number;
+  billingEntityId: number | null;
   // Current values (may be empty for new customers)
   irrigationType: string;
   rowDirection: string;
@@ -67,12 +73,20 @@ export default async function FieldInfoPage({ params }: PageProps) {
 
   // Get billing entities for this operation through contacts
   const billingEntityIds = new Set<number>();
+  const billingEntityMap = new Map<number, string>();
   contacts.forEach((contact) => {
     const hasOperation = contact.operations?.some((op) => op.id === operation.id);
     if (hasOperation) {
-      contact.billing_entity?.forEach((be) => billingEntityIds.add(be.id));
+      contact.billing_entity?.forEach((be) => {
+        billingEntityIds.add(be.id);
+        billingEntityMap.set(be.id, be.value);
+      });
     }
   });
+
+  const billingEntityOptions: BillingEntityOption[] = Array.from(billingEntityMap.entries())
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Get fields belonging to this operation
   const operationFields = rawFields.filter(
@@ -110,6 +124,7 @@ export default async function FieldInfoPage({ params }: PageProps) {
       fieldSeasonId: fs.id,
       name: field?.name || 'Unknown Field',
       acres: field?.acres || 0,
+      billingEntityId: field?.billing_entity?.[0]?.id || null,
       irrigationType: field?.irrigation_type?.value || '',
       rowDirection: field?.row_direction?.value || '',
       waterSource: field?.water_source?.value || '',
@@ -128,6 +143,7 @@ export default async function FieldInfoPage({ params }: PageProps) {
       token={token}
       fields={items}
       selectOptions={selectOptions}
+      billingEntityOptions={billingEntityOptions}
     />
   );
 }

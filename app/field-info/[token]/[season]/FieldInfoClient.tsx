@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { FieldInfoItem, FieldInfoSelectOptions } from './page';
+import type { FieldInfoItem, FieldInfoSelectOptions, BillingEntityOption } from './page';
 
 interface FieldInfoClientProps {
   operationName: string;
@@ -9,6 +9,7 @@ interface FieldInfoClientProps {
   token: string;
   fields: FieldInfoItem[];
   selectOptions: FieldInfoSelectOptions;
+  billingEntityOptions: BillingEntityOption[];
 }
 
 interface FieldForm {
@@ -71,8 +72,17 @@ function ButtonGroup({ label, options, value, onChange }: {
   );
 }
 
-export default function FieldInfoClient({ operationName, season, token, fields: initialFields, selectOptions }: FieldInfoClientProps) {
+export default function FieldInfoClient({ operationName, season, token, fields: initialFields, selectOptions, billingEntityOptions }: FieldInfoClientProps) {
   const [fields, setFields] = useState(initialFields);
+  const [billingEntities, setBillingEntities] = useState<Record<number, number | null>>(() => {
+    const initial: Record<number, number | null> = {};
+    initialFields.forEach((f) => {
+      initial[f.fieldId] = f.billingEntityId;
+    });
+    return initial;
+  });
+  const [beSaving, setBeSaving] = useState<Record<number, boolean>>({});
+  const [beSaved, setBeSaved] = useState<Record<number, boolean>>({});
   const [forms, setForms] = useState<Record<number, FieldForm>>(() => {
     const initial: Record<number, FieldForm> = {};
     initialFields.forEach((f) => {
@@ -141,6 +151,30 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
     }
   };
 
+  const saveBillingEntity = async (field: FieldInfoItem, beId: number | null) => {
+    setBillingEntities((prev) => ({ ...prev, [field.fieldId]: beId }));
+    setBeSaving((prev) => ({ ...prev, [field.fieldId]: true }));
+    try {
+      const res = await fetch('/api/field-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          fieldId: field.fieldId,
+          field: 'billing_entity',
+          value: beId,
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setBeSaved((prev) => ({ ...prev, [field.fieldId]: true }));
+      setTimeout(() => setBeSaved((prev) => ({ ...prev, [field.fieldId]: false })), 2000);
+    } catch {
+      // silent fail - user can retry
+    } finally {
+      setBeSaving((prev) => ({ ...prev, [field.fieldId]: false }));
+    }
+  };
+
   const filledCount = fields.filter((f) => {
     const form = forms[f.fieldSeasonId];
     return form && (form.irrigationType || form.crop);
@@ -190,6 +224,50 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                 </div>
 
                 <div className="card-content">
+                  {billingEntityOptions.length > 1 && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Billing Entity
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <select
+                          value={billingEntities[field.fieldId] ?? ''}
+                          onChange={(e) => {
+                            const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                            saveBillingEntity(field, val);
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            fontSize: '14px',
+                            border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius)',
+                            background: 'var(--bg-secondary)',
+                            color: 'var(--text-primary)',
+                            boxSizing: 'border-box',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <option value="">Select billing entity...</option>
+                          {billingEntityOptions.map((be) => (
+                            <option key={be.id} value={be.id}>{be.name}</option>
+                          ))}
+                        </select>
+                        {beSaving[field.fieldId] && (
+                          <span style={{ fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Saving...</span>
+                        )}
+                        {beSaved[field.fieldId] && (
+                          <span style={{ fontSize: '13px', color: 'var(--accent-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Saved
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <ButtonGroup
                     label="Crop"
                     options={selectOptions.crop}
