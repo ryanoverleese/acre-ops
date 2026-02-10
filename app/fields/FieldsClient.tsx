@@ -1637,6 +1637,20 @@ export default function FieldsClient({
                       {col.alwaysVisible && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>(required)</span>}
                     </label>
                   ))}
+                  <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', padding: '4px 12px 4px' }}>
+                    <button
+                      className="btn btn-secondary"
+                      style={{ width: '100%', fontSize: '12px', padding: '4px 8px' }}
+                      onClick={() => {
+                        setTabColumns((prev) => ({
+                          ...prev,
+                          [currentTab]: [...TAB_DEFAULT_COLUMNS[currentTab]],
+                        }));
+                      }}
+                    >
+                      Reset to Defaults
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
