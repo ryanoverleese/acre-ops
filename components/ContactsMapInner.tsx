@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import PLSSOverlay from './PLSSOverlay';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -57,6 +59,7 @@ const OPERATION_COLORS = [
 ];
 
 export default function ContactsMapInner({ contacts, colorBy = 'none', onContactClick }: ContactsMapInnerProps) {
+  const [showPLSS, setShowPLSS] = useState(false);
   const mappableContacts = contacts.filter(
     (c) => c.lat != null && c.lng != null && !isNaN(Number(c.lat)) && !isNaN(Number(c.lng)) && c.lat !== 0 && c.lng !== 0
   );
@@ -95,17 +98,35 @@ export default function ContactsMapInner({ contacts, colorBy = 'none', onContact
   const useColoredMarkers = colorBy !== 'none';
 
   return (
-    <MapContainer
-      center={center}
-      zoom={10}
-      style={{ height: '100%', width: '100%' }}
-      zoomControl={true}
-    >
-      <TileLayer
-        attribution='&copy; Google'
-        url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-      />
-      {mappableContacts.map((contact) => {
+    <div style={{ height: '100%', width: '100%', position: 'relative' }}>
+      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000 }}>
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px',
+          background: 'var(--bg-primary)', padding: '6px 10px', borderRadius: '6px',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.3)', cursor: 'pointer',
+          color: 'var(--text-secondary)',
+        }}>
+          <input
+            type="checkbox"
+            checked={showPLSS}
+            onChange={(e) => setShowPLSS(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+          PLSS Grid
+        </label>
+      </div>
+      <MapContainer
+        center={center}
+        zoom={10}
+        style={{ height: '100%', width: '100%' }}
+        zoomControl={true}
+      >
+        <TileLayer
+          attribution='&copy; Google'
+          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+        />
+        <PLSSOverlay show={showPLSS} />
+        {mappableContacts.map((contact) => {
         const popupContent = (
           <Popup>
             <div className="popup-title">{contact.name}</div>
@@ -176,6 +197,7 @@ export default function ContactsMapInner({ contacts, colorBy = 'none', onContact
           </Marker>
         );
       })}
-    </MapContainer>
+      </MapContainer>
+    </div>
   );
 }

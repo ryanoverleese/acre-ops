@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import * as esriLeaflet from 'esri-leaflet';
 
 interface StationMapData {
   id: number;
@@ -28,6 +29,8 @@ const STATUS_COLORS: Record<string, string> = {
 export default function WeatherStationsMap({ stations, onClose }: WeatherStationsMapProps) {
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const plssLayerRef = useRef<ReturnType<typeof esriLeaflet.dynamicMapLayer> | null>(null);
+  const [showPLSS, setShowPLSS] = useState(false);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -88,6 +91,22 @@ export default function WeatherStationsMap({ stations, onClose }: WeatherStation
     };
   }, [stations]);
 
+  // Toggle PLSS grid overlay
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (showPLSS && !plssLayerRef.current) {
+      plssLayerRef.current = esriLeaflet.dynamicMapLayer({
+        url: 'https://gis.blm.gov/arcgis/rest/services/Cadastral/BLM_Natl_PLSS_CadNSDI/MapServer',
+        layers: [1, 2],
+        opacity: 0.5,
+      });
+      plssLayerRef.current.addTo(mapRef.current);
+    } else if (!showPLSS && plssLayerRef.current) {
+      mapRef.current.removeLayer(plssLayerRef.current);
+      plssLayerRef.current = null;
+    }
+  }, [showPLSS]);
+
   return (
     <div style={{ position: 'relative' }}>
       <div ref={mapContainerRef} style={{ height: '500px', width: '100%' }} />
@@ -114,6 +133,22 @@ export default function WeatherStationsMap({ stations, onClose }: WeatherStation
           </div>
         ))}
       </div>
+
+      {/* PLSS toggle */}
+      <label style={{
+        position: 'absolute', top: '10px', right: onClose ? '52px' : '10px', zIndex: 1000,
+        display: 'flex', alignItems: 'center', gap: '6px',
+        background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '6px 12px',
+        borderRadius: '20px', fontSize: '11px', fontWeight: 600, cursor: 'pointer',
+      }}>
+        <input
+          type="checkbox"
+          checked={showPLSS}
+          onChange={(e) => setShowPLSS(e.target.checked)}
+          style={{ cursor: 'pointer' }}
+        />
+        PLSS Grid
+      </label>
 
       {/* Close button */}
       {onClose && (

@@ -93,10 +93,16 @@ const CircleMarker = dynamic(
   { ssr: false }
 );
 
+const PLSSOverlay = dynamic(
+  () => import('./PLSSOverlay'),
+  { ssr: false }
+);
+
 export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }: FieldsMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showPLSS, setShowPLSS] = useState(false);
   const mapRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -205,6 +211,17 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
     <div className={isFullscreen ? '' : 'fields-map'} style={fullscreenStyle} ref={mapRef}>
       {/* Top-right controls */}
       <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {/* PLSS Grid toggle */}
+        <label style={{ ...controlStyle, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={showPLSS}
+            onChange={(e) => setShowPLSS(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+          PLSS Grid
+        </label>
+
         {/* Brightness */}
         <div style={controlStyle}>
           <span>Brightness</span>
@@ -269,6 +286,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           attribution='&copy; Google'
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
+        <PLSSOverlay show={showPLSS} />
         {mappableFields.map((field) => {
           const popupContent = (
             <Popup>

@@ -57,6 +57,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   const [soilType, setSoilType] = useState<string | null>(null);
   const [soilLoading, setSoilLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
+  const [showPLSS, setShowPLSS] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
@@ -136,7 +137,15 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
                 checked={showSoilLayer}
                 onChange={(e) => setShowSoilLayer(e.target.checked)}
               />
-              Show SSURGO Soil Map
+              Soil Map
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={showPLSS}
+                onChange={(e) => setShowPLSS(e.target.checked)}
+              />
+              PLSS Grid
             </label>
           </div>
         </div>
@@ -145,6 +154,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
             position={position}
             onPositionChange={handlePositionChange}
             showSoilLayer={showSoilLayer}
+            showPLSS={showPLSS}
             brightness={brightness}
           />
         </div>

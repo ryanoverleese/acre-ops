@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, WMSTileLayer } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import PLSSOverlay from '../../../../components/PLSSOverlay';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -25,6 +26,7 @@ interface ApprovalMapProps {
 export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
+  const [showPLSS, setShowPLSS] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
@@ -50,7 +52,7 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>
-      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000 }}>
+      <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, display: 'flex', gap: '6px' }}>
         <label style={{
           display: 'flex',
           alignItems: 'center',
@@ -67,7 +69,25 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
             checked={showSoilLayer}
             onChange={(e) => setShowSoilLayer(e.target.checked)}
           />
-          Show Soil Map
+          Soil Map
+        </label>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '12px',
+          background: 'white',
+          padding: '6px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          cursor: 'pointer'
+        }}>
+          <input
+            type="checkbox"
+            checked={showPLSS}
+            onChange={(e) => setShowPLSS(e.target.checked)}
+          />
+          PLSS Grid
         </label>
       </div>
       <MapContainer
@@ -102,6 +122,7 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
             />
           </>
         )}
+        <PLSSOverlay show={showPLSS} />
         <Marker position={position} icon={defaultIcon}>
           <Popup>
             <strong>{fieldName}</strong>
