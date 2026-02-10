@@ -172,7 +172,7 @@ async function getApprovalsData(): Promise<ApprovalsData> {
       .sort((a, b) => b.pendingCount - a.pendingCount || a.name.localeCompare(b.name));
 
     // Build enrolled operations: operations that have field_seasons regardless of probes
-    const enrolledOpsMap = new Map<number, { name: string; fieldCount: number; seasons: Set<number> }>();
+    const enrolledOpsMap = new Map<number, { name: string; fieldIds: Set<number>; seasons: Set<number> }>();
     fieldSeasons.forEach((fs) => {
       const fieldId = fs.field?.[0]?.id;
       if (!fieldId) return;
@@ -182,19 +182,19 @@ async function getApprovalsData(): Promise<ApprovalsData> {
       if (!seasonNum) return;
 
       if (!enrolledOpsMap.has(operation.id)) {
-        enrolledOpsMap.set(operation.id, { name: operation.name, fieldCount: 0, seasons: new Set() });
+        enrolledOpsMap.set(operation.id, { name: operation.name, fieldIds: new Set(), seasons: new Set() });
       }
       const entry = enrolledOpsMap.get(operation.id)!;
       entry.seasons.add(seasonNum);
       // Count unique fields per operation (not field_seasons)
-      entry.fieldCount++;
+      entry.fieldIds.add(fieldId);
     });
 
     const enrolledOperations: EnrolledOperation[] = Array.from(enrolledOpsMap.entries())
       .map(([id, data]) => ({
         id,
         name: data.name,
-        fieldCount: data.fieldCount,
+        fieldCount: data.fieldIds.size,
         seasons: Array.from(data.seasons).sort((a, b) => b - a),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
