@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import type { ApprovalItem } from './page';
+import type { ApprovalItem, EnrolledOperation } from './page';
 
 interface OperationSummary {
   id: number;
@@ -17,12 +17,14 @@ interface ApprovalsClientProps {
   items: ApprovalItem[];
   operationSummaries: OperationSummary[];
   availableSeasons: number[];
+  enrolledOperations: EnrolledOperation[];
 }
 
 export default function ApprovalsClient({
   items: initialItems,
   operationSummaries: initialSummaries,
   availableSeasons,
+  enrolledOperations,
 }: ApprovalsClientProps) {
   const [items, setItems] = useState(initialItems);
   const [operationSummaries, setOperationSummaries] = useState(initialSummaries);
@@ -90,6 +92,23 @@ export default function ApprovalsClient({
       }))
       .sort((a, b) => a.operationName.localeCompare(b.operationName));
   }, [filteredItems]);
+
+  // Enrolled-only operations: have field_seasons for selected season but no probe items
+  const enrolledOnlyOps = useMemo(() => {
+    const opsWithProbes = new Set(groupedItems.map((g) => g.operationId));
+    const seasonFilter = selectedSeason === 'all' ? null : selectedSeason;
+    return enrolledOperations
+      .filter((op) => {
+        if (opsWithProbes.has(op.id)) return false;
+        if (seasonFilter && !op.seasons.includes(seasonFilter)) return false;
+        if (searchQuery.trim()) {
+          if (!op.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+        }
+        if (selectedOperation !== 'all' && op.id !== selectedOperation) return false;
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [enrolledOperations, groupedItems, selectedSeason, searchQuery, selectedOperation]);
 
   // Stats
   const stats = useMemo(() => {
@@ -385,6 +404,13 @@ export default function ApprovalsClient({
                   {op.name} ({op.pendingCount} pending)
                 </option>
               ))}
+              {enrolledOperations
+                .filter((eo) => !operationSummaries.some((os) => os.id === eo.id))
+                .map((op) => (
+                  <option key={op.id} value={op.id}>
+                    {op.name} (enrolled)
+                  </option>
+                ))}
             </select>
 
             <div className="search-box" style={{ width: '180px' }}>
@@ -415,12 +441,12 @@ export default function ApprovalsClient({
         </div>
 
         <div style={{ padding: '16px' }}>
-          {groupedItems.length === 0 ? (
+          {groupedItems.length === 0 && enrolledOnlyOps.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
               {statusFilter === 'pending' ? 'No pending approvals.' : 'No items match your filters.'}
             </div>
           ) : (
-            groupedItems.map((group) => {
+            [...groupedItems.map((group) => {
               const isExpanded = expandedOperations.has(group.operationId);
               const groupPendingCount = group.items.filter((i) => i.approvalStatus === 'Pending').length;
 
@@ -683,7 +709,132 @@ export default function ApprovalsClient({
                   )}
                 </div>
               );
-            })
+            }),
+            ...enrolledOnlyOps.map((op) => (
+              <div
+                key={`enrolled-${op.id}`}
+                style={{
+                  marginBottom: '12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 16px',
+                    background: 'var(--bg-tertiary)',
+                  }}
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-green)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+
+                  <Link
+                    href="/operations"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ fontWeight: 600, fontSize: '15px', textDecoration: 'none', color: 'inherit' }}
+                  >
+                    {op.name}
+                  </Link>
+
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                    {op.fieldCount} field{op.fieldCount !== 1 ? 's' : ''} enrolled
+                  </span>
+
+                  <span className="status-badge pending" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                    No probes
+                  </span>
+
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (linkOperationId === op.id && approvalToken && linkType === 'field-info') {
+                          setLinkOperationId(null);
+                          setApprovalToken(null);
+                        } else {
+                          handleGenerateApprovalLink(op.id, 'field-info');
+                        }
+                      }}
+                      disabled={approvalLoading && linkOperationId === op.id}
+                      style={{
+                        background: 'none',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius)',
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                      }}
+                      title="Generate field info link for customer"
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Field Info Link
+                    </button>
+                  </div>
+                </div>
+
+                {/* Approval Link */}
+                {linkOperationId === op.id && approvalToken && (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'var(--bg-card)',
+                      borderTop: '1px solid var(--border)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                    }}
+                  >
+                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
+                      Share this link with your customer to fill in field details:
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={getApprovalUrl()}
+                        readOnly
+                        style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)' }}
+                        onClick={(e) => (e.target as HTMLInputElement).select()}
+                      />
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleCopyLink}
+                        style={{ flexShrink: 0, fontSize: '12px', padding: '6px 12px' }}
+                      >
+                        {linkCopied ? 'Copied!' : 'Copy'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--accent-green)' }}>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Link generated
+                      </span>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => handleGenerateApprovalLink(op.id, 'field-info', true)}
+                        disabled={approvalLoading}
+                        style={{ fontSize: '12px', padding: '4px 8px' }}
+                      >
+                        Regenerate
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))]
           )}
         </div>
       </div>

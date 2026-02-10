@@ -39,10 +39,18 @@ interface OperationSummary {
   total: number;
 }
 
+export interface EnrolledOperation {
+  id: number;
+  name: string;
+  fieldCount: number;
+  seasons: number[];
+}
+
 interface ApprovalsData {
   items: ApprovalItem[];
   operationSummaries: OperationSummary[];
   availableSeasons: number[];
+  enrolledOperations: EnrolledOperation[];
 }
 
 async function getApprovalsData(): Promise<ApprovalsData> {
@@ -163,19 +171,48 @@ async function getApprovalsData(): Promise<ApprovalsData> {
     const operationSummaries = Array.from(operationStats.values())
       .sort((a, b) => b.pendingCount - a.pendingCount || a.name.localeCompare(b.name));
 
+    // Build enrolled operations: operations that have field_seasons regardless of probes
+    const enrolledOpsMap = new Map<number, { name: string; fieldCount: number; seasons: Set<number> }>();
+    fieldSeasons.forEach((fs) => {
+      const fieldId = fs.field?.[0]?.id;
+      if (!fieldId) return;
+      const operation = fieldToOperation.get(fieldId);
+      if (!operation) return;
+      const seasonNum = Number(fs.season);
+      if (!seasonNum) return;
+
+      if (!enrolledOpsMap.has(operation.id)) {
+        enrolledOpsMap.set(operation.id, { name: operation.name, fieldCount: 0, seasons: new Set() });
+      }
+      const entry = enrolledOpsMap.get(operation.id)!;
+      entry.seasons.add(seasonNum);
+      // Count unique fields per operation (not field_seasons)
+      entry.fieldCount++;
+    });
+
+    const enrolledOperations: EnrolledOperation[] = Array.from(enrolledOpsMap.entries())
+      .map(([id, data]) => ({
+        id,
+        name: data.name,
+        fieldCount: data.fieldCount,
+        seasons: Array.from(data.seasons).sort((a, b) => b - a),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
     return {
       items,
       operationSummaries,
       availableSeasons: Array.from(seasons).sort((a, b) => b - a),
+      enrolledOperations,
     };
   } catch (error) {
     console.error('Error fetching approvals data:', error);
-    return { items: [], operationSummaries: [], availableSeasons: [] };
+    return { items: [], operationSummaries: [], availableSeasons: [], enrolledOperations: [] };
   }
 }
 
 export default async function ApprovalsPage() {
-  const { items, operationSummaries, availableSeasons } = await getApprovalsData();
+  const { items, operationSummaries, availableSeasons, enrolledOperations } = await getApprovalsData();
 
   return (
     <>
@@ -190,6 +227,7 @@ export default async function ApprovalsPage() {
           items={items}
           operationSummaries={operationSummaries}
           availableSeasons={availableSeasons}
+          enrolledOperations={enrolledOperations}
         />
       </div>
     </>
