@@ -7,6 +7,7 @@ interface PageProps {
     token: string;
     season: string;
   }>;
+  searchParams: Promise<{ q?: string }>;
 }
 
 export interface BillingEntityOption {
@@ -44,9 +45,18 @@ function toOptions(opts: { id: number; value: string; color: string }[]): { valu
   return (opts || []).map((o) => ({ value: o.value, label: o.value })).sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export default async function FieldInfoPage({ params }: PageProps) {
+// All possible question keys
+const ALL_QUESTION_KEYS = ['crop', 'irrigation_type', 'row_direction', 'side_dress', 'water_source', 'fuel_source', 'hybrid_variety', 'planting_date', 'billing_entity'];
+
+export default async function FieldInfoPage({ params, searchParams }: PageProps) {
   const { token, season } = await params;
+  const { q } = await searchParams;
   const seasonYear = parseInt(season, 10);
+
+  // Parse visible questions from query param (default: show all)
+  const visibleQuestions = q
+    ? q.split(',').filter(k => ALL_QUESTION_KEYS.includes(k))
+    : ALL_QUESTION_KEYS;
 
   const [operations, rawFields, fieldSeasons, contacts] = await Promise.all([
     getOperations(),
@@ -144,6 +154,7 @@ export default async function FieldInfoPage({ params }: PageProps) {
       fields={items}
       selectOptions={selectOptions}
       billingEntityOptions={billingEntityOptions}
+      visibleQuestions={visibleQuestions}
     />
   );
 }

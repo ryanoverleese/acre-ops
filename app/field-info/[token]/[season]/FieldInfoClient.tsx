@@ -10,6 +10,7 @@ interface FieldInfoClientProps {
   fields: FieldInfoItem[];
   selectOptions: FieldInfoSelectOptions;
   billingEntityOptions: BillingEntityOption[];
+  visibleQuestions: string[];
 }
 
 interface FieldForm {
@@ -72,7 +73,8 @@ function ButtonGroup({ label, options, value, onChange }: {
   );
 }
 
-export default function FieldInfoClient({ operationName, season, token, fields: initialFields, selectOptions, billingEntityOptions }: FieldInfoClientProps) {
+export default function FieldInfoClient({ operationName, season, token, fields: initialFields, selectOptions, billingEntityOptions, visibleQuestions }: FieldInfoClientProps) {
+  const showQuestion = (key: string) => visibleQuestions.includes(key);
   const [fields, setFields] = useState(initialFields);
   const [billingEntities, setBillingEntities] = useState<Record<number, number | null>>(() => {
     const initial: Record<number, number | null> = {};
@@ -224,7 +226,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                 </div>
 
                 <div className="card-content">
-                  {billingEntityOptions.length > 1 && (
+                  {showQuestion('billing_entity') && billingEntityOptions.length > 1 && (
                     <div style={{ marginBottom: '20px' }}>
                       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Billing Entity
@@ -268,50 +270,64 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                     </div>
                   )}
 
-                  <ButtonGroup
-                    label="Crop"
-                    options={selectOptions.crop}
-                    value={form.crop}
-                    onChange={(v) => saveFieldChange(field, 'crop', v)}
-                  />
+                  {showQuestion('crop') && (
+                    <ButtonGroup
+                      label="Crop"
+                      options={selectOptions.crop}
+                      value={form.crop}
+                      onChange={(v) => saveFieldChange(field, 'crop', v)}
+                    />
+                  )}
 
-                  <ButtonGroup
-                    label="Irrigation Type"
-                    options={selectOptions.irrigation_type}
-                    value={form.irrigationType}
-                    onChange={(v) => saveFieldChange(field, 'irrigationType', v)}
-                  />
+                  {showQuestion('irrigation_type') && (
+                    <ButtonGroup
+                      label="Irrigation Type"
+                      options={selectOptions.irrigation_type}
+                      value={form.irrigationType}
+                      onChange={(v) => saveFieldChange(field, 'irrigationType', v)}
+                    />
+                  )}
 
-                  <ButtonGroup
-                    label="Row Direction"
-                    options={selectOptions.row_direction}
-                    value={form.rowDirection}
-                    onChange={(v) => saveFieldChange(field, 'rowDirection', v)}
-                  />
+                  {showQuestion('row_direction') && (
+                    <ButtonGroup
+                      label="Row Direction"
+                      options={selectOptions.row_direction}
+                      value={form.rowDirection}
+                      onChange={(v) => saveFieldChange(field, 'rowDirection', v)}
+                    />
+                  )}
 
-                  <ButtonGroup
-                    label="Side Dress"
-                    options={selectOptions.side_dress}
-                    value={form.sideDress}
-                    onChange={(v) => saveFieldChange(field, 'sideDress', v)}
-                  />
+                  {showQuestion('side_dress') && (
+                    <ButtonGroup
+                      label="Side Dress"
+                      options={selectOptions.side_dress}
+                      value={form.sideDress}
+                      onChange={(v) => saveFieldChange(field, 'sideDress', v)}
+                    />
+                  )}
 
-                  <ButtonGroup
-                    label="Water Source"
-                    options={selectOptions.water_source}
-                    value={form.waterSource}
-                    onChange={(v) => saveFieldChange(field, 'waterSource', v)}
-                  />
+                  {showQuestion('water_source') && (
+                    <ButtonGroup
+                      label="Water Source"
+                      options={selectOptions.water_source}
+                      value={form.waterSource}
+                      onChange={(v) => saveFieldChange(field, 'waterSource', v)}
+                    />
+                  )}
 
-                  <ButtonGroup
-                    label="Fuel Source"
-                    options={selectOptions.fuel_source}
-                    value={form.fuelSource}
-                    onChange={(v) => saveFieldChange(field, 'fuelSource', v)}
-                  />
+                  {showQuestion('fuel_source') && (
+                    <ButtonGroup
+                      label="Fuel Source"
+                      options={selectOptions.fuel_source}
+                      value={form.fuelSource}
+                      onChange={(v) => saveFieldChange(field, 'fuelSource', v)}
+                    />
+                  )}
 
                   {/* Text fields for hybrid/planting date - save on blur */}
+                  {(showQuestion('hybrid_variety') || showQuestion('planting_date')) && (
                   <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                    {showQuestion('hybrid_variety') && (
                     <div style={{ flex: '1 1 200px' }}>
                       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Hybrid / Variety
@@ -325,6 +341,8 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                         style={{ width: '100%', padding: '8px 12px', fontSize: '14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)', boxSizing: 'border-box' }}
                       />
                     </div>
+                    )}
+                    {showQuestion('planting_date') && (
                     <div style={{ flex: '1 1 200px' }}>
                       <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Planting Date
@@ -336,7 +354,9 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                         style={{ width: '100%', padding: '8px 12px', fontSize: '14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)', boxSizing: 'border-box' }}
                       />
                     </div>
+                    )}
                   </div>
+                  )}
 
                   {/* Auto-save indicator */}
                   {(isSaving || isSaved) && (

@@ -45,6 +45,21 @@ export default function ApprovalsClient({
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Field-info question selection
+  const FIELD_INFO_QUESTIONS = [
+    { key: 'crop', label: 'Crop' },
+    { key: 'irrigation_type', label: 'Irrigation Type' },
+    { key: 'row_direction', label: 'Row Direction' },
+    { key: 'side_dress', label: 'Side Dress' },
+    { key: 'water_source', label: 'Water Source' },
+    { key: 'fuel_source', label: 'Fuel Source' },
+    { key: 'hybrid_variety', label: 'Hybrid / Variety' },
+    { key: 'planting_date', label: 'Planting Date' },
+    { key: 'billing_entity', label: 'Billing Entity' },
+  ] as const;
+  const ALL_QUESTION_KEYS = FIELD_INFO_QUESTIONS.map(q => q.key);
+  const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set(ALL_QUESTION_KEYS));
+
   // Filter items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -317,7 +332,12 @@ export default function ApprovalsClient({
     if (!approvalToken) return '';
     const year = selectedSeason !== 'all' ? selectedSeason : new Date().getFullYear();
     const path = linkType === 'field-info' ? 'field-info' : 'approve';
-    return `${window.location.origin}/${path}/${approvalToken}/${year}`;
+    let url = `${window.location.origin}/${path}/${approvalToken}/${year}`;
+    // For field-info links, append selected questions (omit param if all selected)
+    if (linkType === 'field-info' && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
+      url += `?q=${Array.from(selectedQuestions).join(',')}`;
+    }
+    return url;
   };
 
   const handleCopyLink = async () => {
@@ -592,6 +612,53 @@ export default function ApprovalsClient({
                           ? 'Share this link with your customer to fill in field details:'
                           : 'Share this link with your customer to approve probe placements:'}
                       </p>
+
+                      {/* Question selector for field-info links */}
+                      {linkType === 'field-info' && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '8px 0' }}>
+                          {FIELD_INFO_QUESTIONS.map((q) => {
+                            const isSelected = selectedQuestions.has(q.key);
+                            return (
+                              <label
+                                key={q.key}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  padding: '4px 10px',
+                                  borderRadius: '16px',
+                                  fontSize: '12px',
+                                  cursor: 'pointer',
+                                  background: isSelected ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                                  color: isSelected ? '#fff' : 'var(--text-secondary)',
+                                  border: isSelected ? '1px solid var(--accent-green)' : '1px solid var(--border)',
+                                  transition: 'all 0.15s ease',
+                                  userSelect: 'none',
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    setSelectedQuestions(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(q.key)) {
+                                        if (next.size > 1) next.delete(q.key);
+                                      } else {
+                                        next.add(q.key);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  style={{ display: 'none' }}
+                                />
+                                {q.label}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <input
                           type="text"
