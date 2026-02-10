@@ -94,6 +94,24 @@ body {
   margin-bottom: var(--space-4);
 }
 
+.logo-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo-title-row .notification-bell-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.logo-title-row .notification-dropdown {
+  position: fixed;
+  top: 48px;
+  left: 8px;
+  right: auto;
+}
+
 .logo h1 {
   font-size: 17px;
   font-weight: 700;
@@ -1002,13 +1020,7 @@ select:focus {
   margin-left: auto;
 }
 
-/* Desktop Notification Bar */
-.desktop-notification-bar {
-  position: fixed;
-  top: 12px;
-  right: 20px;
-  z-index: 60;
-}
+/* Desktop Notification Bar - moved into sidebar header */
 
 /* Notification Bell */
 .notification-bell-wrap {
@@ -1136,10 +1148,6 @@ select:focus {
 @media (max-width: 768px) {
   .mobile-header {
     display: flex;
-  }
-
-  .desktop-notification-bar {
-    display: none;
   }
 
   .notification-dropdown {

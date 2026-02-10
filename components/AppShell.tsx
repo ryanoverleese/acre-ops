@@ -195,11 +195,6 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
       </div>
 
-      {/* Desktop Notification Bell */}
-      <div className="desktop-notification-bar">
-        <NotificationBell />
-      </div>
-
       {/* Mobile Overlay */}
       {mobileMenuOpen && (
         <div
@@ -227,7 +222,10 @@ export default function AppShell({ children }: AppShellProps) {
         </div>
 
         <div className="logo desktop-only">
-          <h1>Acre Insights</h1>
+          <div className="logo-title-row">
+            <h1>Acre Insights</h1>
+            <NotificationBell />
+          </div>
           <span>Operation Center</span>
         </div>
 
