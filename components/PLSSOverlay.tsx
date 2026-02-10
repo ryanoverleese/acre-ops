@@ -19,7 +19,7 @@ export default function PLSSOverlay({ show }: { show: boolean }) {
       layerRef.current = esriLeaflet.dynamicMapLayer({
         url: PLSS_URL,
         layers: [1, 2],
-        opacity: 0.5,
+        opacity: 0.75,
         transparent: true,
       });
       layerRef.current.addTo(map);
