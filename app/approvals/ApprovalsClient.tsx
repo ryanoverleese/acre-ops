@@ -850,7 +850,7 @@ export default function ApprovalsClient({
                   </div>
                 </div>
 
-                {/* Approval Link */}
+                {/* Field Info Link */}
                 {linkOperationId === op.id && approvalToken && (
                   <div
                     onClick={(e) => e.stopPropagation()}
@@ -866,6 +866,51 @@ export default function ApprovalsClient({
                     <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
                       Share this link with your customer to fill in field details:
                     </p>
+
+                    {/* Question selector */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '8px 0' }}>
+                      {FIELD_INFO_QUESTIONS.map((q) => {
+                        const isSelected = selectedQuestions.has(q.key);
+                        return (
+                          <label
+                            key={q.key}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              borderRadius: '16px',
+                              fontSize: '12px',
+                              cursor: 'pointer',
+                              background: isSelected ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                              color: isSelected ? '#fff' : 'var(--text-secondary)',
+                              border: isSelected ? '1px solid var(--accent-green)' : '1px solid var(--border)',
+                              transition: 'all 0.15s ease',
+                              userSelect: 'none',
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                setSelectedQuestions(prev => {
+                                  const next = new Set(prev);
+                                  if (next.has(q.key)) {
+                                    if (next.size > 1) next.delete(q.key);
+                                  } else {
+                                    next.add(q.key);
+                                  }
+                                  return next;
+                                });
+                              }}
+                              style={{ display: 'none' }}
+                            />
+                            {q.label}
+                          </label>
+                        );
+                      })}
+                    </div>
+
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
                         type="text"
