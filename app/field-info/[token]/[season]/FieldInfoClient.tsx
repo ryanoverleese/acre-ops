@@ -308,7 +308,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
 
                   {showQuestion('water_source') && (
                     <ButtonGroup
-                      label="Water Source"
+                      label="Primary Water Source"
                       options={selectOptions.water_source}
                       value={form.waterSource}
                       onChange={(v) => saveFieldChange(field, 'waterSource', v)}
@@ -317,7 +317,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
 
                   {showQuestion('fuel_source') && (
                     <ButtonGroup
-                      label="Fuel Source"
+                      label="Primary Fuel Source"
                       options={selectOptions.fuel_source}
                       value={form.fuelSource}
                       onChange={(v) => saveFieldChange(field, 'fuelSource', v)}

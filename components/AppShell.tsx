@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import NotificationBell from './NotificationBell';
 
 interface NavItem {
   name: string;
@@ -189,6 +190,14 @@ export default function AppShell({ children }: AppShellProps) {
         <div className="mobile-logo">
           <h1>Acre Insights Operation Center</h1>
         </div>
+        <div className="mobile-header-right">
+          <NotificationBell />
+        </div>
+      </div>
+
+      {/* Desktop Notification Bell */}
+      <div className="desktop-notification-bar">
+        <NotificationBell />
       </div>
 
       {/* Mobile Overlay */}
