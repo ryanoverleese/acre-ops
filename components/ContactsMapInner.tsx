@@ -37,19 +37,19 @@ interface ContactsMapInnerProps {
 
 // Color palettes for different groupings
 const TYPE_COLORS: Record<string, string> = {
-  'Current Customer': '#34d399',    // green
-  'Past Customer': '#6b7280',       // gray
-  'Weather Station Only': '#fbbf24', // amber
-  'Agronomist': '#a78bfa',          // purple
-  default: '#60a5fa',               // blue
+  'Current Customer': '#4a7a5b',      // accent-primary
+  'Past Customer': '#78716c',         // text-muted
+  'Weather Station Only': '#d97706',  // accent-amber
+  'Agronomist': '#a78bfa',            // purple
+  default: '#60a5fa',                 // blue
 };
 
 // Generate distinct colors for operations
 const OPERATION_COLORS = [
-  '#34d399', // green
+  '#4a7a5b', // accent-primary
   '#60a5fa', // blue
-  '#fbbf24', // amber
-  '#f87171', // red
+  '#d97706', // accent-amber
+  '#dc2626', // accent-red
   '#a78bfa', // purple
   '#f472b6', // pink
   '#2dd4bf', // teal

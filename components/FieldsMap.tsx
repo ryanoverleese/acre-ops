@@ -39,27 +39,27 @@ interface FieldsMapProps {
 
 // Color palettes for different groupings
 const CROP_COLORS: Record<string, string> = {
-  corn: '#fbbf24',      // yellow
-  soybeans: '#34d399',  // green
-  wheat: '#f87171',     // red
+  corn: '#d97706',      // accent-amber
+  soybeans: '#4a7a5b',  // accent-primary
+  wheat: '#dc2626',     // accent-red
   default: '#60a5fa',   // blue
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  installed: '#34d399',   // green
-  assigned: '#fbbf24',    // amber
-  pending: '#fbbf24',     // amber
-  'needs-probe': '#6b7280', // gray
-  repair: '#f87171',      // red
+  installed: '#4a7a5b',   // accent-primary
+  assigned: '#d97706',    // accent-amber
+  pending: '#d97706',     // accent-amber
+  'needs-probe': '#78716c', // text-muted
+  repair: '#dc2626',      // accent-red
   default: '#60a5fa',     // blue
 };
 
 // Generate distinct colors for operations
 const OPERATION_COLORS = [
-  '#34d399', // green
+  '#4a7a5b', // accent-primary
   '#60a5fa', // blue
-  '#fbbf24', // amber
-  '#f87171', // red
+  '#d97706', // accent-amber
+  '#dc2626', // accent-red
   '#a78bfa', // purple
   '#f472b6', // pink
   '#2dd4bf', // teal

@@ -20,9 +20,9 @@ interface WeatherStationsMapProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  Active: '#34d399',
-  Offline: '#fbbf24',
-  Decommissioned: '#6b7280',
+  Active: '#4a7a5b',       // accent-primary
+  Offline: '#d97706',      // accent-amber
+  Decommissioned: '#78716c', // text-muted
   default: '#60a5fa',
 };
 

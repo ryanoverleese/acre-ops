@@ -625,7 +625,7 @@ tbody tr:hover {
   border-radius: 20px;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
   text-transform: capitalize;
 }
 
@@ -786,19 +786,19 @@ tbody tr:hover {
 }
 
 .custom-marker.installed {
-  background: #34d399;
+  background: var(--accent-primary);
 }
 
 .custom-marker.pending {
-  background: #fbbf24;
+  background: var(--accent-amber);
 }
 
 .custom-marker.repair {
-  background: #f87171;
+  background: var(--accent-red);
 }
 
 .custom-marker.needs-probe {
-  background: #5c6b7a;
+  background: var(--text-muted);
 }
 
 /* Leaflet popup styles */
@@ -816,7 +816,7 @@ tbody tr:hover {
 
 .leaflet-popup-content {
   margin: 12px 14px;
-  font-family: 'DM Sans', sans-serif;
+  font-family: 'Source Sans 3', sans-serif;
 }
 
 .popup-title {
@@ -2021,10 +2021,11 @@ tr.selected {
   }
 
   .mobile-card {
-    background: var(--bg-secondary);
+    background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 16px;
+    box-shadow: var(--shadow-sm);
     transition: all 0.2s ease;
     cursor: pointer;
   }
@@ -2392,16 +2393,6 @@ input[type="date"]:focus {
   color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
-}
-
-/* Status Badges */
-.status-badge {
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 .status-pending {
