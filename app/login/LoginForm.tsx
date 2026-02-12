@@ -39,128 +39,38 @@ export default function LoginForm() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      flex: 1,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg-primary)',
-      padding: '20px',
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '400px',
-        background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-lg)',
-        boxShadow: 'var(--shadow-lg)',
-        border: '1px solid var(--border)',
-        overflow: 'hidden',
-      }}>
-        <div style={{
-          padding: '32px 32px 24px',
-          textAlign: 'center',
-          borderBottom: '1px solid var(--border)',
-          background: 'var(--bg-secondary)',
-        }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
-            Acre Insights
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            Operation Center
-          </p>
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-header">
+          <h1>Acre Insights</h1>
+          <p>Operation Center</p>
         </div>
-
-        <form onSubmit={handleSubmit} style={{ padding: '24px 32px 32px' }}>
-          {error && (
-            <div style={{
-              padding: '10px 12px',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--accent-red-dim)',
-              color: 'var(--accent-red)',
-              fontSize: '13px',
-              marginBottom: '16px',
-              border: '1px solid rgba(220, 38, 38, 0.2)',
-            }}>
-              {error}
-            </div>
-          )}
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-              marginBottom: '6px',
-            }}>
-              Email
-            </label>
+        <form onSubmit={handleSubmit} className="login-form">
+          {error && <div className="login-error">{error}</div>}
+          <div className="login-field">
+            <label className="login-label">Email</label>
             <input
               type="email"
+              className="login-input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               autoFocus
               placeholder="you@example.com"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-strong)',
-                fontSize: '14px',
-                background: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
             />
           </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '13px',
-              fontWeight: 500,
-              color: 'var(--text-secondary)',
-              marginBottom: '6px',
-            }}>
-              Password
-            </label>
+          <div className="login-field">
+            <label className="login-label">Password</label>
             <input
               type="password"
+              className="login-input"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               placeholder="Enter your password"
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border-strong)',
-                fontSize: '14px',
-                background: 'var(--bg-primary)',
-                color: 'var(--text-primary)',
-                outline: 'none',
-              }}
             />
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              padding: '10px',
-              borderRadius: 'var(--radius-sm)',
-              border: 'none',
-              background: 'var(--accent-primary)',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              opacity: loading ? 0.7 : 1,
-            }}
-          >
+          <button type="submit" disabled={loading} className="login-submit">
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>

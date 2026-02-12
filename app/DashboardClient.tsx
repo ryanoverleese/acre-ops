@@ -81,13 +81,13 @@ export default function DashboardClient({ stats, operations: initialOperations }
 
       <div className="content">
         {/* Install Status Section */}
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <div className="dashboard-section">
+          <h3 className="section-label">
             Install Status (2026)
           </h3>
-          <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-            <Link href="/install" style={{ textDecoration: 'none' }}>
-              <div className="stat-card" style={{ cursor: 'pointer' }}>
+          <div className="stats-grid stats-grid-3">
+            <Link href="/install" className="unstyled-link">
+              <div className="stat-card">
                 <div className="stat-label">Ready to Install</div>
                 <div className="stat-value amber">{stats.assignedCount}</div>
                 <div className="stat-change">Assigned probes</div>
@@ -107,8 +107,8 @@ export default function DashboardClient({ stats, operations: initialOperations }
         </div>
 
         {/* Overview Stats */}
-        <div style={{ marginBottom: '24px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+        <div className="dashboard-section">
+          <h3 className="section-label">
             Overview
           </h3>
           <div className="stats-grid">
@@ -160,7 +160,7 @@ export default function DashboardClient({ stats, operations: initialOperations }
             <tbody>
               {filteredOperations.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={3} className="text-center text-muted">
                     {searchQuery ? 'No matching operations found.' : 'No operations found. Add some in Baserow.'}
                   </td>
                 </tr>
@@ -171,7 +171,7 @@ export default function DashboardClient({ stats, operations: initialOperations }
                       <div className="operation-name">{op.name}</div>
                     </td>
                     <td>
-                      <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                      <span className="text-secondary">
                         {op.notes || '—'}
                       </span>
                     </td>

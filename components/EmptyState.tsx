@@ -61,47 +61,20 @@ const icons = {
 
 export default function EmptyState({ icon = 'search', title, description, action }: EmptyStateProps) {
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '60px 20px',
-      textAlign: 'center',
-    }}>
-      <div style={{
-        color: 'var(--text-muted)',
-        marginBottom: '16px',
-        opacity: 0.5,
-      }}>
+    <div className="empty-state-container">
+      <div className="empty-state-icon">
         {icons[icon]}
       </div>
-      <h3 style={{
-        color: 'var(--text-secondary)',
-        marginBottom: '8px',
-        fontSize: '16px',
-        fontWeight: 600,
-      }}>
-        {title}
-      </h3>
+      <h3 className="empty-state-title">{title}</h3>
       {description && (
-        <p style={{
-          color: 'var(--text-muted)',
-          fontSize: '14px',
-          maxWidth: '300px',
-          marginBottom: action ? '20px' : '0',
-        }}>
-          {description}
-        </p>
+        <p className="empty-state-description">{description}</p>
       )}
       {action && (
-        <button
-          onClick={action.onClick}
-          className="btn btn-primary"
-          style={{ marginTop: '8px' }}
-        >
-          {action.label}
-        </button>
+        <div className="empty-state-action">
+          <button onClick={action.onClick} className="btn btn-primary">
+            {action.label}
+          </button>
+        </div>
       )}
     </div>
   );

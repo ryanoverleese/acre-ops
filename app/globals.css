@@ -1270,6 +1270,204 @@ select:focus {
   color: var(--sidebar-text-hover);
 }
 
+/* ============================================
+   LOGIN PAGE
+   ============================================ */
+
+.login-page {
+  min-height: 100vh;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.login-header {
+  padding: 32px 32px 24px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.login-header h1 {
+  font-family: 'General Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.login-header p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.login-form {
+  padding: 24px 32px 32px;
+}
+
+.login-error {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+  font-size: 13px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(220, 38, 38, 0.2);
+}
+
+.login-field {
+  margin-bottom: 16px;
+}
+
+.login-field:last-of-type {
+  margin-bottom: 24px;
+}
+
+.login-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.login-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  font-size: 14px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.login-input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-primary-dim);
+}
+
+.login-submit {
+  width: 100%;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.login-submit:hover:not(:disabled) {
+  background: var(--accent-primary-hover);
+}
+
+.login-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ============================================
+   EMPTY STATE (component)
+   ============================================ */
+
+.empty-state-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-family: 'General Sans', sans-serif;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.empty-state-description {
+  color: var(--text-muted);
+  font-size: 14px;
+  max-width: 300px;
+}
+
+.empty-state-action {
+  margin-top: 20px;
+}
+
+/* ============================================
+   LOADING BAR
+   ============================================ */
+
+.loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  background: var(--bg-tertiary);
+}
+
+.loading-bar-fill {
+  height: 100%;
+  background: var(--accent-primary);
+  transition: width 0.2s ease-out;
+  box-shadow: 0 0 10px var(--accent-primary);
+}
+
+/* ============================================
+   DASHBOARD SECTIONS
+   ============================================ */
+
+.section-label {
+  font-family: 'General Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.stats-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.dashboard-section {
+  margin-bottom: 24px;
+}
+
+.unstyled-link { text-decoration: none; color: inherit; }
+.text-center { text-align: center; }
+
 /* Responsive */
 @media (max-width: 1200px) {
   .stats-grid {

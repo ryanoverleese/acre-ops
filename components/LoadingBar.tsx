@@ -53,22 +53,8 @@ export default function LoadingBar() {
   if (!loading) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: '3px',
-      zIndex: 9999,
-      background: 'var(--bg-tertiary)',
-    }}>
-      <div style={{
-        height: '100%',
-        width: `${progress}%`,
-        background: 'var(--accent-primary)',
-        transition: 'width 0.2s ease-out',
-        boxShadow: '0 0 10px var(--accent-primary)',
-      }} />
+    <div className="loading-bar">
+      <div className="loading-bar-fill" style={{ width: `${progress}%` }} />
     </div>
   );
 }
