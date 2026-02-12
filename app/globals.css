@@ -3104,6 +3104,130 @@ input[type="date"]:focus {
 .text-secondary { color: var(--text-secondary); }
 .text-muted { color: var(--text-muted); }
 
+/* ============================================
+   CRM TABS
+   ============================================ */
+
+.crm-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: var(--space-4);
+}
+
+.crm-tab {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.crm-tab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.crm-tab.active {
+  background: var(--accent-primary);
+  color: white;
+  border-color: var(--accent-primary);
+}
+
+/* ============================================
+   REPAIRS PAGE
+   ============================================ */
+
+.repairs-badge-open {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+.probe-detail {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.cell-truncate {
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.probe-replaced-note {
+  font-size: 11px;
+  color: var(--accent-blue);
+  margin-top: 2px;
+}
+
+.action-btn-group {
+  display: flex;
+  gap: 4px;
+}
+
+.mobile-card-footer-bar {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mobile-card-edit-link {
+  color: var(--accent-primary);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mobile-card-row-blue {
+  color: var(--accent-blue);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-label-pointer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.repair-summary-box {
+  background: var(--bg-tertiary);
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+}
+
+.repair-summary-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.repair-summary-detail {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.repair-summary-problem {
+  font-size: 13px;
+  color: var(--accent-red);
+  margin-top: 8px;
+}
+
 /* Entity List Container */
 .entity-list {
   display: flex;

@@ -325,7 +325,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
       <header className="header">
         <div className="header-left">
           <h2>Repairs</h2>
-          <span className="season-badge" style={{ background: 'var(--accent-red-dim)', color: 'var(--accent-red)' }}>
+          <span className="season-badge repairs-badge-open">
             {openCount} Open
           </span>
         </div>
@@ -351,7 +351,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
       </header>
 
       <div className="content">
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '24px' }}>
+        <div className="stats-grid stats-grid-3">
           <div className="stat-card">
             <div className="stat-label">Total Repairs</div>
             <div className="stat-value blue">{repairs.length}</div>
@@ -420,22 +420,22 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     <td className="operation-name">
                       {repair.fieldName}
                       {repair.probeNumber && (
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '12px' }}>
+                        <span className="probe-detail">
                           {' '}(Probe {repair.probeNumber}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
                         </span>
                       )}
                     </td>
-                    <td style={{ fontSize: '13px' }}>{repair.operation}</td>
-                    <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <td>{repair.operation}</td>
+                    <td className="cell-truncate">
                       {repair.problem}
                     </td>
-                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    <td>
                       {formatDate(repair.reportedAt)}
                     </td>
-                    <td style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                    <td>
                       {formatDate(repair.repairedAt || '')}
                       {repair.probeReplaced && repair.newProbeSerial && (
-                        <div style={{ fontSize: '11px', color: 'var(--accent-blue)', marginTop: '2px' }}>
+                        <div className="probe-replaced-note">
                           Replaced with #{repair.newProbeSerial}
                         </div>
                       )}
@@ -452,7 +452,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                      <div className="action-btn-group">
                         {repair.status === 'open' && (
                           <button
                             className="action-btn"
@@ -495,7 +495,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     <span className="mobile-card-title">
                       {repair.fieldName}
                       {repair.probeNumber && (
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '12px' }}>
+                        <span className="probe-detail">
                           {' '}(Probe {repair.probeNumber}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
                         </span>
                       )}
@@ -516,7 +516,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       <div className="mobile-card-row"><span>Fix:</span> {repair.fix}</div>
                     )}
                     {repair.probeReplaced && repair.newProbeSerial && (
-                      <div className="mobile-card-row" style={{ color: 'var(--accent-blue)' }}>
+                      <div className="mobile-card-row mobile-card-row-blue">
                         <span>Replaced:</span> Probe #{repair.newProbeSerial}
                       </div>
                     )}
@@ -524,39 +524,23 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       <span>Notified:</span> {repair.notifiedCustomer ? 'Yes' : 'No'}
                     </div>
                   </div>
-                  <div className="mobile-card-footer" style={{
-                    marginTop: '12px',
-                    paddingTop: '12px',
-                    borderTop: '1px solid var(--border)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
+                  <div className="mobile-card-footer mobile-card-footer-bar">
                     {repair.status === 'open' ? (
                       <button
-                        className="btn btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        className="btn btn-primary btn-sm"
                         onClick={(e) => { e.stopPropagation(); handleMarkResolved(repair); }}
                       >
                         Mark Resolved
                       </button>
                     ) : (
                       <button
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        className="btn btn-secondary btn-sm"
                         onClick={(e) => { e.stopPropagation(); handleDelete(repair); }}
                       >
                         Delete
                       </button>
                     )}
-                    <span style={{
-                      color: 'var(--accent-primary)',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px'
-                    }}>
+                    <span className="mobile-card-edit-link">
                       Edit
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -658,7 +642,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                   />
                 </div>
                 <div className="form-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={addForm.notified_customer}
@@ -723,7 +707,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                   />
                 </div>
                 <div className="form-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={editForm.notified_customer}
@@ -757,15 +741,15 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
               </button>
             </div>
             <div className="detail-panel-content">
-              <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: '16px' }}>
-                <div style={{ fontWeight: 600, marginBottom: '4px' }}>{repairToComplete.fieldName}</div>
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{repairToComplete.operation}</div>
+              <div className="repair-summary-box">
+                <div className="repair-summary-title">{repairToComplete.fieldName}</div>
+                <div className="repair-summary-detail">{repairToComplete.operation}</div>
                 {repairToComplete.probeNumber && (
-                  <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  <div className="repair-summary-detail">
                     Probe {repairToComplete.probeNumber}{repairToComplete.probeSerial ? ` - #${repairToComplete.probeSerial}` : ''}
                   </div>
                 )}
-                <div style={{ fontSize: '13px', color: 'var(--accent-red)', marginTop: '8px' }}>
+                <div className="repair-summary-problem">
                   <strong>Problem:</strong> {repairToComplete.problem}
                 </div>
               </div>
@@ -790,7 +774,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                   />
                 </div>
                 <div className="form-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <label className="checkbox-label-pointer">
                     <input
                       type="checkbox"
                       checked={completeForm.probe_replaced}
@@ -811,7 +795,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                   </div>
                 )}
                 <div className="form-group">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <label className="checkbox-label-pointer">
                     <input
                       type="checkbox"
                       checked={completeForm.notified_customer}

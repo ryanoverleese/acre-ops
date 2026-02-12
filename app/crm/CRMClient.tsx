@@ -42,22 +42,12 @@ export default function CRMClient({ operationsData, contactsData, billingEntitie
         <div className="header-left">
           <h2>CRM</h2>
         </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
+        <div className="crm-tabs">
           {TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: '6px 14px',
-                fontSize: '13px',
-                fontWeight: 500,
-                borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--border)',
-                background: activeTab === tab.key ? 'var(--accent-primary)' : 'var(--bg-secondary)',
-                color: activeTab === tab.key ? 'white' : 'var(--text-secondary)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
+              className={`crm-tab${activeTab === tab.key ? ' active' : ''}`}
             >
               {tab.label}
             </button>
