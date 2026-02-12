@@ -60,6 +60,19 @@
   box-sizing: border-box;
 }
 
+*:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px var(--accent-primary-dim);
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -150,7 +163,7 @@ body {
   font-weight: 600;
   color: var(--sidebar-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   padding: 0 var(--space-2);
   margin-bottom: var(--space-2);
 }
@@ -232,7 +245,8 @@ body {
 }
 
 .header h2 {
-  font-size: 18px;
+  font-family: 'General Sans', sans-serif;
+  font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
@@ -354,6 +368,9 @@ body {
   flex: 1;
   overflow-y: auto;
   padding: 24px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* Stats Grid */
@@ -369,14 +386,20 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
   transition: all 0.2s ease;
+  animation: fadeInUp 0.3s ease both;
 }
 
 .stat-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   border-color: var(--border-strong);
 }
+
+.stat-card:nth-child(1) { animation-delay: 0s; }
+.stat-card:nth-child(2) { animation-delay: 0.05s; }
+.stat-card:nth-child(3) { animation-delay: 0.1s; }
+.stat-card:nth-child(4) { animation-delay: 0.15s; }
 
 .stat-label {
   font-size: 12px;
@@ -384,11 +407,12 @@ body {
   color: var(--text-muted);
   margin-bottom: var(--space-2);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
 }
 
 .stat-value {
-  font-size: 26px;
+  font-family: 'General Sans', sans-serif;
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -498,6 +522,8 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: fadeInUp 0.3s ease 0.1s both;
 }
 
 .table-header {
@@ -509,7 +535,8 @@ body {
 }
 
 .table-title {
-  font-size: 16px;
+  font-family: 'General Sans', sans-serif;
+  font-size: 17px;
   font-weight: 600;
 }
 
@@ -535,6 +562,9 @@ th {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 th.sortable {
@@ -923,6 +953,23 @@ select:focus {
   to { transform: rotate(360deg); }
 }
 
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-secondary) 25%, var(--bg-tertiary) 50%, var(--bg-secondary) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 /* Toast notification */
 .toast {
   position: fixed;
@@ -1278,6 +1325,16 @@ select:focus {
   .search-box {
     width: 100%;
   }
+
+  .action-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .nav-item {
+    padding: var(--space-3) var(--space-3);
+    min-height: 44px;
+  }
 }
 
 /* Detail Panel - Centered Modal */
@@ -1331,8 +1388,9 @@ select:focus {
 }
 
 .detail-panel-header h3 {
+  font-family: 'General Sans', sans-serif;
   margin: 0;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
@@ -1519,7 +1577,7 @@ tr.selected {
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -1566,6 +1624,7 @@ tr.selected {
 }
 
 .route-field-name {
+  font-family: 'General Sans', sans-serif;
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 4px;
@@ -1594,7 +1653,7 @@ tr.selected {
   font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 
 .route-value {
@@ -1785,6 +1844,7 @@ tr.selected {
   }
 
   .mobile-card-title {
+    font-family: 'General Sans', sans-serif;
     font-weight: 600;
     font-size: 16px;
   }
@@ -1992,7 +2052,8 @@ input[type="date"]:focus {
 }
 
 .approval-header-content h1 {
-  font-size: 24px;
+  font-family: 'General Sans', sans-serif;
+  font-size: 26px;
   font-weight: 700;
   color: var(--text-primary);
   margin-bottom: 4px;
@@ -2114,6 +2175,7 @@ input[type="date"]:focus {
 }
 
 .card-title h3 {
+  font-family: 'General Sans', sans-serif;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
@@ -2141,7 +2203,7 @@ input[type="date"]:focus {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 
 .status-pending {
@@ -2194,7 +2256,7 @@ input[type="date"]:focus {
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
 }
 
 .detail-value {
@@ -2665,7 +2727,8 @@ input[type="date"]:focus {
 }
 
 .page-header h2 {
-  font-size: 20px;
+  font-family: 'General Sans', sans-serif;
+  font-size: 26px;
   font-weight: 600;
   color: var(--text-primary);
   letter-spacing: -0.02em;
@@ -2684,11 +2747,11 @@ input[type="date"]:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-5);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .content-card:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 
 /* Section Header - Used within content cards */
@@ -2700,6 +2763,7 @@ input[type="date"]:focus {
 }
 
 .section-header h3 {
+  font-family: 'General Sans', sans-serif;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
@@ -2933,6 +2997,7 @@ input[type="date"]:focus {
 }
 
 .entity-title {
+  font-family: 'General Sans', sans-serif;
   font-weight: 600;
   font-size: 15px;
   color: var(--text-primary);
@@ -2948,6 +3013,7 @@ input[type="date"]:focus {
 }
 
 .entity-amount-value {
+  font-family: 'General Sans', sans-serif;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary);
