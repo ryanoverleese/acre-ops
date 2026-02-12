@@ -3529,6 +3529,379 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
+/* ============================================
+   INSTALL PAGE
+   ============================================ */
+
+/* Header filter select */
+.install-filter-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+/* Empty state overrides for install page */
+.install-empty-icon {
+  width: 48px;
+  height: 48px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.install-empty-title {
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+/* Install list layout */
+.install-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Install card */
+.install-card {
+  background: var(--bg-secondary);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  display: flex;
+}
+
+/* Route order badge (left sidebar of card) */
+.install-route-badge {
+  width: 60px;
+  min-width: 60px;
+  background: var(--accent-blue);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  padding: 12px 0;
+}
+
+.install-route-badge-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.install-route-badge-number {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Card content area */
+.install-card-content {
+  flex: 1;
+}
+
+/* Card header */
+.install-card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.install-card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
+.install-field-name {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.install-probe-number-suffix {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 14px;
+}
+
+.install-installer-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.install-operation {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.install-tags-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.install-crop-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+  border-radius: 4px;
+}
+
+.install-antenna-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+/* Probe info section */
+.install-probe-info {
+  padding: 12px 16px;
+}
+
+.install-probe-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.install-probe-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.install-probe-serial {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.install-rack-info {
+  text-align: right;
+}
+
+.install-rack-label {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.install-rack-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Full-width centered button */
+.install-btn-full {
+  width: 100%;
+  justify-content: center;
+  padding: 12px;
+}
+
+/* Navigate button */
+.install-navigate-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 0 16px 16px;
+  padding: 12px;
+  border-radius: 8px;
+}
+
+/* Form modal overrides */
+.install-form-panel {
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.install-form-title {
+  margin-bottom: 4px;
+}
+
+.install-form-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* Probe display row in form */
+.install-probe-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.install-probe-display-serial {
+  font-weight: 500;
+}
+
+/* Link-style button (no background/border) */
+.install-link-btn {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.install-link-btn-muted {
+  margin-top: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.install-link-btn-primary {
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+/* Form input overrides (larger touch targets) */
+.install-form-input {
+  font-size: 16px;
+  padding: 12px;
+}
+
+.install-form-input-full {
+  font-size: 16px;
+  padding: 12px;
+  width: 100%;
+}
+
+/* GPS button */
+.install-gps-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+
+/* GPS result display */
+.install-gps-result {
+  padding: 10px;
+  background: var(--accent-primary-dim);
+  border-radius: 8px;
+  color: var(--accent-primary);
+  font-size: 14px;
+}
+
+.install-gps-accuracy {
+  font-size: 12px;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+
+/* GPS error display */
+.install-gps-error {
+  padding: 10px;
+  background: var(--accent-red-dim);
+  border-radius: 8px;
+  color: var(--accent-red);
+  font-size: 14px;
+}
+
+/* Crop confirmation */
+.install-crop-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.install-crop-confirm-btn {
+  flex: 1;
+  justify-content: center;
+  padding: 14px;
+}
+
+.install-crop-change-btn {
+  padding: 14px;
+}
+
+.install-crop-confirmed {
+  padding: 12px;
+  background: var(--accent-primary-dim);
+  border-radius: 8px;
+  color: var(--accent-primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Crop change list */
+.install-crop-options {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.install-crop-option-btn {
+  padding: 10px 16px;
+}
+
+/* Helper text in form */
+.install-helper-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+/* File input */
+.install-file-input {
+  font-size: 16px;
+}
+
+/* Photo status messages */
+.install-photo-status {
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.install-photo-status-compressing {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
+.install-photo-status-ready {
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+}
+
+/* Spin animation for compress icon (uses existing @keyframes spin) */
+.install-spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+/* Submit button in footer */
+.install-submit-btn {
+  flex: 1;
+  justify-content: center;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .entity-footer {

@@ -319,7 +319,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
           <select
             value={installerFilter}
             onChange={(e) => setInstallerFilter(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: '14px' }}
+            className="install-filter-select"
           >
             <option value="all">All Installers</option>
             {INSTALLERS.map((name) => (
@@ -331,92 +331,57 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
 
       <div className="content">
         {filteredAssignments.length === 0 ? (
-          <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: 48, height: 48, color: 'var(--text-muted)', marginBottom: 16 }}>
+          <div className="empty-state">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="install-empty-icon">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <h3 style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>All caught up!</h3>
-            <p style={{ color: 'var(--text-muted)' }}>
+            <h3 className="install-empty-title">All caught up!</h3>
+            <p className="text-muted">
               {installerFilter !== 'all'
                 ? `No installs assigned to ${installerFilter}.`
                 : 'No probes ready for installation.'}
             </p>
           </div>
         ) : (
-          <div className="install-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="install-list">
             {filteredAssignments.map((assignment) => (
-              <div key={assignment.id} className="install-card" style={{
-                background: 'var(--bg-secondary)',
-                borderRadius: '12px',
-                overflow: 'hidden',
-                border: '1px solid var(--border)',
-                display: 'flex',
-              }}>
+              <div key={assignment.id} className="install-card">
                 {/* Route Order Badge */}
-                <div style={{
-                  width: '60px',
-                  minWidth: '60px',
-                  background: 'var(--accent-blue)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  padding: '12px 0',
-                }}>
-                  <span style={{ fontSize: '11px', textTransform: 'uppercase', opacity: 0.8 }}>Stop</span>
-                  <span style={{ fontSize: '28px', fontWeight: 700, lineHeight: 1 }}>
+                <div className="install-route-badge">
+                  <span className="install-route-badge-label">Stop</span>
+                  <span className="install-route-badge-number">
                     {assignment.routeOrder < 999 ? assignment.routeOrder : '—'}
                   </span>
                 </div>
 
                 {/* Card Content */}
-                <div style={{ flex: 1 }}>
+                <div className="install-card-content">
                   {/* Header */}
-                  <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>
+                  <div className="install-card-header">
+                    <div className="install-card-header-row">
+                      <h3 className="install-field-name">
                         {assignment.fieldName}
                         {assignment.probeNumber > 1 && (
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '14px' }}>
+                          <span className="install-probe-number-suffix">
                             {' '}(Probe {assignment.probeNumber})
                           </span>
                         )}
                       </h3>
                       {assignment.plannedInstaller && (
-                        <span style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          background: 'var(--accent-amber-dim)',
-                          color: 'var(--accent-amber)',
-                          borderRadius: '4px',
-                          fontWeight: 500,
-                        }}>
+                        <span className="install-installer-badge">
                           {assignment.plannedInstaller}
                         </span>
                       )}
                     </div>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>{assignment.operation}</p>
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                    <p className="install-operation">{assignment.operation}</p>
+                    <div className="install-tags-row">
                       {assignment.crop && (
-                        <span style={{
-                          fontSize: '12px',
-                          padding: '2px 8px',
-                          background: 'var(--accent-primary-dim)',
-                          color: 'var(--accent-primary)',
-                          borderRadius: '4px',
-                        }}>
+                        <span className="install-crop-tag">
                           {assignment.crop}
                         </span>
                       )}
                       {assignment.antennaType && (
-                        <span style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          background: 'var(--bg-tertiary)',
-                          borderRadius: '4px',
-                          color: 'var(--text-secondary)',
-                        }}>
+                        <span className="install-antenna-tag">
                           {assignment.antennaType}
                         </span>
                       )}
@@ -424,26 +389,25 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   </div>
 
                   {/* Probe Info */}
-                  <div style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div className="install-probe-info">
+                    <div className="install-probe-info-row">
                       <div>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                        <span className="install-probe-label">
                           Probe {assignment.probeNumber}
                         </span>
-                        <div style={{ fontSize: '15px', fontWeight: 500 }}>
+                        <div className="install-probe-serial">
                           #{assignment.probeSerial}
                         </div>
                       </div>
                       {assignment.probeRack && (
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Rack</span>
-                          <div style={{ fontSize: '14px', fontWeight: 500 }}>{assignment.probeRack}{assignment.probeRackSlot ? `-${assignment.probeRackSlot}` : ''}</div>
+                        <div className="install-rack-info">
+                          <span className="install-rack-label">Rack</span>
+                          <div className="install-rack-value">{assignment.probeRack}{assignment.probeRackSlot ? `-${assignment.probeRackSlot}` : ''}</div>
                         </div>
                       )}
                     </div>
                     <button
-                      className="btn btn-primary"
-                      style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+                      className="btn btn-primary install-btn-full"
                       onClick={() => handleLogInstall(assignment)}
                     >
                       Log Install
@@ -456,16 +420,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       href={`https://www.google.com/maps/dir/?api=1&destination=${assignment.lat},${assignment.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn btn-secondary"
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        gap: '8px',
-                        margin: '0 16px 16px',
-                        padding: '12px',
-                        borderRadius: '8px',
-                      }}
+                      className="btn btn-secondary install-navigate-btn"
                     >
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -485,14 +440,13 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
       {showForm && selectedAssignment && (
         <div className="detail-panel-overlay" onClick={() => setShowForm(false)}>
           <div
-            className="detail-panel"
+            className="detail-panel install-form-panel"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxHeight: '90vh', overflow: 'auto' }}
           >
             <div className="detail-panel-header">
               <div>
-                <h3 style={{ marginBottom: '4px' }}>Log Install</h3>
-                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0 }}>
+                <h3 className="install-form-title">Log Install</h3>
+                <p className="install-form-subtitle">
                   {selectedAssignment.fieldName} - #{selectedAssignment.probeSerial}
                 </p>
               </div>
@@ -509,14 +463,14 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 <div className="form-group">
                   <label>Probe</label>
                   {!formData.changedProbeId ? (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
-                      <span style={{ fontWeight: 500 }}>
+                    <div className="install-probe-display">
+                      <span className="install-probe-display-serial">
                         #{selectedAssignment.probeSerial}
                       </span>
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, changedProbeId: -1 })}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', cursor: 'pointer', fontSize: '13px' }}
+                        className="install-link-btn"
                       >
                         Wrong probe?
                       </button>
@@ -526,7 +480,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       <select
                         value={formData.changedProbeId === -1 ? '' : formData.changedProbeId}
                         onChange={(e) => setFormData({ ...formData, changedProbeId: e.target.value ? parseInt(e.target.value, 10) : null })}
-                        style={{ fontSize: '16px', padding: '12px', width: '100%' }}
+                        className="install-form-input-full"
                       >
                         <option value="">Select the actual probe...</option>
                         {probes.map((p) => (
@@ -538,7 +492,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, changedProbeId: null })}
-                        style={{ marginTop: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '13px' }}
+                        className="install-link-btn-muted"
                       >
                         Cancel - use original probe
                       </button>
@@ -552,7 +506,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <select
                     value={formData.installer}
                     onChange={(e) => setFormData({ ...formData, installer: e.target.value })}
-                    style={{ fontSize: '16px', padding: '12px' }}
+                    className="install-form-input"
                   >
                     <option value="">Select installer...</option>
                     {INSTALLERS.map((name) => (
@@ -566,10 +520,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <label>GPS Location *</label>
                   <button
                     type="button"
-                    className="btn btn-secondary"
+                    className="btn btn-secondary install-gps-btn"
                     onClick={handleGetLocation}
                     disabled={gettingLocation}
-                    style={{ width: '100%', justifyContent: 'center', padding: '14px', marginBottom: '8px' }}
                   >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -578,31 +531,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     {gettingLocation ? 'Getting Location...' : 'Capture GPS Location'}
                   </button>
                   {formData.lat && formData.lng && (
-                    <div style={{
-                      padding: '10px',
-                      background: 'var(--accent-primary-dim)',
-                      borderRadius: '8px',
-                      color: 'var(--accent-primary)',
-                      fontSize: '14px',
-                    }}>
-                      <div style={{  }}>
+                    <div className="install-gps-result">
+                      <div>
                         {formData.lat}, {formData.lng}
                       </div>
                       {formData.accuracy && (
-                        <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.8 }}>
+                        <div className="install-gps-accuracy">
                           Accuracy: ±{Math.round(formData.accuracy * 3.28084)} feet ({Math.round(formData.accuracy)}m)
                         </div>
                       )}
                     </div>
                   )}
                   {locationError && (
-                    <div style={{
-                      padding: '10px',
-                      background: 'var(--accent-red-dim)',
-                      borderRadius: '8px',
-                      color: 'var(--accent-red)',
-                      fontSize: '14px',
-                    }}>
+                    <div className="install-gps-error">
                       {locationError}
                     </div>
                   )}
@@ -612,53 +553,42 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 <div className="form-group">
                   <label>Crop *</label>
                   {!formData.cropConfirmed ? (
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="install-crop-actions">
                       <button
                         type="button"
-                        className="btn btn-primary"
+                        className="btn btn-primary install-crop-confirm-btn"
                         onClick={handleConfirmCrop}
-                        style={{ flex: 1, justifyContent: 'center', padding: '14px' }}
                       >
                         Confirm: {selectedAssignment.crop || 'Unknown'}
                       </button>
                       <button
                         type="button"
-                        className="btn btn-secondary"
+                        className="btn btn-secondary install-crop-change-btn"
                         onClick={() => setShowCropChange(true)}
-                        style={{ padding: '14px' }}
                       >
                         Change
                       </button>
                     </div>
                   ) : (
-                    <div style={{
-                      padding: '12px',
-                      background: 'var(--accent-primary-dim)',
-                      borderRadius: '8px',
-                      color: 'var(--accent-primary)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}>
+                    <div className="install-crop-confirmed">
                       <span>{formData.cropChanged || selectedAssignment.crop}</span>
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, cropConfirmed: false })}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontSize: '12px' }}
+                        className="install-link-btn-primary"
                       >
                         Change
                       </button>
                     </div>
                   )}
                   {showCropChange && (
-                    <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    <div className="install-crop-options">
                       {CROPS.map((crop) => (
                         <button
                           key={crop}
                           type="button"
-                          className="btn btn-secondary"
+                          className="btn btn-secondary install-crop-option-btn"
                           onClick={() => handleChangeCrop(crop)}
-                          style={{ padding: '10px 16px' }}
                         >
                           {crop}
                         </button>
@@ -671,7 +601,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 {isCropX && (
                   <div className="form-group">
                     <label>CropX Telemetry ID</label>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                    <p className="install-helper-text">
                       Only needed for CropX gateway boxes
                     </p>
                     <input
@@ -679,7 +609,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       value={formData.cropxTelemetryId}
                       onChange={(e) => setFormData({ ...formData, cropxTelemetryId: e.target.value })}
                       placeholder="Enter telemetry ID"
-                      style={{ fontSize: '16px', padding: '12px' }}
+                      className="install-form-input"
                     />
                   </div>
                 )}
@@ -693,7 +623,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       value={formData.signalStrength}
                       onChange={(e) => setFormData({ ...formData, signalStrength: e.target.value })}
                       placeholder="Enter signal strength"
-                      style={{ fontSize: '16px', padding: '12px' }}
+                      className="install-form-input"
                     />
                   </div>
                 )}
@@ -701,7 +631,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 {/* Photo Field End */}
                 <div className="form-group">
                   <label>Photo - Field End</label>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                  <p className="install-helper-text">
                     Stand at probe and take a picture toward the end of the field
                   </p>
                   <input
@@ -709,19 +639,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     accept="image/*"
                     capture="environment"
                     onChange={(e) => handleFileChange('photoFieldEnd', e.target.files?.[0] || null)}
-                    style={{ fontSize: '16px' }}
+                    className="install-file-input"
                     disabled={compressing === 'photoFieldEnd'}
                   />
                   {compressing === 'photoFieldEnd' && (
-                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-amber-dim)', borderRadius: '8px', color: 'var(--accent-amber)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ animation: 'spin 1s linear infinite' }}>
+                    <div className="install-photo-status install-photo-status-compressing">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" className="install-spin-icon">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                       <span>Compressing photo...</span>
                     </div>
                   )}
                   {formData.photoFieldEnd && !compressing && (
-                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-primary-dim)', borderRadius: '8px', color: 'var(--accent-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="install-photo-status install-photo-status-ready">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -738,19 +668,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     accept="image/*"
                     capture="environment"
                     onChange={(e) => handleFileChange('photoExtra', e.target.files?.[0] || null)}
-                    style={{ fontSize: '16px' }}
+                    className="install-file-input"
                     disabled={compressing === 'photoExtra'}
                   />
                   {compressing === 'photoExtra' && (
-                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-amber-dim)', borderRadius: '8px', color: 'var(--accent-amber)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ animation: 'spin 1s linear infinite' }}>
+                    <div className="install-photo-status install-photo-status-compressing">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" className="install-spin-icon">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                       <span>Compressing photo...</span>
                     </div>
                   )}
                   {formData.photoExtra && !compressing && (
-                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-primary-dim)', borderRadius: '8px', color: 'var(--accent-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="install-photo-status install-photo-status-ready">
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -767,7 +697,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     onChange={(e) => setFormData({ ...formData, installNotes: e.target.value })}
                     placeholder="Anything out of the ordinary..."
                     rows={3}
-                    style={{ fontSize: '16px', padding: '12px' }}
+                    className="install-form-input"
                   />
                 </div>
               </div>
@@ -778,10 +708,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 Cancel
               </button>
               <button
-                className="btn btn-primary"
+                className="btn btn-primary install-submit-btn"
                 onClick={handleSubmit}
                 disabled={submitting || compressing !== null}
-                style={{ flex: 1, justifyContent: 'center' }}
               >
                 {submitting ? 'Submitting...' : compressing ? 'Compressing...' : 'Submit Install'}
               </button>
