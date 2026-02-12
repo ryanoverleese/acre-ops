@@ -273,7 +273,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                       borderRadius: 'var(--radius)',
                     }}>
                       <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
-                      <strong style={{ fontSize: '14px', color: 'var(--accent-green)' }}>{item.count}</strong>
+                      <strong style={{ fontSize: '14px', color: 'var(--accent-primary)' }}>{item.count}</strong>
                     </div>
                   ))}
                   <div style={{
@@ -427,7 +427,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                     Delete
                   </button>
                   <span style={{
-                    color: 'var(--accent-green)',
+                    color: 'var(--accent-primary)',
                     fontSize: '13px',
                     fontWeight: 500,
                     display: 'flex',

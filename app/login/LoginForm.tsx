@@ -153,7 +153,7 @@ export default function LoginForm() {
               padding: '10px',
               borderRadius: 'var(--radius-sm)',
               border: 'none',
-              background: 'var(--accent-green)',
+              background: 'var(--accent-primary)',
               color: 'white',
               fontSize: '14px',
               fontWeight: 500,

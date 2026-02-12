@@ -475,7 +475,7 @@ export default function EditSeasonModal({
             className="btn btn-primary"
             onClick={handleSave}
             disabled={saving || saved}
-            style={saved ? { backgroundColor: 'var(--accent-green, #22c55e)' } : undefined}
+            style={saved ? { backgroundColor: 'var(--accent-primary, #22c55e)' } : undefined}
           >
             {saved ? 'Saved!' : saving ? 'Saving...' : 'Save Changes'}
           </button>

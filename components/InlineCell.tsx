@@ -34,7 +34,7 @@ export default function InlineCell({ fieldSeasonId, field, value, type, options,
           style={{ width: '16px', height: '16px', cursor: 'pointer' }}
         />
         {isSaving && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
-        {justSaved && <span style={{ fontSize: '10px', color: 'var(--accent-green)' }}>✓</span>}
+        {justSaved && <span style={{ fontSize: '10px', color: 'var(--accent-primary)' }}>✓</span>}
       </div>
     );
   }
@@ -52,7 +52,7 @@ export default function InlineCell({ fieldSeasonId, field, value, type, options,
             fontSize: '12px',
             border: '1px solid var(--border)',
             borderRadius: '4px',
-            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)',
             transition: 'background 0.3s',
           }}
         >
@@ -83,7 +83,7 @@ export default function InlineCell({ fieldSeasonId, field, value, type, options,
             fontSize: '12px',
             border: '1px solid var(--border)',
             borderRadius: '4px',
-            background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)',
+            background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)',
             transition: 'background 0.3s',
           }}
         />

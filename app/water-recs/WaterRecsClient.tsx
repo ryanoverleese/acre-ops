@@ -451,7 +451,7 @@ export default function WaterRecsClient({
             onClick={() => setMode('full')}
             style={{
               padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none',
-              background: mode === 'full' ? 'var(--accent-green)' : 'var(--bg-card)',
+              background: mode === 'full' ? 'var(--accent-primary)' : 'var(--bg-card)',
               color: mode === 'full' ? '#fff' : 'var(--text-secondary)',
             }}
           >
@@ -462,7 +462,7 @@ export default function WaterRecsClient({
             style={{
               padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none',
               borderLeft: '1px solid var(--border)',
-              background: mode === 'update' ? 'var(--accent-green)' : 'var(--bg-card)',
+              background: mode === 'update' ? 'var(--accent-primary)' : 'var(--bg-card)',
               color: mode === 'update' ? '#fff' : 'var(--text-secondary)',
             }}
           >
@@ -670,7 +670,7 @@ export default function WaterRecsClient({
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <span style={{ fontWeight: 600, fontSize: '13px' }}>{name}</span>
                           {rec.suggestedWaterDay && (
-                            <span style={{ fontSize: '12px', padding: '1px 8px', borderRadius: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', fontWeight: 500 }}>
+                            <span style={{ fontSize: '12px', padding: '1px 8px', borderRadius: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', fontWeight: 500 }}>
                               {rec.suggestedWaterDay}
                             </span>
                           )}
@@ -711,7 +711,7 @@ export default function WaterRecsClient({
                 style={{
                   display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px',
                   marginBottom: '6px', borderRadius: 'var(--radius)', flexWrap: 'wrap',
-                  border: isUpdated ? '2px solid var(--accent-green)' : '1px solid var(--border)',
+                  border: isUpdated ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
                   background: isUpdated ? 'rgba(76, 175, 80, 0.05)' : 'var(--bg-card)',
                 }}
               >
@@ -740,7 +740,7 @@ export default function WaterRecsClient({
                     style={{
                       padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none',
                       borderLeft: '1px solid var(--border)',
-                      background: isUpdated ? 'var(--accent-green)' : 'var(--bg-card)',
+                      background: isUpdated ? 'var(--accent-primary)' : 'var(--bg-card)',
                       color: isUpdated ? '#fff' : 'var(--text-muted)',
                     }}
                   >
@@ -754,7 +754,7 @@ export default function WaterRecsClient({
                     onChange={(e) => updateField(field.fieldSeasonId, { waterDay: e.target.value })}
                     style={{
                       padding: '6px 10px', fontSize: '13px', borderRadius: 'var(--radius)',
-                      border: '1px solid var(--accent-green)', background: 'var(--bg-secondary)', color: 'var(--text-primary)',
+                      border: '1px solid var(--accent-primary)', background: 'var(--bg-secondary)', color: 'var(--text-primary)',
                     }}
                   >
                     <option value="">New day...</option>
@@ -776,7 +776,7 @@ export default function WaterRecsClient({
             style={{
               padding: '12px 32px', fontSize: '15px', fontWeight: 600, borderRadius: 'var(--radius)',
               border: 'none', cursor: saving ? 'default' : 'pointer',
-              background: 'var(--accent-green)', color: '#fff',
+              background: 'var(--accent-primary)', color: '#fff',
               opacity: saving ? 0.7 : 1,
             }}
           >
@@ -805,12 +805,12 @@ export default function WaterRecsClient({
         <div style={{
           position: 'fixed', bottom: '24px', right: '24px', zIndex: 10000,
           padding: '12px 24px', borderRadius: 'var(--radius)',
-          background: 'var(--bg-primary)', border: '1px solid var(--accent-green)',
+          background: 'var(--bg-primary)', border: '1px solid var(--accent-primary)',
           color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500,
           boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
           display: 'flex', alignItems: 'center', gap: '8px',
         }}>
-          <svg fill="none" stroke="var(--accent-green)" viewBox="0 0 24 24" width="18" height="18">
+          <svg fill="none" stroke="var(--accent-primary)" viewBox="0 0 24 24" width="18" height="18">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           {toast}

@@ -45,10 +45,10 @@ function ButtonGroup({ label, options, value, onChange }: {
               style={{
                 padding: isSelected ? '10px 18px' : '8px 16px',
                 fontSize: isSelected ? '15px' : '14px',
-                border: isSelected ? '2px solid var(--accent-green)' : '1px solid var(--border)',
+                border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
                 borderRadius: '20px',
                 cursor: 'pointer',
-                background: isSelected ? 'var(--accent-green)' : 'var(--bg-card)',
+                background: isSelected ? 'var(--accent-primary)' : 'var(--bg-card)',
                 color: isSelected ? '#fff' : 'var(--text-primary)',
                 fontWeight: isSelected ? 700 : 400,
                 transition: 'all 0.15s ease',
@@ -259,7 +259,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                           <span style={{ fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Saving...</span>
                         )}
                         {beSaved[field.fieldId] && (
-                          <span style={{ fontSize: '13px', color: 'var(--accent-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -365,7 +365,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                         <span style={{ color: 'var(--text-muted)' }}>Saving...</span>
                       )}
                       {isSaved && (
-                        <span style={{ color: 'var(--accent-green)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>

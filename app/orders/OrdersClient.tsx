@@ -429,7 +429,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
           onClick={() => { resetCreateForm(); setShowCreateModal(true); }}
           style={{
             padding: '10px 20px',
-            background: 'var(--accent-green, #22c55e)',
+            background: 'var(--accent-primary, #22c55e)',
             color: '#fff',
             border: 'none',
             borderRadius: '8px',
@@ -452,7 +452,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
               padding: '6px 14px',
               borderRadius: '20px',
               border: '1px solid var(--border)',
-              background: filterStatus === status ? 'var(--accent-green, #22c55e)' : 'transparent',
+              background: filterStatus === status ? 'var(--accent-primary, #22c55e)' : 'transparent',
               color: filterStatus === status ? '#fff' : 'var(--text-secondary)',
               fontSize: '13px',
               fontWeight: 500,
@@ -506,7 +506,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 gap: '16px',
                 transition: 'border-color 0.15s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent-green, #22c55e)')}
+              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent-primary, #22c55e)')}
               onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
             >
               <div style={{ flex: 1 }}>
@@ -538,7 +538,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             style={{
               background: 'none',
               border: 'none',
-              color: 'var(--accent-green, #22c55e)',
+              color: 'var(--accent-primary, #22c55e)',
               cursor: 'pointer',
               fontSize: '14px',
               padding: '0',
@@ -780,7 +780,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                         padding: '8px 16px',
                         borderRadius: '8px',
                         border: 'none',
-                        background: 'var(--accent-green, #22c55e)',
+                        background: 'var(--accent-primary, #22c55e)',
                         color: '#fff',
                         fontSize: '13px',
                         fontWeight: 600,

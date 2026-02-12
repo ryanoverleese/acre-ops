@@ -65,9 +65,9 @@ export default function LoadingBar() {
       <div style={{
         height: '100%',
         width: `${progress}%`,
-        background: 'var(--accent-green)',
+        background: 'var(--accent-primary)',
         transition: 'width 0.2s ease-out',
-        boxShadow: '0 0 10px var(--accent-green)',
+        boxShadow: '0 0 10px var(--accent-primary)',
       }} />
     </div>
   );

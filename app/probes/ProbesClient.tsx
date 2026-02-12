@@ -497,8 +497,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             }}
             className="season-selector"
             style={{
-              background: 'var(--accent-green-dim)',
-              color: 'var(--accent-green)',
+              background: 'var(--accent-primary-dim)',
+              color: 'var(--accent-primary)',
               border: 'none',
               borderRadius: '16px',
               padding: '4px 12px',
@@ -584,8 +584,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     padding: '8px 12px',
                     borderRadius: 'var(--radius-sm)',
                     border: '1px solid var(--border)',
-                    background: rackFilter === 'empty' ? 'var(--accent-green-dim)' : 'var(--bg-card)',
-                    color: rackFilter === 'empty' ? 'var(--accent-green)' : 'var(--text-primary)',
+                    background: rackFilter === 'empty' ? 'var(--accent-primary-dim)' : 'var(--bg-card)',
+                    color: rackFilter === 'empty' ? 'var(--accent-primary)' : 'var(--text-primary)',
                     fontSize: '13px',
                     cursor: 'pointer',
                     fontWeight: rackFilter === 'empty' ? 600 : 500,
@@ -744,7 +744,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   ) : (
                     <div key={item.probe.id} className="mobile-card" onClick={() => openEditModal(item.probe)}>
                       <div className="mobile-card-header">
-                        <span className="mobile-card-title" style={{ color: 'var(--accent-green)' }}>
+                        <span className="mobile-card-title" style={{ color: 'var(--accent-primary)' }}>
                           {item.probe.rack}{item.probe.rackSlot ? `-${item.probe.rackSlot}` : ''}
                         </span>
                         {getStatusBadge(item.probe.status)}
@@ -772,7 +772,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                           Delete
                         </button>
                         <span style={{
-                          color: 'var(--accent-green)',
+                          color: 'var(--accent-primary)',
                           fontSize: '13px',
                           fontWeight: 500,
                           display: 'flex',
@@ -794,7 +794,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     <div className="mobile-card-header">
                       {viewMode === 'rack' ? (
                         <>
-                          <span className="mobile-card-title" style={{ color: 'var(--accent-green)' }}>
+                          <span className="mobile-card-title" style={{ color: 'var(--accent-primary)' }}>
                             {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
                           </span>
                           {getStatusBadge(probe.status)}
@@ -844,7 +844,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         Delete
                       </button>
                       <span style={{
-                        color: 'var(--accent-green)',
+                        color: 'var(--accent-primary)',
                         fontSize: '13px',
                         fontWeight: 500,
                         display: 'flex',
@@ -892,7 +892,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       height: '22px',
                       border: 'none',
                       borderRadius: '6px',
-                      background: activeRackNumbers.has(num) ? 'var(--accent-green)' : 'transparent',
+                      background: activeRackNumbers.has(num) ? 'var(--accent-primary)' : 'transparent',
                       color: activeRackNumbers.has(num) ? 'white' : 'var(--text-muted)',
                       fontSize: '11px',
                       fontWeight: 600,

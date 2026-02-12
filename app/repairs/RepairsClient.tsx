@@ -442,7 +442,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     </td>
                     <td>
                       {repair.notifiedCustomer ? (
-                        <svg fill="none" stroke="var(--accent-green)" viewBox="0 0 24 24" width="18" height="18">
+                        <svg fill="none" stroke="var(--accent-primary)" viewBox="0 0 24 24" width="18" height="18">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       ) : (
@@ -550,7 +550,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       </button>
                     )}
                     <span style={{
-                      color: 'var(--accent-green)',
+                      color: 'var(--accent-primary)',
                       fontSize: '13px',
                       fontWeight: 500,
                       display: 'flex',

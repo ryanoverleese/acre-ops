@@ -402,8 +402,8 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         <span style={{
                           fontSize: '12px',
                           padding: '2px 8px',
-                          background: 'var(--accent-green-dim)',
-                          color: 'var(--accent-green)',
+                          background: 'var(--accent-primary-dim)',
+                          color: 'var(--accent-primary)',
                           borderRadius: '4px',
                         }}>
                           {assignment.crop}
@@ -580,9 +580,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   {formData.lat && formData.lng && (
                     <div style={{
                       padding: '10px',
-                      background: 'var(--accent-green-dim)',
+                      background: 'var(--accent-primary-dim)',
                       borderRadius: '8px',
-                      color: 'var(--accent-green)',
+                      color: 'var(--accent-primary)',
                       fontSize: '14px',
                     }}>
                       <div style={{  }}>
@@ -633,9 +633,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   ) : (
                     <div style={{
                       padding: '12px',
-                      background: 'var(--accent-green-dim)',
+                      background: 'var(--accent-primary-dim)',
                       borderRadius: '8px',
-                      color: 'var(--accent-green)',
+                      color: 'var(--accent-primary)',
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center',
@@ -644,7 +644,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, cropConfirmed: false })}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent-green)', cursor: 'pointer', fontSize: '12px' }}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', fontSize: '12px' }}
                       >
                         Change
                       </button>
@@ -721,7 +721,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </div>
                   )}
                   {formData.photoFieldEnd && !compressing && (
-                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-green-dim)', borderRadius: '8px', color: 'var(--accent-green)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-primary-dim)', borderRadius: '8px', color: 'var(--accent-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
@@ -750,7 +750,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </div>
                   )}
                   {formData.photoExtra && !compressing && (
-                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-green-dim)', borderRadius: '8px', color: 'var(--accent-green)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--accent-primary-dim)', borderRadius: '8px', color: 'var(--accent-primary)', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>

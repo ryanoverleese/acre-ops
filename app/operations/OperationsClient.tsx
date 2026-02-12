@@ -322,7 +322,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                             <div key={c.contactId} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <span>{c.name}</span>
                               {c.isMainContact && (
-                                <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                                <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
                               )}
                               {c.phone && (
                                 <span style={{ color: 'var(--text-muted)' }}>{c.phone}</span>
@@ -487,7 +487,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontWeight: 500 }}>{lc.name}</span>
                             {lc.isMainContact && (
-                              <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                              <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
                             )}
                             {lc.phone && <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{lc.phone}</span>}
                           </div>

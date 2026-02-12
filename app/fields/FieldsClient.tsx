@@ -1556,8 +1556,8 @@ export default function FieldsClient({
             }}
             className="season-selector"
             style={{
-              background: 'var(--accent-green-dim)',
-              color: 'var(--accent-green)',
+              background: 'var(--accent-primary-dim)',
+              color: 'var(--accent-primary)',
               border: 'none',
               padding: '4px 12px',
               borderRadius: '16px',
@@ -1721,10 +1721,10 @@ export default function FieldsClient({
                   width: '8px',
                   height: '8px',
                   borderRadius: '50%',
-                  background: 'var(--accent-green)',
+                  background: 'var(--accent-primary)',
                 }}></span>
                 <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Approved: </span>
-                <strong style={{ color: 'var(--accent-green)' }}>{approvalStats.approved}</strong>
+                <strong style={{ color: 'var(--accent-primary)' }}>{approvalStats.approved}</strong>
               </span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <span style={{
@@ -1993,7 +1993,7 @@ export default function FieldsClient({
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                           <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No {currentSeason} season configured</span>
                                           <button onClick={(e) => { e.stopPropagation(); handleQuickStartSeason(field.id, currentSeason); }}
-                                            style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 500, borderRadius: '4px', border: 'none', background: 'var(--accent-green)', color: 'white', cursor: 'pointer' }}>
+                                            style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 500, borderRadius: '4px', border: 'none', background: 'var(--accent-primary)', color: 'white', cursor: 'pointer' }}>
                                             Start {currentSeason} Season
                                           </button>
                                         </div>
@@ -2016,7 +2016,7 @@ export default function FieldsClient({
                                               className="action-btn"
                                               title="Approve"
                                               onClick={() => handleQuickApproval(field, 'Approved')}
-                                              style={{ color: 'var(--accent-green)' }}
+                                              style={{ color: 'var(--accent-primary)' }}
                                             >
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -2075,7 +2075,7 @@ export default function FieldsClient({
                                       return (
                                       <tr key={`pa-${pa.id}`} style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                                         <td style={{ paddingLeft: '32px' }}>
-                                          <span style={{ color: 'var(--accent-green)', fontWeight: 500 }}>
+                                          <span style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>
                                             Probe {pa.probeNumber}
                                           </span>
                                         </td>
@@ -2238,7 +2238,7 @@ export default function FieldsClient({
                                             border: '1px dashed var(--border)',
                                             padding: '4px 12px',
                                             borderRadius: '4px',
-                                            color: 'var(--accent-green)',
+                                            color: 'var(--accent-primary)',
                                             cursor: 'pointer',
                                             fontSize: '12px',
                                           }}
@@ -2289,7 +2289,7 @@ export default function FieldsClient({
                             justifyContent: 'flex-end'
                           }}>
                             <span style={{
-                              color: 'var(--accent-green)',
+                              color: 'var(--accent-primary)',
                               fontSize: '13px',
                               fontWeight: 500,
                               display: 'flex',
@@ -2647,7 +2647,7 @@ export default function FieldsClient({
                         {selectedField.plantingDate && (
                           <div className="detail-row">
                             <span className="detail-label">Days Since Planting</span>
-                            <span className="detail-value" style={{ fontWeight: 500, color: 'var(--accent-green)' }}>
+                            <span className="detail-value" style={{ fontWeight: 500, color: 'var(--accent-primary)' }}>
                               {Math.floor((Date.now() - new Date(selectedField.plantingDate).getTime()) / 86400000)} days
                               <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '8px' }}>
                                 (planted {selectedField.plantingDate})
@@ -2671,7 +2671,7 @@ export default function FieldsClient({
                           <span className="detail-label">Ready to Install</span>
                           <span className="detail-value">
                             {selectedField.readyToInstall ? (
-                              <span style={{ color: 'var(--accent-green)' }}>Yes</span>
+                              <span style={{ color: 'var(--accent-primary)' }}>Yes</span>
                             ) : (
                               <span style={{ color: 'var(--text-muted)' }}>No</span>
                             )}
@@ -2684,7 +2684,7 @@ export default function FieldsClient({
                     {selectedField.probeStatus === 'Installed' && (selectedField.installer || selectedField.installDate || selectedField.installLat) && (
                       <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
                         <div className="detail-row" style={{ marginBottom: '8px' }}>
-                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--accent-green)' }}>Install Details</span>
+                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>Install Details</span>
                         </div>
                         {selectedField.installer && (
                           <div className="detail-row">

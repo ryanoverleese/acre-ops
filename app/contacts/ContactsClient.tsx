@@ -1750,7 +1750,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     <td>
                       <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                         {contact.isMainContact && (
-                          <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                          <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
                         )}
                         {contact.billingEntityIds.length > 0 && (
                           <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Billing</span>
@@ -1818,7 +1818,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   {isColumnVisible('role') && (
                     <div style={{ display: 'flex', gap: '4px' }}>
                       {contact.isMainContact && (
-                        <span style={{ fontSize: '10px', background: 'var(--accent-green-dim)', color: 'var(--accent-green)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                        <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
                       )}
                       {contact.billingEntityIds.length > 0 && (
                         <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Billing</span>
@@ -1926,7 +1926,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     </p>
                   )}
                   {form.address_lat && form.address_lng && (
-                    <p style={{ fontSize: '12px', color: 'var(--accent-green)', marginTop: '4px' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--accent-primary)', marginTop: '4px' }}>
                       Location: {form.address_lat}, {form.address_lng}
                     </p>
                   )}
@@ -2029,7 +2029,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     </p>
                   )}
                   {form.address_lat && form.address_lng && (
-                    <p style={{ fontSize: '12px', color: 'var(--accent-green)', marginTop: '4px' }}>
+                    <p style={{ fontSize: '12px', color: 'var(--accent-primary)', marginTop: '4px' }}>
                       Location: {form.address_lat}, {form.address_lng}
                     </p>
                   )}

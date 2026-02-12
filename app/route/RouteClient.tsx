@@ -202,7 +202,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                         alignItems: 'center',
                         gap: '4px',
                         padding: '8px 10px',
-                        background: 'var(--accent-green)',
+                        background: 'var(--accent-primary)',
                         color: 'white',
                         borderRadius: '6px',
                         fontSize: '12px',
@@ -400,7 +400,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    background: 'var(--accent-green)',
+                    background: 'var(--accent-primary)',
                     color: 'white',
                   }}
                 >

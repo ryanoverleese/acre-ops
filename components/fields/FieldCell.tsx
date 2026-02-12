@@ -18,7 +18,7 @@ function InlineFieldSelect({ fieldId, apiField, value, options, savingFields, sa
     <div style={{ position: 'relative' }}>
       <select value={value || ''} onChange={(e) => onSave(fieldId, apiField, e.target.value || null)} disabled={isSaving}
         style={{ width: '100%', padding: '4px 6px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px',
-          background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }}>
+          background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }}>
         <option value="">—</option>
         {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
       </select>
@@ -47,7 +47,7 @@ function InlineFieldNumber({ fieldId, apiField, value, savingFields, savedFields
         }}
         onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
         style={{ width: '100%', padding: '4px 6px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px',
-          background: justSaved ? 'var(--accent-green-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }} />
+          background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }} />
       {isSaving && <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
     </div>
   );
@@ -201,7 +201,7 @@ export function FieldCell({
           {field.fieldSeasonId ? (
             <button onClick={() => onToggleExpand(field.fieldSeasonId!)}
               style={{ background: 'none', border: '1px solid var(--border)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
-                color: (hasProbeAssignments || field.probe) ? 'var(--accent-green)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                color: (hasProbeAssignments || field.probe) ? 'var(--accent-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 {hasDuplicateProbeLocation && <span title="Same location" style={{ color: '#f59e0b', fontSize: '13px', lineHeight: 1 }}>&#9888;</span>}
                 {hasProbeAssignments ? <>{probeAssignmentCount} probe{probeAssignmentCount !== 1 ? 's' : ''}</> : field.probe ? <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</> : <>+ Add</>}
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
@@ -248,19 +248,19 @@ export function FieldCell({
               style={{ width: '16px', height: '16px', cursor: 'pointer' }}
             />
             {nrcsSaving && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
-            {nrcsSaved && <span style={{ fontSize: '10px', color: 'var(--accent-green)' }}>✓</span>}
+            {nrcsSaved && <span style={{ fontSize: '10px', color: 'var(--accent-primary)' }}>✓</span>}
           </div>
         </td>
       );
     }
     case 'probeStatus':
-      return <td key={colKey}><span style={{ color: field.probeStatus === 'Installed' ? 'var(--accent-green)' : 'var(--text-muted)' }}>{field.probeStatus || '—'}</span></td>;
+      return <td key={colKey}><span style={{ color: field.probeStatus === 'Installed' ? 'var(--accent-primary)' : 'var(--text-muted)' }}>{field.probeStatus || '—'}</span></td>;
     case 'installDate':
       return <td key={colKey}>{field.installDate || '—'}</td>;
     case 'installer':
       return <td key={colKey}>{field.installer || '—'}</td>;
     case 'approvalStatus':
-      return <td key={colKey}><span style={{ color: field.approvalStatus === 'Approved' ? 'var(--accent-green)' : field.approvalStatus === 'Rejected' ? 'var(--accent-red)' : 'var(--text-muted)' }}>{field.approvalStatus || 'Pending'}</span></td>;
+      return <td key={colKey}><span style={{ color: field.approvalStatus === 'Approved' ? 'var(--accent-primary)' : field.approvalStatus === 'Rejected' ? 'var(--accent-red)' : 'var(--text-muted)' }}>{field.approvalStatus || 'Pending'}</span></td>;
     case 'removalDate':
       return <td key={colKey}>{field.removalDate || '—'}</td>;
     case 'removalNotes':

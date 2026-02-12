@@ -508,7 +508,7 @@ export default function ApprovalsClient({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
 
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-green)' }}>
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-primary)' }}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
 
@@ -629,9 +629,9 @@ export default function ApprovalsClient({
                                   borderRadius: '16px',
                                   fontSize: '12px',
                                   cursor: 'pointer',
-                                  background: isSelected ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                                  background: isSelected ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
                                   color: isSelected ? '#fff' : 'var(--text-secondary)',
-                                  border: isSelected ? '1px solid var(--accent-green)' : '1px solid var(--border)',
+                                  border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--border)',
                                   transition: 'all 0.15s ease',
                                   userSelect: 'none',
                                 }}
@@ -676,7 +676,7 @@ export default function ApprovalsClient({
                         </button>
                       </div>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--accent-green)' }}>
+                        <span style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
@@ -739,7 +739,7 @@ export default function ApprovalsClient({
                                       title="Approve"
                                       onClick={() => handleApprove(item.id)}
                                       disabled={loading[item.id]}
-                                      style={{ color: 'var(--accent-green)' }}
+                                      style={{ color: 'var(--accent-primary)' }}
                                     >
                                       {loading[item.id] ? (
                                         <span style={{ fontSize: '12px' }}>...</span>
@@ -763,7 +763,7 @@ export default function ApprovalsClient({
                                   </div>
                                 )}
                                 {item.approvalStatus === 'Approved' && (
-                                  <span style={{ fontSize: '12px', color: 'var(--accent-green)' }}>
+                                  <span style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>
                                     {item.approvalDate}
                                   </span>
                                 )}
@@ -796,7 +796,7 @@ export default function ApprovalsClient({
                     background: 'var(--bg-tertiary)',
                   }}
                 >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-green)' }}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-primary)' }}>
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
 
@@ -882,9 +882,9 @@ export default function ApprovalsClient({
                               borderRadius: '16px',
                               fontSize: '12px',
                               cursor: 'pointer',
-                              background: isSelected ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                              background: isSelected ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
                               color: isSelected ? '#fff' : 'var(--text-secondary)',
-                              border: isSelected ? '1px solid var(--accent-green)' : '1px solid var(--border)',
+                              border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--border)',
                               transition: 'all 0.15s ease',
                               userSelect: 'none',
                             }}
@@ -928,7 +928,7 @@ export default function ApprovalsClient({
                       </button>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--accent-green)' }}>
+                      <span style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
