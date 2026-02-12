@@ -247,50 +247,22 @@ export default function AppShell({ children }: AppShellProps) {
         ))}
 
         {session?.user && (
-          <div style={{
-            marginTop: 'auto',
-            padding: '12px 16px',
-            borderTop: '1px solid var(--border)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'var(--accent-green-dim)',
-              color: 'var(--accent-green)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '13px',
-              fontWeight: 600,
-              flexShrink: 0,
-            }}>
+          <div className="sidebar-user">
+            <div className="sidebar-user-avatar">
               {session.user.name?.charAt(0).toUpperCase() || '?'}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div className="sidebar-user-info">
+              <div className="sidebar-user-name">
                 {session.user.name}
               </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'capitalize' }}>
+              <div className="sidebar-user-role">
                 {session.user.role}
               </div>
             </div>
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
               title="Sign out"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-muted)',
-                padding: '4px',
-                borderRadius: 'var(--radius-sm)',
-                display: 'flex',
-                alignItems: 'center',
-              }}
+              className="sidebar-signout"
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
