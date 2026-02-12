@@ -496,16 +496,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               }
             }}
             className="season-selector"
-            style={{
-              background: 'var(--accent-primary-dim)',
-              color: 'var(--accent-primary)',
-              border: 'none',
-              borderRadius: '16px',
-              padding: '4px 12px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
           >
             {allSeasons.map((s) => (
               <option key={s} value={s}>{s}</option>
@@ -516,12 +506,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       </header>
 
       <div className="content">
-        <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)', marginBottom: '24px' }}>
+        <div className="stats-grid stats-grid-5">
           <div className="stat-card">
             <div className="stat-label">Total Probes</div>
             <div className="stat-value blue">{statusCounts.all || 0}</div>
           </div>
-          <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setViewMode('on-order')}>
+          <div className="stat-card stat-card-clickable" onClick={() => setViewMode('on-order')}>
             <div className="stat-label">On Order</div>
             <div className="stat-value amber">{statusCounts['on-order'] || statusCounts['on order'] || 0}</div>
           </div>
@@ -540,8 +530,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         </div>
 
         {/* Filter Row */}
-        <div className="fields-filter-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="fields-filter-row">
+          <div className="probes-filter-left">
             <div className="fields-tabs">
               <button
                 onClick={() => setViewMode('all')}
@@ -562,7 +552,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 On Order
               </button>
             </div>
-            <div className="search-box" style={{ minWidth: '220px' }}>
+            <div className="search-box search-box-wide">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -574,22 +564,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               />
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="probes-filter-right">
             {viewMode === 'rack' && (
               <>
                 <select
                   value={rackFilter}
                   onChange={(e) => setRackFilter(e.target.value as 'all' | 'empty')}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border)',
-                    background: rackFilter === 'empty' ? 'var(--accent-primary-dim)' : 'var(--bg-card)',
-                    color: rackFilter === 'empty' ? 'var(--accent-primary)' : 'var(--text-primary)',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: rackFilter === 'empty' ? 600 : 500,
-                  }}
+                  className={`probes-rack-select${rackFilter === 'empty' ? ' active' : ''}`}
                 >
                   <option value="all">All Slots</option>
                   <option value="empty">Empty Only ({emptySlotCount})</option>
@@ -597,16 +578,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 <select
                   value={rackSortBy}
                   onChange={(e) => setRackSortBy(e.target.value as 'rack' | 'slot' | 'serial')}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg-card)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                  }}
+                  className="probes-rack-select"
                 >
                   <option value="rack">Sort: Rack</option>
                   <option value="slot">Sort: Slot</option>
@@ -670,21 +642,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               ) : (
                 filteredProbes.map((probe) => (
                   <tr key={probe.id}>
-                    <td style={{ fontWeight: 600 }}>
+                    <td className="cell-semibold">
                       #{probe.serialNumber}
                     </td>
                     <td>{getBrandBadge(probe.brand)}</td>
                     <td>{getStatusBadge(probe.status)}</td>
-                    <td style={{ fontSize: '13px' }}>
+                    <td className="cell-sm">
                       {getFieldForProbe(probe.id) || '—'}
                     </td>
-                    <td style={{ fontSize: '13px' }}>
+                    <td className="cell-sm">
                       {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}
                     </td>
-                    <td style={{ fontSize: '13px' }}>{probe.operation}</td>
+                    <td className="cell-sm">{probe.operation}</td>
                     <td className="field-count">{probe.yearNew || '—'}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                      <div className="action-btn-group">
                         <button className="action-btn" title="Edit" onClick={() => openEditModal(probe)}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -702,7 +674,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               )}
             </tbody>
           </table>
-          <div style={{ position: 'relative' }}>
+          <div className="probes-mobile-wrapper">
             <div className="mobile-cards" ref={mobileCardsRef}>
               {filteredProbes.length === 0 ? (
                 <EmptyState
@@ -716,35 +688,24 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   item.type === 'empty' ? (
                     <div
                       key={`empty-${item.rack}-${item.slot}`}
-                      className="mobile-card"
-                      style={{
-                        background: 'var(--bg-tertiary)',
-                        border: '2px dashed var(--border)',
-                        opacity: 0.6,
-                      }}
+                      className="mobile-card probes-empty-slot"
                     >
                       <div className="mobile-card-header">
-                        <span className="mobile-card-title" style={{ color: 'var(--text-muted)' }}>
+                        <span className="mobile-card-title text-muted">
                           {item.rack}-{item.slot}
                         </span>
-                        <span style={{
-                          fontSize: '11px',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          background: 'var(--bg-secondary)',
-                          color: 'var(--text-muted)',
-                        }}>
+                        <span className="probes-empty-badge">
                           EMPTY
                         </span>
                       </div>
-                      <div className="mobile-card-body" style={{ padding: '12px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
+                      <div className="mobile-card-body probes-empty-slot-body">
                         Slot available
                       </div>
                     </div>
                   ) : (
                     <div key={item.probe.id} className="mobile-card" onClick={() => openEditModal(item.probe)}>
                       <div className="mobile-card-header">
-                        <span className="mobile-card-title" style={{ color: 'var(--accent-primary)' }}>
+                        <span className="mobile-card-title mobile-card-title-accent">
                           {item.probe.rack}{item.probe.rackSlot ? `-${item.probe.rackSlot}` : ''}
                         </span>
                         {getStatusBadge(item.probe.status)}
@@ -756,29 +717,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         <div className="mobile-card-row"><span>Field:</span> {getFieldForProbe(item.probe.id) || '—'}</div>
                         <div className="mobile-card-row"><span>Operation:</span> {item.probe.operation}</div>
                       </div>
-                      <div className="mobile-card-footer" style={{
-                        marginTop: '12px',
-                        paddingTop: '12px',
-                        borderTop: '1px solid var(--border)',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center'
-                      }}>
+                      <div className="mobile-card-footer-bar">
                         <button
-                          className="btn btn-secondary"
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
+                          className="btn btn-secondary btn-compact"
                           onClick={(e) => { e.stopPropagation(); handleDelete(item.probe); }}
                         >
                           Delete
                         </button>
-                        <span style={{
-                          color: 'var(--accent-primary)',
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
+                        <span className="mobile-card-edit-link">
                           Edit
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -794,14 +740,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     <div className="mobile-card-header">
                       {viewMode === 'rack' ? (
                         <>
-                          <span className="mobile-card-title" style={{ color: 'var(--accent-primary)' }}>
+                          <span className="mobile-card-title mobile-card-title-accent">
                             {probe.rack}{probe.rackSlot ? `-${probe.rackSlot}` : ''}
                           </span>
                           {getStatusBadge(probe.status)}
                         </>
                       ) : (
                         <>
-                          <span className="mobile-card-title" style={{  }}>
+                          <span className="mobile-card-title">
                             #{probe.serialNumber}
                           </span>
                           {getStatusBadge(probe.status)}
@@ -828,29 +774,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         </>
                       )}
                     </div>
-                    <div className="mobile-card-footer" style={{
-                      marginTop: '12px',
-                      paddingTop: '12px',
-                      borderTop: '1px solid var(--border)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
+                    <div className="mobile-card-footer-bar">
                       <button
-                        className="btn btn-secondary"
-                        style={{ padding: '6px 12px', fontSize: '12px' }}
+                        className="btn btn-secondary btn-compact"
                         onClick={(e) => { e.stopPropagation(); handleDelete(probe); }}
                       >
                         Delete
                       </button>
-                      <span style={{
-                        color: 'var(--accent-primary)',
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}>
+                      <span className="mobile-card-edit-link">
                         Edit
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -863,43 +794,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </div>
             {/* Rack Index Scrubber - only show in rack view on mobile */}
             {viewMode === 'rack' && filteredProbes.length > 0 && (
-              <div
-                className="rack-scrubber"
-                style={{
-                  position: 'fixed',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '1px',
-                  padding: '10px 6px',
-                  background: 'rgba(var(--bg-tertiary-rgb, 30, 30, 30), 0.85)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
-                  borderRadius: '16px',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05)',
-                  zIndex: 100,
-                }}
-              >
+              <div className="rack-scrubber">
                 {rackNumbers.map((num) => (
                   <button
                     key={num}
                     onClick={() => scrollToRack(num)}
                     disabled={!activeRackNumbers.has(num)}
-                    style={{
-                      width: '30px',
-                      height: '22px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      background: activeRackNumbers.has(num) ? 'var(--accent-primary)' : 'transparent',
-                      color: activeRackNumbers.has(num) ? 'white' : 'var(--text-muted)',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      cursor: activeRackNumbers.has(num) ? 'pointer' : 'default',
-                      opacity: activeRackNumbers.has(num) ? 1 : 0.3,
-                      transition: 'all 0.15s ease',
-                    }}
+                    className={`rack-scrubber-btn${activeRackNumbers.has(num) ? ' active' : ''}`}
                   >
                     {num}
                   </button>
@@ -1165,7 +1066,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       type="text"
                       value={selectedProbe.dateCreated}
                       disabled
-                      style={{ opacity: 0.6 }}
+                      className="input-disabled"
                     />
                   </div>
                 )}

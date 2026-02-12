@@ -3922,3 +3922,166 @@ input[type="date"]:focus {
     justify-content: space-between;
   }
 }
+
+/* ============================================
+   PROBES PAGE
+   ============================================ */
+
+/* Season selector pill in header */
+.season-selector {
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+  border: none;
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* 5-column stats grid for probes */
+.stats-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
+/* Clickable stat card */
+.stat-card-clickable {
+  cursor: pointer;
+}
+
+/* Filter row layout helpers */
+.probes-filter-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.probes-filter-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Search box wider variant */
+.search-box-wide {
+  min-width: 220px;
+}
+
+/* Rack view select controls */
+.probes-rack-select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.probes-rack-select.active {
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+/* Table cell utilities */
+.cell-semibold {
+  font-weight: 600;
+}
+
+.cell-sm {
+  font-size: 13px;
+}
+
+/* Mobile wrapper for relative positioning of scrubber */
+.probes-mobile-wrapper {
+  position: relative;
+}
+
+/* Empty rack slot card styling */
+.probes-empty-slot {
+  background: var(--bg-tertiary);
+  border: 2px dashed var(--border);
+  opacity: 0.6;
+}
+
+/* Empty slot badge */
+.probes-empty-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+}
+
+/* Empty slot body text */
+.probes-empty-slot-body {
+  padding: 12px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Mobile card title with accent color */
+.mobile-card-title-accent {
+  color: var(--accent-primary);
+}
+
+/* Compact button (small padding) */
+.btn-compact {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+/* Disabled/read-only input appearance */
+.input-disabled {
+  opacity: 0.6;
+}
+
+/* Rack scrubber - fixed sidebar navigation */
+.rack-scrubber {
+  position: fixed;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 10px 6px;
+  background: rgba(var(--bg-tertiary-rgb, 30, 30, 30), 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);
+  z-index: 100;
+}
+
+/* Rack scrubber individual buttons */
+.rack-scrubber-btn {
+  width: 30px;
+  height: 22px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  opacity: 0.3;
+  transition: all 0.15s ease;
+}
+
+.rack-scrubber-btn.active {
+  background: var(--accent-primary);
+  color: white;
+  cursor: pointer;
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .stats-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
