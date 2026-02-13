@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAllSelectOptions, getBaserowJwt } from '@/lib/baserow';
 import type { TableName } from '@/lib/baserow';
 
-const OPTION_TABLES: TableName[] = ['fields', 'field_seasons', 'probe_assignments'];
+const OPTION_TABLES: TableName[] = ['fields', 'field_seasons', 'probe_assignments', 'contacts'];
 
 export async function GET() {
   try {

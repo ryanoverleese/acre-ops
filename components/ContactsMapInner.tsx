@@ -24,7 +24,7 @@ interface ContactData {
   phone: string;
   email: string;
   operationNames: string[];
-  customerType: string;
+  customerType: string[];
   lat: number;
   lng: number;
 }
@@ -86,7 +86,7 @@ export default function ContactsMapInner({ contacts, colorBy = 'none', onContact
   const getMarkerColor = (contact: ContactData): string => {
     switch (colorBy) {
       case 'type':
-        return TYPE_COLORS[contact.customerType] || TYPE_COLORS.default;
+        return TYPE_COLORS[contact.customerType[0]] || TYPE_COLORS.default;
       case 'operation':
         const opKey = contact.operationNames.join(', ') || 'No Operation';
         return operationColorMap.get(opKey) || OPERATION_COLORS[0];
@@ -139,9 +139,9 @@ export default function ContactsMapInner({ contacts, colorBy = 'none', onContact
             {contact.phone && (
               <div className="popup-detail">{contact.phone}</div>
             )}
-            {contact.customerType && (
+            {contact.customerType.length > 0 && (
               <div className={`popup-status installed`}>
-                {contact.customerType}
+                {contact.customerType.join(', ')}
               </div>
             )}
             <div className="popup-actions">

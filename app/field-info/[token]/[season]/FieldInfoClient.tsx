@@ -31,33 +31,18 @@ function ButtonGroup({ label, options, value, onChange }: {
   onChange: (val: string) => void;
 }) {
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+    <div className="fi-button-group">
+      <div className="fi-button-group-label">
         {label}
       </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+      <div className="fi-button-group-options">
         {options.map((o) => {
           const isSelected = value === o.value;
           return (
             <button
               key={o.value}
               onClick={() => onChange(isSelected ? '' : o.value)}
-              style={{
-                padding: isSelected ? '10px 18px' : '8px 16px',
-                fontSize: isSelected ? '15px' : '14px',
-                border: isSelected ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
-                borderRadius: '20px',
-                cursor: 'pointer',
-                background: isSelected ? 'var(--accent-primary)' : 'var(--bg-card)',
-                color: isSelected ? '#fff' : 'var(--text-primary)',
-                fontWeight: isSelected ? 700 : 400,
-                transition: 'all 0.15s ease',
-                boxShadow: isSelected ? '0 2px 8px rgba(76, 175, 80, 0.4)' : 'none',
-                transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
+              className={`fi-button-option${isSelected ? ' selected' : ''}`}
             >
               {isSelected && (
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
@@ -205,7 +190,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
           </div>
         </header>
 
-        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '15px', margin: '0 0 24px' }}>
+        <p className="fi-hint">
           Tap to select options for each field. Changes save automatically.
         </p>
 
@@ -217,37 +202,27 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
             const isSaved = saved[field.fieldSeasonId];
 
             return (
-              <div key={field.fieldSeasonId} className="approval-card expanded" style={{ marginBottom: '20px' }}>
+              <div key={field.fieldSeasonId} className="approval-card expanded fi-card">
                 <div className="card-header">
                   <div className="card-title">
                     <h3>{field.name}</h3>
-                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{field.acres} acres</span>
+                    <span className="fi-acres">{field.acres} acres</span>
                   </div>
                 </div>
 
                 <div className="card-content">
                   {showQuestion('billing_entity') && billingEntityOptions.length > 1 && (
-                    <div style={{ marginBottom: '20px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div className="fi-billing-section">
+                      <div className="fi-field-label">
                         Billing Entity
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div className="fi-select-row">
                         <select
+                          className="fi-select"
                           value={billingEntities[field.fieldId] ?? ''}
                           onChange={(e) => {
                             const val = e.target.value ? parseInt(e.target.value, 10) : null;
                             saveBillingEntity(field, val);
-                          }}
-                          style={{
-                            width: '100%',
-                            padding: '10px 12px',
-                            fontSize: '14px',
-                            border: '1px solid var(--border)',
-                            borderRadius: 'var(--radius)',
-                            background: 'var(--bg-secondary)',
-                            color: 'var(--text-primary)',
-                            boxSizing: 'border-box',
-                            cursor: 'pointer',
                           }}
                         >
                           <option value="">Select billing entity...</option>
@@ -256,10 +231,10 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                           ))}
                         </select>
                         {beSaving[field.fieldId] && (
-                          <span style={{ fontSize: '13px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Saving...</span>
+                          <span className="fi-saving-indicator">Saving...</span>
                         )}
                         {beSaved[field.fieldId] && (
-                          <span style={{ fontSize: '13px', color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
+                          <span className="fi-saved-indicator">
                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
@@ -326,32 +301,32 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
 
                   {/* Text fields for hybrid/planting date - save on blur */}
                   {(showQuestion('hybrid_variety') || showQuestion('planting_date')) && (
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '16px' }}>
+                  <div className="fi-text-fields">
                     {showQuestion('hybrid_variety') && (
-                    <div style={{ flex: '1 1 200px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div className="fi-text-field">
+                      <div className="fi-field-label">
                         Hybrid / Variety
                       </div>
                       <input
                         type="text"
+                        className="fi-text-input"
                         value={form.hybridVariety}
                         onChange={(e) => setForms((prev) => ({ ...prev, [field.fieldSeasonId]: { ...prev[field.fieldSeasonId], hybridVariety: e.target.value } }))}
                         onBlur={(e) => { if (e.target.value !== field.hybridVariety) saveFieldChange(field, 'hybridVariety', e.target.value); }}
                         placeholder="e.g. P1185AM"
-                        style={{ width: '100%', padding: '8px 12px', fontSize: '14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)', boxSizing: 'border-box' }}
                       />
                     </div>
                     )}
                     {showQuestion('planting_date') && (
-                    <div style={{ flex: '1 1 200px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    <div className="fi-text-field">
+                      <div className="fi-field-label">
                         Planting Date
                       </div>
                       <input
                         type="date"
+                        className="fi-text-input"
                         value={form.plantingDate}
                         onChange={(e) => saveFieldChange(field, 'plantingDate', e.target.value)}
-                        style={{ width: '100%', padding: '8px 12px', fontSize: '14px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)', boxSizing: 'border-box' }}
                       />
                     </div>
                     )}
@@ -360,12 +335,12 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
 
                   {/* Auto-save indicator */}
                   {(isSaving || isSaved) && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                    <div className="fi-autosave">
                       {isSaving && (
-                        <span style={{ color: 'var(--text-muted)' }}>Saving...</span>
+                        <span className="fi-saving-indicator">Saving...</span>
                       )}
                       {isSaved && (
-                        <span style={{ color: 'var(--accent-primary)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="fi-saved-indicator">
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>

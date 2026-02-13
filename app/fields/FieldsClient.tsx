@@ -13,7 +13,7 @@ import type { ProcessedField, ProcessedProbeAssignment, OperationOption, Billing
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
-  loading: () => <div className="fields-map" style={{ display: 'block' }}><div className="loading"><div className="loading-spinner"></div>Loading map...</div></div>,
+  loading: () => <div className="fields-map fields-map-loading"><div className="loading"><div className="loading-spinner"></div>Loading map...</div></div>,
 });
 
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
@@ -1554,17 +1554,7 @@ export default function FieldsClient({
               setInlineEnrollMode(false);
               setInlineEnrollSelected(new Set());
             }}
-            className="season-selector"
-            style={{
-              background: 'var(--accent-primary-dim)',
-              color: 'var(--accent-primary)',
-              border: 'none',
-              padding: '4px 12px',
-              borderRadius: '16px',
-              fontWeight: 600,
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
+            className="season-selector fields-season-selector"
           >
             <option value="all">All Seasons</option>
             {allSeasons.map((s) => (
@@ -1573,9 +1563,9 @@ export default function FieldsClient({
             <option value="__add_year__">+ Add Year...</option>
           </select>
         </div>
-        <div className="header-right" style={{ display: 'flex', gap: '8px' }}>
+        <div className="header-right">
           {/* Column Picker */}
-          <div ref={columnPickerRef} style={{ position: 'relative' }}>
+          <div ref={columnPickerRef} className="fields-col-picker">
               <button
                 className="btn btn-secondary"
                 onClick={() => setShowColumnPicker(!showColumnPicker)}
@@ -1587,38 +1577,14 @@ export default function FieldsClient({
                 Columns
               </button>
               {showColumnPicker && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '100%',
-                    right: 0,
-                    marginTop: '4px',
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                    zIndex: 100,
-                    minWidth: '180px',
-                    maxHeight: '70vh',
-                    overflowY: 'auto',
-                    padding: '8px 0',
-                  }}
-                >
-                  <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Show Columns</span>
+                <div className="fields-col-dropdown">
+                  <div className="fields-col-header">
+                    <span className="fields-col-label">Show Columns</span>
                   </div>
                   {ALL_COLUMN_DEFINITIONS.map((col) => (
                     <label
                       key={col.key}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '6px 12px',
-                        cursor: col.alwaysVisible ? 'not-allowed' : 'pointer',
-                        opacity: col.alwaysVisible ? 0.6 : 1,
-                        fontSize: '13px',
-                      }}
+                      className={`fields-col-item ${col.alwaysVisible ? 'disabled' : ''}`}
                       onClick={(e) => {
                         if (!col.alwaysVisible) {
                           e.preventDefault();
@@ -1631,16 +1597,15 @@ export default function FieldsClient({
                         checked={isColumnVisible(col.key)}
                         disabled={col.alwaysVisible}
                         onChange={() => {}}
-                        style={{ cursor: col.alwaysVisible ? 'not-allowed' : 'pointer' }}
+                        className={`fields-col-checkbox ${col.alwaysVisible ? 'disabled' : ''}`}
                       />
                       {col.label}
-                      {col.alwaysVisible && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>(required)</span>}
+                      {col.alwaysVisible && <span className="fields-col-required">(required)</span>}
                     </label>
                   ))}
-                  <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', padding: '4px 12px 4px' }}>
+                  <div className="fields-col-footer">
                     <button
-                      className="btn btn-secondary"
-                      style={{ width: '100%', fontSize: '12px', padding: '4px 8px' }}
+                      className="btn btn-secondary fields-col-reset"
                       onClick={() => {
                         setTabColumns((prev) => ({
                           ...prev,
@@ -1694,51 +1659,27 @@ export default function FieldsClient({
 
         {/* Approval Summary - Active Season Tab */}
         {currentTab === 'activeSeason' && approvalStats.total > 0 && (
-          <div style={{
-            display: 'flex',
-            gap: '16px',
-            marginBottom: '16px',
-            padding: '12px 16px',
-            background: 'var(--bg-tertiary)',
-            borderRadius: 'var(--radius)',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-          }}>
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)', marginRight: '8px' }}>Approval Status:</span>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: 'var(--accent-yellow, #eab308)',
-                }}></span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Pending: </span>
+          <div className="fields-approval-bar">
+            <span className="fields-approval-label">Approval Status:</span>
+            <div className="fields-approval-stats">
+              <span className="fields-approval-stat">
+                <span className="fields-approval-dot pending"></span>
+                <span className="fields-approval-stat-label">Pending: </span>
                 <strong>{approvalStats.pending}</strong>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: 'var(--accent-primary)',
-                }}></span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Approved: </span>
-                <strong style={{ color: 'var(--accent-primary)' }}>{approvalStats.approved}</strong>
+              <span className="fields-approval-stat">
+                <span className="fields-approval-dot approved"></span>
+                <span className="fields-approval-stat-label">Approved: </span>
+                <strong className="fields-approval-stat-val approved">{approvalStats.approved}</strong>
               </span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: 'var(--accent-red, #ef4444)',
-                }}></span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>Rejected: </span>
-                <strong style={{ color: 'var(--accent-red, #ef4444)' }}>{approvalStats.rejected}</strong>
+              <span className="fields-approval-stat">
+                <span className="fields-approval-dot rejected"></span>
+                <span className="fields-approval-stat-label">Rejected: </span>
+                <strong className="fields-approval-stat-val rejected">{approvalStats.rejected}</strong>
               </span>
             </div>
             {approvalStats.pending > 0 && (
-              <span style={{ marginLeft: 'auto', fontSize: '12px', color: 'var(--text-muted)' }}>
+              <span className="fields-approval-hint">
                 Use the checkmark/X buttons in each row to quickly approve or reject fields
               </span>
             )}
@@ -1751,7 +1692,7 @@ export default function FieldsClient({
               <div className="table-header">
                 <h3 className="table-title">Fields — {currentSeason === 'all' ? 'All Seasons' : `${currentSeason} Season`}</h3>
                 <div className="table-actions">
-                  <div className="search-box" style={{ width: '200px' }}>
+                  <div className="search-box fields-search-box">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
@@ -1796,8 +1737,7 @@ export default function FieldsClient({
                   {/* Enroll button - visible on All Seasons view */}
                   {currentSeason === 'all' && !inlineEnrollMode && (
                     <button
-                      className="btn btn-primary"
-                      style={{ fontSize: '12px', padding: '6px 12px' }}
+                      className="btn btn-primary fields-enroll-btn"
                       onClick={() => {
                         setInlineEnrollMode(true);
                         setInlineEnrollSelected(new Set());
@@ -1807,8 +1747,8 @@ export default function FieldsClient({
                     </button>
                   )}
                   {currentSeason === 'all' && inlineEnrollMode && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    <div className="fields-enroll-bar">
+                      <span className="fields-enroll-bar-label">
                         Enrolling in:
                       </span>
                       <select
@@ -1817,7 +1757,6 @@ export default function FieldsClient({
                           setInlineEnrollSeason(e.target.value);
                           setInlineEnrollSelected(new Set());
                         }}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
                       >
                         {allSeasons.map((s) => (
                           <option key={s} value={s}>{s}</option>
@@ -1826,7 +1765,6 @@ export default function FieldsClient({
                       <select
                         value={inlineEnrollServiceType}
                         onChange={(e) => setInlineEnrollServiceType(e.target.value)}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
                       >
                         <option value="">Service Type (optional)</option>
                         {productTypeOptions.map((opt) => (
@@ -1835,8 +1773,7 @@ export default function FieldsClient({
                       </select>
                       {inlineEnrollSelected.size > 0 && (
                         <button
-                          className="btn btn-primary"
-                          style={{ fontSize: '12px', padding: '6px 12px' }}
+                          className="btn btn-primary fields-enroll-btn"
                           onClick={handleInlineEnroll}
                           disabled={inlineEnrollSaving}
                         >
@@ -1847,8 +1784,7 @@ export default function FieldsClient({
                         </button>
                       )}
                       <button
-                        className="btn btn-secondary"
-                        style={{ fontSize: '12px', padding: '6px 12px' }}
+                        className="btn btn-secondary fields-enroll-btn"
                         onClick={() => {
                           setInlineEnrollMode(false);
                           setInlineEnrollSelected(new Set());
@@ -1862,12 +1798,12 @@ export default function FieldsClient({
                 </div>
               </div>
               {/* Data View - Inline Editable */}
-              <div style={{ overflowX: 'auto' }}>
-                    <table className="desktop-table" style={{ fontSize: '12px' }}>
+              <div className="fields-table-wrap">
+                    <table className="desktop-table">
                       <thead>
                         <tr>
                           {inlineEnrollMode && (
-                            <th style={{ width: '40px', textAlign: 'center' }}>
+                            <th className="fields-checkbox-cell">
                               <input
                                 type="checkbox"
                                 checked={inlineEnrollSelected.size > 0 && inlineEnrollSelected.size === inlineEnrollEligibleIds.size}
@@ -1878,7 +1814,7 @@ export default function FieldsClient({
                                     setInlineEnrollSelected(new Set());
                                   }
                                 }}
-                                style={{ width: '16px', height: '16px' }}
+                                className="fields-checkbox"
                                 title="Select all eligible fields"
                               />
                             </th>
@@ -1891,7 +1827,7 @@ export default function FieldsClient({
                               <th
                                 key={colKey}
                                 className="sortable"
-                                style={{ minWidth: COLUMN_MIN_WIDTHS[colKey] || '80px', cursor: 'pointer' }}
+                                style={{ minWidth: COLUMN_MIN_WIDTHS[colKey] || '80px' }}
                                 onClick={() => handleSort(colKey)}
                               >
                                 {colDef.label}
@@ -1903,7 +1839,7 @@ export default function FieldsClient({
                               </th>
                             );
                           })}
-                          <th style={{ minWidth: '40px' }}></th>
+                          <th className="fields-actions-th"></th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1957,9 +1893,9 @@ export default function FieldsClient({
 
                             return (
                               <React.Fragment key={`${field.id}-${field.fieldSeasonId || 'no-season'}`}>
-                                <tr style={isAlreadyEnrolled ? { opacity: 0.5 } : undefined}>
+                                <tr className={isAlreadyEnrolled ? 'fields-enrolled-row' : undefined}>
                                   {inlineEnrollMode && (
-                                    <td style={{ textAlign: 'center', width: '40px' }} onClick={(e) => e.stopPropagation()}>
+                                    <td className="fields-checkbox-cell" onClick={(e) => e.stopPropagation()}>
                                       {isEligibleForEnroll ? (
                                         <input
                                           type="checkbox"
@@ -1973,10 +1909,10 @@ export default function FieldsClient({
                                             }
                                             setInlineEnrollSelected(newSet);
                                           }}
-                                          style={{ width: '16px', height: '16px' }}
+                                          className="fields-checkbox"
                                         />
                                       ) : (
-                                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }} title={`Already in ${inlineEnrollSeason}`}>
+                                        <span className="fields-enrolled-check" title={`Already in ${inlineEnrollSeason}`}>
                                           &#10003;
                                         </span>
                                       )}
@@ -1985,15 +1921,15 @@ export default function FieldsClient({
                                   {needsSeasonStart ? (
                                     <>
                                       {visibleColumns.includes('field') && (
-                                        <td style={{ fontWeight: 500, cursor: 'pointer' }} title="Click to view details" onClick={() => handleRowClick(field)}>
+                                        <td className="fields-no-season-name" title="Click to view details" onClick={() => handleRowClick(field)}>
                                           {field.name}
                                         </td>
                                       )}
-                                      <td colSpan={visibleColumns.length - (visibleColumns.includes('field') ? 1 : 0)} style={{ textAlign: 'left' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                          <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>No {currentSeason} season configured</span>
+                                      <td colSpan={visibleColumns.length - (visibleColumns.includes('field') ? 1 : 0)} className="fields-no-season-cell">
+                                        <div className="fields-no-season-content">
+                                          <span className="fields-no-season-text">No {currentSeason} season configured</span>
                                           <button onClick={(e) => { e.stopPropagation(); handleQuickStartSeason(field.id, currentSeason); }}
-                                            style={{ padding: '6px 12px', fontSize: '12px', fontWeight: 500, borderRadius: '4px', border: 'none', background: 'var(--accent-primary)', color: 'white', cursor: 'pointer' }}>
+                                            className="fields-start-season-btn">
                                             Start {currentSeason} Season
                                           </button>
                                         </div>
@@ -2004,7 +1940,7 @@ export default function FieldsClient({
                                     <>
                                       {visibleColumns.map((colKey) => renderCell(colKey))}
                                       <td onClick={(e) => e.stopPropagation()}>
-                                        <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                        <div className="fields-row-actions">
                                           <button className="action-btn" title="View details" onClick={() => handleRowClick(field)}>
                                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -2013,10 +1949,9 @@ export default function FieldsClient({
                                           </button>
                                           {currentTab === 'activeSeason' && field.fieldSeasonId && field.approvalStatus !== 'Approved' && (
                                             <button
-                                              className="action-btn"
+                                              className="action-btn fields-approve-btn"
                                               title="Approve"
                                               onClick={() => handleQuickApproval(field, 'Approved')}
-                                              style={{ color: 'var(--accent-primary)' }}
                                             >
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -2025,10 +1960,9 @@ export default function FieldsClient({
                                           )}
                                           {currentTab === 'activeSeason' && field.fieldSeasonId && field.approvalStatus !== 'Rejected' && (
                                             <button
-                                              className="action-btn"
+                                              className="action-btn fields-reject-btn"
                                               title="Reject"
                                               onClick={() => handleQuickApproval(field, 'Rejected')}
-                                              style={{ color: 'var(--accent-red, #ef4444)' }}
                                             >
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2036,7 +1970,7 @@ export default function FieldsClient({
                                             </button>
                                           )}
                                           {field.fieldSeasonId && (
-                                            <button className="action-btn" title="Delete season entry" onClick={() => handleDeleteFieldSeason(field.fieldSeasonId!, field.name, field.season)} style={{ color: 'var(--text-muted)' }}>
+                                            <button className="action-btn fields-delete-btn" title="Delete season entry" onClick={() => handleDeleteFieldSeason(field.fieldSeasonId!, field.name, field.season)}>
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                               </svg>
@@ -2050,19 +1984,19 @@ export default function FieldsClient({
                                 {/* Expanded probe assignment sub-rows */}
                                 {isExpanded && field.fieldSeasonId && (
                                   <tr>
-                                    <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)} style={{ padding: 0 }}>
-                                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                                    <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)} className="fields-probe-expand-cell">
+                                      <table className="fields-probe-table">
                                         <thead>
-                                          <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                            <th style={{ paddingLeft: '32px', width: '80px' }}></th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '140px' }}>Location</th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '200px' }}>Probe</th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '120px' }}>Status</th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '140px' }}>Antenna</th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '130px' }}>Battery</th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '100px' }}>Notes</th>
-                                            <th style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', paddingBottom: '2px', paddingTop: '6px', textAlign: 'left', width: '100px' }}>Approval</th>
-                                            <th style={{ width: '36px' }}></th>
+                                          <tr className="fields-probe-row">
+                                            <th className="fields-probe-th-first"></th>
+                                            <th className="fields-probe-th fields-probe-th-location">Location</th>
+                                            <th className="fields-probe-th fields-probe-th-probe">Probe</th>
+                                            <th className="fields-probe-th fields-probe-th-status">Status</th>
+                                            <th className="fields-probe-th fields-probe-th-antenna">Antenna</th>
+                                            <th className="fields-probe-th fields-probe-th-battery">Battery</th>
+                                            <th className="fields-probe-th fields-probe-th-notes">Notes</th>
+                                            <th className="fields-probe-th fields-probe-th-approval">Approval</th>
+                                            <th className="fields-probe-th-actions"></th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -2073,14 +2007,14 @@ export default function FieldsClient({
                                           && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
                                       );
                                       return (
-                                      <tr key={`pa-${pa.id}`} style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                        <td style={{ paddingLeft: '32px' }}>
-                                          <span style={{ color: 'var(--accent-primary)', fontWeight: 500 }}>
+                                      <tr key={`pa-${pa.id}`} className="fields-probe-row">
+                                        <td className="fields-probe-number-cell">
+                                          <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
                                           </span>
                                         </td>
                                         <td
-                                          style={{ fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer' }}
+                                          className="fields-probe-loc-cell"
                                           onClick={(e) => {
                                             e.stopPropagation();
                                             setEditingProbeAssignmentLocation(pa);
@@ -2090,17 +2024,17 @@ export default function FieldsClient({
                                           title="Click to edit location"
                                         >
                                           {pa.placementLat && pa.placementLng ? (
-                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                            <span className="fields-probe-loc-link">
                                               {hasDuplicateLocation && (
-                                                <span title="Same location" style={{ color: '#f59e0b', fontSize: '14px', lineHeight: 1 }}>&#9888;</span>
+                                                <span title="Same location" className="fields-loc-warning">&#9888;</span>
                                               )}
                                               {Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}
-                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" style={{ opacity: 0.6 }}>
+                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" className="fields-edit-icon">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                               </svg>
                                             </span>
                                           ) : (
-                                            <span style={{ color: 'var(--accent-blue)' }}>Set location</span>
+                                            <span className="fields-set-location">Set location</span>
                                           )}
                                         </td>
                                         <td onClick={(e) => e.stopPropagation()}>
@@ -2214,10 +2148,9 @@ export default function FieldsClient({
                                         </td>
                                         <td onClick={(e) => e.stopPropagation()}>
                                           <button
-                                            className="action-btn"
+                                            className="action-btn fields-delete-btn"
                                             title="Delete probe assignment"
                                             onClick={() => handleDeleteProbeAssignment(pa.id)}
-                                            style={{ color: 'var(--text-muted)' }}
                                           >
                                             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -2228,20 +2161,12 @@ export default function FieldsClient({
                                       );
                                     })}
                                     {/* Add probe assignment row */}
-                                    <tr style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                                      <td colSpan={9} style={{ paddingLeft: '32px' }}>
+                                    <tr className="fields-probe-row fields-add-probe-row">
+                                      <td colSpan={9}>
                                         <button
                                           onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
                                           disabled={savingProbeAssignment}
-                                          style={{
-                                            background: 'none',
-                                            border: '1px dashed var(--border)',
-                                            padding: '4px 12px',
-                                            borderRadius: '4px',
-                                            color: 'var(--accent-primary)',
-                                            cursor: 'pointer',
-                                            fontSize: '12px',
-                                          }}
+                                          className="fields-add-probe-btn"
                                         >
                                           {savingProbeAssignment ? 'Adding...' : `+ Add Probe ${fieldSeasonProbeAssignments.length + 1}`}
                                         </button>
@@ -2281,21 +2206,8 @@ export default function FieldsClient({
                               </div>
                             ))}
                           </div>
-                          <div className="mobile-card-footer" style={{
-                            marginTop: '12px',
-                            paddingTop: '12px',
-                            borderTop: '1px solid var(--border)',
-                            display: 'flex',
-                            justifyContent: 'flex-end'
-                          }}>
-                            <span style={{
-                              color: 'var(--accent-primary)',
-                              fontSize: '13px',
-                              fontWeight: 500,
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}>
+                          <div className="mobile-card-footer fields-card-footer">
+                            <span className="fields-card-link">
                               View Details
                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -2357,12 +2269,11 @@ export default function FieldsClient({
                     </div>
                     <button
                       type="button"
-                      className="location-btn"
+                      className="location-btn fields-location-btn-spaced"
                       onClick={() => {
                         setLocationPickerTarget('edit');
                         setShowLocationPicker(true);
                       }}
-                      style={{ marginBottom: '16px' }}
                     >
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -2396,8 +2307,8 @@ export default function FieldsClient({
                     </div>
 
                     {/* Irrigation Fields */}
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
-                      <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Irrigation Details</h4>
+                    <div className="fields-section-divider-lg">
+                      <h4 className="fields-edit-section-title">Irrigation Details</h4>
                       <div className="form-row">
                         <div className="form-group">
                           <label>Irrigation Type</label>
@@ -2460,8 +2371,8 @@ export default function FieldsClient({
                     </div>
 
                     {/* Location Data Fields */}
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
-                      <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Location Data</h4>
+                    <div className="fields-section-divider-lg">
+                      <h4 className="fields-edit-section-title">Location Data</h4>
                       <div className="form-row">
                         <div className="form-group">
                           <label>Elevation (ft)</label>
@@ -2545,9 +2456,9 @@ export default function FieldsClient({
 
                     {/* Irrigation Details Section */}
                     {(selectedField.irrigationType || selectedField.rowDirection || selectedField.fieldDirections) && (
-                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
-                        <div className="detail-row" style={{ marginBottom: '8px' }}>
-                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Irrigation Details</span>
+                      <div className="fields-section-divider">
+                        <div className="detail-row fields-section-title">
+                          <span className="detail-label">Irrigation Details</span>
                         </div>
                         {selectedField.fieldDirections && (
                           <div className="detail-row">
@@ -2613,9 +2524,9 @@ export default function FieldsClient({
 
                     {/* Location Data Section */}
                     {(selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
-                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
-                        <div className="detail-row" style={{ marginBottom: '8px' }}>
-                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Location Data</span>
+                      <div className="fields-section-divider">
+                        <div className="detail-row fields-section-title">
+                          <span className="detail-label">Location Data</span>
                         </div>
                         {selectedField.elevation && (
                           <div className="detail-row">
@@ -2640,16 +2551,16 @@ export default function FieldsClient({
 
                     {/* Install Planning Section */}
                     {(selectedField.routeOrder || selectedField.plannedInstaller || selectedField.readyToInstall || selectedField.plantingDate) && (
-                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
-                        <div className="detail-row" style={{ marginBottom: '8px' }}>
-                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Install Planning</span>
+                      <div className="fields-section-divider">
+                        <div className="detail-row fields-section-title">
+                          <span className="detail-label">Install Planning</span>
                         </div>
                         {selectedField.plantingDate && (
                           <div className="detail-row">
                             <span className="detail-label">Days Since Planting</span>
-                            <span className="detail-value" style={{ fontWeight: 500, color: 'var(--accent-primary)' }}>
+                            <span className="detail-value fields-days-planted">
                               {Math.floor((Date.now() - new Date(selectedField.plantingDate).getTime()) / 86400000)} days
-                              <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: '8px' }}>
+                              <span className="fields-planted-date">
                                 (planted {selectedField.plantingDate})
                               </span>
                             </span>
@@ -2671,9 +2582,9 @@ export default function FieldsClient({
                           <span className="detail-label">Ready to Install</span>
                           <span className="detail-value">
                             {selectedField.readyToInstall ? (
-                              <span style={{ color: 'var(--accent-primary)' }}>Yes</span>
+                              <span className="fields-ready-yes">Yes</span>
                             ) : (
-                              <span style={{ color: 'var(--text-muted)' }}>No</span>
+                              <span className="fields-ready-no">No</span>
                             )}
                           </span>
                         </div>
@@ -2682,9 +2593,9 @@ export default function FieldsClient({
 
                     {/* Install Details Section - shown when installed */}
                     {selectedField.probeStatus === 'Installed' && (selectedField.installer || selectedField.installDate || selectedField.installLat) && (
-                      <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
-                        <div className="detail-row" style={{ marginBottom: '8px' }}>
-                          <span className="detail-label" style={{ fontWeight: 600, color: 'var(--accent-primary)' }}>Install Details</span>
+                      <div className="fields-section-divider">
+                        <div className="detail-row fields-section-title fields-section-title-accent">
+                          <span className="detail-label">Install Details</span>
                         </div>
                         {selectedField.installer && (
                           <div className="detail-row">
@@ -2706,7 +2617,7 @@ export default function FieldsClient({
                                 href={`https://www.google.com/maps?q=${selectedField.installLat},${selectedField.installLng}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ color: 'var(--accent-blue)' }}
+                                className="fields-install-link"
                               >
                                 {Number(selectedField.installLat).toFixed(5)}, {Number(selectedField.installLng).toFixed(5)}
                               </a>
@@ -2720,21 +2631,15 @@ export default function FieldsClient({
                           </div>
                         )}
                         {(selectedField.installPhotoFieldEndUrl || selectedField.installPhotoExtraUrl) && (
-                          <div style={{ marginTop: '12px' }}>
-                            <span className="detail-label" style={{ display: 'block', marginBottom: '8px' }}>Install Photos</span>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <div className="fields-photos">
+                            <span className="detail-label fields-photos-label">Install Photos</span>
+                            <div className="fields-photos-grid">
                               {selectedField.installPhotoFieldEndUrl && (
                                 <a href={selectedField.installPhotoFieldEndUrl} target="_blank" rel="noopener noreferrer">
                                   <img
                                     src={selectedField.installPhotoFieldEndUrl}
                                     alt="Field End"
-                                    style={{
-                                      width: '120px',
-                                      height: '90px',
-                                      objectFit: 'cover',
-                                      borderRadius: '8px',
-                                      border: '1px solid var(--border)',
-                                    }}
+                                    className="fields-photo-thumb"
                                   />
                                 </a>
                               )}
@@ -2743,13 +2648,7 @@ export default function FieldsClient({
                                   <img
                                     src={selectedField.installPhotoExtraUrl}
                                     alt="Extra"
-                                    style={{
-                                      width: '120px',
-                                      height: '90px',
-                                      objectFit: 'cover',
-                                      borderRadius: '8px',
-                                      border: '1px solid var(--border)',
-                                    }}
+                                    className="fields-photo-thumb"
                                   />
                                 </a>
                               )}
@@ -2771,7 +2670,7 @@ export default function FieldsClient({
                   </>
                 ) : (
                   <>
-                    <button className="btn btn-secondary" style={{ color: 'var(--accent-red)' }} onClick={handleDelete}>Delete</button>
+                    <button className="btn btn-secondary fields-delete-btn-danger" onClick={handleDelete}>Delete</button>
                     {selectedField.fieldSeasonId && (
                       <>
                         <button className="btn btn-secondary" onClick={() => setShowSeasonFieldsEdit(true)}>
@@ -2889,7 +2788,7 @@ export default function FieldsClient({
               </div>
               <div className="detail-panel-content">
                 <div className="edit-form">
-                  <p style={{ marginBottom: '16px', color: 'var(--text-secondary)' }}>
+                  <p className="fields-removal-desc">
                     Log when a probe was removed from this field. Optionally log any issues to the probe&apos;s history.
                   </p>
                   <div className="form-group">
@@ -2907,21 +2806,21 @@ export default function FieldsClient({
                       onChange={(e) => setRemovalForm({ ...removalForm, removal_notes: e.target.value })}
                       placeholder="Any notes about the removal or issues found..."
                       rows={4}
-                      style={{ resize: 'vertical' }}
+                      className="fields-removal-textarea"
                     />
                   </div>
                   {selectedField.probeId && (
                     <div className="form-group">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <label className="fields-removal-check-label">
                         <input
                           type="checkbox"
                           checked={removalForm.log_to_probe}
                           onChange={(e) => setRemovalForm({ ...removalForm, log_to_probe: e.target.checked })}
-                          style={{ width: '18px', height: '18px' }}
+                          className="fields-removal-checkbox"
                         />
                         Log issue to probe
                       </label>
-                      <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                      <p className="fields-removal-help">
                         If checked, the removal notes will be appended to probe {selectedField.probe}&apos;s notes with a timestamp.
                         This helps track damage history as the probe moves between fields.
                       </p>

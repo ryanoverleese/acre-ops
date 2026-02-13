@@ -20,14 +20,6 @@ interface NewLineItem {
   unitPrice: number;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  Quote: '#6366f1',
-  Ordered: '#f59e0b',
-  Shipped: '#3b82f6',
-  Received: '#10b981',
-  Fulfilled: '#059669',
-};
-
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
@@ -375,15 +367,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
 
   // Status badge
   const statusBadge = (status: string) => (
-    <span style={{
-      display: 'inline-block',
-      padding: '2px 10px',
-      borderRadius: '12px',
-      fontSize: '12px',
-      fontWeight: 600,
-      background: `${STATUS_COLORS[status] || '#6b7280'}20`,
-      color: STATUS_COLORS[status] || '#6b7280',
-    }}>
+    <span className={`status-badge order-status-${status.toLowerCase()}`}>
       {status}
     </span>
   );
@@ -396,68 +380,39 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
   };
 
   return (
-    <div style={{ padding: '24px', maxWidth: '1200px' }}>
+    <div className="order-page">
       {/* Toast */}
       {toast && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          background: 'var(--bg-tertiary, #1e293b)',
-          color: 'var(--text-primary, #f1f5f9)',
-          padding: '12px 20px',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          zIndex: 9999,
-          fontSize: '14px',
-        }}>
+        <div className="order-toast">
           {toast}
         </div>
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div className="order-header">
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-            Orders & Quotes
+          <h1 className="order-title">
+            Orders &amp; Quotes
           </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+          <p className="order-subtitle">
             Create quotes, track orders, and manage fulfillment
           </p>
         </div>
         <button
           onClick={() => { resetCreateForm(); setShowCreateModal(true); }}
-          style={{
-            padding: '10px 20px',
-            background: 'var(--accent-primary, #4a7a5b)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '14px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className="btn btn-primary order-create-btn"
         >
           + New Quote
         </button>
       </div>
 
       {/* Status filter tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
+      <div className="order-filter-tabs">
         {['all', ...statusOptions].map(status => (
           <button
             key={status}
             onClick={() => setFilterStatus(status)}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              border: '1px solid var(--border)',
-              background: filterStatus === status ? 'var(--accent-primary, #4a7a5b)' : 'transparent',
-              color: filterStatus === status ? '#fff' : 'var(--text-secondary)',
-              fontSize: '13px',
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
+            className={`order-filter-tab ${filterStatus === status ? 'active' : ''}`}
           >
             {status === 'all' ? 'All' : status} ({statusCounts[status] || 0})
           </button>
@@ -470,64 +425,95 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
         placeholder="Search orders..."
         value={searchTerm}
         onChange={e => setSearchTerm(e.target.value)}
-        style={{
-          width: '100%',
-          maxWidth: '400px',
-          padding: '8px 12px',
-          borderRadius: '8px',
-          border: '1px solid var(--border)',
-          background: 'var(--bg-secondary)',
-          color: 'var(--text-primary)',
-          fontSize: '14px',
-          marginBottom: '16px',
-        }}
+        className="order-search"
       />
 
       {/* List view */}
       {viewMode === 'list' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {filteredOrders.length === 0 && (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              No orders found. Create a new quote to get started.
-            </div>
-          )}
-          {filteredOrders.map(order => (
-            <div
-              key={order.id}
-              onClick={() => { setSelectedOrder(order); setViewMode('detail'); }}
-              style={{
-                padding: '16px',
-                borderRadius: '10px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-secondary)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '16px',
-                transition: 'border-color 0.15s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--accent-primary, #4a7a5b)')}
-              onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-            >
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-primary)' }}>
-                    {order.billingEntityName || 'No Customer'}
-                  </span>
-                  {statusBadge(order.status)}
-                </div>
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                  {formatDate(order.orderDate)} &middot; {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                </div>
+        <>
+          {/* Desktop table view */}
+          <table className="desktop-table order-list-table">
+            <thead>
+              <tr>
+                <th className="order-th">Customer</th>
+                <th className="order-th">Status</th>
+                <th className="order-th">Date</th>
+                <th className="order-th">Items</th>
+                <th className="order-th order-th-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredOrders.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="order-empty-state">
+                    No orders found. Create a new quote to get started.
+                  </td>
+                </tr>
+              ) : (
+                filteredOrders.map(order => (
+                  <tr
+                    key={order.id}
+                    className="order-list-row"
+                    onClick={() => { setSelectedOrder(order); setViewMode('detail'); }}
+                  >
+                    <td className="order-td">
+                      <span className="order-customer-name">
+                        {order.billingEntityName || 'No Customer'}
+                      </span>
+                    </td>
+                    <td className="order-td">
+                      {statusBadge(order.status)}
+                    </td>
+                    <td className="order-td order-td-muted">
+                      {formatDate(order.orderDate)}
+                    </td>
+                    <td className="order-td order-td-muted">
+                      {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    </td>
+                    <td className="order-td order-td-right order-td-total">
+                      {formatCurrency(order.total)}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+
+          {/* Mobile card view */}
+          <div className="mobile-cards">
+            {filteredOrders.length === 0 ? (
+              <div className="order-empty-state">
+                No orders found. Create a new quote to get started.
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 700, fontSize: '16px', color: 'var(--text-primary)' }}>
-                  {formatCurrency(order.total)}
+            ) : (
+              filteredOrders.map(order => (
+                <div
+                  key={order.id}
+                  className="mobile-card"
+                  onClick={() => { setSelectedOrder(order); setViewMode('detail'); }}
+                >
+                  <div className="mobile-card-header">
+                    <span className="mobile-card-title">
+                      {order.billingEntityName || 'No Customer'}
+                    </span>
+                    {statusBadge(order.status)}
+                  </div>
+                  <div className="mobile-card-body">
+                    <div className="mobile-card-row">
+                      <span>Total:</span> {formatCurrency(order.total)}
+                    </div>
+                    <div className="mobile-card-row">
+                      <span>Items:</span> {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                    </div>
+                    <div className="mobile-card-row">
+                      <span>Date:</span> {formatDate(order.orderDate)}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              ))
+            )}
+          </div>
+        </>
       )}
 
       {/* Detail view */}
@@ -535,57 +521,32 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
         <div>
           <button
             onClick={() => { setViewMode('list'); setSelectedOrder(null); }}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--accent-primary, #4a7a5b)',
-              cursor: 'pointer',
-              fontSize: '14px',
-              padding: '0',
-              marginBottom: '16px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-            }}
+            className="order-back-btn"
           >
             &larr; Back to orders
           </button>
 
-          <div style={{
-            padding: '24px',
-            borderRadius: '12px',
-            border: '1px solid var(--border)',
-            background: 'var(--bg-secondary)',
-          }}>
+          <div className="order-detail-card">
             {/* Order header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div className="order-detail-header">
               <div>
-                <h2 style={{ fontSize: '20px', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
+                <h2 className="order-detail-title">
                   {selectedOrder.billingEntityName || 'No Customer'}
                 </h2>
-                <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                <div className="order-detail-meta">
                   {formatDate(selectedOrder.orderDate)} &middot; {statusBadge(selectedOrder.status)}
                 </div>
                 {selectedOrder.notes && (
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  <div className="order-detail-notes">
                     {selectedOrder.notes}
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <div className="order-detail-actions">
                 {selectedOrder.status === 'Quote' && (
                   <button
                     onClick={() => copyQuote(selectedOrder)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border)',
-                      background: 'transparent',
-                      color: 'var(--text-primary)',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                    }}
+                    className="order-btn-outline"
                   >
                     Copy Quote
                   </button>
@@ -594,17 +555,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   <button
                     onClick={() => updateStatus(selectedOrder, getNextStatus(selectedOrder.status)!)}
                     disabled={saving}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: STATUS_COLORS[getNextStatus(selectedOrder.status)!] || '#6366f1',
-                      color: '#fff',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.6 : 1,
-                    }}
+                    className={`order-btn-status order-btn-status-${getNextStatus(selectedOrder.status)!.toLowerCase()} ${saving ? 'disabled' : ''}`}
                   >
                     Mark as {getNextStatus(selectedOrder.status)}
                   </button>
@@ -613,17 +564,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   <button
                     onClick={() => fulfillOrder(selectedOrder)}
                     disabled={saving}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: '#059669',
-                      color: '#fff',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      opacity: saving ? 0.6 : 1,
-                    }}
+                    className={`order-btn-fulfill ${saving ? 'disabled' : ''}`}
                   >
                     Fulfill Order
                   </button>
@@ -631,16 +572,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 <button
                   onClick={() => deleteOrder(selectedOrder)}
                   disabled={saving}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '8px',
-                    border: '1px solid #ef4444',
-                    background: 'transparent',
-                    color: '#ef4444',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                  }}
+                  className={`order-btn-delete ${saving ? 'disabled' : ''}`}
                 >
                   Delete
                 </button>
@@ -648,29 +580,29 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             </div>
 
             {/* Line items table */}
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+            <div className="order-items-wrap">
+              <table className="order-items-table">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    <th style={{ textAlign: 'left', padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 500, fontSize: '12px', textTransform: 'uppercase' }}>Product</th>
-                    <th style={{ textAlign: 'right', padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 500, fontSize: '12px', textTransform: 'uppercase' }}>Qty</th>
-                    <th style={{ textAlign: 'right', padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 500, fontSize: '12px', textTransform: 'uppercase' }}>Unit Price</th>
-                    <th style={{ textAlign: 'right', padding: '10px 12px', color: 'var(--text-muted)', fontWeight: 500, fontSize: '12px', textTransform: 'uppercase' }}>Total</th>
-                    <th style={{ width: '40px' }}></th>
+                  <tr className="order-items-thead-row">
+                    <th className="order-items-th">Product</th>
+                    <th className="order-items-th order-items-th-right">Qty</th>
+                    <th className="order-items-th order-items-th-right">Unit Price</th>
+                    <th className="order-items-th order-items-th-right">Total</th>
+                    <th className="order-items-th-action"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {selectedOrder.items.map(item => (
-                    <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px', color: 'var(--text-primary)' }}>{item.productName}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: 'var(--text-secondary)' }}>{item.quantity}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', color: 'var(--text-secondary)' }}>{formatCurrency(item.unitPrice)}</td>
-                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(item.quantity * item.unitPrice)}</td>
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                    <tr key={item.id} className="order-items-row">
+                      <td className="order-items-td">{item.productName}</td>
+                      <td className="order-items-td order-items-td-right order-items-td-secondary">{item.quantity}</td>
+                      <td className="order-items-td order-items-td-right order-items-td-secondary">{formatCurrency(item.unitPrice)}</td>
+                      <td className="order-items-td order-items-td-right order-items-td-bold">{formatCurrency(item.quantity * item.unitPrice)}</td>
+                      <td className="order-items-td order-items-td-center">
                         {(selectedOrder.status === 'Quote' || selectedOrder.status === 'Ordered') && (
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteItem(item.id); }}
-                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '2px' }}
+                            className="order-item-remove-btn"
                             title="Remove item"
                           >
                             &times;
@@ -682,8 +614,8 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={3} style={{ padding: '12px', textAlign: 'right', fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>Total:</td>
-                    <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)' }}>{formatCurrency(selectedOrder.total)}</td>
+                    <td colSpan={3} className="order-items-total-label">Total:</td>
+                    <td className="order-items-total-value">{formatCurrency(selectedOrder.total)}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -692,27 +624,18 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
 
             {/* Add item button */}
             {(selectedOrder.status === 'Quote' || selectedOrder.status === 'Ordered') && (
-              <div style={{ marginTop: '16px' }}>
+              <div className="order-add-item-section">
                 {!showAddItem ? (
                   <button
                     onClick={() => setShowAddItem(true)}
-                    style={{
-                      padding: '8px 16px',
-                      borderRadius: '8px',
-                      border: '1px dashed var(--border)',
-                      background: 'transparent',
-                      color: 'var(--text-muted)',
-                      fontSize: '13px',
-                      cursor: 'pointer',
-                      width: '100%',
-                    }}
+                    className="order-add-item-btn"
                   >
                     + Add Item
                   </button>
                 ) : (
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 2, minWidth: '200px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Product</label>
+                  <div className="order-add-item-form">
+                    <div className="order-add-item-field order-add-item-field-product">
+                      <label className="order-add-item-label">Product</label>
                       <select
                         value={addItemProduct || ''}
                         onChange={e => {
@@ -721,15 +644,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                           const product = catalog.find(p => p.id === id);
                           if (product) setAddItemPrice(product.rate);
                         }}
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                          fontSize: '14px',
-                        }}
+                        className="order-add-item-select"
                       >
                         <option value="">Select product...</option>
                         {catalog.map(p => (
@@ -737,70 +652,36 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                         ))}
                       </select>
                     </div>
-                    <div style={{ width: '80px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Qty</label>
+                    <div className="order-add-item-field order-add-item-field-qty">
+                      <label className="order-add-item-label">Qty</label>
                       <input
                         type="number"
                         min="1"
                         value={addItemQty}
                         onChange={e => setAddItemQty(parseInt(e.target.value) || 1)}
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                          fontSize: '14px',
-                        }}
+                        className="order-add-item-input"
                       />
                     </div>
-                    <div style={{ width: '100px' }}>
-                      <label style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Price</label>
+                    <div className="order-add-item-field order-add-item-field-price">
+                      <label className="order-add-item-label">Price</label>
                       <input
                         type="number"
                         step="0.01"
                         value={addItemPrice}
                         onChange={e => setAddItemPrice(parseFloat(e.target.value) || 0)}
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          borderRadius: '6px',
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                          fontSize: '14px',
-                        }}
+                        className="order-add-item-input"
                       />
                     </div>
                     <button
                       onClick={handleAddItemToOrder}
                       disabled={saving || !addItemProduct}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        border: 'none',
-                        background: 'var(--accent-primary, #4a7a5b)',
-                        color: '#fff',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        cursor: saving ? 'not-allowed' : 'pointer',
-                        opacity: saving || !addItemProduct ? 0.6 : 1,
-                      }}
+                      className={`btn btn-primary order-add-item-submit ${saving || !addItemProduct ? 'disabled' : ''}`}
                     >
                       Add
                     </button>
                     <button
                       onClick={() => setShowAddItem(false)}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        border: '1px solid var(--border)',
-                        background: 'transparent',
-                        color: 'var(--text-muted)',
-                        fontSize: '13px',
-                        cursor: 'pointer',
-                      }}
+                      className="order-add-item-cancel"
                     >
                       Cancel
                     </button>
@@ -850,11 +731,11 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 <div className="form-group">
                   <label>Items</label>
                   {newItems.map((item, idx) => (
-                    <div key={idx} style={{ padding: '12px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg-hover)', marginBottom: idx < newItems.length - 1 ? '8px' : 0 }}>
+                    <div key={idx} className="order-new-item-card">
                       <select
                         value={item.productId || ''}
                         onChange={e => updateNewItem(idx, 'productId', parseInt(e.target.value) || null)}
-                        style={{ marginBottom: '8px' }}
+                        className="order-new-item-select"
                       >
                         <option value="">Select product...</option>
                         {catalog.map(p => (
@@ -870,12 +751,12 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                           <label>Price</label>
                           <input type="number" step="0.01" value={item.unitPrice} onChange={e => updateNewItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '10px', gap: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
+                        <div className="order-new-item-total-col">
+                          <span className="order-new-item-total">
                             {formatCurrency(item.quantity * item.unitPrice)}
                           </span>
                           {newItems.length > 1 && (
-                            <button onClick={() => removeNewItem(idx)} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', fontSize: '16px', padding: 0 }}>&times;</button>
+                            <button onClick={() => removeNewItem(idx)} className="order-new-item-remove">&times;</button>
                           )}
                         </div>
                       </div>
@@ -883,15 +764,14 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   ))}
                   <button
                     onClick={addNewItemRow}
-                    className="btn btn-secondary"
-                    style={{ width: '100%', marginTop: '8px', borderStyle: 'dashed' }}
+                    className="btn btn-secondary order-add-line-btn"
                   >
                     + Add Line
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                <div className="order-modal-total-row">
+                  <span className="order-modal-total">
                     Total: {formatCurrency(newItemsTotal)}
                   </span>
                 </div>

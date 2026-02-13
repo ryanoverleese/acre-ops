@@ -414,21 +414,21 @@ export default function WaterRecsClient({
   return (
     <>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-        <h2 style={{ margin: 0, fontSize: '22px', fontWeight: 700 }}>Reports</h2>
+      <div className="wr-header">
+        <h2 className="wr-header-title">Reports</h2>
         {opsNeedingReports.length > 0 && (
-          <span style={{ fontSize: '13px', color: 'var(--status-yellow)', background: 'rgba(251, 191, 36, 0.1)', padding: '4px 12px', borderRadius: '12px', fontWeight: 600 }}>
+          <span className="wr-needs-reports-badge">
             {opsNeedingReports.length} operation{opsNeedingReports.length !== 1 ? 's' : ''} need reports this week
           </span>
         )}
       </div>
 
       {/* Controls */}
-      <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="wr-controls">
         <select
+          className="wr-select"
           value={selectedOperationId || ''}
           onChange={(e) => setSelectedOperationId(parseInt(e.target.value) || null)}
-          style={{ padding: '8px 12px', fontSize: '14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', minWidth: '200px' }}
         >
           {operations.length === 0 && <option value="">No operations with active probes</option>}
           {operations.map(op => (
@@ -441,47 +441,38 @@ export default function WaterRecsClient({
 
         <input
           type="date"
+          className="wr-date-input"
           value={reportDate}
           onChange={(e) => setReportDate(e.target.value)}
-          style={{ padding: '8px 12px', fontSize: '14px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)' }}
         />
 
-        <div style={{ display: 'flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div className="wr-toggle-group">
           <button
+            className={`wr-toggle-btn${mode === 'full' ? ' active' : ''}`}
             onClick={() => setMode('full')}
-            style={{
-              padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none',
-              background: mode === 'full' ? 'var(--accent-primary)' : 'var(--bg-card)',
-              color: mode === 'full' ? '#fff' : 'var(--text-secondary)',
-            }}
           >
             Full Report
           </button>
           <button
+            className={`wr-toggle-btn${mode === 'update' ? ' active' : ''}`}
             onClick={() => setMode('update')}
-            style={{
-              padding: '8px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none',
-              borderLeft: '1px solid var(--border)',
-              background: mode === 'update' ? 'var(--accent-primary)' : 'var(--bg-card)',
-              color: mode === 'update' ? '#fff' : 'var(--text-secondary)',
-            }}
           >
             Water Day Update
           </button>
         </div>
 
-        <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }}>
+        <div className="wr-pagination">
           <button
+            className="wr-page-btn"
             onClick={goToPrevOp}
             disabled={currentOpIndex <= 0}
-            style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-card)', cursor: currentOpIndex > 0 ? 'pointer' : 'default', opacity: currentOpIndex > 0 ? 1 : 0.4, color: 'var(--text-primary)' }}
           >
             &larr; Prev
           </button>
           <button
+            className="wr-page-btn"
             onClick={goToNextOp}
             disabled={currentOpIndex >= operations.length - 1}
-            style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-card)', cursor: currentOpIndex < operations.length - 1 ? 'pointer' : 'default', opacity: currentOpIndex < operations.length - 1 ? 1 : 0.4, color: 'var(--text-primary)' }}
           >
             Next &rarr;
           </button>
@@ -490,14 +481,14 @@ export default function WaterRecsClient({
 
       {/* Stats bar */}
       {currentOperation && (
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+        <div className="wr-stats-bar">
           <span>{currentOperation.fields.length} fields</span>
           {mode === 'full' && (
             <>
               <span>{waterDayCount} water days set</span>
               <span>{recsCount} recommendation{recsCount !== 1 ? 's' : ''}</span>
               {priorityCount > 0 && (
-                <span style={{ color: 'var(--status-red)', fontWeight: 600 }}>
+                <span className="wr-priority-stat">
                   {priorityCount} priority
                 </span>
               )}
@@ -512,8 +503,8 @@ export default function WaterRecsClient({
       )}
 
       {!currentOperation && (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-          <p style={{ fontSize: '16px' }}>No operations with active (installed) probes for {currentSeason}.</p>
+        <div className="wr-empty-state">
+          <p>No operations with active (installed) probes for {currentSeason}.</p>
         </div>
       )}
 
@@ -521,17 +512,13 @@ export default function WaterRecsClient({
       {currentOperation && mode === 'full' && (
         <div>
           {/* Overview */}
-          <div style={{ marginBottom: '16px' }}>
+          <div className="wr-overview-wrap">
             <textarea
+              className="wr-textarea"
               value={overview}
               onChange={(e) => setOverview(e.target.value)}
               placeholder="General overview message for this operation (optional)..."
               rows={3}
-              style={{
-                width: '100%', padding: '12px', fontSize: '14px', borderRadius: 'var(--radius)',
-                border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)',
-                resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit',
-              }}
             />
           </div>
 
@@ -544,18 +531,13 @@ export default function WaterRecsClient({
             return (
               <div
                 key={field.fieldSeasonId}
-                style={{
-                  marginBottom: '8px',
-                  border: isPriority ? '2px solid var(--status-red)' : '1px solid var(--border)',
-                  borderRadius: 'var(--radius)',
-                  background: isPriority ? 'rgba(239, 68, 68, 0.05)' : 'var(--bg-card)',
-                  overflow: 'hidden',
-                }}
+                className={`wr-field-card${isPriority ? ' priority' : ''}`}
               >
                 {/* Field header row */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', flexWrap: 'wrap' }}>
+                <div className="wr-field-header">
                   {/* Priority toggle */}
                   <button
+                    className={`wr-priority-btn${isPriority ? ' active' : ''}`}
                     onClick={() => {
                       const newPriority = !form.priority;
                       updateField(field.fieldSeasonId, {
@@ -564,37 +546,26 @@ export default function WaterRecsClient({
                       });
                     }}
                     title={isPriority ? 'Remove priority' : 'Mark as priority'}
-                    style={{
-                      width: '28px', height: '28px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                      background: isPriority ? 'var(--status-red)' : 'var(--bg-tertiary)',
-                      color: isPriority ? '#fff' : 'var(--text-muted)',
-                      fontSize: '14px', fontWeight: 700, transition: 'all 0.15s',
-                    }}
                   >
                     !
                   </button>
 
                   {/* Field name + crop */}
                   <div
-                    style={{ flex: 1, cursor: 'pointer', minWidth: '120px' }}
+                    className="wr-field-info"
                     onClick={() => updateField(field.fieldSeasonId, { expanded: !form.expanded })}
                   >
-                    <span style={{ fontWeight: 600, fontSize: '14px' }}>{field.fieldName}</span>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                    <span className="wr-field-name">{field.fieldName}</span>
+                    <span className="wr-field-meta">
                       {field.crop} &middot; {field.acres} ac
                     </span>
                   </div>
 
                   {/* Water day dropdown */}
                   <select
+                    className="wr-field-select"
                     value={form.waterDay}
                     onChange={(e) => updateField(field.fieldSeasonId, { waterDay: e.target.value })}
-                    style={{
-                      padding: '6px 10px', fontSize: '13px', borderRadius: 'var(--radius)',
-                      border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-primary)',
-                      minWidth: '120px',
-                    }}
                   >
                     <option value="">Water day...</option>
                     {waterDayOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -602,11 +573,11 @@ export default function WaterRecsClient({
 
                   {/* Expand chevron */}
                   <button
+                    className="wr-chevron-btn"
                     onClick={() => updateField(field.fieldSeasonId, { expanded: !form.expanded })}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-muted)' }}
                   >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"
-                      style={{ transform: form.expanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
+                    <svg className="wr-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"
+                      style={{ transform: form.expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
                   </button>
@@ -614,21 +585,16 @@ export default function WaterRecsClient({
 
                 {/* Expanded recommendation area */}
                 {form.expanded && (
-                  <div style={{ padding: '0 14px 12px' }}>
+                  <div className="wr-expanded-area">
                     <textarea
+                      className={`wr-rec-textarea${isPriority && !form.recommendation.trim() ? ' error' : ''}`}
                       value={form.recommendation}
                       onChange={(e) => updateField(field.fieldSeasonId, { recommendation: e.target.value })}
                       placeholder={isPriority ? 'Priority field - recommendation required...' : 'Write a recommendation (or leave blank for status quo)...'}
                       rows={3}
-                      style={{
-                        width: '100%', padding: '10px', fontSize: '14px', borderRadius: 'var(--radius)',
-                        border: isPriority && !form.recommendation.trim() ? '2px solid var(--status-red)' : '1px solid var(--border)',
-                        background: 'var(--bg-secondary)', color: 'var(--text-primary)',
-                        resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit',
-                      }}
                     />
                     {isPriority && !form.recommendation.trim() && (
-                      <div style={{ fontSize: '12px', color: 'var(--status-red)', marginTop: '4px' }}>
+                      <div className="wr-rec-error">
                         Priority fields must have a written recommendation
                       </div>
                     )}
@@ -645,43 +611,40 @@ export default function WaterRecsClient({
         <div>
           {/* Reference panel */}
           {fullReportRecs.length > 0 && (
-            <div style={{ marginBottom: '16px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+            <div className="wr-ref-panel">
               <div
+                className="wr-ref-header"
                 onClick={() => setShowReference(!showReference)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '10px 14px', background: 'var(--bg-tertiary)', cursor: 'pointer',
-                }}
               >
-                <span style={{ fontWeight: 600, fontSize: '14px' }}>
+                <span className="wr-ref-title">
                   Full Report Reference ({fullReportRecs[0]?.date})
                 </span>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"
-                  style={{ transform: showReference ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: 'var(--text-muted)' }}>
+                <svg className="wr-ref-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"
+                  style={{ transform: showReference ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
               {showReference && (
-                <div style={{ padding: '12px 14px', background: 'var(--bg-card)', maxHeight: '300px', overflowY: 'auto' }}>
+                <div className="wr-ref-body">
                   {fullReportRecs.map(rec => {
                     const name = fsToFieldName[rec.fieldSeasonId] || 'Unknown';
                     return (
-                      <div key={rec.id} style={{ marginBottom: '8px', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ fontWeight: 600, fontSize: '13px' }}>{name}</span>
+                      <div key={rec.id} className="wr-ref-item">
+                        <div className="wr-ref-item-header">
+                          <span className="wr-ref-field-name">{name}</span>
                           {rec.suggestedWaterDay && (
-                            <span style={{ fontSize: '12px', padding: '1px 8px', borderRadius: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', fontWeight: 500 }}>
+                            <span className="wr-ref-day-badge">
                               {rec.suggestedWaterDay}
                             </span>
                           )}
                           {rec.priority && (
-                            <span style={{ fontSize: '11px', padding: '1px 6px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--status-red)', fontWeight: 600 }}>
+                            <span className="wr-ref-priority-badge">
                               PRIORITY
                             </span>
                           )}
                         </div>
                         {rec.recommendation && (
-                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                          <div className="wr-ref-rec-text">
                             {rec.recommendation}
                           </div>
                         )}
@@ -694,7 +657,7 @@ export default function WaterRecsClient({
           )}
 
           {fullReportRecs.length === 0 && (
-            <div style={{ padding: '20px', marginBottom: '16px', background: 'rgba(251, 191, 36, 0.1)', borderRadius: 'var(--radius)', border: '1px solid rgba(251, 191, 36, 0.3)', fontSize: '14px', color: 'var(--text-primary)' }}>
+            <div className="wr-warning-banner">
               No full report found for this week. Water days will start empty.
             </div>
           )}
@@ -708,41 +671,27 @@ export default function WaterRecsClient({
             return (
               <div
                 key={field.fieldSeasonId}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px',
-                  marginBottom: '6px', borderRadius: 'var(--radius)', flexWrap: 'wrap',
-                  border: isUpdated ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
-                  background: isUpdated ? 'rgba(76, 175, 80, 0.05)' : 'var(--bg-card)',
-                }}
+                className={`wr-update-card${isUpdated ? ' updated' : ''}`}
               >
-                <div style={{ flex: 1, minWidth: '120px' }}>
-                  <span style={{ fontWeight: 600, fontSize: '14px' }}>{field.fieldName}</span>
+                <div className="wr-update-field-info">
+                  <span className="wr-field-name">{field.fieldName}</span>
                   {form.originalDay && (
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: '8px' }}>
+                    <span className="wr-field-meta">
                       was {form.originalDay}
                     </span>
                   )}
                 </div>
 
-                <div style={{ display: 'flex', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                <div className="wr-toggle-group">
                   <button
+                    className={`wr-update-toggle-btn${!isUpdated ? ' active-continue' : ''}`}
                     onClick={() => updateField(field.fieldSeasonId, { updateStatus: 'continue', waterDay: form.originalDay })}
-                    style={{
-                      padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none',
-                      background: !isUpdated ? 'var(--bg-tertiary)' : 'var(--bg-card)',
-                      color: !isUpdated ? 'var(--text-primary)' : 'var(--text-muted)',
-                    }}
                   >
                     Continue
                   </button>
                   <button
+                    className={`wr-update-toggle-btn${isUpdated ? ' active-updated' : ''}`}
                     onClick={() => updateField(field.fieldSeasonId, { updateStatus: 'updated' })}
-                    style={{
-                      padding: '5px 12px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none',
-                      borderLeft: '1px solid var(--border)',
-                      background: isUpdated ? 'var(--accent-primary)' : 'var(--bg-card)',
-                      color: isUpdated ? '#fff' : 'var(--text-muted)',
-                    }}
                   >
                     Updated
                   </button>
@@ -750,12 +699,9 @@ export default function WaterRecsClient({
 
                 {isUpdated && (
                   <select
+                    className="wr-update-select"
                     value={form.waterDay}
                     onChange={(e) => updateField(field.fieldSeasonId, { waterDay: e.target.value })}
-                    style={{
-                      padding: '6px 10px', fontSize: '13px', borderRadius: 'var(--radius)',
-                      border: '1px solid var(--accent-primary)', background: 'var(--bg-secondary)', color: 'var(--text-primary)',
-                    }}
                   >
                     <option value="">New day...</option>
                     {waterDayOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
@@ -769,31 +715,22 @@ export default function WaterRecsClient({
 
       {/* Action buttons */}
       {currentOperation && (
-        <div style={{ display: 'flex', gap: '12px', marginTop: '20px', paddingBottom: '40px', flexWrap: 'wrap' }}>
+        <div className="wr-actions">
           <button
+            className="wr-save-btn"
             onClick={handleSave}
             disabled={saving}
-            style={{
-              padding: '12px 32px', fontSize: '15px', fontWeight: 600, borderRadius: 'var(--radius)',
-              border: 'none', cursor: saving ? 'default' : 'pointer',
-              background: 'var(--accent-primary)', color: '#fff',
-              opacity: saving ? 0.7 : 1,
-            }}
           >
             {saving ? 'Saving...' : (mode === 'full' ? 'Save Report' : 'Save Update')}
           </button>
           <button
+            className="wr-copy-btn"
             onClick={handleCopyAll}
-            style={{
-              padding: '12px 32px', fontSize: '15px', fontWeight: 600, borderRadius: 'var(--radius)',
-              border: '1px solid var(--border)', cursor: 'pointer',
-              background: 'var(--bg-card)', color: 'var(--text-primary)',
-            }}
           >
             Copy All
           </button>
           {existingRecsForDate.length > 0 && (
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)', alignSelf: 'center' }}>
+            <span className="wr-existing-hint">
               {existingRecsForDate.length} existing rec{existingRecsForDate.length !== 1 ? 's' : ''} for this date will be replaced
             </span>
           )}
@@ -802,14 +739,7 @@ export default function WaterRecsClient({
 
       {/* Toast */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: '24px', right: '24px', zIndex: 10000,
-          padding: '12px 24px', borderRadius: 'var(--radius)',
-          background: 'var(--bg-primary)', border: '1px solid var(--accent-primary)',
-          color: 'var(--text-primary)', fontSize: '14px', fontWeight: 500,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-          display: 'flex', alignItems: 'center', gap: '8px',
-        }}>
+        <div className="wr-toast">
           <svg fill="none" stroke="var(--accent-primary)" viewBox="0 0 24 24" width="18" height="18">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>

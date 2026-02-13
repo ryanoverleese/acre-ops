@@ -20,7 +20,7 @@ interface ContactData {
   phone: string;
   email: string;
   operationNames: string[];
-  customerType: string;
+  customerType: string[];
   lat: number;
   lng: number;
 }

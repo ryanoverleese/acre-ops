@@ -62,7 +62,7 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
   email: 180,
   phone: 130,
   address: 200,
-  customerType: 140,
+  customerType: 200,
   notes: 150,
 };
 
@@ -76,7 +76,7 @@ const initialForm = {
   address: '',
   address_lat: '' as string,
   address_lng: '' as string,
-  customer_type: '',
+  customer_type: [] as string[],
   notes: '',
   operations: [] as string[],
   is_main_contact: 'No',
@@ -136,6 +136,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ contactId: number; field: string } | null>(null);
   const [editingValue, setEditingValue] = useState<string>('');
+  const [editingTypes, setEditingTypes] = useState<string[]>([]);
+  const typePickerRef = useRef<HTMLDivElement>(null);
+  const [copiedEmails, setCopiedEmails] = useState(false);
 
   // Load column preferences from localStorage on mount
   useEffect(() => {
@@ -274,12 +277,13 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           c.name.toLowerCase().includes(query) ||
           c.email.toLowerCase().includes(query) ||
           c.phone.toLowerCase().includes(query) ||
-          c.operationNames.some((op) => op.toLowerCase().includes(query))
+          c.operationNames.some((op) => op.toLowerCase().includes(query)) ||
+          c.customerType.some((t) => t.toLowerCase().includes(query))
       );
     }
 
     if (filterType !== 'all') {
-      filtered = filtered.filter((c) => c.customerType === filterType);
+      filtered = filtered.filter((c) => c.customerType.includes(filterType));
     }
 
     // Sort
@@ -294,7 +298,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         case 'address': aVal = a.address.toLowerCase(); bVal = b.address.toLowerCase(); break;
         case 'operation': aVal = a.operationNames.join(',').toLowerCase(); bVal = b.operationNames.join(',').toLowerCase(); break;
         case 'billingEntity': aVal = a.billingEntityNames.join(',').toLowerCase(); bVal = b.billingEntityNames.join(',').toLowerCase(); break;
-        case 'customerType': aVal = a.customerType.toLowerCase(); bVal = b.customerType.toLowerCase(); break;
+        case 'customerType': aVal = a.customerType.join(', ').toLowerCase(); bVal = b.customerType.join(', ').toLowerCase(); break;
         default: aVal = a.name.toLowerCase(); bVal = b.name.toLowerCase();
       }
 
@@ -530,17 +534,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     }
   };
 
-  // Add existing billing entity to selection
-  const handleSelectBillingEntity = (beId: string) => {
-    if (beId === 'add_new') {
-      setShowAddBillingEntityModal(true);
-      return;
-    }
-    const be = billingEntitiesList.find((b) => b.id === parseInt(beId));
-    if (be && !selectedBillingEntities.some((s) => s.id === be.id)) {
-      setSelectedBillingEntities([...selectedBillingEntities, { id: be.id, name: be.name }]);
-    }
-  };
 
   // Remove billing entity from selection
   const handleRemoveBillingEntity = (beId: number) => {
@@ -590,7 +583,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       if (form.address) payload.address = form.address;
       if (form.address_lat) payload.address_lat = parseFloat(form.address_lat);
       if (form.address_lng) payload.address_lng = parseFloat(form.address_lng);
-      if (form.customer_type) payload.customer_type = form.customer_type;
+      if (form.customer_type.length > 0) payload.customer_type = form.customer_type;
       if (form.notes) payload.notes = form.notes;
       if (form.operations.length > 0) payload.operations = form.operations.map((id) => parseInt(id));
       payload.is_main_contact = form.is_main_contact;
@@ -660,7 +653,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       payload.address = form.address || null;
       payload.address_lat = form.address_lat ? parseFloat(form.address_lat) : null;
       payload.address_lng = form.address_lng ? parseFloat(form.address_lng) : null;
-      payload.customer_type = form.customer_type || null;
+      payload.customer_type = form.customer_type.length > 0 ? form.customer_type : [];
       payload.notes = form.notes || null;
       payload.operations = form.operations.map((id) => parseInt(id));
       payload.is_main_contact = form.is_main_contact;
@@ -710,7 +703,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       case 'phone': value = contact.phone; break;
       case 'address': value = contact.address; break;
       case 'notes': value = contact.notes; break;
-      case 'customerType': value = contact.customerType; break;
       case 'operation': value = contact.operationIds[0]?.toString() || ''; break;
     }
     setEditingCell({ contactId: contact.id, field });
@@ -721,6 +713,44 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     setEditingCell(null);
     setEditingValue('');
   };
+
+  // Type tag editing handlers
+  const startTypeEditing = (contact: ProcessedContact) => {
+    setEditingCell({ contactId: contact.id, field: 'customerType' });
+    setEditingTypes([...contact.customerType]);
+  };
+
+  const saveTypeEdit = async (contactId: number, types: string[]) => {
+    setEditingCell(null);
+    try {
+      const response = await fetch(`/api/contacts/${contactId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customer_type: types }),
+      });
+      if (response.ok) {
+        setContacts((prev) =>
+          prev.map((c) => c.id === contactId ? { ...c, customerType: types } : c)
+        );
+      } else {
+        alert('Failed to save changes');
+      }
+    } catch {
+      alert('Failed to save changes');
+    }
+  };
+
+  // Click-outside handler for type picker
+  useEffect(() => {
+    if (!editingCell || editingCell.field !== 'customerType') return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (typePickerRef.current && !typePickerRef.current.contains(e.target as Node)) {
+        saveTypeEdit(editingCell.contactId, editingTypes);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [editingCell, editingTypes]);
 
   const saveInlineEdit = async (contactId: number, field: string, value: string) => {
     const contact = contacts.find((c) => c.id === contactId);
@@ -733,7 +763,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       phone: 'phone',
       address: 'address',
       notes: 'notes',
-      customerType: 'customer_type',
       operation: 'operations',
     };
 
@@ -767,7 +796,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               case 'phone': updated.phone = value; break;
               case 'address': updated.address = value; break;
               case 'notes': updated.notes = value; break;
-              case 'customerType': updated.customerType = value; break;
               case 'operation':
                 const opId = value ? parseInt(value) : null;
                 updated.operationIds = opId ? [opId] : [];
@@ -835,24 +863,39 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     setShowEditModal(true);
   };
 
+  const typeColorMap: Record<string, string> = {
+    'Current Customer': 'installed',
+    'Past Customer': 'needs-probe',
+    'Weather Station Only': 'pending',
+    'Agronomist': 'in-stock',
+    'Landlord': 'assigned',
+    'Retired': 'needs-probe',
+    'Prospect': 'pending',
+  };
+
   const getTypeBadge = (type: string) => {
-    const colorMap: Record<string, string> = {
-      'Current Customer': 'installed',
-      'Past Customer': 'needs-probe',
-      'Weather Station Only': 'pending',
-      'Agronomist': 'in-stock',
-      'Landlord': 'assigned',
-      'Retired': 'needs-probe',
-      'Prospect': 'pending',
-    };
-    const badgeClass = colorMap[type] || 'needs-probe';
+    const badgeClass = typeColorMap[type] || 'needs-probe';
     return type ? (
       <span className={`status-badge ${badgeClass}`}>
         <span className="status-dot"></span>
         {type}
       </span>
     ) : (
-      <span style={{ color: 'var(--text-muted)' }}>—</span>
+      <span className="text-muted">—</span>
+    );
+  };
+
+  const getTypeBadges = (types: string[]) => {
+    if (types.length === 0) return <span className="text-muted">—</span>;
+    return (
+      <div className="contacts-type-badges">
+        {types.map((type) => (
+          <span key={type} className={`status-badge ${typeColorMap[type] || 'needs-probe'}`}>
+            <span className="status-dot"></span>
+            {type}
+          </span>
+        ))}
+      </div>
     );
   };
 
@@ -869,16 +912,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           onBlur={() => saveInlineEdit(contact.id, field, editingValue)}
           onKeyDown={(e) => handleInlineKeyDown(e, contact.id, field)}
           autoFocus
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            border: '1px solid var(--accent-blue)',
-            borderRadius: '4px',
-            background: 'var(--bg-card)',
-            color: 'var(--text)',
-            fontSize: '13px',
-            outline: 'none',
-          }}
+          className="contacts-inline-edit"
         />
       );
     }
@@ -886,60 +920,52 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     return (
       <div
         onClick={() => startEditing(contact, field)}
-        style={{
-          cursor: 'pointer',
-          padding: '4px 0',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
+        className="contacts-editable-cell"
         title={displayValue || 'Click to edit'}
       >
-        {displayValue || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+        {displayValue || <span className="text-muted">—</span>}
       </div>
     );
   };
 
-  // Render an editable select cell for customer type
+  // Render an editable multi-select cell for customer type
   const renderEditableTypeCell = (contact: ProcessedContact) => {
     const isEditing = editingCell?.contactId === contact.id && editingCell?.field === 'customerType';
 
     if (isEditing) {
       return (
-        <select
-          value={editingValue}
-          onChange={(e) => {
-            setEditingValue(e.target.value);
-            saveInlineEdit(contact.id, 'customerType', e.target.value);
-          }}
-          onBlur={() => cancelEditing()}
-          autoFocus
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            border: '1px solid var(--accent-blue)',
-            borderRadius: '4px',
-            background: 'var(--bg-card)',
-            color: 'var(--text)',
-            fontSize: '13px',
-            outline: 'none',
-          }}
-        >
-          <option value="">Select type...</option>
-          {CUSTOMER_TYPE_OPTIONS.map((type) => (
-            <option key={type} value={type}>{type}</option>
-          ))}
-        </select>
+        <div className="contacts-type-picker" ref={typePickerRef}>
+          {CUSTOMER_TYPE_OPTIONS.map((type) => {
+            const isSelected = editingTypes.includes(type);
+            return (
+              <label
+                key={type}
+                className={`contacts-type-option${isSelected ? ' selected' : ''}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setEditingTypes((prev) =>
+                    prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+                  );
+                }}
+              >
+                <span className={`status-badge ${typeColorMap[type] || 'needs-probe'}`}>
+                  <span className="status-dot"></span>
+                  {type}
+                </span>
+              </label>
+            );
+          })}
+        </div>
       );
     }
 
     return (
       <div
-        onClick={() => startEditing(contact, 'customerType')}
-        style={{ cursor: 'pointer' }}
-        title="Click to edit"
+        onClick={() => startTypeEditing(contact)}
+        className="contacts-clickable-cell"
+        title="Click to edit types"
       >
-        {getTypeBadge(contact.customerType)}
+        {getTypeBadges(contact.customerType)}
       </div>
     );
   };
@@ -958,16 +984,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           }}
           onBlur={() => cancelEditing()}
           autoFocus
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            border: '1px solid var(--accent-blue)',
-            borderRadius: '4px',
-            background: 'var(--bg-card)',
-            color: 'var(--text)',
-            fontSize: '13px',
-            outline: 'none',
-          }}
+          className="contacts-inline-edit"
         >
           <option value="">Select operation...</option>
           {sortedOperations.map((op) => (
@@ -982,16 +999,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
     return (
       <div
         onClick={() => startEditing(contact, 'operation')}
-        style={{
-          cursor: 'pointer',
-          padding: '4px 0',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-        }}
+        className="contacts-editable-cell"
         title={displayValue || 'Click to edit'}
       >
-        {displayValue || <span style={{ color: 'var(--text-muted)' }}>—</span>}
+        {displayValue || <span className="text-muted">—</span>}
       </div>
     );
   };
@@ -1033,29 +1044,20 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
         {/* Show question: How would you like to handle billing? */}
         {!form.operations[0] ? (
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          <p className="contacts-modal-hint-italic">
             Select an operation first
           </p>
         ) : (
           <>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
+            <p className="contacts-billing-choice-prompt">
               For billing, would you like to:
             </p>
 
             {/* Radio options */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+            <div className="contacts-billing-choice-group">
               {/* Option 1: Use contact's name */}
               <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: billingEntityChoice === 'use_contact_name' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
-                  background: billingEntityChoice === 'use_contact_name' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
-                }}
+                className={`contacts-billing-choice-option${billingEntityChoice === 'use_contact_name' ? ' selected' : ''}`}
                 onClick={() => {
                   setBillingEntityChoice('use_contact_name');
                   setSelectedBillingEntities([]);
@@ -1069,11 +1071,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     setBillingEntityChoice('use_contact_name');
                     setSelectedBillingEntities([]);
                   }}
-                  style={{ marginTop: '2px' }}
                 />
                 <div>
-                  <span style={{ fontWeight: 500 }}>Use contact&apos;s name</span>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                  <span className="contacts-billing-choice-title">Use contact&apos;s name</span>
+                  <p className="contacts-billing-choice-desc">
                     Create a billing entity named &quot;{form.name || 'Contact Name'}&quot;
                   </p>
                 </div>
@@ -1081,16 +1082,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
               {/* Option 2: Different name */}
               <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: billingEntityChoice === 'different_name' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
-                  background: billingEntityChoice === 'different_name' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
-                }}
+                className={`contacts-billing-choice-option${billingEntityChoice === 'different_name' ? ' selected' : ''}`}
                 onClick={() => {
                   setBillingEntityChoice('different_name');
                   setSelectedBillingEntities([]);
@@ -1104,11 +1096,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     setBillingEntityChoice('different_name');
                     setSelectedBillingEntities([]);
                   }}
-                  style={{ marginTop: '2px' }}
                 />
                 <div>
-                  <span style={{ fontWeight: 500 }}>Create with a different name</span>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                  <span className="contacts-billing-choice-title">Create with a different name</span>
+                  <p className="contacts-billing-choice-desc">
                     Specify a custom name for the billing entity (e.g., LLC name)
                   </p>
                 </div>
@@ -1117,16 +1108,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               {/* Option 3: Connect to existing (only show if there are existing entities) */}
               {hasExistingEntities && (
                 <label
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '8px',
-                    cursor: 'pointer',
-                    padding: '10px 12px',
-                    borderRadius: '6px',
-                    border: billingEntityChoice === 'existing' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
-                    background: billingEntityChoice === 'existing' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
-                  }}
+                  className={`contacts-billing-choice-option${billingEntityChoice === 'existing' ? ' selected' : ''}`}
                   onClick={() => setBillingEntityChoice('existing')}
                 >
                   <input
@@ -1134,11 +1116,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     name="billingEntityChoice"
                     checked={billingEntityChoice === 'existing'}
                     onChange={() => setBillingEntityChoice('existing')}
-                    style={{ marginTop: '2px' }}
                   />
                   <div>
-                    <span style={{ fontWeight: 500 }}>Connect to an existing billing entity</span>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    <span className="contacts-billing-choice-title">Connect to an existing billing entity</span>
+                    <p className="contacts-billing-choice-desc">
                       Link this contact to a billing entity that already exists
                     </p>
                   </div>
@@ -1147,16 +1128,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
               {/* Option: No billing entity */}
               <label
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '8px',
-                  cursor: 'pointer',
-                  padding: '10px 12px',
-                  borderRadius: '6px',
-                  border: billingEntityChoice === 'none' ? '2px solid var(--accent-blue)' : '1px solid var(--border)',
-                  background: billingEntityChoice === 'none' ? 'var(--accent-blue-dim, rgba(59, 130, 246, 0.1))' : 'transparent',
-                }}
+                className={`contacts-billing-choice-option${billingEntityChoice === 'none' ? ' selected' : ''}`}
                 onClick={() => {
                   setBillingEntityChoice('none');
                   setSelectedBillingEntities([]);
@@ -1170,11 +1142,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     setBillingEntityChoice('none');
                     setSelectedBillingEntities([]);
                   }}
-                  style={{ marginTop: '2px' }}
                 />
                 <div>
-                  <span style={{ fontWeight: 500 }}>Skip for now</span>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                  <span className="contacts-billing-choice-title">Skip for now</span>
+                  <p className="contacts-billing-choice-desc">
                     Don&apos;t create or link a billing entity
                   </p>
                 </div>
@@ -1183,10 +1154,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
             {/* Show address option when creating new billing entity */}
             {(billingEntityChoice === 'use_contact_name' || billingEntityChoice === 'different_name') && (
-              <div style={{ marginLeft: '24px', padding: '12px', background: 'var(--background-secondary)', borderRadius: '6px' }}>
+              <div className="contacts-billing-detail-panel">
                 {billingEntityChoice === 'different_name' && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '4px' }}>
+                  <div className="contacts-billing-name-field">
+                    <label className="contacts-billing-field-label">
                       Billing Entity Name
                     </label>
                     <input
@@ -1194,24 +1165,16 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                       value={newBillingEntityForm.name}
                       onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, name: e.target.value })}
                       placeholder="e.g., Smith Farm LLC"
-                      style={{ width: '100%' }}
+                      className="contacts-full-width"
                     />
                   </div>
                 )}
 
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, marginBottom: '8px' }}>
+                <label className="contacts-billing-address-heading">
                   Billing Address
                 </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                    }}
-                  >
+                <div className="contacts-billing-address-options">
+                  <label className="contacts-billing-address-label">
                     <input
                       type="radio"
                       name="billingAddress"
@@ -1220,20 +1183,12 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                     />
                     Same address as contact
                     {form.address && (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
+                      <span className="contacts-billing-address-hint">
                         ({form.address.substring(0, 30)}{form.address.length > 30 ? '...' : ''})
                       </span>
                     )}
                   </label>
-                  <label
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      cursor: 'pointer',
-                      fontSize: '13px',
-                    }}
-                  >
+                  <label className="contacts-billing-address-label">
                     <input
                       type="radio"
                       name="billingAddress"
@@ -1248,7 +1203,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                       onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, address: e.target.value })}
                       placeholder="Enter billing address..."
                       rows={2}
-                      style={{ marginLeft: '24px' }}
+                      className="contacts-billing-address-textarea"
                     />
                   )}
                 </div>
@@ -1257,37 +1212,20 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
             {/* Show existing entities dropdown when that option is selected */}
             {billingEntityChoice === 'existing' && (
-              <div style={{ marginLeft: '24px' }}>
+              <div className="contacts-billing-indent">
                 {/* Show selected billing entities as chips */}
                 {selectedBillingEntities.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+                  <div className="contacts-billing-chips">
                     {selectedBillingEntities.map((be) => (
                       <span
                         key={be.id}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          padding: '4px 8px',
-                          background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))',
-                          color: 'var(--accent-blue, #3b82f6)',
-                          borderRadius: '4px',
-                          fontSize: '13px',
-                        }}
+                        className="contacts-billing-chip"
                       >
                         {be.name}
                         <button
                           type="button"
                           onClick={() => handleRemoveBillingEntity(be.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            padding: '0',
-                            cursor: 'pointer',
-                            color: 'inherit',
-                            display: 'flex',
-                            alignItems: 'center',
-                          }}
+                          className="contacts-billing-chip-remove"
                           title="Remove"
                         >
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
@@ -1332,7 +1270,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
         <div className="table-header">
           <h3 className="table-title">All Contacts ({filteredContacts.length})</h3>
           <div className="table-actions">
-            <div className="search-box" style={{ width: '200px' }}>
+            <div className="search-box contacts-search-box">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -1349,6 +1287,23 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <option key={type} value={type}>{type}</option>
               ))}
             </select>
+            {(() => {
+              const emailCount = filteredContacts.filter((c) => c.email.trim()).length;
+              return emailCount > 0 ? (
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    const emails = [...new Set(filteredContacts.map((c) => c.email.trim()).filter(Boolean))];
+                    navigator.clipboard.writeText(emails.join(', '));
+                    setCopiedEmails(true);
+                    setTimeout(() => setCopiedEmails(false), 2000);
+                  }}
+                  title={`Copy ${emailCount} email addresses to clipboard`}
+                >
+                  {copiedEmails ? 'Copied!' : `Copy Emails (${emailCount})`}
+                </button>
+              ) : null;
+            })()}
             {showMap && (
               <select value={mapColorBy} onChange={(e) => setMapColorBy(e.target.value as 'none' | 'type' | 'operation')}>
                 <option value="none">Default Markers</option>
@@ -1358,7 +1313,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
             )}
             {/* Column Picker Dropdown */}
             {!showMap && (
-              <div ref={columnPickerRef} style={{ position: 'relative' }}>
+              <div ref={columnPickerRef} className="contacts-column-picker">
                 <button
                   className="btn btn-secondary"
                   onClick={() => setShowColumnPicker(!showColumnPicker)}
@@ -1370,36 +1325,14 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   Columns
                 </button>
                 {showColumnPicker && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: 0,
-                      marginTop: '4px',
-                      background: 'var(--bg-card)',
-                      border: '1px solid var(--border)',
-                      borderRadius: 'var(--radius)',
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                      zIndex: 100,
-                      minWidth: '180px',
-                      padding: '8px 0',
-                    }}
-                  >
-                    <div style={{ padding: '4px 12px 8px', borderBottom: '1px solid var(--border)', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)' }}>Show Columns</span>
+                  <div className="contacts-column-dropdown">
+                    <div className="contacts-column-dropdown-header">
+                      <span className="contacts-column-dropdown-label">Show Columns</span>
                     </div>
                     {COLUMN_DEFINITIONS.map((col) => (
                       <label
                         key={col.key}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '6px 12px',
-                          cursor: col.alwaysVisible ? 'not-allowed' : 'pointer',
-                          opacity: col.alwaysVisible ? 0.6 : 1,
-                          fontSize: '13px',
-                        }}
+                        className={`contacts-column-dropdown-item${col.alwaysVisible ? ' always-visible' : ''}`}
                         onClick={(e) => {
                           if (!col.alwaysVisible) {
                             e.preventDefault();
@@ -1412,16 +1345,14 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                           checked={isColumnVisible(col.key as ColumnKey)}
                           disabled={col.alwaysVisible}
                           onChange={() => {}}
-                          style={{ cursor: col.alwaysVisible ? 'not-allowed' : 'pointer' }}
                         />
                         {col.label}
-                        {col.alwaysVisible && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>(required)</span>}
+                        {col.alwaysVisible && <span className="contacts-required-tag">(required)</span>}
                       </label>
                     ))}
-                    <div style={{ borderTop: '1px solid var(--border)', marginTop: '4px', padding: '4px 12px 4px' }}>
+                    <div className="contacts-column-dropdown-footer">
                       <button
-                        className="btn btn-secondary"
-                        style={{ width: '100%', fontSize: '12px', padding: '4px 8px' }}
+                        className="btn btn-secondary contacts-column-reset-btn"
                         onClick={() => setVisibleColumns([...DEFAULT_VISIBLE_COLUMNS])}
                       >
                         Reset to Defaults
@@ -1438,11 +1369,10 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               ).length;
               return needsGeocode > 0 ? (
                 <button
-                  className="btn btn-secondary"
+                  className="btn btn-secondary contacts-geocode-bulk-btn"
                   onClick={handleBulkGeocode}
                   disabled={bulkGeocoding}
                   title={`Geocode ${needsGeocode} contacts with addresses but no coordinates`}
-                  style={{ fontSize: '12px' }}
                 >
                   {bulkGeocoding ? (
                     `Geocoding ${bulkProgress.current}/${bulkProgress.total}...`
@@ -1466,7 +1396,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               </svg>
               {showMap ? 'Table' : 'Map'}
               {!showMap && mappableContacts.length > 0 && (
-                <span style={{ marginLeft: '4px', fontSize: '11px', opacity: 0.8 }}>({mappableContacts.length})</span>
+                <span className="contacts-map-count">({mappableContacts.length})</span>
               )}
             </button>
             <button className="btn btn-primary" onClick={openAddModal}>
@@ -1491,11 +1421,9 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
         {/* Desktop Table */}
         <table
-          className="desktop-table"
+          className="desktop-table contacts-table"
           style={{
             display: showMap ? 'none' : undefined,
-            tableLayout: 'fixed',
-            width: '100%',
             userSelect: resizingColumn ? 'none' : undefined,
           }}
         >
@@ -1514,193 +1442,121 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           <thead>
             <tr>
               {isColumnVisible('name') && (
-                <th className="sortable" onClick={() => handleSort('name')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('name')}>
+                  <span className="contacts-th-content">
                     Name
                     {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('name', e)}
                     onDoubleClick={() => handleResetColumnWidth('name')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'name' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'name' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('operation') && (
-                <th className="sortable" onClick={() => handleSort('operation')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('operation')}>
+                  <span className="contacts-th-content">
                     Operation
                     {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('operation', e)}
                     onDoubleClick={() => handleResetColumnWidth('operation')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'operation' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'operation' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('billingEntity') && (
-                <th className="sortable" onClick={() => handleSort('billingEntity')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('billingEntity')}>
+                  <span className="contacts-th-content">
                     Billing Entity
                     {sortColumn === 'billingEntity' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('billingEntity', e)}
                     onDoubleClick={() => handleResetColumnWidth('billingEntity')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'billingEntity' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'billingEntity' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('role') && (
-                <th style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>Role</span>
+                <th className="contacts-th-resizable">
+                  <span className="contacts-th-content">Role</span>
                   <div
                     onMouseDown={(e) => handleResizeStart('role', e)}
                     onDoubleClick={() => handleResetColumnWidth('role')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'role' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'role' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('email') && (
-                <th className="sortable" onClick={() => handleSort('email')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('email')}>
+                  <span className="contacts-th-content">
                     Email
                     {sortColumn === 'email' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('email', e)}
                     onDoubleClick={() => handleResetColumnWidth('email')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'email' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'email' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('phone') && (
-                <th className="sortable" onClick={() => handleSort('phone')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('phone')}>
+                  <span className="contacts-th-content">
                     Phone
                     {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('phone', e)}
                     onDoubleClick={() => handleResetColumnWidth('phone')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'phone' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'phone' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('address') && (
-                <th className="sortable" onClick={() => handleSort('address')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('address')}>
+                  <span className="contacts-th-content">
                     Address
                     {sortColumn === 'address' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('address', e)}
                     onDoubleClick={() => handleResetColumnWidth('address')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'address' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'address' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('customerType') && (
-                <th className="sortable" onClick={() => handleSort('customerType')} style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>
+                <th className="sortable contacts-th-resizable" onClick={() => handleSort('customerType')}>
+                  <span className="contacts-th-content">
                     Type
                     {sortColumn === 'customerType' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('customerType', e)}
                     onDoubleClick={() => handleResetColumnWidth('customerType')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'customerType' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'customerType' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('notes') && (
-                <th style={{ position: 'relative' }}>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', paddingRight: '8px' }}>Notes</span>
+                <th className="contacts-th-resizable">
+                  <span className="contacts-th-content">Notes</span>
                   <div
                     onMouseDown={(e) => handleResizeStart('notes', e)}
                     onDoubleClick={() => handleResetColumnWidth('notes')}
-                    style={{
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      width: '6px',
-                      cursor: 'col-resize',
-                      background: resizingColumn === 'notes' ? 'var(--accent-blue)' : 'transparent',
-                    }}
+                    className={`contacts-resize-handle${resizingColumn === 'notes' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
@@ -1711,7 +1567,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           <tbody>
             {filteredContacts.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length + 1} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={visibleColumns.length + 1} className="contacts-empty-row">
                   No contacts found.
                 </td>
               </tr>
@@ -1719,75 +1575,71 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               filteredContacts.map((contact) => (
                 <tr key={contact.id}>
                   {isColumnVisible('name') && (
-                    <td className="operation-name" style={{ fontSize: '13px' }}>
+                    <td className="operation-name">
                       {renderEditableCell(contact, 'name', contact.name)}
                     </td>
                   )}
                   {isColumnVisible('operation') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       {renderEditableOperationCell(contact)}
                     </td>
                   )}
                   {isColumnVisible('billingEntity') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       <div
-                        style={{
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
+                        className="contacts-cell-truncate"
                         title={contact.billingEntityNames.join(', ') || undefined}
                       >
                         {contact.billingEntityNames.length > 0 ? (
                           contact.billingEntityNames.join(', ')
                         ) : (
-                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          <span className="text-muted">—</span>
                         )}
                       </div>
                     </td>
                   )}
                   {isColumnVisible('role') && (
                     <td>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      <div className="contacts-role-badges">
                         {contact.isMainContact && (
-                          <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                          <span className="contacts-role-badge-main">Main</span>
                         )}
                         {contact.billingEntityIds.length > 0 && (
-                          <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Billing</span>
+                          <span className="contacts-role-badge-billing">Billing</span>
                         )}
                         {!contact.isMainContact && contact.billingEntityIds.length === 0 && (
-                          <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          <span className="text-muted">—</span>
                         )}
                       </div>
                     </td>
                   )}
                   {isColumnVisible('email') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       {renderEditableCell(contact, 'email', contact.email)}
                     </td>
                   )}
                   {isColumnVisible('phone') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       {renderEditableCell(contact, 'phone', contact.phone)}
                     </td>
                   )}
                   {isColumnVisible('address') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       {renderEditableCell(contact, 'address', contact.address)}
                     </td>
                   )}
                   {isColumnVisible('customerType') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       {renderEditableTypeCell(contact)}
                     </td>
                   )}
                   {isColumnVisible('notes') && (
-                    <td style={{ fontSize: '13px' }}>
+                    <td>
                       {renderEditableCell(contact, 'notes', contact.notes)}
                     </td>
                   )}
                   <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="contacts-action-buttons">
                       <button className="action-btn" title="More options" onClick={() => openEditModal(contact)}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
@@ -1816,12 +1668,12 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="mobile-card-header">
                   <span className="mobile-card-title">{contact.name}</span>
                   {isColumnVisible('role') && (
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="contacts-role-badges">
                       {contact.isMainContact && (
-                        <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                        <span className="contacts-role-badge-main">Main</span>
                       )}
                       {contact.billingEntityIds.length > 0 && (
-                        <span style={{ fontSize: '10px', background: 'var(--accent-blue-dim, rgba(59, 130, 246, 0.2))', color: 'var(--accent-blue, #3b82f6)', padding: '2px 6px', borderRadius: '4px' }}>Billing</span>
+                        <span className="contacts-role-badge-billing">Billing</span>
                       )}
                     </div>
                   )}
@@ -1836,8 +1688,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                   {isColumnVisible('phone') && contact.phone && <div className="mobile-card-row"><span>Phone:</span> {contact.phone}</div>}
                   {isColumnVisible('email') && contact.email && <div className="mobile-card-row"><span>Email:</span> {contact.email}</div>}
                   {isColumnVisible('address') && contact.address && <div className="mobile-card-row"><span>Address:</span> {contact.address}</div>}
-                  {isColumnVisible('customerType') && contact.customerType && (
-                    <div className="mobile-card-row"><span>Type:</span> {getTypeBadge(contact.customerType)}</div>
+                  {isColumnVisible('customerType') && contact.customerType.length > 0 && (
+                    <div className="mobile-card-row"><span>Type:</span> {getTypeBadges(contact.customerType)}</div>
                   )}
                   {isColumnVisible('notes') && contact.notes && (
                     <div className="mobile-card-row"><span>Notes:</span> {contact.notes}</div>
@@ -1891,54 +1743,67 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="form-group">
                   <label>Address</label>
                   <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Enter address..." rows={2} />
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <div className="contacts-geocode-actions">
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-secondary contacts-btn-inline"
                       onClick={handleGeocode}
                       disabled={geocoding || !form.address.trim()}
-                      style={{ fontSize: '12px', padding: '4px 8px' }}
                     >
                       {geocoding ? 'Geocoding...' : 'Convert to Lat/Lng'}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-secondary contacts-btn-inline"
                       onClick={() => setShowLocationPicker(true)}
-                      style={{ fontSize: '12px', padding: '4px 8px' }}
                     >
                       Pick on Map
                     </button>
                     {form.address_lat && form.address_lng && (
                       <button
                         type="button"
-                        className="btn btn-secondary"
+                        className="btn btn-secondary contacts-btn-inline"
                         onClick={handleClearLocation}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
                       >
                         Clear Location
                       </button>
                     )}
                   </div>
                   {geocodeError && (
-                    <p style={{ fontSize: '12px', color: 'var(--accent-red, #ef4444)', marginTop: '4px' }}>
+                    <p className="contacts-geocode-error">
                       {geocodeError}
                     </p>
                   )}
                   {form.address_lat && form.address_lng && (
-                    <p style={{ fontSize: '12px', color: 'var(--accent-primary)', marginTop: '4px' }}>
+                    <p className="contacts-geocode-success">
                       Location: {form.address_lat}, {form.address_lng}
                     </p>
                   )}
                 </div>
                 <div className="form-group">
                   <label>Customer Type</label>
-                  <select value={form.customer_type} onChange={(e) => setForm({ ...form, customer_type: e.target.value })}>
-                    <option value="">Select type...</option>
+                  <div className="contacts-type-checkboxes">
                     {CUSTOMER_TYPE_OPTIONS.map((type) => (
-                      <option key={type} value={type}>{type}</option>
+                      <label
+                        key={type}
+                        className={`contacts-type-checkbox-label${form.customer_type.includes(type) ? ' selected' : ''}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setForm({
+                            ...form,
+                            customer_type: form.customer_type.includes(type)
+                              ? form.customer_type.filter((t) => t !== type)
+                              : [...form.customer_type, type],
+                          });
+                        }}
+                      >
+                        <span className={`status-badge ${typeColorMap[type] || 'needs-probe'}`}>
+                          <span className="status-dot"></span>
+                          {type}
+                        </span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>Notes</label>
@@ -1994,54 +1859,67 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="form-group">
                   <label>Address</label>
                   <textarea value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} rows={2} />
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                  <div className="contacts-geocode-actions">
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-secondary contacts-btn-inline"
                       onClick={handleGeocode}
                       disabled={geocoding || !form.address.trim()}
-                      style={{ fontSize: '12px', padding: '4px 8px' }}
                     >
                       {geocoding ? 'Geocoding...' : 'Convert to Lat/Lng'}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-secondary contacts-btn-inline"
                       onClick={() => setShowLocationPicker(true)}
-                      style={{ fontSize: '12px', padding: '4px 8px' }}
                     >
                       Pick on Map
                     </button>
                     {form.address_lat && form.address_lng && (
                       <button
                         type="button"
-                        className="btn btn-secondary"
+                        className="btn btn-secondary contacts-btn-inline"
                         onClick={handleClearLocation}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
                       >
                         Clear Location
                       </button>
                     )}
                   </div>
                   {geocodeError && (
-                    <p style={{ fontSize: '12px', color: 'var(--accent-red, #ef4444)', marginTop: '4px' }}>
+                    <p className="contacts-geocode-error">
                       {geocodeError}
                     </p>
                   )}
                   {form.address_lat && form.address_lng && (
-                    <p style={{ fontSize: '12px', color: 'var(--accent-primary)', marginTop: '4px' }}>
+                    <p className="contacts-geocode-success">
                       Location: {form.address_lat}, {form.address_lng}
                     </p>
                   )}
                 </div>
                 <div className="form-group">
                   <label>Customer Type</label>
-                  <select value={form.customer_type} onChange={(e) => setForm({ ...form, customer_type: e.target.value })}>
-                    <option value="">Select type...</option>
+                  <div className="contacts-type-checkboxes">
                     {CUSTOMER_TYPE_OPTIONS.map((type) => (
-                      <option key={type} value={type}>{type}</option>
+                      <label
+                        key={type}
+                        className={`contacts-type-checkbox-label${form.customer_type.includes(type) ? ' selected' : ''}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setForm({
+                            ...form,
+                            customer_type: form.customer_type.includes(type)
+                              ? form.customer_type.filter((t) => t !== type)
+                              : [...form.customer_type, type],
+                          });
+                        }}
+                      >
+                        <span className={`status-badge ${typeColorMap[type] || 'needs-probe'}`}>
+                          <span className="status-dot"></span>
+                          {type}
+                        </span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>Notes</label>
@@ -2061,8 +1939,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
       {/* Add Operation Modal (nested) */}
       {showAddOperationModal && (
-        <div className="detail-panel-overlay" style={{ zIndex: 1001 }} onClick={() => setShowAddOperationModal(false)}>
-          <div className="detail-panel" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="detail-panel-overlay contacts-nested-overlay" onClick={() => setShowAddOperationModal(false)}>
+          <div className="detail-panel contacts-nested-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
               <h3>Add New Operation</h3>
               <button className="close-btn" onClick={() => setShowAddOperationModal(false)}>
@@ -2106,8 +1984,8 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
       {/* Add Billing Entity Modal (nested) */}
       {showAddBillingEntityModal && (
-        <div className="detail-panel-overlay" style={{ zIndex: 1001 }} onClick={() => setShowAddBillingEntityModal(false)}>
-          <div className="detail-panel" style={{ maxWidth: '400px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="detail-panel-overlay contacts-nested-overlay" onClick={() => setShowAddBillingEntityModal(false)}>
+          <div className="detail-panel contacts-nested-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
               <h3>Add New Billing Entity</h3>
               <button className="close-btn" onClick={() => setShowAddBillingEntityModal(false)}>
@@ -2118,7 +1996,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
             </div>
             <div className="detail-panel-content">
               <div className="edit-form">
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                <p className="contacts-billing-entity-info">
                   This billing entity will be linked to: <strong>{operationsList.find((op) => op.id.toString() === form.operations[0])?.name}</strong>
                 </p>
                 <div className="form-group">
@@ -2133,23 +2011,22 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 </div>
                 <div className="form-group">
                   <label>Mailing Address</label>
-                  <div style={{ marginBottom: '8px' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 'normal' }}>
+                  <div>
+                    <label className="contacts-billing-checkbox-label">
                       <input
                         type="checkbox"
                         checked={newBillingEntityForm.sameAddressAsContact}
                         onChange={(e) => setNewBillingEntityForm({ ...newBillingEntityForm, sameAddressAsContact: e.target.checked, address: '' })}
-                        style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                       />
                       Same address as contact
                     </label>
                   </div>
                   {newBillingEntityForm.sameAddressAsContact ? (
-                    <div style={{ padding: '8px 12px', backgroundColor: 'var(--background-secondary)', borderRadius: '6px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                    <div className="contacts-billing-same-address-display">
                       {form.address ? (
-                        <span>Will use: <strong style={{ color: 'var(--text-primary)' }}>{form.address}</strong></span>
+                        <span>Will use: <strong>{form.address}</strong></span>
                       ) : (
-                        <span style={{ fontStyle: 'italic' }}>No address entered for contact yet</span>
+                        <span className="contacts-billing-same-address-empty">No address entered for contact yet</span>
                       )}
                     </div>
                   ) : (

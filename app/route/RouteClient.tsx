@@ -61,21 +61,13 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
 
       <div className="content">
         {/* Search Bar */}
-        <div style={{ marginBottom: '16px' }}>
-          <div style={{ position: 'relative' }}>
+        <div className="route-search-wrapper">
+          <div className="route-search-inner">
             <svg
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '20px',
-                height: '20px',
-                color: 'var(--text-muted)',
-              }}
+              className="route-search-icon"
             >
               <path
                 strokeLinecap="round"
@@ -89,30 +81,12 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
               placeholder="Search fields or operations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 12px 12px 44px',
-                fontSize: '16px',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                background: 'var(--bg-secondary)',
-                color: 'var(--text-primary)',
-              }}
+              className="route-search-input"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: '4px',
-                }}
+                className="route-search-clear"
               >
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -121,21 +95,21 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
             )}
           </div>
           {searchQuery && (
-            <p style={{ marginTop: '8px', fontSize: '14px', color: 'var(--text-muted)' }}>
+            <p className="route-search-results">
               {filteredFields.length} result{filteredFields.length !== 1 ? 's' : ''}
             </p>
           )}
         </div>
 
         {/* Field List */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div className="route-field-list">
           {filteredFields.length === 0 ? (
-            <div className="empty-state" style={{ padding: '40px 20px', textAlign: 'center' }}>
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ width: 48, height: 48, color: 'var(--text-muted)', marginBottom: 16 }}>
+            <div className="empty-state route-empty">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="route-empty-icon">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
               </svg>
-              <h3 style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>No fields found</h3>
-              <p style={{ color: 'var(--text-muted)' }}>
+              <h3 className="route-empty-title">No fields found</h3>
+              <p className="route-empty-text">
                 {searchQuery ? 'Try a different search term.' : 'No fields have been added yet.'}
               </p>
             </div>
@@ -144,45 +118,22 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
               <div
                 key={field.id}
                 onClick={() => setSelectedField(field)}
-                style={{
-                  background: 'var(--bg-secondary)',
-                  borderRadius: '8px',
-                  padding: '12px 16px',
-                  border: '1px solid var(--border)',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-tertiary)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--bg-secondary)')}
+                className="route-field-item"
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, marginBottom: '2px' }}>{field.name}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+                <div className="route-field-info">
+                  <div className="route-field-name">{field.name}</div>
+                  <div className="route-field-meta">
                     {field.operation} {field.acres ? `• ${field.acres} ac` : ''}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
+                <div className="route-field-actions" onClick={(e) => e.stopPropagation()}>
                   {field.lat !== 0 && field.lng !== 0 && (
                     <a
                       href={`https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Navigate to planned location"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '8px 10px',
-                        background: 'var(--accent-blue)',
-                        color: 'white',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        textDecoration: 'none',
-                      }}
+                      className="route-nav-btn route-nav-btn--planned"
                     >
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -197,18 +148,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Navigate to installed location"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        padding: '8px 10px',
-                        background: 'var(--accent-primary)',
-                        color: 'white',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        textDecoration: 'none',
-                      }}
+                      className="route-nav-btn route-nav-btn--installed"
                     >
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -255,7 +195,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                         href={`https://www.google.com/maps?q=${selectedField.lat},${selectedField.lng}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: 'var(--accent-blue)' }}
+                        className="route-link"
                       >
                         {Number(selectedField.lat).toFixed(5)}, {Number(selectedField.lng).toFixed(5)}
                       </a>
@@ -283,9 +223,9 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
 
                 {/* Irrigation Details */}
                 {(selectedField.irrigationType || selectedField.rowDirection) && (
-                  <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
-                    <div className="detail-row" style={{ marginBottom: '8px' }}>
-                      <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Irrigation</span>
+                  <div className="route-detail-divider">
+                    <div className="detail-row route-detail-section-heading">
+                      <span className="detail-label">Irrigation</span>
                     </div>
                     {selectedField.irrigationType && (
                       <div className="detail-row">
@@ -344,9 +284,9 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
 
                 {/* Location Details */}
                 {(selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
-                  <div style={{ borderTop: '1px solid var(--border)', marginTop: '12px', paddingTop: '12px' }}>
-                    <div className="detail-row" style={{ marginBottom: '8px' }}>
-                      <span className="detail-label" style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Location Details</span>
+                  <div className="route-detail-divider">
+                    <div className="detail-row route-detail-section-heading">
+                      <span className="detail-label">Location Details</span>
                     </div>
                     {selectedField.elevation && (
                       <div className="detail-row">
@@ -370,7 +310,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                 )}
               </div>
             </div>
-            <div className="detail-panel-footer" style={{ flexWrap: 'wrap', gap: '8px' }}>
+            <div className="detail-panel-footer route-footer">
               <button className="btn btn-secondary" onClick={() => setSelectedField(null)}>
                 Close
               </button>
@@ -379,8 +319,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                   href={`https://www.google.com/maps/dir/?api=1&destination=${selectedField.lat},${selectedField.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn btn-primary"
-                  style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  className="btn btn-primary route-footer-link"
                 >
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -394,15 +333,7 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
                   href={`https://www.google.com/maps/dir/?api=1&destination=${selectedField.installLat},${selectedField.installLng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn"
-                  style={{
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'var(--accent-primary)',
-                    color: 'white',
-                  }}
+                  className="btn route-footer-link route-footer-link--installed"
                 >
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

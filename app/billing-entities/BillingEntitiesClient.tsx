@@ -167,7 +167,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
         <div className="table-header">
           <h3 className="table-title">All Billing Entities ({filteredEntities.length})</h3>
           <div className="table-actions">
-            <div className="search-box" style={{ width: '200px' }}>
+            <div className="search-box be-search-narrow">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -208,7 +208,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
           <tbody>
             {filteredEntities.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={4} className="be-empty-cell">
                   No billing entities found.
                 </td>
               </tr>
@@ -216,14 +216,14 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
               filteredEntities.map((entity) => (
                 <tr key={entity.id}>
                   <td className="operation-name">{entity.name}</td>
-                  <td style={{ fontSize: '13px' }}>
+                  <td className="be-detail-cell">
                     {entity.operationNames.length > 0 ? entity.operationNames.join(', ') : '—'}
                   </td>
-                  <td style={{ fontSize: '13px' }}>
+                  <td className="be-detail-cell">
                     {entity.contactNames.length > 0 ? entity.contactNames.join(', ') : '—'}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="be-actions">
                       <button className="action-btn" title="Edit" onClick={() => openEditModal(entity)}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -269,7 +269,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
         </div>
       </div>
 
-      <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '16px', padding: '0 4px' }}>
+      <p className="be-hint">
         Operations and contacts are linked through the Contacts page. To associate a billing entity with an operation, edit the contact and set both their operation and billing entity.
       </p>
 

@@ -9,7 +9,7 @@ export interface ProcessedContact {
   address: string;
   addressLat: number | null;
   addressLng: number | null;
-  customerType: string;
+  customerType: string[];
   notes: string;
   operationIds: number[];
   operationNames: string[];
@@ -55,7 +55,7 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
         address: contact.address || '',
         addressLat: contact.address_lat ?? null,
         addressLng: contact.address_lng ?? null,
-        customerType: contact.customer_type?.value || '',
+        customerType: contact.customer_type?.map((ct) => ct.value) || [],
         notes: contact.notes || '',
         operationIds: opIds,
         operationNames: opNames,

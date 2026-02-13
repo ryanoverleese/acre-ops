@@ -7,7 +7,7 @@ import type { ProcessedWeatherStation, BillingEntityOption } from './page';
 const WeatherStationsMap = dynamic(() => import('@/components/WeatherStationsMap'), {
   ssr: false,
   loading: () => (
-    <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)' }}>
+    <div className="ws-map-loading">
       <div className="loading">Loading map...</div>
     </div>
   ),
@@ -46,6 +46,15 @@ const emptyForm: StationForm = {
   pricePaid: '',
   notes: '',
 };
+
+function getStatusClass(status: string): string {
+  switch (status) {
+    case 'Active': return 'ws-status-active';
+    case 'Offline': return 'ws-status-offline';
+    case 'Decommissioned': return 'ws-status-decommissioned';
+    default: return '';
+  }
+}
 
 export default function WeatherStationsClient({
   stations: initialStations,
@@ -238,15 +247,6 @@ export default function WeatherStationsClient({
     }
   };
 
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case 'Active': return { background: '#dcfce7', color: '#166534' };
-      case 'Offline': return { background: '#fef3c7', color: '#92400e' };
-      case 'Decommissioned': return { background: '#fee2e2', color: '#991b1b' };
-      default: return { background: 'var(--bg-tertiary)', color: 'var(--text-muted)' };
-    }
-  };
-
   // Stats
   const activeCount = stations.filter(s => s.status === 'Active').length;
   const offlineCount = stations.filter(s => s.status === 'Offline').length;
@@ -274,135 +274,146 @@ export default function WeatherStationsClient({
   return (
     <>
       {/* Page Header */}
-      <div className="page-header">
-        <div className="page-header-content">
-          <h1>Weather Stations</h1>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-              {stations.length} total · {activeCount} active{offlineCount > 0 ? ` · ${offlineCount} offline` : ''}
-            </span>
-          </div>
+      <header className="header">
+        <div className="header-left">
+          <h2>Weather Stations</h2>
+          <span className="ws-header-stats">
+            {stations.length} total · {activeCount} active{offlineCount > 0 ? ` · ${offlineCount} offline` : ''}
+          </span>
         </div>
-        <div className="page-header-actions">
-          <div style={{ display: 'flex', gap: '4px', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' }}>
+        <div className="header-right">
+          <div className="ws-view-toggle">
             <button
               onClick={() => setView('table')}
-              style={{
-                padding: '6px 12px', fontSize: '13px', border: 'none', cursor: 'pointer',
-                background: view === 'table' ? 'var(--bg-tertiary)' : 'var(--bg-card)',
-                color: view === 'table' ? 'var(--text-primary)' : 'var(--text-muted)',
-                fontWeight: view === 'table' ? 600 : 400,
-              }}
+              className={`ws-view-toggle-btn${view === 'table' ? ' active' : ''}`}
             >
               Table
             </button>
             <button
               onClick={() => setView('map')}
-              style={{
-                padding: '6px 12px', fontSize: '13px', border: 'none', cursor: 'pointer',
-                background: view === 'map' ? 'var(--bg-tertiary)' : 'var(--bg-card)',
-                color: view === 'map' ? 'var(--text-primary)' : 'var(--text-muted)',
-                fontWeight: view === 'map' ? 600 : 400,
-              }}
+              className={`ws-view-toggle-btn${view === 'map' ? ' active' : ''}`}
             >
               Map
             </button>
           </div>
           <button className="btn btn-primary" onClick={handleOpenAdd}>+ Add Station</button>
         </div>
-      </div>
+      </header>
 
-      {/* Filters */}
-      <div className="filters-bar" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-        <input
-          type="text"
-          placeholder="Search stations..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="form-group input"
-          style={{ maxWidth: '240px', fontSize: '13px' }}
-        />
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          className="form-group input"
-          style={{ maxWidth: '160px', fontSize: '13px' }}
-        >
-          <option value="all">All Statuses</option>
-          {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
-        <select
-          value={filterBE}
-          onChange={(e) => setFilterBE(e.target.value)}
-          className="form-group input"
-          style={{ maxWidth: '200px', fontSize: '13px' }}
-        >
-          <option value="all">All Billing Entities</option>
-          {beWithStations.map(be => <option key={be.id} value={String(be.id)}>{be.name}</option>)}
-        </select>
-        <select
-          value={filterConnectivity}
-          onChange={(e) => setFilterConnectivity(e.target.value)}
-          className="form-group input"
-          style={{ maxWidth: '160px', fontSize: '13px' }}
-        >
-          <option value="all">All Connectivity</option>
-          {connectivityOptions.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-      </div>
+      <div className="content">
+        {/* Filters */}
+        <div className="ws-filters">
+          <input
+            type="text"
+            placeholder="Search stations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="ws-filter-input"
+          />
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="ws-filter-select"
+          >
+            <option value="all">All Statuses</option>
+            {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            value={filterBE}
+            onChange={(e) => setFilterBE(e.target.value)}
+            className="ws-filter-select"
+          >
+            <option value="all">All Billing Entities</option>
+            {beWithStations.map(be => <option key={be.id} value={String(be.id)}>{be.name}</option>)}
+          </select>
+          <select
+            value={filterConnectivity}
+            onChange={(e) => setFilterConnectivity(e.target.value)}
+            className="ws-filter-select"
+          >
+            <option value="all">All Connectivity</option>
+            {connectivityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
 
-      {/* Table View */}
-      {view === 'table' && (
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th onClick={() => handleSort('stationName')} style={{ cursor: 'pointer' }}>Station Name{sortIcon('stationName')}</th>
-                <th onClick={() => handleSort('billingEntityName')} style={{ cursor: 'pointer' }}>Billing Entity{sortIcon('billingEntityName')}</th>
-                <th onClick={() => handleSort('model')} style={{ cursor: 'pointer' }}>Model{sortIcon('model')}</th>
-                <th onClick={() => handleSort('status')} style={{ cursor: 'pointer' }}>Status{sortIcon('status')}</th>
-                <th onClick={() => handleSort('connectivityType')} style={{ cursor: 'pointer' }}>Connectivity{sortIcon('connectivityType')}</th>
-                <th onClick={() => handleSort('installDate')} style={{ cursor: 'pointer' }}>Install Date{sortIcon('installDate')}</th>
-                <th onClick={() => handleSort('pricePaid')} style={{ cursor: 'pointer', textAlign: 'right' }}>Price{sortIcon('pricePaid')}</th>
-              </tr>
-            </thead>
-            <tbody>
+        {/* Table View */}
+        {view === 'table' && (
+          <>
+            <div className="table-container">
+              <table className="desktop-table">
+                <thead>
+                  <tr>
+                    <th className="sortable" onClick={() => handleSort('stationName')}>Station Name{sortIcon('stationName')}</th>
+                    <th className="sortable" onClick={() => handleSort('billingEntityName')}>Billing Entity{sortIcon('billingEntityName')}</th>
+                    <th className="sortable" onClick={() => handleSort('model')}>Model{sortIcon('model')}</th>
+                    <th className="sortable" onClick={() => handleSort('status')}>Status{sortIcon('status')}</th>
+                    <th className="sortable" onClick={() => handleSort('connectivityType')}>Connectivity{sortIcon('connectivityType')}</th>
+                    <th className="sortable" onClick={() => handleSort('installDate')}>Install Date{sortIcon('installDate')}</th>
+                    <th className="sortable ws-cell-price" onClick={() => handleSort('pricePaid')}>Price{sortIcon('pricePaid')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStations.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="entity-empty">
+                        {stations.length === 0 ? 'No weather stations yet. Click "+ Add Station" to create one.' : 'No stations match your filters.'}
+                      </td>
+                    </tr>
+                  )}
+                  {filteredStations.map(station => (
+                    <tr key={station.id} onClick={() => handleOpenDetail(station)} className="clickable-row">
+                      <td className="ws-cell-name">{station.stationName || '—'}</td>
+                      <td>{station.billingEntityName || '—'}</td>
+                      <td>{station.model || '—'}</td>
+                      <td>
+                        <span className={`status-badge ${getStatusClass(station.status)}`}>
+                          {station.status || '—'}
+                        </span>
+                      </td>
+                      <td>{station.connectivityType || '—'}</td>
+                      <td>{station.installDate || '—'}</td>
+                      <td className="ws-cell-price">{station.pricePaid ? `$${station.pricePaid.toFixed(2)}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="mobile-cards">
               {filteredStations.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="entity-empty">
-                    {stations.length === 0 ? 'No weather stations yet. Click "+ Add Station" to create one.' : 'No stations match your filters.'}
-                  </td>
-                </tr>
+                <div className="empty-state">
+                  <p>{stations.length === 0 ? 'No weather stations yet.' : 'No stations match your filters.'}</p>
+                </div>
               )}
               {filteredStations.map(station => (
-                <tr key={station.id} onClick={() => handleOpenDetail(station)} style={{ cursor: 'pointer' }}>
-                  <td style={{ fontWeight: 500 }}>{station.stationName || '—'}</td>
-                  <td>{station.billingEntityName || '—'}</td>
-                  <td>{station.model || '—'}</td>
-                  <td>
-                    <span
-                      className="status-badge"
-                      style={{ ...getStatusStyle(station.status), padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: 600 }}
-                    >
+                <div key={station.id} className="mobile-card" onClick={() => handleOpenDetail(station)}>
+                  <div className="mobile-card-header">
+                    <span className="mobile-card-title">{station.stationName || `Station #${station.id}`}</span>
+                    <span className={`status-badge ${getStatusClass(station.status)}`}>
                       {station.status || '—'}
                     </span>
-                  </td>
-                  <td>{station.connectivityType || '—'}</td>
-                  <td>{station.installDate || '—'}</td>
-                  <td style={{ textAlign: 'right' }}>{station.pricePaid ? `$${station.pricePaid.toFixed(2)}` : '—'}</td>
-                </tr>
+                  </div>
+                  <div className="mobile-card-body">
+                    <div className="mobile-card-row"><span>Entity:</span> {station.billingEntityName || '—'}</div>
+                    <div className="mobile-card-row"><span>Model:</span> {station.model || '—'}</div>
+                    <div className="mobile-card-row"><span>Connectivity:</span> {station.connectivityType || '—'}</div>
+                    {station.installDate && <div className="mobile-card-row"><span>Installed:</span> {station.installDate}</div>}
+                    {station.pricePaid > 0 && <div className="mobile-card-row"><span>Price:</span> ${station.pricePaid.toFixed(2)}</div>}
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            </div>
+          </>
+        )}
 
-      {/* Map View */}
-      {view === 'map' && (
-        <div style={{ borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <WeatherStationsMap stations={mapStations} onClose={() => setView('table')} />
-        </div>
-      )}
+        {/* Map View */}
+        {view === 'map' && (
+          <div className="ws-map-container">
+            <WeatherStationsMap stations={mapStations} onClose={() => setView('table')} />
+          </div>
+        )}
+      </div>
 
       {/* Detail Modal */}
       {showDetailModal && selectedStation && (
@@ -417,11 +428,11 @@ export default function WeatherStationsClient({
               </button>
             </div>
             <div className="detail-panel-content">
-              <div style={{ display: 'grid', gap: '12px' }}>
+              <div className="ws-detail-grid">
                 <div className="detail-row"><span className="detail-label">Station Name</span><span>{selectedStation.stationName || '—'}</span></div>
                 <div className="detail-row"><span className="detail-label">Model</span><span>{selectedStation.model}</span></div>
                 <div className="detail-row"><span className="detail-label">Status</span>
-                  <span className="status-badge" style={{ ...getStatusStyle(selectedStation.status), padding: '2px 8px', borderRadius: '12px', fontSize: '12px' }}>{selectedStation.status}</span>
+                  <span className={`status-badge ${getStatusClass(selectedStation.status)}`}>{selectedStation.status}</span>
                 </div>
                 <div className="detail-row"><span className="detail-label">Billing Entity</span><span>{selectedStation.billingEntityName || '—'}</span></div>
                 <div className="detail-row"><span className="detail-label">Connectivity</span><span>{selectedStation.connectivityType || '—'}</span></div>
@@ -431,9 +442,9 @@ export default function WeatherStationsClient({
                   <div className="detail-row"><span className="detail-label">Coordinates</span><span>{selectedStation.installLat.toFixed(6)}, {selectedStation.installLng.toFixed(6)}</span></div>
                 )}
                 {selectedStation.notes && (
-                  <div className="detail-row" style={{ flexDirection: 'column', gap: '4px' }}>
+                  <div className="detail-row ws-notes-row">
                     <span className="detail-label">Notes</span>
-                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: '13px' }}>{selectedStation.notes}</p>
+                    <p className="ws-notes-text">{selectedStation.notes}</p>
                   </div>
                 )}
               </div>
@@ -520,7 +531,7 @@ export default function WeatherStationsClient({
                     value={form.notes}
                     onChange={(e) => setForm({ ...form, notes: e.target.value })}
                     placeholder="Optional notes about this station..."
-                    style={{ minHeight: '80px', resize: 'vertical' }}
+                    rows={3}
                   />
                 </div>
               </div>
@@ -537,14 +548,8 @@ export default function WeatherStationsClient({
 
       {/* Toast */}
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: '24px', right: '24px', zIndex: 10000,
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', padding: '12px 20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '8px',
-          fontSize: '14px', fontWeight: 500,
-        }}>
-          <svg fill="none" stroke="#16a34a" viewBox="0 0 24 24" width="18" height="18">
+        <div className="ws-toast">
+          <svg fill="none" stroke="var(--accent-primary)" viewBox="0 0 24 24" width="18" height="18">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
           {toast}

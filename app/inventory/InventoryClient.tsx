@@ -210,7 +210,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
 
   return (
     <>
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: '24px' }}>
+      <div className="stats-grid inv-stats-grid">
         <div className="stat-card">
           <div className="stat-label">Total Items</div>
           <div className="stat-value blue">{items.length}</div>
@@ -223,88 +223,53 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
 
       {/* Equipment Needs for Current Season */}
       {(antennaNeeds.length > 0 || batteryNeeds.length > 0 || flagNeeds.length > 0) && (
-        <div className="table-container" style={{ marginBottom: '24px' }}>
+        <div className="table-container inv-needs-panel">
           <div className="table-header">
             <h3 className="table-title">Equipment Needed - {equipmentSeason} Season</h3>
           </div>
-          <div style={{ padding: '16px', display: 'flex', gap: '32px', flexWrap: 'wrap' }}>
+          <div className="inv-needs-body">
             {antennaNeeds.length > 0 && (
-              <div style={{ flex: '1', minWidth: '250px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Antennas</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="inv-needs-column">
+                <h4 className="inv-needs-section-title">Antennas</h4>
+                <div className="inv-needs-list">
                   {antennaNeeds.map((item) => (
-                    <div key={item.type} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius)',
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
-                      <strong style={{ fontSize: '14px', color: 'var(--accent-blue)' }}>{item.count}</strong>
+                    <div key={item.type} className="inv-needs-item">
+                      <span className="inv-needs-item-label">{item.type}</span>
+                      <strong className="inv-needs-count-blue">{item.count}</strong>
                     </div>
                   ))}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    borderTop: '1px solid var(--border)',
-                    marginTop: '4px',
-                  }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total</span>
-                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{antennaNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
+                  <div className="inv-needs-total-row">
+                    <span className="inv-needs-total-label">Total</span>
+                    <strong className="inv-needs-total-value">{antennaNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
                   </div>
                 </div>
               </div>
             )}
             {batteryNeeds.length > 0 && (
-              <div style={{ flex: '1', minWidth: '250px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Batteries</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="inv-needs-column">
+                <h4 className="inv-needs-section-title">Batteries</h4>
+                <div className="inv-needs-list">
                   {batteryNeeds.map((item) => (
-                    <div key={item.type} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius)',
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
-                      <strong style={{ fontSize: '14px', color: 'var(--accent-primary)' }}>{item.count}</strong>
+                    <div key={item.type} className="inv-needs-item">
+                      <span className="inv-needs-item-label">{item.type}</span>
+                      <strong className="inv-needs-count-green">{item.count}</strong>
                     </div>
                   ))}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '8px 12px',
-                    borderTop: '1px solid var(--border)',
-                    marginTop: '4px',
-                  }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>Total</span>
-                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{batteryNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
+                  <div className="inv-needs-total-row">
+                    <span className="inv-needs-total-label">Total</span>
+                    <strong className="inv-needs-total-value">{batteryNeeds.reduce((sum, i) => sum + i.count, 0)}</strong>
                   </div>
                 </div>
               </div>
             )}
             {flagNeeds.length > 0 && (
-              <div style={{ flex: '1', minWidth: '250px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Flags</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div className="inv-needs-column">
+                <h4 className="inv-needs-section-title">Flags</h4>
+                <div className="inv-needs-list">
                   {flagNeeds.map((item) => (
-                    <div key={item.type} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius)',
-                    }}>
-                      <span style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{item.type}</span>
-                      <strong style={{ fontSize: '14px', color: 'var(--accent-orange, #f59e0b)' }}>{item.count}</strong>
+                    <div key={item.type} className="inv-needs-item">
+                      <span className="inv-needs-item-label">{item.type}</span>
+                      <strong className="inv-needs-count-orange">{item.count}</strong>
                     </div>
                   ))}
                 </div>
@@ -318,7 +283,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
         <div className="table-header">
           <h3 className="table-title">Inventory Items ({filteredItems.length})</h3>
           <div className="table-actions">
-            <div className="search-box" style={{ width: '200px' }}>
+            <div className="search-box inv-search-box">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -365,7 +330,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
           <tbody>
             {filteredItems.length === 0 ? (
               <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                <td colSpan={4} className="inv-empty-cell">
                   No items found.
                 </td>
               </tr>
@@ -376,7 +341,7 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                   <td>{getCategoryBadge(item.category)}</td>
                   <td>{item.quantity}</td>
                   <td>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="inv-action-btns">
                       <button className="action-btn" title="Edit" onClick={() => openEditModal(item)}>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -411,29 +376,14 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                     <strong>{item.quantity}</strong>
                   </div>
                 </div>
-                <div className="mobile-card-footer" style={{
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  borderTop: '1px solid var(--border)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
+                <div className="mobile-card-footer inv-mobile-footer">
                   <button
-                    className="btn btn-secondary"
-                    style={{ padding: '6px 12px', fontSize: '12px' }}
+                    className="btn btn-secondary inv-btn-sm"
                     onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
                   >
                     Delete
                   </button>
-                  <span style={{
-                    color: 'var(--accent-primary)',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
+                  <span className="inv-edit-link">
                     Edit
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

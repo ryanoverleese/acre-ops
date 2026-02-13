@@ -210,7 +210,7 @@ export interface Contact {
   address?: string;
   address_lat?: number;
   address_lng?: number;
-  customer_type?: { id: number; value: string };
+  customer_type?: { id: number; value: string }[];
   notes?: string;
   operations?: { id: number; value: string }[];
   billing_entity?: { id: number; value: string }[];
@@ -511,7 +511,7 @@ export async function getTableFieldOptions(tableName: TableName): Promise<TableS
 
   const result: TableSelectOptions = {};
   for (const field of fields) {
-    if (field.type === 'single_select' && field.select_options) {
+    if ((field.type === 'single_select' || field.type === 'multiple_select') && field.select_options) {
       const normalizedName = field.name.replace(/ /g, '_');
       result[normalizedName] = field.select_options;
     }
@@ -549,7 +549,7 @@ export async function getTableFieldOptionsWithMeta(tableName: TableName): Promis
 
   const result: TableSelectOptionsWithMeta = {};
   for (const field of fields) {
-    if (field.type === 'single_select' && field.select_options) {
+    if ((field.type === 'single_select' || field.type === 'multiple_select') && field.select_options) {
       const normalizedName = field.name.replace(/ /g, '_');
       result[normalizedName] = { fieldId: field.id, options: field.select_options };
     }

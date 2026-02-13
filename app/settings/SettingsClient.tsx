@@ -588,14 +588,14 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('appSettings')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+          className="settings-section-toggle"
         >
-          <div style={{ flex: 1 }}>
+          <div className="settings-section-toggle-content">
             <SectionHeader title="Application Settings" />
           </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('appSettings') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
+            className={`settings-chevron${openSections.has('appSettings') ? ' open' : ''}`}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -618,7 +618,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                 <SavedIndicator show={seasonSaved} />
               </div>
             </FormFieldRow>
-            <p className="section-description" style={{ marginTop: '8px', marginBottom: 0 }}>
+            <p className="section-description settings-description-tight">
               This season will be pre-selected when you visit pages with season filters.
             </p>
           </>
@@ -629,9 +629,9 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('tabColumns')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+          className="settings-section-toggle"
         >
-          <div style={{ flex: 1 }}>
+          <div className="settings-section-toggle-content">
             <SectionHeader
               title="Fields Tab Columns"
               actions={<SavedIndicator show={columnsSaved} />}
@@ -639,7 +639,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('tabColumns') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
+            className={`settings-chevron${openSections.has('tabColumns') ? ' open' : ''}`}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -687,9 +687,8 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
               </div>
 
               <button
-                className="btn btn-secondary btn-sm"
+                className="btn btn-secondary btn-sm settings-btn-end"
                 onClick={handleResetColumns}
-                style={{ alignSelf: 'flex-end' }}
               >
                 Reset to Defaults
               </button>
@@ -722,14 +721,14 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('productsServices')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+          className="settings-section-toggle"
         >
-          <div style={{ flex: 1 }}>
+          <div className="settings-section-toggle-content">
             <SectionHeader
               title="Products & Services"
               actions={
                 openSections.has('productsServices') ? (
-                  <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }} style={{ marginLeft: '12px' }}>
+                  <button className="btn btn-primary settings-header-action" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }}>
                     + Add Rate
                   </button>
                 ) : undefined
@@ -738,7 +737,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('productsServices') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
+            className={`settings-chevron${openSections.has('productsServices') ? ' open' : ''}`}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -834,9 +833,9 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                     <>
                       <td className="operation-name">{rate.serviceType}</td>
                       <td className="align-right">{formatCurrency(rate.rate)}</td>
-                      <td className="align-right" style={{ color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
+                      <td className="align-right settings-cell-muted">{formatCurrency(rate.dealerFee)}</td>
                       <td className="align-right discount-text">{formatCurrency(rate.rate - rate.dealerFee)}</td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
+                      <td className="settings-cell-description">{rate.description || '—'}</td>
                       <td>
                         <span className="status-badge installed">
                           <span className="status-dot"></span>
@@ -872,12 +871,12 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
               <table>
                 <tbody>
                   {inactiveRates.map((rate) => (
-                    <tr key={rate.id} style={{ opacity: 0.6 }}>
+                    <tr key={rate.id} className="settings-row-inactive">
                       <td className="operation-name">{rate.serviceType}</td>
                       <td className="align-right">{formatCurrency(rate.rate)}</td>
-                      <td className="align-right" style={{ color: 'var(--text-muted)' }}>{formatCurrency(rate.dealerFee)}</td>
+                      <td className="align-right settings-cell-muted">{formatCurrency(rate.dealerFee)}</td>
                       <td className="align-right">{formatCurrency(rate.rate - rate.dealerFee)}</td>
-                      <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{rate.description || '—'}</td>
+                      <td className="settings-cell-description">{rate.description || '—'}</td>
                       <td>
                         <span className="status-badge pending">
                           <span className="status-dot"></span>
@@ -980,14 +979,14 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('dropdownOptions')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+          className="settings-section-toggle"
         >
-          <div style={{ flex: 1 }}>
+          <div className="settings-section-toggle-content">
             <SectionHeader title="Dropdown Options" />
           </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('dropdownOptions') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
+            className={`settings-chevron${openSections.has('dropdownOptions') ? ' open' : ''}`}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -1004,30 +1003,25 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           if (fieldEntries.length === 0) return null;
 
           return (
-            <div key={tableName} style={{ marginTop: '16px' }}>
-              <h4 className="section-subtitle" style={{ marginBottom: '8px' }}>
+            <div key={tableName} className="settings-dropdown-group">
+              <h4 className="section-subtitle settings-dropdown-subtitle">
                 {TABLE_LABELS[tableName] || tableName}
               </h4>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+              <div className="settings-dropdown-grid">
                 {fieldEntries.sort(([a], [b]) => a.localeCompare(b)).map(([fieldName, meta]) => {
                   const fieldKey = `${tableName}.${fieldName}`;
                   const isSaving = savingField === fieldKey;
                   const isAdding = addingTo === fieldKey;
 
                   return (
-                    <div key={fieldName} style={{
-                      border: '1px solid var(--border)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      background: 'var(--bg-secondary)',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary)' }}>
+                    <div key={fieldName} className="settings-field-card">
+                      <div className="settings-field-card-header">
+                        <span className="settings-field-name">
                           {FIELD_LABELS[fieldName] || fieldName.replace(/_/g, ' ')}
                         </span>
-                        {isSaving && <span style={{ fontSize: '11px', color: 'var(--accent)' }}>Saving...</span>}
+                        {isSaving && <span className="settings-saving-label">Saving...</span>}
                       </div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                      <div className="settings-options-wrap">
                         {meta.options.map((opt, optIndex) => {
                           const isEditing = editingOption?.key === fieldKey && editingOption.optionId === opt.id;
                           const isDragging = dragSource?.tableName === tableName && dragSource?.fieldName === fieldName && dragSource?.index === optIndex;
@@ -1046,16 +1040,8 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                                   if (e.key === 'Escape') { setEditingOption(null); setEditValue(''); }
                                 }}
                                 autoFocus
-                                style={{
-                                  padding: '2px 6px',
-                                  borderRadius: '4px',
-                                  fontSize: '12px',
-                                  border: '2px solid var(--accent)',
-                                  background: 'var(--bg-primary)',
-                                  color: 'var(--text-primary)',
-                                  outline: 'none',
-                                  width: `${Math.max(60, editValue.length * 8 + 20)}px`,
-                                }}
+                                className="settings-option-input"
+                                style={{ width: `${Math.max(60, editValue.length * 8 + 20)}px` }}
                               />
                             );
                           }
@@ -1068,24 +1054,11 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                               onDragOver={(e) => handleDragOver(e, optIndex)}
                               onDrop={() => handleDrop(tableName, fieldName, optIndex)}
                               onDragEnd={handleDragEnd}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                background: isDragOver ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                                border: isDragOver ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
-                                color: isDragOver ? '#fff' : 'var(--text-primary)',
-                                cursor: 'grab',
-                                opacity: isDragging ? 0.4 : 1,
-                                transition: 'all 0.15s ease',
-                              }}
+                              className={`settings-option-tag${isDragging ? ' dragging' : ''}${isDragOver ? ' drag-over' : ''}`}
                             >
                               <span
                                 onClick={() => { setEditingOption({ key: fieldKey, optionId: opt.id }); setEditValue(opt.value); }}
-                                style={{ cursor: 'pointer' }}
+                                className="settings-option-label"
                                 title="Click to rename, drag to reorder"
                               >
                                 {opt.value}
@@ -1093,16 +1066,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                               <button
                                 onClick={() => handleRemoveOption(tableName, fieldName, opt.id)}
                                 disabled={isSaving}
-                                style={{
-                                  background: 'none',
-                                  border: 'none',
-                                  color: isDragOver ? '#fff' : 'var(--text-muted)',
-                                  cursor: 'pointer',
-                                  padding: '0 2px',
-                                  fontSize: '14px',
-                                  lineHeight: 1,
-                                  opacity: 0.6,
-                                }}
+                                className="settings-option-remove"
                                 title="Remove option"
                               >
                                 &times;
@@ -1112,7 +1076,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                         })}
 
                         {isAdding ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                          <span className="settings-option-add-inline">
                             <input
                               type="text"
                               value={newOptionValue}
@@ -1123,42 +1087,18 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                               }}
                               autoFocus
                               placeholder="New option..."
-                              style={{
-                                padding: '2px 6px',
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                border: '2px solid var(--accent)',
-                                background: 'var(--bg-primary)',
-                                color: 'var(--text-primary)',
-                                outline: 'none',
-                                width: '120px',
-                              }}
+                              className="settings-option-add-input"
                             />
                             <button
                               onClick={() => handleAddOption(tableName, fieldName)}
                               disabled={isSaving || !newOptionValue.trim()}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--text-primary)',
-                                cursor: 'pointer',
-                                padding: '2px 8px',
-                                fontSize: '12px',
-                                fontWeight: 700,
-                              }}
+                              className="settings-inline-save"
                             >
                               Save
                             </button>
                             <button
                               onClick={() => { setAddingTo(null); setNewOptionValue(''); }}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: 'var(--text-muted)',
-                                cursor: 'pointer',
-                                padding: '0 4px',
-                                fontSize: '14px',
-                              }}
+                              className="settings-inline-cancel"
                             >
                               &times;
                             </button>
@@ -1167,19 +1107,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                           <button
                             onClick={() => { setAddingTo(fieldKey); setNewOptionValue(''); }}
                             disabled={isSaving}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '12px',
-                              background: 'none',
-                              border: '1px dashed var(--border)',
-                              color: 'var(--text-muted)',
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
-                            }}
+                            className="settings-add-new-btn"
                           >
                             + Add New
                           </button>
@@ -1200,14 +1128,14 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       <ContentCard className="mb-6">
         <div
           onClick={() => toggleSection('backup')}
-          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+          className="settings-section-toggle"
         >
-          <div style={{ flex: 1 }}>
+          <div className="settings-section-toggle-content">
             <SectionHeader title="Data Backup" />
           </div>
           <svg
             fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            style={{ transition: 'transform 0.2s', transform: openSections.has('backup') ? 'rotate(180deg)' : 'rotate(0deg)', flexShrink: 0, marginBottom: 'var(--space-4)' }}
+            className={`settings-chevron${openSections.has('backup') ? ' open' : ''}`}
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
@@ -1218,7 +1146,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
             <p className="section-description">
               Download a full backup of all your data as a CSV file. Opens in Excel or Google Sheets.
             </p>
-            <div style={{ marginTop: '12px' }}>
+            <div className="settings-backup-actions">
               <button
                 className="btn btn-primary"
                 disabled={backupLoading}

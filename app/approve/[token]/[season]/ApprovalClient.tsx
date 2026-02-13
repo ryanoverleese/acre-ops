@@ -8,7 +8,7 @@ import type { ApprovalField, ApprovalProbeAssignment } from './page';
 const ApprovalMap = dynamic(() => import('./ApprovalMap'), {
   ssr: false,
   loading: () => (
-    <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-card)' }}>
+    <div className="approval-map-loading">
       <div className="loading">Loading map...</div>
     </div>
   ),
@@ -315,22 +315,15 @@ export default function ApprovalClient({ operationName, season, fields: initialF
     const isSaving = saving[key];
     const isSaved = saved[key];
 
+    const buttonClass = `approval-action-btn${status === 'Approved' ? ' is-approved' : status === 'Change Requested' ? ' is-change-requested' : ''}`;
+
     return (
-      <div className="card-actions" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="card-actions">
         {/* Approve / Approved toggle */}
         <button
           onClick={status === 'Approved' ? undoHandler : approveHandler}
           disabled={isSaving}
-          style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-            padding: '12px 24px', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
-            borderRadius: 'var(--radius)', border: 'none', width: '100%',
-            transition: 'all 0.2s',
-            background: status === 'Approved' ? '#16a34a' : status === 'Change Requested' ? 'var(--bg-tertiary)' : '#2563eb',
-            color: status === 'Approved' ? '#fff' : status === 'Change Requested' ? 'var(--text-muted)' : '#fff',
-            transform: status === 'Approved' ? 'scale(1.02)' : 'none',
-            boxShadow: status === 'Approved' ? '0 2px 8px rgba(22,163,74,0.3)' : 'none',
-          }}
+          className={buttonClass}
         >
           {isSaving ? (
             'Saving...'
@@ -348,7 +341,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
 
         {/* Saved indicator */}
         {isSaved && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#16a34a', fontSize: '13px', fontWeight: 600 }}>
+          <div className="approval-saved-indicator">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
@@ -358,27 +351,19 @@ export default function ApprovalClient({ operationName, season, fields: initialF
 
         {/* Change request textarea - always visible for Pending, shows notes for Change Requested */}
         {status === 'Change Requested' && approvalNotes && (
-          <div style={{
-            background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 'var(--radius)',
-            padding: '12px', fontSize: '13px',
-          }}>
-            <strong style={{ display: 'block', marginBottom: '4px' }}>Change Requested:</strong>
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{approvalNotes}</p>
+          <div className="approval-change-box">
+            <strong>Change Requested:</strong>
+            <p>{approvalNotes}</p>
           </div>
         )}
 
         {(status === 'Pending' || status === 'Change Requested') && (
           <textarea
+            className="approval-change-textarea"
             placeholder={status === 'Change Requested' ? 'Add additional notes...' : 'Describe the change you\'d like... (saves automatically)'}
             value={changeNotes[key] || ''}
             onChange={(e) => setChangeNotes((prev) => ({ ...prev, [key]: e.target.value }))}
             onBlur={blurHandler}
-            style={{
-              width: '100%', minHeight: '60px', padding: '10px', fontSize: '14px',
-              borderRadius: 'var(--radius)', border: '1px solid var(--border)',
-              background: 'var(--bg-secondary)', color: 'var(--text-primary)',
-              resize: 'vertical', boxSizing: 'border-box',
-            }}
           />
         )}
       </div>
@@ -434,7 +419,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                   const key = `pa-${pa.id}`;
 
                   return (
-                    <div key={pa.id} className="approval-card expanded" style={{ marginBottom: '16px' }}>
+                    <div key={pa.id} className="approval-card expanded approval-card-spaced">
                       {/* Card Header */}
                       <div className="card-header">
                         <div className="card-title">
@@ -602,7 +587,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
 
         {/* Bottom Bulk Actions */}
         {pendingCount > 0 && (
-          <div className="bulk-actions" style={{ marginTop: '32px', marginBottom: '32px' }}>
+          <div className="bulk-actions bulk-actions-bottom">
             <button
               className="btn btn-primary"
               onClick={handleBulkApprove}

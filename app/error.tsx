@@ -14,36 +14,16 @@ export default function Error({
   }, [error]);
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto', fontFamily: 'monospace' }}>
-      <h2 style={{ color: '#ef4444', marginBottom: '16px' }}>Something went wrong</h2>
-      <div style={{
-        background: '#1a1a2e',
-        color: '#e0e0e0',
-        padding: '16px',
-        borderRadius: '8px',
-        marginBottom: '16px',
-        overflow: 'auto',
-      }}>
-        <p style={{ color: '#ef4444', fontWeight: 'bold' }}>{error.message}</p>
-        {error.digest && <p style={{ color: '#888', fontSize: '12px' }}>Digest: {error.digest}</p>}
-        {error.stack && (
-          <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap', marginTop: '12px', color: '#aaa' }}>
-            {error.stack}
-          </pre>
-        )}
+    <div className="error-page">
+      <div className="error-icon">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="48" height="48">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
       </div>
-      <button
-        onClick={() => reset()}
-        style={{
-          background: '#3b82f6',
-          color: 'white',
-          border: 'none',
-          padding: '8px 16px',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontSize: '14px',
-        }}
-      >
+      <h2 className="error-title">Something went wrong</h2>
+      <p className="error-message">{error.message}</p>
+      {error.digest && <p className="error-digest">Error ID: {error.digest}</p>}
+      <button onClick={() => reset()} className="btn btn-primary">
         Try again
       </button>
     </div>

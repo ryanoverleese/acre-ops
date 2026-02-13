@@ -358,39 +358,115 @@ export default function ApprovalsClient({
     }
   };
 
+  // Render the question selector chips (reused in both grouped and enrolled-only ops)
+  const renderQuestionChips = () => (
+    <div className="approvals-question-chips">
+      {FIELD_INFO_QUESTIONS.map((q) => {
+        const isSelected = selectedQuestions.has(q.key);
+        return (
+          <label
+            key={q.key}
+            className={`approvals-question-chip${isSelected ? ' selected' : ''}`}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {
+                setSelectedQuestions(prev => {
+                  const next = new Set(prev);
+                  if (next.has(q.key)) {
+                    if (next.size > 1) next.delete(q.key);
+                  } else {
+                    next.add(q.key);
+                  }
+                  return next;
+                });
+              }}
+            />
+            {q.label}
+          </label>
+        );
+      })}
+    </div>
+  );
+
+  // Render the link section panel (reused for both grouped and enrolled-only ops)
+  const renderLinkSection = (operationId: number) => (
+    <div
+      className="approvals-link-section"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <p className="approvals-link-description">
+        {linkType === 'field-info'
+          ? 'Share this link with your customer to fill in field details:'
+          : 'Share this link with your customer to approve probe placements:'}
+      </p>
+
+      {/* Question selector for field-info links */}
+      {linkType === 'field-info' && renderQuestionChips()}
+
+      <div className="approvals-link-row">
+        <input
+          type="text"
+          value={getApprovalUrl()}
+          readOnly
+          className="approvals-link-input"
+          onClick={(e) => (e.target as HTMLInputElement).select()}
+        />
+        <button
+          className="btn btn-primary approvals-link-copy-btn"
+          onClick={handleCopyLink}
+        >
+          {linkCopied ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
+      <div className="approvals-link-footer">
+        <span className="approvals-link-generated">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Link generated
+        </span>
+        <button
+          className="btn btn-secondary approvals-regenerate-btn"
+          onClick={() => handleGenerateApprovalLink(operationId, linkType, true)}
+          disabled={approvalLoading}
+        >
+          Regenerate
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* Stats */}
-      <div className="stats-grid" style={{ marginBottom: '24px' }}>
+      <div className="stats-grid">
         <div
-          className="stat-card"
-          style={{ cursor: 'pointer', background: statusFilter === 'all' ? 'var(--bg-tertiary)' : undefined }}
+          className={`stat-card approvals-stat-card${statusFilter === 'all' ? ' active' : ''}`}
           onClick={() => setStatusFilter('all')}
         >
           <div className="stat-label">Total</div>
           <div className="stat-value">{stats.total}</div>
         </div>
         <div
-          className="stat-card"
-          style={{ cursor: 'pointer', background: statusFilter === 'pending' ? 'var(--bg-tertiary)' : undefined }}
+          className={`stat-card approvals-stat-card${statusFilter === 'pending' ? ' active' : ''}`}
           onClick={() => setStatusFilter('pending')}
         >
           <div className="stat-label">Pending</div>
-          <div className="stat-value" style={{ color: stats.pending > 0 ? 'var(--status-yellow)' : undefined }}>
+          <div className={`stat-value${stats.pending > 0 ? ' approvals-stat-value-warning' : ''}`}>
             {stats.pending}
           </div>
         </div>
         <div
-          className="stat-card"
-          style={{ cursor: 'pointer', background: statusFilter === 'approved' ? 'var(--bg-tertiary)' : undefined }}
+          className={`stat-card approvals-stat-card${statusFilter === 'approved' ? ' active' : ''}`}
           onClick={() => setStatusFilter('approved')}
         >
           <div className="stat-label">Approved</div>
           <div className="stat-value green">{stats.approved}</div>
         </div>
         <div
-          className="stat-card"
-          style={{ cursor: 'pointer', background: statusFilter === 'rejected' ? 'var(--bg-tertiary)' : undefined }}
+          className={`stat-card approvals-stat-card${statusFilter === 'rejected' ? ' active' : ''}`}
           onClick={() => setStatusFilter('rejected')}
         >
           <div className="stat-label">Change Requested</div>
@@ -401,11 +477,11 @@ export default function ApprovalsClient({
       <div className="table-container">
         <div className="table-header">
           <h3 className="table-title">Approval Queue</h3>
-          <div className="table-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
+          <div className="table-actions approvals-toolbar">
             <select
+              className="approvals-filter-select"
               value={selectedSeason}
               onChange={(e) => setSelectedSeason(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-              style={{ padding: '6px 10px', fontSize: '13px' }}
             >
               <option value="all">All Seasons</option>
               {availableSeasons.map((season) => (
@@ -414,9 +490,9 @@ export default function ApprovalsClient({
             </select>
 
             <select
+              className="approvals-filter-select-op"
               value={selectedOperation}
               onChange={(e) => setSelectedOperation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-              style={{ padding: '6px 10px', fontSize: '13px', maxWidth: '200px' }}
             >
               <option value="all">All Operations</option>
               {operationSummaries.map((op) => (
@@ -433,7 +509,7 @@ export default function ApprovalsClient({
                 ))}
             </select>
 
-            <div className="search-box" style={{ width: '180px' }}>
+            <div className="search-box approvals-search">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -460,9 +536,9 @@ export default function ApprovalsClient({
           </div>
         </div>
 
-        <div style={{ padding: '16px' }}>
+        <div className="approvals-content">
           {groupedItems.length === 0 && enrolledOnlyOps.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
+            <div className="approvals-empty">
               {statusFilter === 'pending' ? 'No pending approvals.' : 'No items match your filters.'}
             </div>
           ) : (
@@ -471,67 +547,48 @@ export default function ApprovalsClient({
               const groupPendingCount = group.items.filter((i) => i.approvalStatus === 'Pending').length;
 
               return (
-                <div
-                  key={group.operationId}
-                  style={{
-                    marginBottom: '12px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 'var(--radius)',
-                    overflow: 'hidden',
-                  }}
-                >
+                <div key={group.operationId} className="approvals-op-group">
                   {/* Operation Header */}
                   <div
+                    className="approvals-op-header"
                     onClick={() => toggleOperation(group.operationId)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '12px',
-                      padding: '12px 16px',
-                      background: 'var(--bg-tertiary)',
-                      cursor: 'pointer',
-                    }}
                   >
                     <svg
+                      className={`approvals-op-toggle${isExpanded ? ' expanded' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
                       width="16"
                       height="16"
-                      style={{
-                        transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
-                        transition: 'transform 0.2s',
-                        flexShrink: 0,
-                        color: 'var(--text-secondary)',
-                      }}
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
 
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-primary)' }}>
+                    <svg className="approvals-op-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
 
                     <Link
+                      className="approvals-op-name"
                       href="/operations"
                       onClick={(e) => e.stopPropagation()}
-                      style={{ fontWeight: 600, fontSize: '15px', textDecoration: 'none', color: 'inherit' }}
                     >
                       {group.operationName}
                     </Link>
 
-                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                    <span className="approvals-op-count">
                       {group.items.length} probe{group.items.length !== 1 ? 's' : ''}
                     </span>
 
                     {groupPendingCount > 0 && (
-                      <span className="status-badge pending" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                      <span className="status-badge pending approvals-op-pending">
                         {groupPendingCount} pending
                       </span>
                     )}
 
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                    <div className="approvals-op-actions">
                       <button
+                        className="approvals-link-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (linkOperationId === group.operationId && approvalToken && linkType === 'approval') {
@@ -542,18 +599,6 @@ export default function ApprovalsClient({
                           }
                         }}
                         disabled={approvalLoading && linkOperationId === group.operationId}
-                        style={{
-                          background: 'none',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)',
-                          padding: '4px 10px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          color: 'var(--text-secondary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
                         title="Generate customer approval link"
                       >
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
@@ -562,6 +607,7 @@ export default function ApprovalsClient({
                         Approval Link
                       </button>
                       <button
+                        className="approvals-link-btn"
                         onClick={(e) => {
                           e.stopPropagation();
                           if (linkOperationId === group.operationId && approvalToken && linkType === 'field-info') {
@@ -572,18 +618,6 @@ export default function ApprovalsClient({
                           }
                         }}
                         disabled={approvalLoading && linkOperationId === group.operationId}
-                        style={{
-                          background: 'none',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius)',
-                          padding: '4px 10px',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          color: 'var(--text-secondary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                        }}
                         title="Generate field info link for customer"
                       >
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
@@ -595,132 +629,35 @@ export default function ApprovalsClient({
                   </div>
 
                   {/* Approval Link */}
-                  {linkOperationId === group.operationId && approvalToken && (
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        padding: '12px 16px',
-                        background: 'var(--bg-card)',
-                        borderTop: '1px solid var(--border)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '8px',
-                      }}
-                    >
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-                        {linkType === 'field-info'
-                          ? 'Share this link with your customer to fill in field details:'
-                          : 'Share this link with your customer to approve probe placements:'}
-                      </p>
+                  {linkOperationId === group.operationId && approvalToken && renderLinkSection(group.operationId)}
 
-                      {/* Question selector for field-info links */}
-                      {linkType === 'field-info' && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '8px 0' }}>
-                          {FIELD_INFO_QUESTIONS.map((q) => {
-                            const isSelected = selectedQuestions.has(q.key);
-                            return (
-                              <label
-                                key={q.key}
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  padding: '4px 10px',
-                                  borderRadius: '16px',
-                                  fontSize: '12px',
-                                  cursor: 'pointer',
-                                  background: isSelected ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                                  color: isSelected ? '#fff' : 'var(--text-secondary)',
-                                  border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--border)',
-                                  transition: 'all 0.15s ease',
-                                  userSelect: 'none',
-                                }}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => {
-                                    setSelectedQuestions(prev => {
-                                      const next = new Set(prev);
-                                      if (next.has(q.key)) {
-                                        if (next.size > 1) next.delete(q.key);
-                                      } else {
-                                        next.add(q.key);
-                                      }
-                                      return next;
-                                    });
-                                  }}
-                                  style={{ display: 'none' }}
-                                />
-                                {q.label}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input
-                          type="text"
-                          value={getApprovalUrl()}
-                          readOnly
-                          style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)' }}
-                          onClick={(e) => (e.target as HTMLInputElement).select()}
-                        />
-                        <button
-                          className="btn btn-primary"
-                          onClick={handleCopyLink}
-                          style={{ flexShrink: 0, fontSize: '12px', padding: '6px 12px' }}
-                        >
-                          {linkCopied ? 'Copied!' : 'Copy'}
-                        </button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          Link generated
-                        </span>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleGenerateApprovalLink(group.operationId, linkType, true)}
-                          disabled={approvalLoading}
-                          style={{ fontSize: '12px', padding: '4px 8px' }}
-                        >
-                          Regenerate
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Items */}
+                  {/* Items - Desktop Table */}
                   {isExpanded && (
-                    <div style={{ background: 'var(--bg-secondary)' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <div className="approvals-items-wrap">
+                      <table className="approvals-items-table">
                         <thead>
-                          <tr style={{ background: 'var(--bg-card)' }}>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Field</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Serial</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Crop</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Status</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'left', fontSize: '12px', fontWeight: 600 }}>Notes</th>
-                            <th style={{ padding: '8px 12px', textAlign: 'right', fontSize: '12px', fontWeight: 600 }}>Actions</th>
+                          <tr>
+                            <th>Field</th>
+                            <th>Serial</th>
+                            <th>Crop</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
                           {group.items.map((item) => (
-                            <tr key={item.id} style={{ borderTop: '1px solid var(--border)' }}>
-                              <td style={{ padding: '10px 12px', fontSize: '13px', fontWeight: 500 }}>
+                            <tr key={item.id}>
+                              <td className="approvals-field-name">
                                 {item.fieldName} - Probe {item.probeNumber}
                               </td>
-                              <td style={{ padding: '10px 12px', fontSize: '13px', color: 'var(--text-muted)' }}>
-                                {item.probeSerial || '—'}
+                              <td className="approvals-serial">
+                                {item.probeSerial || '\u2014'}
                               </td>
-                              <td style={{ padding: '10px 12px', fontSize: '13px' }}>
+                              <td>
                                 {item.crop}
                               </td>
-                              <td style={{ padding: '10px 12px' }}>
+                              <td>
                                 <span className={`status-badge ${
                                   item.approvalStatus === 'Approved' ? 'installed' :
                                   item.approvalStatus === 'Pending' ? 'pending' : 'needs-probe'
@@ -728,21 +665,20 @@ export default function ApprovalsClient({
                                   {item.approvalStatus}
                                 </span>
                               </td>
-                              <td style={{ padding: '10px 12px', fontSize: '12px', color: 'var(--text-muted)', maxWidth: '200px' }}>
-                                {item.approvalNotes || '—'}
+                              <td className="approvals-notes">
+                                {item.approvalNotes || '\u2014'}
                               </td>
-                              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                              <td className="approvals-actions-cell">
                                 {item.approvalStatus === 'Pending' && (
-                                  <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end' }}>
+                                  <div className="approvals-action-group">
                                     <button
-                                      className="action-btn"
+                                      className="action-btn approvals-action-approve"
                                       title="Approve"
                                       onClick={() => handleApprove(item.id)}
                                       disabled={loading[item.id]}
-                                      style={{ color: 'var(--accent-primary)' }}
                                     >
                                       {loading[item.id] ? (
-                                        <span style={{ fontSize: '12px' }}>...</span>
+                                        <span className="approvals-action-loading">...</span>
                                       ) : (
                                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -750,11 +686,10 @@ export default function ApprovalsClient({
                                       )}
                                     </button>
                                     <button
-                                      className="action-btn"
+                                      className="action-btn approvals-action-reject"
                                       title="Request Change"
                                       onClick={() => handleReject(item.id)}
                                       disabled={loading[item.id]}
-                                      style={{ color: 'var(--status-red)' }}
                                     >
                                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -763,7 +698,7 @@ export default function ApprovalsClient({
                                   </div>
                                 )}
                                 {item.approvalStatus === 'Approved' && (
-                                  <span style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>
+                                  <span className="approvals-approved-date">
                                     {item.approvalDate}
                                   </span>
                                 )}
@@ -772,52 +707,100 @@ export default function ApprovalsClient({
                           ))}
                         </tbody>
                       </table>
+
+                      {/* Items - Mobile Cards */}
+                      <div className="approvals-mobile-cards">
+                        {group.items.map((item) => (
+                          <div key={item.id} className="approvals-mobile-card">
+                            <div className="approvals-mobile-card-header">
+                              <div className="approvals-mobile-card-title">
+                                {item.fieldName} - Probe {item.probeNumber}
+                              </div>
+                              <span className={`status-badge ${
+                                item.approvalStatus === 'Approved' ? 'installed' :
+                                item.approvalStatus === 'Pending' ? 'pending' : 'needs-probe'
+                              }`}>
+                                {item.approvalStatus}
+                              </span>
+                            </div>
+                            <div className="approvals-mobile-card-body">
+                              <div className="approvals-mobile-card-row">
+                                <span className="approvals-mobile-card-label">Serial</span>
+                                <span>{item.probeSerial || '\u2014'}</span>
+                              </div>
+                              <div className="approvals-mobile-card-row">
+                                <span className="approvals-mobile-card-label">Crop</span>
+                                <span>{item.crop}</span>
+                              </div>
+                              <div className="approvals-mobile-card-row">
+                                <span className="approvals-mobile-card-label">Operation</span>
+                                <span>{group.operationName}</span>
+                              </div>
+                              {item.approvalNotes && (
+                                <div className="approvals-mobile-card-row">
+                                  <span className="approvals-mobile-card-label">Notes</span>
+                                  <span>{item.approvalNotes}</span>
+                                </div>
+                              )}
+                              {item.approvalStatus === 'Approved' && item.approvalDate && (
+                                <div className="approvals-mobile-card-row">
+                                  <span className="approvals-mobile-card-label">Approved</span>
+                                  <span className="approvals-approved-date">{item.approvalDate}</span>
+                                </div>
+                              )}
+                            </div>
+                            {item.approvalStatus === 'Pending' && (
+                              <div className="approvals-mobile-card-actions">
+                                <button
+                                  className="btn btn-primary"
+                                  onClick={() => handleApprove(item.id)}
+                                  disabled={loading[item.id]}
+                                >
+                                  {loading[item.id] ? 'Approving...' : 'Approve'}
+                                </button>
+                                <button
+                                  className="btn btn-secondary"
+                                  onClick={() => handleReject(item.id)}
+                                  disabled={loading[item.id]}
+                                >
+                                  Request Change
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               );
             }),
             ...enrolledOnlyOps.map((op) => (
-              <div
-                key={`enrolled-${op.id}`}
-                style={{
-                  marginBottom: '12px',
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius)',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 16px',
-                    background: 'var(--bg-tertiary)',
-                  }}
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20" style={{ color: 'var(--accent-primary)' }}>
+              <div key={`enrolled-${op.id}`} className="approvals-op-group">
+                <div className="approvals-op-header">
+                  <svg className="approvals-op-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
 
                   <Link
+                    className="approvals-op-name"
                     href="/operations"
                     onClick={(e) => e.stopPropagation()}
-                    style={{ fontWeight: 600, fontSize: '15px', textDecoration: 'none', color: 'inherit' }}
                   >
                     {op.name}
                   </Link>
 
-                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  <span className="approvals-op-count">
                     {op.fieldCount} field{op.fieldCount !== 1 ? 's' : ''} enrolled
                   </span>
 
-                  <span className="status-badge pending" style={{ fontSize: '11px', padding: '2px 8px' }}>
+                  <span className="status-badge pending approvals-op-pending">
                     No probes
                   </span>
 
-                  <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                  <div className="approvals-op-actions">
                     <button
+                      className="approvals-link-btn"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (linkOperationId === op.id && approvalToken && linkType === 'field-info') {
@@ -828,18 +811,6 @@ export default function ApprovalsClient({
                         }
                       }}
                       disabled={approvalLoading && linkOperationId === op.id}
-                      style={{
-                        background: 'none',
-                        border: '1px solid var(--border)',
-                        borderRadius: 'var(--radius)',
-                        padding: '4px 10px',
-                        fontSize: '12px',
-                        cursor: 'pointer',
-                        color: 'var(--text-secondary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                      }}
                       title="Generate field info link for customer"
                     >
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
@@ -851,100 +822,7 @@ export default function ApprovalsClient({
                 </div>
 
                 {/* Field Info Link */}
-                {linkOperationId === op.id && approvalToken && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      padding: '12px 16px',
-                      background: 'var(--bg-card)',
-                      borderTop: '1px solid var(--border)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                    }}
-                  >
-                    <p style={{ fontSize: '13px', color: 'var(--text-secondary)', margin: 0 }}>
-                      Share this link with your customer to fill in field details:
-                    </p>
-
-                    {/* Question selector */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', padding: '8px 0' }}>
-                      {FIELD_INFO_QUESTIONS.map((q) => {
-                        const isSelected = selectedQuestions.has(q.key);
-                        return (
-                          <label
-                            key={q.key}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '4px 10px',
-                              borderRadius: '16px',
-                              fontSize: '12px',
-                              cursor: 'pointer',
-                              background: isSelected ? 'var(--accent-primary)' : 'var(--bg-tertiary)',
-                              color: isSelected ? '#fff' : 'var(--text-secondary)',
-                              border: isSelected ? '1px solid var(--accent-primary)' : '1px solid var(--border)',
-                              transition: 'all 0.15s ease',
-                              userSelect: 'none',
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {
-                                setSelectedQuestions(prev => {
-                                  const next = new Set(prev);
-                                  if (next.has(q.key)) {
-                                    if (next.size > 1) next.delete(q.key);
-                                  } else {
-                                    next.add(q.key);
-                                  }
-                                  return next;
-                                });
-                              }}
-                              style={{ display: 'none' }}
-                            />
-                            {q.label}
-                          </label>
-                        );
-                      })}
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                      <input
-                        type="text"
-                        value={getApprovalUrl()}
-                        readOnly
-                        style={{ flex: 1, fontSize: '12px', fontFamily: 'monospace', padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--radius)', background: 'var(--bg-secondary)' }}
-                        onClick={(e) => (e.target as HTMLInputElement).select()}
-                      />
-                      <button
-                        className="btn btn-primary"
-                        onClick={handleCopyLink}
-                        style={{ flexShrink: 0, fontSize: '12px', padding: '6px 12px' }}
-                      >
-                        {linkCopied ? 'Copied!' : 'Copy'}
-                      </button>
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', color: 'var(--accent-primary)' }}>
-                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ display: 'inline', verticalAlign: 'middle', marginRight: '4px' }}>
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Link generated
-                      </span>
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => handleGenerateApprovalLink(op.id, 'field-info', true)}
-                        disabled={approvalLoading}
-                        style={{ fontSize: '12px', padding: '4px 8px' }}
-                      >
-                        Regenerate
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {linkOperationId === op.id && approvalToken && renderLinkSection(op.id)}
               </div>
             ))]
           )}

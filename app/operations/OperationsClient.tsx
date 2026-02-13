@@ -307,7 +307,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
             <tbody>
               {filteredOperations.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                  <td colSpan={7} className="ops-empty-cell">
                     {searchQuery ? 'No matching operations found.' : 'No operations found.'}
                   </td>
                 </tr>
@@ -317,41 +317,41 @@ export default function OperationsClient({ operations: initialOperations, allCon
                     <td className="operation-name">{op.name}</td>
                     <td>
                       {op.linkedContacts.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div className="ops-contacts-col">
                           {op.linkedContacts.map((c) => (
-                            <div key={c.contactId} style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div key={c.contactId} className="ops-contact-row">
                               <span>{c.name}</span>
                               {c.isMainContact && (
-                                <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                                <span className="ops-main-badge">Main</span>
                               )}
                               {c.phone && (
-                                <span style={{ color: 'var(--text-muted)' }}>{c.phone}</span>
+                                <span className="ops-contact-phone">{c.phone}</span>
                               )}
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        <span className="ops-muted">—</span>
                       )}
                     </td>
                     <td>
                       {op.billingEntities.length > 0 ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        <div className="ops-badge-wrap">
                           {op.billingEntities.map((be) => (
                             <span key={be.id} className="status-badge in-stock">{be.name}</span>
                           ))}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)' }}>—</span>
+                        <span className="ops-muted">—</span>
                       )}
                     </td>
                     <td className="field-count">{op.fieldCount}</td>
                     <td className="field-count">{op.probeCount}</td>
-                    <td style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                    <td className="ops-notes-cell">
                       {op.notes || '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
+                      <div className="ops-action-btns">
                         <button className="action-btn" title="Edit" onClick={() => openEditModal(op)}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -378,7 +378,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                 <div key={op.id} className="mobile-card">
                   <div className="mobile-card-header">
                     <span className="mobile-card-title">{op.name}</span>
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="ops-mobile-badges">
                       <span className="status-badge in-stock">{op.fieldCount} fields</span>
                       <span className="status-badge installed">{op.probeCount} probes</span>
                     </div>
@@ -478,18 +478,18 @@ export default function OperationsClient({ operations: initialOperations, allCon
 
                 {/* Linked Contacts Section */}
                 <div className="form-group">
-                  <label style={{ marginBottom: '12px', display: 'block' }}>Linked Contacts</label>
+                  <label className="ops-linked-label">Linked Contacts</label>
 
                   {linkedContacts.length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    <div className="ops-linked-list">
                       {linkedContacts.map((lc) => (
-                        <div key={lc.contactId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontWeight: 500 }}>{lc.name}</span>
+                        <div key={lc.contactId} className="ops-linked-row">
+                          <div className="ops-linked-info">
+                            <span className="ops-linked-name">{lc.name}</span>
                             {lc.isMainContact && (
-                              <span style={{ fontSize: '10px', background: 'var(--accent-primary-dim)', color: 'var(--accent-primary)', padding: '2px 6px', borderRadius: '4px' }}>Main</span>
+                              <span className="ops-main-badge">Main</span>
                             )}
-                            {lc.phone && <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{lc.phone}</span>}
+                            {lc.phone && <span className="ops-linked-phone">{lc.phone}</span>}
                           </div>
                           <button
                             type="button"
@@ -505,15 +505,14 @@ export default function OperationsClient({ operations: initialOperations, allCon
                       ))}
                     </div>
                   ) : (
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '12px', fontSize: '13px' }}>No contacts linked to this operation.</p>
+                    <p className="ops-no-contacts">No contacts linked to this operation.</p>
                   )}
 
                   {!showAddContactDropdown ? (
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-secondary ops-full-width"
                       onClick={() => setShowAddContactDropdown(true)}
-                      style={{ width: '100%' }}
                     >
                       <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -521,18 +520,18 @@ export default function OperationsClient({ operations: initialOperations, allCon
                       Add Contact
                     </button>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: 'var(--bg-card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+                    <div className="ops-contact-form">
                       <select
+                        className="ops-full-width"
                         value={newContactId}
                         onChange={(e) => setNewContactId(e.target.value)}
-                        style={{ width: '100%' }}
                       >
                         <option value="">Select contact...</option>
                         {availableContacts.map((c) => (
                           <option key={c.id} value={c.id}>{c.name}</option>
                         ))}
                       </select>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+                      <label className="ops-checkbox-label">
                         <input
                           type="checkbox"
                           checked={newContactIsMain}
@@ -540,25 +539,23 @@ export default function OperationsClient({ operations: initialOperations, allCon
                         />
                         Main Contact
                       </label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div className="ops-form-actions">
                         <button
                           type="button"
-                          className="btn btn-secondary"
+                          className="btn btn-secondary ops-flex-1"
                           onClick={() => {
                             setShowAddContactDropdown(false);
                             setNewContactId('');
                             setNewContactIsMain(false);
                           }}
-                          style={{ flex: 1 }}
                         >
                           Cancel
                         </button>
                         <button
                           type="button"
-                          className="btn btn-primary"
+                          className="btn btn-primary ops-flex-1"
                           onClick={handleAddContact}
                           disabled={!newContactId || saving}
-                          style={{ flex: 1 }}
                         >
                           {saving ? 'Adding...' : 'Add'}
                         </button>
