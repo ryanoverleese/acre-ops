@@ -126,9 +126,10 @@ const CROPS = ['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum'];
 interface InstallClientProps {
   probeAssignments: InstallableProbeAssignment[];
   probes: ProbeOption[];
+  allAssignable: InstallableProbeAssignment[];
 }
 
-export default function InstallClient({ probeAssignments: initialAssignments, probes }: InstallClientProps) {
+export default function InstallClient({ probeAssignments: initialAssignments, probes, allAssignable }: InstallClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialAssignments);
   const [installerFilter, setInstallerFilter] = useState<string>('all');
   const [selectedAssignment, setSelectedAssignment] = useState<InstallableProbeAssignment | null>(null);
@@ -139,6 +140,26 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [submitting, setSubmitting] = useState(false);
   const [showCropChange, setShowCropChange] = useState(false);
   const [compressing, setCompressing] = useState<'photoFieldEnd' | 'photoExtra' | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerField, setPickerField] = useState<string>('');
+
+  // Unique field names for the picker
+  const pickerFields = useMemo(() => {
+    const fieldNames = new Set(allAssignable.map(pa => pa.fieldName));
+    return Array.from(fieldNames).sort();
+  }, [allAssignable]);
+
+  // Probe assignments for the selected field in the picker
+  const pickerAssignments = useMemo(() => {
+    if (!pickerField) return [];
+    return allAssignable.filter(pa => pa.fieldName === pickerField);
+  }, [allAssignable, pickerField]);
+
+  const handlePickerSelect = (assignment: InstallableProbeAssignment) => {
+    setShowPicker(false);
+    setPickerField('');
+    handleLogInstall(assignment);
+  };
 
   // Filter by planned installer
   const filteredAssignments = useMemo(() => {
@@ -326,6 +347,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
+          <button className="btn btn-primary" onClick={() => setShowPicker(true)}>
+            Perform Install
+          </button>
         </div>
       </header>
 
@@ -435,6 +459,68 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
           </div>
         )}
       </div>
+
+      {/* Perform Install Picker Modal */}
+      {showPicker && (
+        <div className="detail-panel-overlay" onClick={() => { setShowPicker(false); setPickerField(''); }}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Perform Install</h3>
+              <button className="close-btn" onClick={() => { setShowPicker(false); setPickerField(''); }}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="form-group">
+                <label>Select Field</label>
+                <select
+                  value={pickerField}
+                  onChange={(e) => setPickerField(e.target.value)}
+                  className="install-form-input"
+                >
+                  <option value="">Choose a field...</option>
+                  {pickerFields.map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {pickerField && pickerAssignments.length > 0 && (
+                <div className="form-group">
+                  <label>Select Probe Assignment</label>
+                  <div className="install-picker-list">
+                    {pickerAssignments.map((pa) => (
+                      <button
+                        key={pa.id}
+                        className="install-picker-item"
+                        onClick={() => handlePickerSelect(pa)}
+                      >
+                        <div className="install-picker-item-main">
+                          <span className="install-picker-item-name">
+                            Probe {pa.probeNumber} — #{pa.probeSerial}
+                          </span>
+                          <span className="install-picker-item-meta">
+                            {pa.operation} {pa.crop ? `• ${pa.crop}` : ''}
+                          </span>
+                        </div>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {pickerField && pickerAssignments.length === 0 && (
+                <p className="text-muted">No probe assignments available for this field.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Install Form Modal */}
       {showForm && selectedAssignment && (
