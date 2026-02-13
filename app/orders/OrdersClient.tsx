@@ -438,7 +438,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
 
       {/* List view */}
       {viewMode === 'list' && (
-        <>
+        <div className="table-container">
           {/* Desktop table view */}
           <table className="desktop-table order-list-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
             <colgroup>
@@ -568,7 +568,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
               ))
             )}
           </div>
-        </>
+        </div>
       )}
 
       {/* Detail view */}
