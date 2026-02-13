@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedBillingEntity, OperationOption, ContactOption } from './page';
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  name: 200,
+  operations: 250,
+  contacts: 250,
+};
+const COLUMN_WIDTHS_STORAGE_KEY = 'billing-entities-column-widths';
 
 interface Props {
   initialEntities: ProcessedBillingEntity[];
@@ -19,6 +27,10 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
+  });
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -187,20 +199,50 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
           </div>
         </div>
 
-        <table className="desktop-table">
+        <table className="desktop-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+          <colgroup>
+            <col style={{ width: columnWidths.name }} />
+            <col style={{ width: columnWidths.operations }} />
+            <col style={{ width: columnWidths.contacts }} />
+            <col style={{ width: 80 }} />
+          </colgroup>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => handleSort('name')}>
-                Name
-                {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable th-resizable" onClick={() => handleSort('name')}>
+                <span className="th-content">
+                  Name
+                  {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </span>
+                <div
+                  onMouseDown={(e) => handleResizeStart('name', e)}
+                  onDoubleClick={() => handleResetColumnWidth('name')}
+                  className={`resize-handle${resizingColumn === 'name' ? ' active' : ''}`}
+                  title="Drag to resize, double-click to reset"
+                />
               </th>
-              <th className="sortable" onClick={() => handleSort('operation')}>
-                Operations
-                {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable th-resizable" onClick={() => handleSort('operation')}>
+                <span className="th-content">
+                  Operations
+                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </span>
+                <div
+                  onMouseDown={(e) => handleResizeStart('operations', e)}
+                  onDoubleClick={() => handleResetColumnWidth('operations')}
+                  className={`resize-handle${resizingColumn === 'operations' ? ' active' : ''}`}
+                  title="Drag to resize, double-click to reset"
+                />
               </th>
-              <th className="sortable" onClick={() => handleSort('contact')}>
-                Contacts
-                {sortColumn === 'contact' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable th-resizable" onClick={() => handleSort('contact')}>
+                <span className="th-content">
+                  Contacts
+                  {sortColumn === 'contact' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </span>
+                <div
+                  onMouseDown={(e) => handleResizeStart('contacts', e)}
+                  onDoubleClick={() => handleResetColumnWidth('contacts')}
+                  className={`resize-handle${resizingColumn === 'contacts' ? ' active' : ''}`}
+                  title="Drag to resize, double-click to reset"
+                />
               </th>
               <th></th>
             </tr>

@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from 'react';
 import EmptyState from '@/components/EmptyState';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 export interface ProcessedProbe {
   id: number;
@@ -64,6 +65,17 @@ const RACK_OPTIONS = [
   '11A', '11B', '12A', '12B', '13A', '13B', '14A', '14B', '15A', '15B',
 ];
 
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  serialNumber: 140,
+  brand: 100,
+  status: 100,
+  field: 120,
+  rack: 120,
+  operation: 130,
+  yearNew: 90,
+};
+const COLUMN_WIDTHS_STORAGE_KEY = 'probes-column-widths';
+
 const initialAddForm = {
   serial_number: '',
   brand: '',
@@ -94,6 +106,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
   const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
   const mobileCardsRef = useRef<HTMLDivElement>(null);
+
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
+  });
 
   // Rack numbers for the scrubber (1-15)
   const rackNumbers = Array.from({ length: 15 }, (_, i) => i + 1);
@@ -596,33 +613,64 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         </div>
 
         <div className="table-container">
-          <table className="desktop-table" ref={desktopTableRef}>
+          <table className="desktop-table" ref={desktopTableRef} style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+            <colgroup>
+              <col style={{ width: columnWidths.serialNumber }} />
+              <col style={{ width: columnWidths.brand }} />
+              <col style={{ width: columnWidths.status }} />
+              <col style={{ width: columnWidths.field }} />
+              <col style={{ width: columnWidths.rack }} />
+              <col style={{ width: columnWidths.operation }} />
+              <col style={{ width: columnWidths.yearNew }} />
+              <col style={{ width: 80 }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="sortable" onClick={() => handleSort('serialNumber')}>
-                  Serial Number
-                  {sortColumn === 'serialNumber' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('serialNumber')}>
+                  <span className="th-content">
+                    Serial Number
+                    {sortColumn === 'serialNumber' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div onMouseDown={(e) => handleResizeStart('serialNumber', e)} onDoubleClick={() => handleResetColumnWidth('serialNumber')} className={`resize-handle${resizingColumn === 'serialNumber' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
                 </th>
-                <th className="sortable" onClick={() => handleSort('brand')}>
-                  Brand
-                  {sortColumn === 'brand' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('brand')}>
+                  <span className="th-content">
+                    Brand
+                    {sortColumn === 'brand' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div onMouseDown={(e) => handleResizeStart('brand', e)} onDoubleClick={() => handleResetColumnWidth('brand')} className={`resize-handle${resizingColumn === 'brand' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
                 </th>
-                <th className="sortable" onClick={() => handleSort('status')}>
-                  Status
-                  {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('status')}>
+                  <span className="th-content">
+                    Status
+                    {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div onMouseDown={(e) => handleResizeStart('status', e)} onDoubleClick={() => handleResetColumnWidth('status')} className={`resize-handle${resizingColumn === 'status' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
                 </th>
-                <th className="sortable" onClick={() => handleSort('field')}>
-                  Field
-                  {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('field')}>
+                  <span className="th-content">
+                    Field
+                    {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div onMouseDown={(e) => handleResizeStart('field', e)} onDoubleClick={() => handleResetColumnWidth('field')} className={`resize-handle${resizingColumn === 'field' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
                 </th>
-                <th>Rack Location</th>
-                <th className="sortable" onClick={() => handleSort('operation')}>
-                  Operation
-                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="th-resizable">
+                  <span className="th-content">Rack Location</span>
+                  <div onMouseDown={(e) => handleResizeStart('rack', e)} onDoubleClick={() => handleResetColumnWidth('rack')} className={`resize-handle${resizingColumn === 'rack' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
                 </th>
-                <th className="sortable" onClick={() => handleSort('year')}>
-                  Year New
-                  {sortColumn === 'year' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('operation')}>
+                  <span className="th-content">
+                    Operation
+                    {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div onMouseDown={(e) => handleResizeStart('operation', e)} onDoubleClick={() => handleResetColumnWidth('operation')} className={`resize-handle${resizingColumn === 'operation' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
+                </th>
+                <th className="sortable th-resizable" onClick={() => handleSort('year')}>
+                  <span className="th-content">
+                    Year New
+                    {sortColumn === 'year' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div onMouseDown={(e) => handleResizeStart('yearNew', e)} onDoubleClick={() => handleResetColumnWidth('yearNew')} className={`resize-handle${resizingColumn === 'yearNew' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
                 </th>
                 <th></th>
               </tr>

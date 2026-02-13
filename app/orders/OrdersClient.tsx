@@ -2,7 +2,17 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedOrder, ProcessedOrderItem, CatalogProduct, BillingEntityOption } from './page';
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  customer: 200,
+  status: 120,
+  date: 120,
+  items: 100,
+  total: 120,
+};
+const COLUMN_WIDTHS_STORAGE_KEY = 'orders-column-widths';
 
 interface OrdersClientProps {
   orders: ProcessedOrder[];
@@ -32,6 +42,10 @@ function formatDate(dateStr: string): string {
 
 export default function OrdersClient({ orders: initialOrders, billingEntities, catalog, statusOptions }: OrdersClientProps) {
   const router = useRouter();
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
+  });
   const [orders, setOrders] = useState(initialOrders);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedOrder, setSelectedOrder] = useState<ProcessedOrder | null>(null);
@@ -380,33 +394,27 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
   };
 
   return (
-    <div className="order-page">
-      {/* Toast */}
-      {toast && (
-        <div className="order-toast">
-          {toast}
-        </div>
-      )}
-
-      {/* Header */}
-      <div className="order-header">
-        <div>
-          <h1 className="order-title">
-            Orders &amp; Quotes
-          </h1>
-          <p className="order-subtitle">
-            Create quotes, track orders, and manage fulfillment
-          </p>
+    <>
+      <header className="header">
+        <div className="header-left">
+          <h2>Orders & Quotes</h2>
         </div>
         <button
           onClick={() => { resetCreateForm(); setShowCreateModal(true); }}
-          className="btn btn-primary order-create-btn"
+          className="btn btn-primary"
         >
           + New Quote
         </button>
-      </div>
+      </header>
+      <div className="content">
+        {/* Toast */}
+        {toast && (
+          <div className="order-toast">
+            {toast}
+          </div>
+        )}
 
-      {/* Status filter tabs */}
+        {/* Status filter tabs */}
       <div className="order-filter-tabs">
         {['all', ...statusOptions].map(status => (
           <button
@@ -432,14 +440,61 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       {viewMode === 'list' && (
         <>
           {/* Desktop table view */}
-          <table className="desktop-table order-list-table">
+          <table className="desktop-table order-list-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+            <colgroup>
+              <col style={{ width: columnWidths.customer }} />
+              <col style={{ width: columnWidths.status }} />
+              <col style={{ width: columnWidths.date }} />
+              <col style={{ width: columnWidths.items }} />
+              <col style={{ width: columnWidths.total }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="order-th">Customer</th>
-                <th className="order-th">Status</th>
-                <th className="order-th">Date</th>
-                <th className="order-th">Items</th>
-                <th className="order-th order-th-right">Total</th>
+                <th className="order-th th-resizable">
+                  <span className="th-content">Customer</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('customer', e)}
+                    onDoubleClick={() => handleResetColumnWidth('customer')}
+                    className={`resize-handle${resizingColumn === 'customer' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+                <th className="order-th th-resizable">
+                  <span className="th-content">Status</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('status', e)}
+                    onDoubleClick={() => handleResetColumnWidth('status')}
+                    className={`resize-handle${resizingColumn === 'status' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+                <th className="order-th th-resizable">
+                  <span className="th-content">Date</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('date', e)}
+                    onDoubleClick={() => handleResetColumnWidth('date')}
+                    className={`resize-handle${resizingColumn === 'date' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+                <th className="order-th th-resizable">
+                  <span className="th-content">Items</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('items', e)}
+                    onDoubleClick={() => handleResetColumnWidth('items')}
+                    className={`resize-handle${resizingColumn === 'items' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+                <th className="order-th order-th-right th-resizable">
+                  <span className="th-content">Total</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('total', e)}
+                    onDoubleClick={() => handleResetColumnWidth('total')}
+                    className={`resize-handle${resizingColumn === 'total' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -795,6 +850,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

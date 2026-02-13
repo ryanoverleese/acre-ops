@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedContact, OperationOption, BillingEntityOption } from './page';
 
 // Dynamically import map components with SSR disabled
@@ -66,7 +67,6 @@ const DEFAULT_COLUMN_WIDTHS: Record<ColumnKey, number> = {
   notes: 150,
 };
 
-const MIN_COLUMN_WIDTH = 60;
 const ACTIONS_COLUMN_WIDTH = 80;
 
 const initialForm = {
@@ -127,11 +127,11 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
 
-  // Column width state for resizable columns
-  const [columnWidths, setColumnWidths] = useState<Record<ColumnKey, number>>(DEFAULT_COLUMN_WIDTHS);
-  const [resizingColumn, setResizingColumn] = useState<ColumnKey | null>(null);
-  const resizeStartX = useRef<number>(0);
-  const resizeStartWidth = useRef<number>(0);
+  // Resizable columns
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns<ColumnKey>({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
+  });
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ contactId: number; field: string } | null>(null);
@@ -156,16 +156,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       console.error('Failed to load column preferences:', e);
     }
 
-    // Load column widths
-    try {
-      const savedWidths = localStorage.getItem(COLUMN_WIDTHS_STORAGE_KEY);
-      if (savedWidths) {
-        const parsed = JSON.parse(savedWidths) as Record<string, number>;
-        setColumnWidths((prev) => ({ ...prev, ...parsed }));
-      }
-    } catch (e) {
-      console.error('Failed to load column widths:', e);
-    }
   }, []);
 
   // Save column preferences to localStorage when they change
@@ -176,15 +166,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
       console.error('Failed to save column preferences:', e);
     }
   }, [visibleColumns]);
-
-  // Save column widths to localStorage when they change
-  useEffect(() => {
-    try {
-      localStorage.setItem(COLUMN_WIDTHS_STORAGE_KEY, JSON.stringify(columnWidths));
-    } catch (e) {
-      console.error('Failed to save column widths:', e);
-    }
-  }, [columnWidths]);
 
   // Close column picker when clicking outside
   useEffect(() => {
@@ -209,43 +190,6 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   };
 
   const isColumnVisible = (columnKey: ColumnKey) => visibleColumns.includes(columnKey);
-
-  // Column resize handlers
-  const handleResizeStart = (columnKey: ColumnKey, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setResizingColumn(columnKey);
-    resizeStartX.current = e.clientX;
-    resizeStartWidth.current = columnWidths[columnKey];
-  };
-
-  // Handle mouse move and mouse up for resize
-  useEffect(() => {
-    if (!resizingColumn) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const diff = e.clientX - resizeStartX.current;
-      const newWidth = Math.max(MIN_COLUMN_WIDTH, resizeStartWidth.current + diff);
-      setColumnWidths((prev) => ({ ...prev, [resizingColumn]: newWidth }));
-    };
-
-    const handleMouseUp = () => {
-      setResizingColumn(null);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [resizingColumn]);
-
-  // Reset column width to default on double-click
-  const handleResetColumnWidth = (columnKey: ColumnKey) => {
-    setColumnWidths((prev) => ({ ...prev, [columnKey]: DEFAULT_COLUMN_WIDTHS[columnKey] }));
-  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -1442,121 +1386,121 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
           <thead>
             <tr>
               {isColumnVisible('name') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('name')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('name')}>
+                  <span className="th-content">
                     Name
                     {sortColumn === 'name' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('name', e)}
                     onDoubleClick={() => handleResetColumnWidth('name')}
-                    className={`contacts-resize-handle${resizingColumn === 'name' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'name' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('operation') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('operation')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('operation')}>
+                  <span className="th-content">
                     Operation
                     {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('operation', e)}
                     onDoubleClick={() => handleResetColumnWidth('operation')}
-                    className={`contacts-resize-handle${resizingColumn === 'operation' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'operation' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('billingEntity') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('billingEntity')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('billingEntity')}>
+                  <span className="th-content">
                     Billing Entity
                     {sortColumn === 'billingEntity' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('billingEntity', e)}
                     onDoubleClick={() => handleResetColumnWidth('billingEntity')}
-                    className={`contacts-resize-handle${resizingColumn === 'billingEntity' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'billingEntity' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('role') && (
-                <th className="contacts-th-resizable">
-                  <span className="contacts-th-content">Role</span>
+                <th className="th-resizable">
+                  <span className="th-content">Role</span>
                   <div
                     onMouseDown={(e) => handleResizeStart('role', e)}
                     onDoubleClick={() => handleResetColumnWidth('role')}
-                    className={`contacts-resize-handle${resizingColumn === 'role' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'role' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('email') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('email')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('email')}>
+                  <span className="th-content">
                     Email
                     {sortColumn === 'email' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('email', e)}
                     onDoubleClick={() => handleResetColumnWidth('email')}
-                    className={`contacts-resize-handle${resizingColumn === 'email' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'email' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('phone') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('phone')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('phone')}>
+                  <span className="th-content">
                     Phone
                     {sortColumn === 'phone' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('phone', e)}
                     onDoubleClick={() => handleResetColumnWidth('phone')}
-                    className={`contacts-resize-handle${resizingColumn === 'phone' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'phone' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('address') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('address')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('address')}>
+                  <span className="th-content">
                     Address
                     {sortColumn === 'address' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('address', e)}
                     onDoubleClick={() => handleResetColumnWidth('address')}
-                    className={`contacts-resize-handle${resizingColumn === 'address' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'address' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('customerType') && (
-                <th className="sortable contacts-th-resizable" onClick={() => handleSort('customerType')}>
-                  <span className="contacts-th-content">
+                <th className="sortable th-resizable" onClick={() => handleSort('customerType')}>
+                  <span className="th-content">
                     Type
                     {sortColumn === 'customerType' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
                   </span>
                   <div
                     onMouseDown={(e) => handleResizeStart('customerType', e)}
                     onDoubleClick={() => handleResetColumnWidth('customerType')}
-                    className={`contacts-resize-handle${resizingColumn === 'customerType' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'customerType' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>
               )}
               {isColumnVisible('notes') && (
-                <th className="contacts-th-resizable">
-                  <span className="contacts-th-content">Notes</span>
+                <th className="th-resizable">
+                  <span className="th-content">Notes</span>
                   <div
                     onMouseDown={(e) => handleResizeStart('notes', e)}
                     onDoubleClick={() => handleResetColumnWidth('notes')}
-                    className={`contacts-resize-handle${resizingColumn === 'notes' ? ' active' : ''}`}
+                    className={`resize-handle${resizingColumn === 'notes' ? ' active' : ''}`}
                     title="Drag to resize, double-click to reset"
                   />
                 </th>

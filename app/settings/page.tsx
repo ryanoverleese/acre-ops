@@ -8,6 +8,7 @@ export interface SerializedSelectOptionsWithMeta {
   fields: TableSelectOptionsWithMeta;
   field_seasons: TableSelectOptionsWithMeta;
   probe_assignments: TableSelectOptionsWithMeta;
+  contacts: TableSelectOptionsWithMeta;
 }
 
 interface SettingsData {
@@ -21,7 +22,7 @@ async function getSettingsData(): Promise<SettingsData> {
     const [productsServices, fieldSeasons, allSelectOptions] = await Promise.all([
       getProductsServices(),
       getFieldSeasons(),
-      getAllSelectOptionsWithMeta(['fields', 'field_seasons', 'probe_assignments']),
+      getAllSelectOptionsWithMeta(['fields', 'field_seasons', 'probe_assignments', 'contacts']),
     ]);
 
     // Collect unique seasons from field_seasons
@@ -50,6 +51,7 @@ async function getSettingsData(): Promise<SettingsData> {
         fields: allSelectOptions.fields || {},
         field_seasons: allSelectOptions.field_seasons || {},
         probe_assignments: allSelectOptions.probe_assignments || {},
+        contacts: allSelectOptions.contacts || {},
       },
     };
   } catch (error) {
@@ -57,7 +59,7 @@ async function getSettingsData(): Promise<SettingsData> {
     return {
       productsServices: [],
       availableSeasons: [String(new Date().getFullYear())],
-      selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {} },
+      selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {}, contacts: {} },
     };
   }
 }

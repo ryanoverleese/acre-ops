@@ -9,6 +9,7 @@ import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditS
 import AddFieldModal from '@/components/fields/AddFieldModal';
 import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from './page';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -114,6 +115,21 @@ const TAB_INFO: { key: TabView; label: string }[] = [
 ];
 
 const FIELD_COLUMNS_STORAGE_KEY = 'fields-tab-columns';
+const FIELD_COLUMN_WIDTHS_STORAGE_KEY = 'fields-column-widths';
+
+// Convert string px widths to numeric defaults for resizable columns
+const DEFAULT_FIELD_COLUMN_WIDTHS: Record<string, number> = {
+  field: 140, operation: 100, billingEntity: 120, crop: 90,
+  service: 90, cropConfirmed: 60, hybrid: 100, antenna: 90,
+  battery: 90, sideDress: 80, loggerId: 80, probes: 100,
+  routeOrder: 60, plannedInstaller: 110, readyToInstall: 60, nrcsField: 60,
+  probeStatus: 100, installDate: 100, installer: 100,
+  approvalStatus: 100, removalDate: 100, removalNotes: 150,
+  readyToRemove: 60, earlyRemoval: 60,
+  acres: 80, pivotAcres: 90, irrigationType: 110, rowDirection: 100,
+  waterSource: 100, fuelSource: 100, elevation: 80, soilType: 100,
+  fieldDirections: 150,
+};
 
 export default function FieldsClient({
   initialFields,
@@ -190,6 +206,11 @@ export default function FieldsClient({
   const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
+
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_FIELD_COLUMN_WIDTHS,
+    storageKey: FIELD_COLUMN_WIDTHS_STORAGE_KEY,
+  });
 
   // Persist currentTab to sessionStorage so it survives page reloads
   useEffect(() => {
@@ -1799,7 +1820,14 @@ export default function FieldsClient({
               </div>
               {/* Data View - Inline Editable */}
               <div className="fields-table-wrap">
-                    <table className="desktop-table">
+                    <table className="desktop-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+                      <colgroup>
+                        {inlineEnrollMode && <col style={{ width: 40 }} />}
+                        {visibleColumns.map((colKey) => (
+                          <col key={colKey} style={{ width: columnWidths[colKey] || DEFAULT_FIELD_COLUMN_WIDTHS[colKey] || 80 }} />
+                        ))}
+                        <col style={{ width: 80 }} />
+                      </colgroup>
                       <thead>
                         <tr>
                           {inlineEnrollMode && (
@@ -1826,16 +1854,23 @@ export default function FieldsClient({
                             return (
                               <th
                                 key={colKey}
-                                className="sortable"
-                                style={{ minWidth: COLUMN_MIN_WIDTHS[colKey] || '80px' }}
+                                className="sortable th-resizable"
                                 onClick={() => handleSort(colKey)}
                               >
-                                {colDef.label}
-                                {isSorted && (
-                                  <span className="sort-indicator">
-                                    {sortDirection === 'asc' ? ' ▲' : ' ▼'}
-                                  </span>
-                                )}
+                                <span className="th-content">
+                                  {colDef.label}
+                                  {isSorted && (
+                                    <span className="sort-indicator">
+                                      {sortDirection === 'asc' ? ' ▲' : ' ▼'}
+                                    </span>
+                                  )}
+                                </span>
+                                <div
+                                  onMouseDown={(e) => handleResizeStart(colKey, e)}
+                                  onDoubleClick={() => handleResetColumnWidth(colKey)}
+                                  className={`resize-handle${resizingColumn === colKey ? ' active' : ''}`}
+                                  title="Drag to resize, double-click to reset"
+                                />
                               </th>
                             );
                           })}

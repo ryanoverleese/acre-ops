@@ -413,16 +413,17 @@ export default function WaterRecsClient({
 
   return (
     <>
-      {/* Header */}
-      <div className="wr-header">
-        <h2 className="wr-header-title">Reports</h2>
-        {opsNeedingReports.length > 0 && (
-          <span className="wr-needs-reports-badge">
-            {opsNeedingReports.length} operation{opsNeedingReports.length !== 1 ? 's' : ''} need reports this week
-          </span>
-        )}
-      </div>
-
+      <header className="header">
+        <div className="header-left">
+          <h2>Reports</h2>
+          {opsNeedingReports.length > 0 && (
+            <span className="wr-needs-reports-badge">
+              {opsNeedingReports.length} operation{opsNeedingReports.length !== 1 ? 's' : ''} need reports this week
+            </span>
+          )}
+        </div>
+      </header>
+      <div className="content">
       {/* Controls */}
       <div className="wr-controls">
         <select
@@ -746,6 +747,7 @@ export default function WaterRecsClient({
           {toast}
         </div>
       )}
+      </div>
     </>
   );
 }

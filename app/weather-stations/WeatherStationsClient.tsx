@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProcessedWeatherStation, BillingEntityOption } from './page';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 const WeatherStationsMap = dynamic(() => import('@/components/WeatherStationsMap'), {
   ssr: false,
@@ -47,6 +48,17 @@ const emptyForm: StationForm = {
   notes: '',
 };
 
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  stationName: 180,
+  billingEntity: 150,
+  model: 120,
+  status: 100,
+  connectivity: 120,
+  installDate: 120,
+  price: 100,
+};
+const COLUMN_WIDTHS_STORAGE_KEY = 'weather-stations-column-widths';
+
 function getStatusClass(status: string): string {
   switch (status) {
     case 'Active': return 'ws-status-active';
@@ -78,6 +90,11 @@ export default function WeatherStationsClient({
   const [sortColumn, setSortColumn] = useState<string>('stationName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [toast, setToast] = useState<string | null>(null);
+
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
+  });
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -340,16 +357,81 @@ export default function WeatherStationsClient({
         {view === 'table' && (
           <>
             <div className="table-container">
-              <table className="desktop-table">
+              <table className="desktop-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+                <colgroup>
+                  <col style={{ width: columnWidths.stationName }} />
+                  <col style={{ width: columnWidths.billingEntity }} />
+                  <col style={{ width: columnWidths.model }} />
+                  <col style={{ width: columnWidths.status }} />
+                  <col style={{ width: columnWidths.connectivity }} />
+                  <col style={{ width: columnWidths.installDate }} />
+                  <col style={{ width: columnWidths.price }} />
+                </colgroup>
                 <thead>
                   <tr>
-                    <th className="sortable" onClick={() => handleSort('stationName')}>Station Name{sortIcon('stationName')}</th>
-                    <th className="sortable" onClick={() => handleSort('billingEntityName')}>Billing Entity{sortIcon('billingEntityName')}</th>
-                    <th className="sortable" onClick={() => handleSort('model')}>Model{sortIcon('model')}</th>
-                    <th className="sortable" onClick={() => handleSort('status')}>Status{sortIcon('status')}</th>
-                    <th className="sortable" onClick={() => handleSort('connectivityType')}>Connectivity{sortIcon('connectivityType')}</th>
-                    <th className="sortable" onClick={() => handleSort('installDate')}>Install Date{sortIcon('installDate')}</th>
-                    <th className="sortable ws-cell-price" onClick={() => handleSort('pricePaid')}>Price{sortIcon('pricePaid')}</th>
+                    <th className="sortable th-resizable" onClick={() => handleSort('stationName')}>
+                      <span className="th-content">Station Name{sortIcon('stationName')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('stationName', e)}
+                        onDoubleClick={() => handleResetColumnWidth('stationName')}
+                        className={`resize-handle${resizingColumn === 'stationName' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                    <th className="sortable th-resizable" onClick={() => handleSort('billingEntityName')}>
+                      <span className="th-content">Billing Entity{sortIcon('billingEntityName')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('billingEntity', e)}
+                        onDoubleClick={() => handleResetColumnWidth('billingEntity')}
+                        className={`resize-handle${resizingColumn === 'billingEntity' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                    <th className="sortable th-resizable" onClick={() => handleSort('model')}>
+                      <span className="th-content">Model{sortIcon('model')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('model', e)}
+                        onDoubleClick={() => handleResetColumnWidth('model')}
+                        className={`resize-handle${resizingColumn === 'model' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                    <th className="sortable th-resizable" onClick={() => handleSort('status')}>
+                      <span className="th-content">Status{sortIcon('status')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('status', e)}
+                        onDoubleClick={() => handleResetColumnWidth('status')}
+                        className={`resize-handle${resizingColumn === 'status' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                    <th className="sortable th-resizable" onClick={() => handleSort('connectivityType')}>
+                      <span className="th-content">Connectivity{sortIcon('connectivityType')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('connectivity', e)}
+                        onDoubleClick={() => handleResetColumnWidth('connectivity')}
+                        className={`resize-handle${resizingColumn === 'connectivity' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                    <th className="sortable th-resizable" onClick={() => handleSort('installDate')}>
+                      <span className="th-content">Install Date{sortIcon('installDate')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('installDate', e)}
+                        onDoubleClick={() => handleResetColumnWidth('installDate')}
+                        className={`resize-handle${resizingColumn === 'installDate' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                    <th className="sortable ws-cell-price th-resizable" onClick={() => handleSort('pricePaid')}>
+                      <span className="th-content">Price{sortIcon('pricePaid')}</span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart('price', e)}
+                        onDoubleClick={() => handleResetColumnWidth('price')}
+                        className={`resize-handle${resizingColumn === 'price' ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

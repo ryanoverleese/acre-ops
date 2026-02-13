@@ -2,13 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import {
-  PageHeader,
-  ContentCard,
-  SectionHeader,
   SavedIndicator,
   ColumnTag,
   ColumnTagsContainer,
-  FormFieldRow,
 } from '@/components/ui';
 
 export interface ProcessedProductService {
@@ -39,6 +35,7 @@ interface SerializedSelectOptionsWithMeta {
   fields: TableSelectOptionsWithMeta;
   field_seasons: TableSelectOptionsWithMeta;
   probe_assignments: TableSelectOptionsWithMeta;
+  contacts: TableSelectOptionsWithMeta;
 }
 
 interface SettingsClientProps {
@@ -57,6 +54,7 @@ const TABLE_LABELS: Record<string, string> = {
   fields: 'Fields',
   field_seasons: 'Field Seasons',
   probe_assignments: 'Probe Assignments',
+  contacts: 'Contacts',
 };
 
 const FIELD_LABELS: Record<string, string> = {
@@ -75,6 +73,7 @@ const FIELD_LABELS: Record<string, string> = {
   battery_type: 'Battery Type',
   probe_status: 'Probe Status',
   approval_status: 'Approval Status',
+  customer_type: 'Customer Type',
 };
 
 const GLOBAL_SEASON_KEY = 'acre-ops-global-season';
@@ -582,175 +581,162 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
 
   return (
     <>
-      <PageHeader title="Settings" />
-
-      {/* Application Settings */}
-      <ContentCard className="mb-6">
-        <div
-          onClick={() => toggleSection('appSettings')}
-          className="settings-section-toggle"
-        >
-          <div className="settings-section-toggle-content">
-            <SectionHeader title="Application Settings" />
-          </div>
-          <svg
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            className={`settings-chevron${openSections.has('appSettings') ? ' open' : ''}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+      <header className="header">
+        <div className="header-left">
+          <h2>Settings</h2>
         </div>
+      </header>
 
-        {openSections.has('appSettings') && (
-          <>
-            <FormFieldRow>
-              <div className="form-field">
-                <label>Default Season:</label>
-                <select
-                  className="inline-select"
-                  value={globalSeason}
-                  onChange={(e) => handleSeasonChange(e.target.value)}
-                >
-                  {availableSeasons.map((season) => (
-                    <option key={season} value={season}>{season}</option>
-                  ))}
-                </select>
-                <SavedIndicator show={seasonSaved} />
-              </div>
-            </FormFieldRow>
-            <p className="section-description settings-description-tight">
-              This season will be pre-selected when you visit pages with season filters.
-            </p>
-          </>
-        )}
-      </ContentCard>
-
-      {/* Fields Tab Column Settings */}
-      <ContentCard className="mb-6">
-        <div
-          onClick={() => toggleSection('tabColumns')}
-          className="settings-section-toggle"
-        >
-          <div className="settings-section-toggle-content">
-            <SectionHeader
-              title="Fields Tab Columns"
-              actions={<SavedIndicator show={columnsSaved} />}
-            />
+      <div className="content">
+        {/* Application Settings */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('appSettings')}>
+            <h3 className="table-title">Application Settings</h3>
+            <svg
+              fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+              className={`settings-chevron${openSections.has('appSettings') ? ' open' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
-          <svg
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            className={`settings-chevron${openSections.has('tabColumns') ? ' open' : ''}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
 
-        {openSections.has('tabColumns') && (
-          <>
-            <p className="section-description">
-              Configure which columns are visible for each tab on the Fields page.
-            </p>
-
-            {/* Tab and column dropdowns */}
-            <FormFieldRow className="mb-4">
-              <div>
-                <label className="form-group-label">Tab</label>
-                <select
-                  className="inline-select"
-                  value={selectedColumnTab}
-                  onChange={(e) => setSelectedColumnTab(e.target.value as TabView)}
-                >
-                  {TAB_INFO.map((tab) => (
-                    <option key={tab.key} value={tab.key}>{tab.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="form-group-label">Add Column</label>
-                <select
-                  className="inline-select"
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleToggleColumn(e.target.value as FieldColumnKey);
-                    }
-                  }}
-                >
-                  <option value="">Select column to add...</option>
-                  {ALL_COLUMN_DEFINITIONS
-                    .filter(col => !col.alwaysVisible && !tabColumns[selectedColumnTab].includes(col.key))
-                    .map((col) => (
-                      <option key={col.key} value={col.key}>{col.label}</option>
+          {openSections.has('appSettings') && (
+            <div className="settings-section-content">
+              <div className="form-field-row">
+                <div className="form-field">
+                  <label>Default Season:</label>
+                  <select
+                    className="inline-select"
+                    value={globalSeason}
+                    onChange={(e) => handleSeasonChange(e.target.value)}
+                  >
+                    {availableSeasons.map((season) => (
+                      <option key={season} value={season}>{season}</option>
                     ))}
-                </select>
+                  </select>
+                  <SavedIndicator show={seasonSaved} />
+                </div>
               </div>
-
-              <button
-                className="btn btn-secondary btn-sm settings-btn-end"
-                onClick={handleResetColumns}
-              >
-                Reset to Defaults
-              </button>
-            </FormFieldRow>
-
-            {/* Selected columns as removable tags */}
-            <ColumnTagsContainer>
-              {tabColumns[selectedColumnTab].map((colKey) => {
-                const col = ALL_COLUMN_DEFINITIONS.find(c => c.key === colKey);
-                if (!col) return null;
-                return (
-                  <ColumnTag
-                    key={colKey}
-                    label={col.label}
-                    locked={col.alwaysVisible}
-                    onRemove={() => handleToggleColumn(colKey)}
-                  />
-                );
-              })}
-            </ColumnTagsContainer>
-
-            <div className="column-count">
-              {tabColumns[selectedColumnTab].length} columns selected
+              <p className="section-description settings-description-tight">
+                This season will be pre-selected when you visit pages with season filters.
+              </p>
             </div>
-          </>
-        )}
-      </ContentCard>
-
-      {/* Products & Services */}
-      <ContentCard className="mb-6">
-        <div
-          onClick={() => toggleSection('productsServices')}
-          className="settings-section-toggle"
-        >
-          <div className="settings-section-toggle-content">
-            <SectionHeader
-              title="Products & Services"
-              actions={
-                openSections.has('productsServices') ? (
-                  <button className="btn btn-primary settings-header-action" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }}>
-                    + Add Rate
-                  </button>
-                ) : undefined
-              }
-            />
-          </div>
-          <svg
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            className={`settings-chevron${openSections.has('productsServices') ? ' open' : ''}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+          )}
         </div>
 
-        {openSections.has('productsServices') && (
-          <>
-        <p className="section-description">
-          Define billing rates for each service type. These rates auto-fill when enrolling fields.
-        </p>
+        {/* Fields Tab Column Settings */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('tabColumns')}>
+            <h3 className="table-title">Fields Tab Columns</h3>
+            <div className="table-actions">
+              <SavedIndicator show={columnsSaved} />
+              <svg
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+                className={`settings-chevron${openSections.has('tabColumns') ? ' open' : ''}`}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
 
-        <div className="table-container">
-          <table>
+          {openSections.has('tabColumns') && (
+            <div className="settings-section-content">
+              <p className="section-description">
+                Configure which columns are visible for each tab on the Fields page.
+              </p>
+
+              {/* Tab and column dropdowns */}
+              <div className="form-field-row mb-4">
+                <div>
+                  <label className="form-group-label">Tab</label>
+                  <select
+                    className="inline-select"
+                    value={selectedColumnTab}
+                    onChange={(e) => setSelectedColumnTab(e.target.value as TabView)}
+                  >
+                    {TAB_INFO.map((tab) => (
+                      <option key={tab.key} value={tab.key}>{tab.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-group-label">Add Column</label>
+                  <select
+                    className="inline-select"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleToggleColumn(e.target.value as FieldColumnKey);
+                      }
+                    }}
+                  >
+                    <option value="">Select column to add...</option>
+                    {ALL_COLUMN_DEFINITIONS
+                      .filter(col => !col.alwaysVisible && !tabColumns[selectedColumnTab].includes(col.key))
+                      .map((col) => (
+                        <option key={col.key} value={col.key}>{col.label}</option>
+                      ))}
+                  </select>
+                </div>
+
+                <button
+                  className="btn btn-secondary btn-sm settings-btn-end"
+                  onClick={handleResetColumns}
+                >
+                  Reset to Defaults
+                </button>
+              </div>
+
+              {/* Selected columns as removable tags */}
+              <ColumnTagsContainer>
+                {tabColumns[selectedColumnTab].map((colKey) => {
+                  const col = ALL_COLUMN_DEFINITIONS.find(c => c.key === colKey);
+                  if (!col) return null;
+                  return (
+                    <ColumnTag
+                      key={colKey}
+                      label={col.label}
+                      locked={col.alwaysVisible}
+                      onRemove={() => handleToggleColumn(colKey)}
+                    />
+                  );
+                })}
+              </ColumnTagsContainer>
+
+              <div className="column-count">
+                {tabColumns[selectedColumnTab].length} columns selected
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Products & Services */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('productsServices')}>
+            <h3 className="table-title">Products & Services</h3>
+            <div className="table-actions">
+              {openSections.has('productsServices') && (
+                <button className="btn btn-primary" onClick={(e) => { e.stopPropagation(); setShowAddModal(true); }}>
+                  + Add Rate
+                </button>
+              )}
+              <svg
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+                className={`settings-chevron${openSections.has('productsServices') ? ' open' : ''}`}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          {openSections.has('productsServices') && (
+            <div className="settings-section-content">
+              <p className="section-description">
+                Define billing rates for each service type. These rates auto-fill when enrolling fields.
+              </p>
+
+              <table className="desktop-table">
             <thead>
               <tr>
                 <th>Service Type</th>
@@ -861,47 +847,44 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                 </tr>
               ))}
             </tbody>
-          </table>
+              </table>
+
+              {inactiveRates.length > 0 && (
+                <>
+                  <h4 className="section-subtitle">Inactive Rates</h4>
+                  <table className="desktop-table">
+                    <tbody>
+                      {inactiveRates.map((rate) => (
+                        <tr key={rate.id} className="settings-row-inactive">
+                          <td className="operation-name">{rate.serviceType}</td>
+                          <td className="align-right">{formatCurrency(rate.rate)}</td>
+                          <td className="align-right settings-cell-muted">{formatCurrency(rate.dealerFee)}</td>
+                          <td className="align-right">{formatCurrency(rate.rate - rate.dealerFee)}</td>
+                          <td className="settings-cell-description">{rate.description || '—'}</td>
+                          <td>
+                            <span className="status-badge pending">
+                              <span className="status-dot"></span>
+                              Inactive
+                            </span>
+                          </td>
+                          <td>
+                            <button className="action-btn" title="Reactivate" onClick={() => handleToggleStatus(rate)}>
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
-        {inactiveRates.length > 0 && (
-          <>
-            <h4 className="section-subtitle">Inactive Rates</h4>
-            <div className="table-container">
-              <table>
-                <tbody>
-                  {inactiveRates.map((rate) => (
-                    <tr key={rate.id} className="settings-row-inactive">
-                      <td className="operation-name">{rate.serviceType}</td>
-                      <td className="align-right">{formatCurrency(rate.rate)}</td>
-                      <td className="align-right settings-cell-muted">{formatCurrency(rate.dealerFee)}</td>
-                      <td className="align-right">{formatCurrency(rate.rate - rate.dealerFee)}</td>
-                      <td className="settings-cell-description">{rate.description || '—'}</td>
-                      <td>
-                        <span className="status-badge pending">
-                          <span className="status-dot"></span>
-                          Inactive
-                        </span>
-                      </td>
-                      <td>
-                        <button className="action-btn" title="Reactivate" onClick={() => handleToggleStatus(rate)}>
-                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-          </>
-        )}
-      </ContentCard>
-
-      {/* Add Rate Modal */}
+        {/* Add Rate Modal */}
       {showAddModal && (
         <div className="detail-panel-overlay" onClick={() => setShowAddModal(false)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
@@ -975,28 +958,23 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
         </div>
       )}
 
-      {/* Dropdown Options */}
-      <ContentCard className="mb-6">
-        <div
-          onClick={() => toggleSection('dropdownOptions')}
-          className="settings-section-toggle"
-        >
-          <div className="settings-section-toggle-content">
-            <SectionHeader title="Dropdown Options" />
+        {/* Dropdown Options */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('dropdownOptions')}>
+            <h3 className="table-title">Dropdown Options</h3>
+            <svg
+              fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+              className={`settings-chevron${openSections.has('dropdownOptions') ? ' open' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
-          <svg
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            className={`settings-chevron${openSections.has('dropdownOptions') ? ' open' : ''}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </div>
 
-        {openSections.has('dropdownOptions') && (
-          <>
-        <p className="section-description">
-          Manage dropdown options used across the application. Click an option to rename it, use &times; to remove, or + to add new options.
-        </p>
+          {openSections.has('dropdownOptions') && (
+            <div className="settings-section-content">
+              <p className="section-description">
+                Manage dropdown options used across the application. Click an option to rename it, use &times; to remove, or + to add new options.
+              </p>
 
         {(Object.entries(localOptions) as [string, TableSelectOptionsWithMeta][]).map(([tableName, tableOpts]) => {
           const fieldEntries = (Object.entries(tableOpts) as [string, FieldOptionsMeta][]).filter(([, meta]) => meta.options.length > 0);
@@ -1120,63 +1098,59 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
             </div>
           );
         })}
-          </>
-        )}
-      </ContentCard>
-
-      {/* Data Backup */}
-      <ContentCard className="mb-6">
-        <div
-          onClick={() => toggleSection('backup')}
-          className="settings-section-toggle"
-        >
-          <div className="settings-section-toggle-content">
-            <SectionHeader title="Data Backup" />
-          </div>
-          <svg
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-            className={`settings-chevron${openSections.has('backup') ? ' open' : ''}`}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+            </div>
+          )}
         </div>
 
-        {openSections.has('backup') && (
-          <>
-            <p className="section-description">
-              Download a full backup of all your data as a CSV file. Opens in Excel or Google Sheets.
-            </p>
-            <div className="settings-backup-actions">
-              <button
-                className="btn btn-primary"
-                disabled={backupLoading}
-                onClick={async () => {
-                  setBackupLoading(true);
-                  try {
-                    const response = await fetch('/api/backup');
-                    if (!response.ok) throw new Error('Backup failed');
-                    const blob = await response.blob();
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'acre-ops-backup.csv';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                  } catch {
-                    alert('Failed to download backup. Please try again.');
-                  } finally {
-                    setBackupLoading(false);
-                  }
-                }}
-              >
-                {backupLoading ? 'Downloading...' : 'Download Backup'}
-              </button>
+        {/* Data Backup */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('backup')}>
+            <h3 className="table-title">Data Backup</h3>
+            <svg
+              fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+              className={`settings-chevron${openSections.has('backup') ? ' open' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {openSections.has('backup') && (
+            <div className="settings-section-content">
+              <p className="section-description">
+                Download a full backup of all your data as a CSV file. Opens in Excel or Google Sheets.
+              </p>
+              <div className="settings-backup-actions">
+                <button
+                  className="btn btn-primary"
+                  disabled={backupLoading}
+                  onClick={async () => {
+                    setBackupLoading(true);
+                    try {
+                      const response = await fetch('/api/backup');
+                      if (!response.ok) throw new Error('Backup failed');
+                      const blob = await response.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 'acre-ops-backup.csv';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    } catch {
+                      alert('Failed to download backup. Please try again.');
+                    } finally {
+                      setBackupLoading(false);
+                    }
+                  }}
+                >
+                  {backupLoading ? 'Downloading...' : 'Download Backup'}
+                </button>
+              </div>
             </div>
-          </>
-        )}
-      </ContentCard>
+          )}
+        </div>
+      </div>
     </>
   );
 }

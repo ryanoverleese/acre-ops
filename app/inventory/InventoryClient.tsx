@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedInventoryItem, EquipmentCount } from './page';
 
 interface InventoryClientProps {
@@ -11,6 +12,13 @@ interface InventoryClientProps {
   flagNeeds: EquipmentCount[];
   equipmentSeason: string;
 }
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  itemName: 250,
+  category: 150,
+  quantity: 100,
+};
+const COLUMN_WIDTHS_STORAGE_KEY = 'inventory-column-widths';
 
 const initialForm = {
   itemName: '',
@@ -29,6 +37,10 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('itemName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
+  });
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -309,20 +321,50 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
           </div>
         </div>
 
-        <table className="desktop-table">
+        <table className="desktop-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+          <colgroup>
+            <col style={{ width: columnWidths.itemName }} />
+            <col style={{ width: columnWidths.category }} />
+            <col style={{ width: columnWidths.quantity }} />
+            <col style={{ width: 80 }} />
+          </colgroup>
           <thead>
             <tr>
-              <th className="sortable" onClick={() => handleSort('itemName')}>
-                Item Name
-                {sortColumn === 'itemName' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable th-resizable" onClick={() => handleSort('itemName')}>
+                <span className="th-content">
+                  Item Name
+                  {sortColumn === 'itemName' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </span>
+                <div
+                  onMouseDown={(e) => handleResizeStart('itemName', e)}
+                  onDoubleClick={() => handleResetColumnWidth('itemName')}
+                  className={`resize-handle${resizingColumn === 'itemName' ? ' active' : ''}`}
+                  title="Drag to resize, double-click to reset"
+                />
               </th>
-              <th className="sortable" onClick={() => handleSort('category')}>
-                Category
-                {sortColumn === 'category' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable th-resizable" onClick={() => handleSort('category')}>
+                <span className="th-content">
+                  Category
+                  {sortColumn === 'category' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </span>
+                <div
+                  onMouseDown={(e) => handleResizeStart('category', e)}
+                  onDoubleClick={() => handleResetColumnWidth('category')}
+                  className={`resize-handle${resizingColumn === 'category' ? ' active' : ''}`}
+                  title="Drag to resize, double-click to reset"
+                />
               </th>
-              <th className="sortable" onClick={() => handleSort('quantity')}>
-                Quantity
-                {sortColumn === 'quantity' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+              <th className="sortable th-resizable" onClick={() => handleSort('quantity')}>
+                <span className="th-content">
+                  Quantity
+                  {sortColumn === 'quantity' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                </span>
+                <div
+                  onMouseDown={(e) => handleResizeStart('quantity', e)}
+                  onDoubleClick={() => handleResetColumnWidth('quantity')}
+                  className={`resize-handle${resizingColumn === 'quantity' ? ' active' : ''}`}
+                  title="Drag to resize, double-click to reset"
+                />
               </th>
               <th></th>
             </tr>

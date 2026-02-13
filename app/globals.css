@@ -2045,6 +2045,34 @@ tr.selected {
   }
 }
 
+/* Resizable column headers (shared) */
+.th-resizable {
+  position: relative;
+}
+
+.th-content {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  padding-right: 8px;
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  background: transparent;
+}
+
+.resize-handle:hover,
+.resize-handle.active {
+  background: var(--accent-blue);
+}
+
 @media (max-width: 768px) {
   .desktop-table {
     display: none;
@@ -4085,11 +4113,7 @@ input[type="date"]:focus {
    ORDERS PAGE
    ============================================ */
 
-/* Page layout */
-.order-page {
-  padding: var(--space-6);
-  max-width: 1200px;
-}
+/* Orders header uses standard .header pattern */
 
 /* Toast notification */
 .order-toast {
@@ -4103,34 +4127,6 @@ input[type="date"]:focus {
   box-shadow: var(--shadow-md);
   z-index: 9999;
   font-size: 14px;
-}
-
-/* Header */
-.order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-5);
-}
-
-.order-title {
-  font-family: 'General Sans', sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.order-subtitle {
-  font-size: 14px;
-  color: var(--text-muted);
-  margin: var(--space-1) 0 0;
-}
-
-.order-create-btn {
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
 }
 
 /* Status filter tabs */
@@ -5559,34 +5555,7 @@ input[type="date"]:focus {
   table-layout: fixed;
 }
 
-/* Table header cell with resize handle */
-.contacts-th-resizable {
-  position: relative;
-}
-
-/* Table header content (truncated text inside th) */
-.contacts-th-content {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
-  padding-right: 8px;
-}
-
-/* Column resize handle */
-.contacts-resize-handle {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: 6px;
-  cursor: col-resize;
-  background: transparent;
-}
-
-.contacts-resize-handle.active {
-  background: var(--accent-blue);
-}
+/* Contacts uses shared .th-resizable, .th-content, .resize-handle classes */
 
 /* Table cell that needs truncation */
 .contacts-cell-truncate {
@@ -5884,22 +5853,25 @@ input[type="date"]:focus {
    ============================================ */
 
 /* Collapsible section toggle header */
-.settings-section-toggle {
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
+/* Settings sections use table-container + table-header with collapsible content */
+.settings-section {
+  margin-bottom: var(--space-4);
 }
 
-.settings-section-toggle-content {
-  flex: 1;
+.settings-section .table-header {
+  cursor: pointer;
+}
+
+.settings-section-content {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
 }
 
 /* Chevron icon for collapsible sections */
 .settings-chevron {
   transition: transform 0.2s;
   flex-shrink: 0;
-  margin-bottom: var(--space-4);
+  color: var(--text-muted);
 }
 
 .settings-chevron.open {
@@ -5915,11 +5887,6 @@ input[type="date"]:focus {
 /* Self-aligned button for form rows */
 .settings-btn-end {
   align-self: flex-end;
-}
-
-/* Inline action button next to section header */
-.settings-header-action {
-  margin-left: var(--space-3);
 }
 
 /* Inactive rate row */
@@ -7116,20 +7083,7 @@ input[type="date"]:focus {
 
 /* ── WATER RECS PAGE ────── */
 
-.wr-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.wr-header-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-}
+/* Water Recs header uses standard .header pattern */
 
 .wr-needs-reports-badge {
   font-size: 13px;

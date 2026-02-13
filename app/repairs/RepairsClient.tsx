@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import EmptyState from '@/components/EmptyState';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 export interface ProcessedRepair {
   id: number;
@@ -36,6 +37,17 @@ export interface ProbeAssignmentOption {
   probeNumber: number;
   probeSerial?: string;
 }
+
+const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
+  status: 100,
+  field: 150,
+  operation: 150,
+  problem: 200,
+  reported: 120,
+  repaired: 100,
+  notified: 80,
+};
+const COLUMN_WIDTHS_STORAGE_KEY = 'repairs-column-widths';
 
 interface RepairsClientProps {
   repairs: ProcessedRepair[];
@@ -85,6 +97,11 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
     notified_customer: false,
     probe_replaced: false,
     new_probe_serial: '',
+  });
+
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COLUMN_WIDTHS_STORAGE_KEY,
   });
 
   // Get probe assignments for the selected field_season
@@ -372,28 +389,94 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
               {searchQuery ? `Matching Repairs (${filteredRepairs.length})` : 'All Repairs'}
             </h3>
           </div>
-          <table className="desktop-table">
+          <table className="desktop-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+            <colgroup>
+              <col style={{ width: columnWidths.status }} />
+              <col style={{ width: columnWidths.field }} />
+              <col style={{ width: columnWidths.operation }} />
+              <col style={{ width: columnWidths.problem }} />
+              <col style={{ width: columnWidths.reported }} />
+              <col style={{ width: columnWidths.repaired }} />
+              <col style={{ width: columnWidths.notified }} />
+              <col style={{ width: 80 }} />
+            </colgroup>
             <thead>
               <tr>
-                <th className="sortable" onClick={() => handleSort('status')}>
-                  Status
-                  {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('status')}>
+                  <span className="th-content">
+                    Status
+                    {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('status', e)}
+                    onDoubleClick={() => handleResetColumnWidth('status')}
+                    className={`resize-handle${resizingColumn === 'status' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
-                <th className="sortable" onClick={() => handleSort('field')}>
-                  Field
-                  {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('field')}>
+                  <span className="th-content">
+                    Field
+                    {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('field', e)}
+                    onDoubleClick={() => handleResetColumnWidth('field')}
+                    className={`resize-handle${resizingColumn === 'field' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
-                <th className="sortable" onClick={() => handleSort('operation')}>
-                  Operation
-                  {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="sortable th-resizable" onClick={() => handleSort('operation')}>
+                  <span className="th-content">
+                    Operation
+                    {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('operation', e)}
+                    onDoubleClick={() => handleResetColumnWidth('operation')}
+                    className={`resize-handle${resizingColumn === 'operation' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
-                <th>Problem</th>
-                <th className="sortable" onClick={() => handleSort('reportedAt')}>
-                  Reported
-                  {sortColumn === 'reportedAt' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                <th className="th-resizable">
+                  <span className="th-content">Problem</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('problem', e)}
+                    onDoubleClick={() => handleResetColumnWidth('problem')}
+                    className={`resize-handle${resizingColumn === 'problem' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
                 </th>
-                <th>Repaired</th>
-                <th>Notified</th>
+                <th className="sortable th-resizable" onClick={() => handleSort('reportedAt')}>
+                  <span className="th-content">
+                    Reported
+                    {sortColumn === 'reportedAt' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                  </span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('reported', e)}
+                    onDoubleClick={() => handleResetColumnWidth('reported')}
+                    className={`resize-handle${resizingColumn === 'reported' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+                <th className="th-resizable">
+                  <span className="th-content">Repaired</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('repaired', e)}
+                    onDoubleClick={() => handleResetColumnWidth('repaired')}
+                    className={`resize-handle${resizingColumn === 'repaired' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
+                <th className="th-resizable">
+                  <span className="th-content">Notified</span>
+                  <div
+                    onMouseDown={(e) => handleResizeStart('notified', e)}
+                    onDoubleClick={() => handleResetColumnWidth('notified')}
+                    className={`resize-handle${resizingColumn === 'notified' ? ' active' : ''}`}
+                    title="Drag to resize, double-click to reset"
+                  />
+                </th>
                 <th></th>
               </tr>
             </thead>
