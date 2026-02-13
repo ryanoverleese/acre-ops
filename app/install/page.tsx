@@ -1,5 +1,5 @@
 import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations, getProbeAssignments, getContacts } from '@/lib/baserow';
-import InstallClient, { InstallableProbeAssignment } from './InstallClient';
+import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
 
 // Force dynamic rendering - don't cache this page
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export interface ProbeOption {
   rackSlot: string;
 }
 
-async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[]; allAssignable: InstallableProbeAssignment[] }> {
+async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[]; allAssignable: InstallableProbeAssignment[]; installedProbes: InstalledProbeData[] }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getFields(),
@@ -194,15 +194,58 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName) || a.probeNumber - b.probeNumber);
 
-    return { probeAssignments: installableAssignments, probes: probeOptions, allAssignable };
+    // Installed probes for the current season with full install data
+    const installedProbes: InstalledProbeData[] = probeAssignments
+      .filter((pa) => {
+        const fsId = pa.field_season?.[0]?.id;
+        if (!fsId) return false;
+        const fs = fieldSeasonMap.get(fsId);
+        if (!fs || fs.season !== 2026) return false;
+        return pa.probe_status?.value?.toLowerCase() === 'installed';
+      })
+      .map((pa) => {
+        const fieldSeasonId = pa.field_season?.[0]?.id || 0;
+        const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
+        const fieldId = fieldSeason?.field?.[0]?.id;
+        const field = fieldId ? fieldMap.get(fieldId) : null;
+        let operationName = 'Unknown';
+        if (field?.billing_entity?.[0]) {
+          const opId = billingToOperationMap.get(field.billing_entity[0].id);
+          if (opId) operationName = operationMap.get(opId) || 'Unknown';
+        }
+        const probeId = pa.probe?.[0]?.id;
+        const probe = probeId ? probeMap.get(probeId) : null;
+        return {
+          id: pa.id,
+          fieldSeasonId,
+          fieldName: field?.name || 'Unknown Field',
+          operation: operationName,
+          probeNumber: pa.probe_number || 1,
+          probeSerial: probe?.serial_number || '',
+          probeBrand: probe?.brand?.value || '',
+          crop: fieldSeason?.crop?.value || '',
+          installer: pa.installer || '',
+          installDate: pa.install_date || '',
+          installLat: pa.install_lat || 0,
+          installLng: pa.install_lng || 0,
+          cropxTelemetryId: pa.cropx_telemetry_id || '',
+          signalStrength: pa.signal_strength || '',
+          installNotes: pa.install_notes || '',
+          photoFieldEndUrl: pa.install_photo_field_end_url?.[0]?.url || '',
+          photoExtraUrl: pa.install_photo_extra_url?.[0]?.url || '',
+        };
+      })
+      .sort((a, b) => (b.installDate || '').localeCompare(a.installDate || ''));
+
+    return { probeAssignments: installableAssignments, probes: probeOptions, allAssignable, installedProbes };
   } catch (error) {
     console.error('Error fetching install data:', error);
-    return { probeAssignments: [], probes: [], allAssignable: [] };
+    return { probeAssignments: [], probes: [], allAssignable: [], installedProbes: [] };
   }
 }
 
 export default async function InstallPage() {
-  const { probeAssignments, probes, allAssignable } = await getInstallData();
+  const { probeAssignments, probes, allAssignable, installedProbes } = await getInstallData();
 
-  return <InstallClient probeAssignments={probeAssignments} probes={probes} allAssignable={allAssignable} />;
+  return <InstallClient probeAssignments={probeAssignments} probes={probes} allAssignable={allAssignable} installedProbes={installedProbes} />;
 }

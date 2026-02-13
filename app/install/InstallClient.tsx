@@ -123,14 +123,46 @@ const initialFormData: InstallFormData = {
 const INSTALLERS = ['Brian', 'Daine', 'Ryan', 'Ryan and Kasen'];
 const CROPS = ['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum'];
 
+export interface InstalledProbeData {
+  id: number;
+  fieldSeasonId: number;
+  fieldName: string;
+  operation: string;
+  probeNumber: number;
+  probeSerial: string;
+  probeBrand: string;
+  crop: string;
+  installer: string;
+  installDate: string;
+  installLat: number;
+  installLng: number;
+  cropxTelemetryId: string;
+  signalStrength: string;
+  installNotes: string;
+  photoFieldEndUrl: string;
+  photoExtraUrl: string;
+}
+
+interface EditInstallForm {
+  installer: string;
+  installDate: string;
+  installLat: string;
+  installLng: string;
+  cropxTelemetryId: string;
+  signalStrength: string;
+  installNotes: string;
+}
+
 interface InstallClientProps {
   probeAssignments: InstallableProbeAssignment[];
   probes: ProbeOption[];
   allAssignable: InstallableProbeAssignment[];
+  installedProbes: InstalledProbeData[];
 }
 
-export default function InstallClient({ probeAssignments: initialAssignments, probes, allAssignable }: InstallClientProps) {
+export default function InstallClient({ probeAssignments: initialAssignments, probes, allAssignable, installedProbes: initialInstalled }: InstallClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialAssignments);
+  const [installedProbes, setInstalledProbes] = useState(initialInstalled);
   const [installerFilter, setInstallerFilter] = useState<string>('all');
   const [selectedAssignment, setSelectedAssignment] = useState<InstallableProbeAssignment | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -142,6 +174,64 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [compressing, setCompressing] = useState<'photoFieldEnd' | 'photoExtra' | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [pickerField, setPickerField] = useState<string>('');
+  const [editingInstall, setEditingInstall] = useState<InstalledProbeData | null>(null);
+  const [editForm, setEditForm] = useState<EditInstallForm>({ installer: '', installDate: '', installLat: '', installLng: '', cropxTelemetryId: '', signalStrength: '', installNotes: '' });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [viewingInstall, setViewingInstall] = useState<InstalledProbeData | null>(null);
+
+  const handleEditInstall = (probe: InstalledProbeData) => {
+    setEditingInstall(probe);
+    setEditForm({
+      installer: probe.installer,
+      installDate: probe.installDate,
+      installLat: probe.installLat ? String(probe.installLat) : '',
+      installLng: probe.installLng ? String(probe.installLng) : '',
+      cropxTelemetryId: probe.cropxTelemetryId,
+      signalStrength: probe.signalStrength,
+      installNotes: probe.installNotes,
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingInstall) return;
+    setSavingEdit(true);
+    try {
+      const update: Record<string, unknown> = {
+        installer: editForm.installer,
+        install_date: editForm.installDate,
+        install_lat: editForm.installLat ? parseFloat(editForm.installLat) : null,
+        install_lng: editForm.installLng ? parseFloat(editForm.installLng) : null,
+        cropx_telemetry_id: editForm.cropxTelemetryId || null,
+        signal_strength: editForm.signalStrength || null,
+        install_notes: editForm.installNotes || null,
+      };
+      const response = await fetch(`/api/probe-assignments/${editingInstall.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update),
+      });
+      if (response.ok) {
+        setInstalledProbes(prev => prev.map(p => p.id === editingInstall.id ? {
+          ...p,
+          installer: editForm.installer,
+          installDate: editForm.installDate,
+          installLat: editForm.installLat ? parseFloat(editForm.installLat) : 0,
+          installLng: editForm.installLng ? parseFloat(editForm.installLng) : 0,
+          cropxTelemetryId: editForm.cropxTelemetryId,
+          signalStrength: editForm.signalStrength,
+          installNotes: editForm.installNotes,
+        } : p));
+        setEditingInstall(null);
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Failed to save changes');
+      }
+    } catch {
+      alert('Failed to save changes');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   // Unique field names for the picker
   const pickerFields = useMemo(() => {
@@ -458,7 +548,183 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             ))}
           </div>
         )}
+
+        {/* Installed Probes Section */}
+        {installedProbes.length > 0 && (
+          <div className="table-container" style={{ marginTop: 24 }}>
+            <div className="table-header">
+              <h3 className="table-title">
+                Installed
+                <span className="season-badge" style={{ marginLeft: 8 }}>{installedProbes.length}</span>
+              </h3>
+            </div>
+            <table className="desktop-table">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Probe</th>
+                  <th>Installer</th>
+                  <th>Date</th>
+                  <th>GPS</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {installedProbes.map((probe) => (
+                  <tr key={probe.id}>
+                    <td>
+                      <div>{probe.fieldName}</div>
+                      <div className="text-muted" style={{ fontSize: 12 }}>{probe.operation}</div>
+                    </td>
+                    <td>
+                      <span className="text-secondary">#{probe.probeSerial}</span>
+                      {probe.probeNumber > 1 && <span className="text-muted" style={{ fontSize: 12 }}> (P{probe.probeNumber})</span>}
+                    </td>
+                    <td><span className="text-secondary">{probe.installer || '—'}</span></td>
+                    <td><span className="text-secondary">{probe.installDate ? new Date(probe.installDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span></td>
+                    <td>
+                      {probe.installLat && probe.installLng ? (
+                        <a
+                          href={`https://www.google.com/maps?q=${probe.installLat},${probe.installLng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-secondary"
+                          style={{ textDecoration: 'underline' }}
+                        >
+                          {probe.installLat.toFixed(4)}, {probe.installLng.toFixed(4)}
+                        </a>
+                      ) : '—'}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setViewingInstall(probe)}>
+                          View
+                        </button>
+                        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => handleEditInstall(probe)}>
+                          Edit
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* View Install Detail Modal */}
+      {viewingInstall && (
+        <div className="detail-panel-overlay" onClick={() => setViewingInstall(null)}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <div>
+                <h3>{viewingInstall.fieldName}</h3>
+                <p className="text-muted">#{viewingInstall.probeSerial} — {viewingInstall.operation}</p>
+              </div>
+              <button className="close-btn" onClick={() => setViewingInstall(null)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="detail-section">
+                <div className="detail-row"><span className="detail-label">Installer</span><span className="detail-value">{viewingInstall.installer || '—'}</span></div>
+                <div className="detail-row"><span className="detail-label">Install Date</span><span className="detail-value">{viewingInstall.installDate || '—'}</span></div>
+                <div className="detail-row"><span className="detail-label">Crop</span><span className="detail-value">{viewingInstall.crop || '—'}</span></div>
+                <div className="detail-row">
+                  <span className="detail-label">GPS</span>
+                  <span className="detail-value">
+                    {viewingInstall.installLat && viewingInstall.installLng ? (
+                      <a href={`https://www.google.com/maps?q=${viewingInstall.installLat},${viewingInstall.installLng}`} target="_blank" rel="noopener noreferrer">
+                        {viewingInstall.installLat.toFixed(6)}, {viewingInstall.installLng.toFixed(6)}
+                      </a>
+                    ) : '—'}
+                  </span>
+                </div>
+                {viewingInstall.cropxTelemetryId && <div className="detail-row"><span className="detail-label">CropX Telemetry ID</span><span className="detail-value">{viewingInstall.cropxTelemetryId}</span></div>}
+                {viewingInstall.signalStrength && <div className="detail-row"><span className="detail-label">Signal Strength</span><span className="detail-value">{viewingInstall.signalStrength}</span></div>}
+                {viewingInstall.installNotes && <div className="detail-row"><span className="detail-label">Notes</span><span className="detail-value">{viewingInstall.installNotes}</span></div>}
+                {viewingInstall.photoFieldEndUrl && (
+                  <div className="detail-row">
+                    <span className="detail-label">Photo - Field End</span>
+                    <span className="detail-value"><a href={viewingInstall.photoFieldEndUrl} target="_blank" rel="noopener noreferrer">View Photo</a></span>
+                  </div>
+                )}
+                {viewingInstall.photoExtraUrl && (
+                  <div className="detail-row">
+                    <span className="detail-label">Photo - Extra</span>
+                    <span className="detail-value"><a href={viewingInstall.photoExtraUrl} target="_blank" rel="noopener noreferrer">View Photo</a></span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setViewingInstall(null)}>Close</button>
+              <button className="btn btn-primary" onClick={() => { setViewingInstall(null); handleEditInstall(viewingInstall); }}>Edit</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Install Modal */}
+      {editingInstall && (
+        <div className="detail-panel-overlay" onClick={() => setEditingInstall(null)}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <div>
+                <h3>Edit Install</h3>
+                <p className="text-muted">{editingInstall.fieldName} — #{editingInstall.probeSerial}</p>
+              </div>
+              <button className="close-btn" onClick={() => setEditingInstall(null)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>Installer</label>
+                  <select value={editForm.installer} onChange={(e) => setEditForm({ ...editForm, installer: e.target.value })} className="install-form-input">
+                    <option value="">Select installer...</option>
+                    {INSTALLERS.map((name) => <option key={name} value={name}>{name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Install Date</label>
+                  <input type="date" value={editForm.installDate} onChange={(e) => setEditForm({ ...editForm, installDate: e.target.value })} className="install-form-input" />
+                </div>
+                <div className="form-group">
+                  <label>GPS Latitude</label>
+                  <input type="text" value={editForm.installLat} onChange={(e) => setEditForm({ ...editForm, installLat: e.target.value })} className="install-form-input" placeholder="e.g. 41.123456" />
+                </div>
+                <div className="form-group">
+                  <label>GPS Longitude</label>
+                  <input type="text" value={editForm.installLng} onChange={(e) => setEditForm({ ...editForm, installLng: e.target.value })} className="install-form-input" placeholder="e.g. -89.123456" />
+                </div>
+                <div className="form-group">
+                  <label>CropX Telemetry ID</label>
+                  <input type="text" value={editForm.cropxTelemetryId} onChange={(e) => setEditForm({ ...editForm, cropxTelemetryId: e.target.value })} className="install-form-input" />
+                </div>
+                <div className="form-group">
+                  <label>Signal Strength</label>
+                  <input type="text" value={editForm.signalStrength} onChange={(e) => setEditForm({ ...editForm, signalStrength: e.target.value })} className="install-form-input" />
+                </div>
+                <div className="form-group">
+                  <label>Install Notes</label>
+                  <textarea value={editForm.installNotes} onChange={(e) => setEditForm({ ...editForm, installNotes: e.target.value })} rows={3} className="install-form-input" />
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setEditingInstall(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving...' : 'Save Changes'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Perform Install Picker Modal */}
       {showPicker && (
