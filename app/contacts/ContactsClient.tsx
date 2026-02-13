@@ -19,14 +19,13 @@ interface ContactsClientProps {
   initialContacts: ProcessedContact[];
   operations: OperationOption[];
   billingEntities: BillingEntityOption[];
+  customerTypeOptions: string[];
 }
 
 interface SelectedBillingEntity {
   id: number;
   name: string;
 }
-
-const CUSTOMER_TYPE_OPTIONS = ['Current Customer', 'Past Customer', 'Weather Station Only', 'Agronomist', 'Landlord', 'Retired', 'Prospect'];
 
 // Column definitions for the table
 interface ColumnDefinition {
@@ -82,7 +81,7 @@ const initialForm = {
   is_main_contact: 'No',
 };
 
-export default function ContactsClient({ initialContacts, operations, billingEntities }: ContactsClientProps) {
+export default function ContactsClient({ initialContacts, operations, billingEntities, customerTypeOptions: CUSTOMER_TYPE_OPTIONS }: ContactsClientProps) {
   const [contacts, setContacts] = useState(initialContacts);
   const [operationsList, setOperationsList] = useState(operations);
   const [billingEntitiesList, setBillingEntitiesList] = useState(billingEntities);

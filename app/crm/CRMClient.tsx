@@ -25,6 +25,7 @@ interface CRMClientProps {
     contacts: ProcessedContact[];
     operations: OperationOption[];
     billingEntities: BillingEntityOption[];
+    customerTypeOptions: string[];
   };
   billingEntitiesData: {
     billingEntities: ProcessedBillingEntity[];
@@ -69,6 +70,7 @@ export default function CRMClient({ operationsData, contactsData, billingEntitie
             initialContacts={contactsData.contacts}
             operations={contactsData.operations}
             billingEntities={contactsData.billingEntities}
+            customerTypeOptions={contactsData.customerTypeOptions}
           />
         )}
 

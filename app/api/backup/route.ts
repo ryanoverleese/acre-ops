@@ -5,7 +5,23 @@ import { auth } from '@/auth';
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-// Fetch all rows from a table (paginated)
+async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, init);
+    if (response.ok || (response.status < 500 && response.status !== 429)) {
+      return response;
+    }
+    if (attempt < maxRetries) {
+      const delay = Math.pow(2, attempt) * 1000;
+      await new Promise(resolve => setTimeout(resolve, delay));
+    } else {
+      return response;
+    }
+  }
+  throw new Error('fetchWithRetry: exhausted retries');
+}
+
+// Fetch all rows from a table (paginated, with retry)
 async function fetchAllRows(tableId: number): Promise<Record<string, unknown>[]> {
   const allResults: Record<string, unknown>[] = [];
   let page = 1;
@@ -18,7 +34,7 @@ async function fetchAllRows(tableId: number): Promise<Record<string, unknown>[]>
       size: '200',
     });
 
-    const response = await fetch(`${BASEROW_API_URL}/${tableId}/?${params}`, {
+    const response = await fetchWithRetry(`${BASEROW_API_URL}/${tableId}/?${params}`, {
       headers: {
         'Authorization': `Token ${BASEROW_TOKEN}`,
         'Content-Type': 'application/json',
@@ -102,13 +118,12 @@ export async function GET() {
       (name) => !excludeTables.includes(name)
     );
 
-    // Fetch all tables in parallel
-    const results = await Promise.all(
-      tableNames.map(async (name) => {
-        const rows = await fetchAllRows(TABLE_IDS[name]);
-        return { name, rows };
-      })
-    );
+    // Fetch tables sequentially to avoid Baserow rate limits (429)
+    const results: { name: TableName; rows: Record<string, unknown>[] }[] = [];
+    for (const name of tableNames) {
+      const rows = await fetchAllRows(TABLE_IDS[name]);
+      results.push({ name, rows });
+    }
 
     // Build a combined CSV file with table separators
     const sections: string[] = [];

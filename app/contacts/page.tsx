@@ -1,4 +1,4 @@
-import { getContacts, getOperations, getBillingEntities } from '@/lib/baserow';
+import { getContacts, getOperations, getBillingEntities, getTableFieldOptions } from '@/lib/baserow';
 import ContactsClient from './ContactsClient';
 
 export interface ProcessedContact {
@@ -28,13 +28,16 @@ export interface BillingEntityOption {
   name: string;
 }
 
-async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operations: OperationOption[]; billingEntities: BillingEntityOption[] }> {
+async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operations: OperationOption[]; billingEntities: BillingEntityOption[]; customerTypeOptions: string[] }> {
   try {
-    const [contacts, operations, billingEntities] = await Promise.all([
+    const [contacts, operations, billingEntities, contactFieldOptions] = await Promise.all([
       getContacts(),
       getOperations(),
       getBillingEntities(),
+      getTableFieldOptions('contacts'),
     ]);
+
+    const customerTypeOptions = (contactFieldOptions.customer_type || []).map((opt) => opt.value);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
@@ -75,15 +78,15 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
       name: be.name || '',
     }));
 
-    return { contacts: processedContacts, operations: operationOptions, billingEntities: billingEntityOptions };
+    return { contacts: processedContacts, operations: operationOptions, billingEntities: billingEntityOptions, customerTypeOptions };
   } catch (error) {
     console.error('Error fetching contacts data:', error);
-    return { contacts: [], operations: [], billingEntities: [] };
+    return { contacts: [], operations: [], billingEntities: [], customerTypeOptions: [] };
   }
 }
 
 export default async function ContactsPage() {
-  const { contacts, operations, billingEntities } = await getContactsData();
+  const { contacts, operations, billingEntities, customerTypeOptions } = await getContactsData();
 
   return (
     <>
@@ -94,7 +97,7 @@ export default async function ContactsPage() {
       </header>
 
       <div className="content">
-        <ContactsClient initialContacts={contacts} operations={operations} billingEntities={billingEntities} />
+        <ContactsClient initialContacts={contacts} operations={operations} billingEntities={billingEntities} customerTypeOptions={customerTypeOptions} />
       </div>
     </>
   );

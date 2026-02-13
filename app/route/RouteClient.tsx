@@ -102,64 +102,66 @@ export default function FieldLocationsClient({ fieldLocations }: FieldLocationsC
         </div>
 
         {/* Field List */}
-        <div className="route-field-list">
-          {filteredFields.length === 0 ? (
-            <div className="empty-state route-empty">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="route-empty-icon">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              <h3 className="route-empty-title">No fields found</h3>
-              <p className="route-empty-text">
-                {searchQuery ? 'Try a different search term.' : 'No fields have been added yet.'}
-              </p>
-            </div>
-          ) : (
-            filteredFields.map((field) => (
-              <div
-                key={field.id}
-                onClick={() => setSelectedField(field)}
-                className="route-field-item"
-              >
-                <div className="route-field-info">
-                  <div className="route-field-name">{field.name}</div>
-                  <div className="route-field-meta">
-                    {field.operation} {field.acres ? `• ${field.acres} ac` : ''}
+        <div className="table-container">
+          <div className="route-field-list">
+            {filteredFields.length === 0 ? (
+              <div className="empty-state route-empty">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="route-empty-icon">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                <h3 className="route-empty-title">No fields found</h3>
+                <p className="route-empty-text">
+                  {searchQuery ? 'Try a different search term.' : 'No fields have been added yet.'}
+                </p>
+              </div>
+            ) : (
+              filteredFields.map((field) => (
+                <div
+                  key={field.id}
+                  onClick={() => setSelectedField(field)}
+                  className="route-field-item"
+                >
+                  <div className="route-field-info">
+                    <div className="route-field-name">{field.name}</div>
+                    <div className="route-field-meta">
+                      {field.operation} {field.acres ? `• ${field.acres} ac` : ''}
+                    </div>
+                  </div>
+                  <div className="route-field-actions" onClick={(e) => e.stopPropagation()}>
+                    {field.lat !== 0 && field.lng !== 0 && (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Navigate to planned location"
+                        className="route-nav-btn route-nav-btn--planned"
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Planned
+                      </a>
+                    )}
+                    {field.installLat && field.installLng && (
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&destination=${field.installLat},${field.installLng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Navigate to installed location"
+                        className="route-nav-btn route-nav-btn--installed"
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Installed
+                      </a>
+                    )}
                   </div>
                 </div>
-                <div className="route-field-actions" onClick={(e) => e.stopPropagation()}>
-                  {field.lat !== 0 && field.lng !== 0 && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${field.lat},${field.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Navigate to planned location"
-                      className="route-nav-btn route-nav-btn--planned"
-                    >
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Planned
-                    </a>
-                  )}
-                  {field.installLat && field.installLng && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${field.installLat},${field.installLng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Navigate to installed location"
-                      className="route-nav-btn route-nav-btn--installed"
-                    >
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Installed
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 

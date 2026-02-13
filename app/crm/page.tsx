@@ -1,4 +1,4 @@
-import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/baserow';
+import { getOperations, getContacts, getBillingEntities, getFields, getProbes, getTableFieldOptions } from '@/lib/baserow';
 import CRMClient from './CRMClient';
 
 // Re-export types needed by client components
@@ -12,13 +12,16 @@ export type { ProcessedBillingEntity, BEContactOption };
 
 async function getCRMData() {
   try {
-    const [operations, contacts, billingEntities, fields, probes] = await Promise.all([
+    const [operations, contacts, billingEntities, fields, probes, contactFieldOptions] = await Promise.all([
       getOperations(),
       getContacts(),
       getBillingEntities(),
       getFields(),
       getProbes(),
+      getTableFieldOptions('contacts'),
     ]);
+
+    const customerTypeOptions = (contactFieldOptions.customer_type || []).map((opt) => opt.value);
 
     // === OPERATIONS DATA ===
     const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
@@ -183,14 +186,14 @@ async function getCRMData() {
 
     return {
       operationsData: { operations: processedOperations, allContacts: allContactsForOps },
-      contactsData: { contacts: processedContacts, operations: operationOptions, billingEntities: billingEntityOptions },
+      contactsData: { contacts: processedContacts, operations: operationOptions, billingEntities: billingEntityOptions, customerTypeOptions },
       billingEntitiesData: { billingEntities: processedBillingEntities, operations: operationOptions, contacts: beContactOptions },
     };
   } catch (error) {
     console.error('Error fetching CRM data:', error);
     return {
       operationsData: { operations: [], allContacts: [] },
-      contactsData: { contacts: [], operations: [], billingEntities: [] },
+      contactsData: { contacts: [], operations: [], billingEntities: [], customerTypeOptions: [] },
       billingEntitiesData: { billingEntities: [], operations: [], contacts: [] },
     };
   }
