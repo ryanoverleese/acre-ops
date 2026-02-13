@@ -110,7 +110,7 @@ body::before {
   width: 240px;
   background: var(--sidebar-bg);
   border-right: 1px solid var(--sidebar-border);
-  padding: var(--space-5) 0;
+  padding: var(--space-4) 0;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -123,9 +123,9 @@ body::before {
 }
 
 .logo {
-  padding: 0 var(--space-5) var(--space-6);
+  padding: 0 var(--space-5) var(--space-4);
   border-bottom: 1px solid var(--sidebar-border);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .logo-title-row {
@@ -163,7 +163,7 @@ body::before {
 
 .nav-section {
   padding: 0 var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
 }
 
 .nav-section-title {
@@ -172,8 +172,8 @@ body::before {
   color: var(--sidebar-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  padding: 0 var(--space-2) var(--space-2);
-  margin-bottom: var(--space-1);
+  padding: 0 var(--space-2) var(--space-1);
+  margin-bottom: 2px;
   border-bottom: 1px solid var(--border);
   margin-top: var(--space-2);
 }
@@ -182,7 +182,7 @@ body::before {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: 6px var(--space-3);
   border-radius: var(--radius-sm);
   color: var(--sidebar-text);
   cursor: pointer;
@@ -1311,7 +1311,7 @@ select:focus {
 /* Sidebar User Section */
 .sidebar-user {
   margin-top: auto;
-  padding: var(--space-4) var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--sidebar-border);
   background: var(--bg-hover);
   display: flex;
