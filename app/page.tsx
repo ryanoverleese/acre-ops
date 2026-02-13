@@ -1,14 +1,15 @@
-import { getRepairs, getFieldSeasons, getProbeAssignments, getOrders, getBillingEntities } from '@/lib/baserow';
-import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder } from './DashboardClient';
+import { getRepairs, getFieldSeasons, getProbeAssignments, getOrders, getBillingEntities, getProbes } from '@/lib/baserow';
+import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe } from './DashboardClient';
 
-async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[] }> {
+async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[] }> {
   try {
-    const [repairs, fieldSeasons, probeAssignments, orders, billingEntities] = await Promise.all([
+    const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes] = await Promise.all([
       getRepairs(),
       getFieldSeasons(),
       getProbeAssignments(),
       getOrders(),
       getBillingEntities(),
+      getProbes(),
     ]);
 
     // Calculate install stats from probe_assignments for current season
@@ -29,6 +30,26 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       !pa.probe_status?.value || pa.probe_status?.value?.toLowerCase() === 'unassigned'
     ).length;
     const totalAssignments = installedCount + assignedCount + unassignedCount;
+
+    // Build installed probes list
+    const probeMap = new Map(probes.map((p) => [p.id, p]));
+    const installedProbes: DashboardInstalledProbe[] = currentSeasonAssignments
+      .filter(pa => pa.probe_status?.value?.toLowerCase() === 'installed')
+      .map((pa) => {
+        const fsId = pa.field_season?.[0]?.id;
+        const fs = fsId ? fieldSeasons.find(f => f.id === fsId) : null;
+        const fieldName = fs?.field?.[0]?.value || 'Unknown Field';
+        const probeId = pa.probe?.[0]?.id;
+        const probe = probeId ? probeMap.get(probeId) : null;
+        return {
+          id: pa.id,
+          fieldName,
+          probeSerial: probe?.serial_number || '—',
+          installDate: pa.install_date || '',
+          installer: pa.installer || '',
+        };
+      })
+      .sort((a, b) => (b.installDate || '').localeCompare(a.installDate || ''));
 
     // Build field_season id → field name map
     const fsFieldNameMap = new Map<number, string>();
@@ -73,18 +94,19 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       totalAssignments,
     };
 
-    return { stats, openRepairs, recentOrders };
+    return { stats, openRepairs, recentOrders, installedProbes };
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return {
       stats: { installedCount: 0, assignedCount: 0, unassignedCount: 0, totalAssignments: 0 },
       openRepairs: [],
       recentOrders: [],
+      installedProbes: [],
     };
   }
 }
 
 export default async function Dashboard() {
-  const { stats, openRepairs, recentOrders } = await getDashboardData();
-  return <DashboardClient stats={stats} openRepairs={openRepairs} recentOrders={recentOrders} />;
+  const { stats, openRepairs, recentOrders, installedProbes } = await getDashboardData();
+  return <DashboardClient stats={stats} openRepairs={openRepairs} recentOrders={recentOrders} installedProbes={installedProbes} />;
 }

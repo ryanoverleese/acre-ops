@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 
 export interface DashboardStats {
@@ -24,10 +25,19 @@ export interface DashboardOrder {
   total: string;
 }
 
+export interface DashboardInstalledProbe {
+  id: number;
+  fieldName: string;
+  probeSerial: string;
+  installDate: string;
+  installer: string;
+}
+
 interface DashboardClientProps {
   stats: DashboardStats;
   openRepairs: DashboardRepair[];
   recentOrders: DashboardOrder[];
+  installedProbes: DashboardInstalledProbe[];
 }
 
 function daysAgo(dateStr: string): number {
@@ -41,7 +51,8 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function DashboardClient({ stats, openRepairs, recentOrders }: DashboardClientProps) {
+export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
+  const [showInstalled, setShowInstalled] = useState(false);
   const pct = stats.totalAssignments > 0
     ? Math.round((stats.installedCount / stats.totalAssignments) * 100)
     : 0;
@@ -67,10 +78,10 @@ export default function DashboardClient({ stats, openRepairs, recentOrders }: Da
                 <div className="stat-change">Assigned probes</div>
               </div>
             </Link>
-            <div className="stat-card">
+            <div className="stat-card stat-card-clickable" onClick={() => setShowInstalled(!showInstalled)}>
               <div className="stat-label">Installed</div>
               <div className="stat-value green">{stats.installedCount}</div>
-              <div className="stat-change">Completed installs</div>
+              <div className="stat-change">{showInstalled ? 'Click to hide' : 'Click to view'}</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Unassigned</div>
@@ -86,6 +97,36 @@ export default function DashboardClient({ stats, openRepairs, recentOrders }: Da
               <div className="install-progress-label">
                 {stats.installedCount} of {stats.totalAssignments} installed ({pct}%)
               </div>
+            </div>
+          )}
+          {showInstalled && installedProbes.length > 0 && (
+            <div className="table-container">
+              <div className="table-header">
+                <h3 className="table-title">
+                  Installed Probes
+                  <span className="season-badge" style={{ marginLeft: 8 }}>{installedProbes.length}</span>
+                </h3>
+              </div>
+              <table className="desktop-table">
+                <thead>
+                  <tr>
+                    <th>Field</th>
+                    <th>Probe</th>
+                    <th>Installer</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {installedProbes.map((probe) => (
+                    <tr key={probe.id}>
+                      <td>{probe.fieldName}</td>
+                      <td><span className="text-secondary">{probe.probeSerial}</span></td>
+                      <td><span className="text-secondary">{probe.installer || '—'}</span></td>
+                      <td><span className="text-secondary">{formatDate(probe.installDate)}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
