@@ -145,7 +145,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
         if (!fieldSeason) return false;
         // Must be 2026 season
-        if (fieldSeason.season !== 2026) return false;
+        if (fieldSeason.season != 2026) return false;
         // Must have a probe assigned
         const probeId = pa.probe?.[0]?.id;
         if (!probeId) return false;
@@ -192,7 +192,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         const fsId = pa.field_season?.[0]?.id;
         if (!fsId) return false;
         const fs = fieldSeasonMap.get(fsId);
-        if (!fs || fs.season !== 2026) return false;
+        if (!fs || fs.season != 2026) return false;
         return pa.probe_status?.value?.toLowerCase() === 'installed';
       })
       .map((pa) => {
