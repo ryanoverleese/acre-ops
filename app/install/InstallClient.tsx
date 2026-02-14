@@ -233,10 +233,49 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     }
   };
 
-  // Unique field names for the picker
+  const handleDeleteInstall = async () => {
+    if (!editingInstall) return;
+    if (!confirm(`Remove install data for ${editingInstall.fieldName} — #${editingInstall.probeSerial}? This will reset the probe status back to Assigned.`)) return;
+    setSavingEdit(true);
+    try {
+      const update: Record<string, unknown> = {
+        probe_status: 'Assigned',
+        installer: '',
+        install_date: null,
+        install_lat: null,
+        install_lng: null,
+        cropx_telemetry_id: '',
+        signal_strength: '',
+        install_notes: '',
+      };
+      const response = await fetch(`/api/probe-assignments/${editingInstall.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(update),
+      });
+      if (response.ok) {
+        setInstalledProbes(prev => prev.filter(p => p.id !== editingInstall.id));
+        setEditingInstall(null);
+      } else {
+        const err = await response.json();
+        alert(err.error || 'Failed to remove install');
+      }
+    } catch {
+      alert('Failed to remove install');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  // Unique field names for the picker (with operation for display)
   const pickerFields = useMemo(() => {
-    const fieldNames = new Set(allAssignable.map(pa => pa.fieldName));
-    return Array.from(fieldNames).sort();
+    const fieldMap = new Map<string, string>();
+    allAssignable.forEach(pa => {
+      if (!fieldMap.has(pa.fieldName)) {
+        fieldMap.set(pa.fieldName, pa.operation);
+      }
+    });
+    return Array.from(fieldMap.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [allAssignable]);
 
   // Probe assignments for the selected field in the picker
@@ -718,9 +757,12 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 </div>
               </div>
             </div>
-            <div className="detail-panel-footer">
-              <button className="btn btn-secondary" onClick={() => setEditingInstall(null)}>Cancel</button>
-              <button className="btn btn-primary" onClick={handleSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving...' : 'Save Changes'}</button>
+            <div className="detail-panel-footer" style={{ justifyContent: 'space-between' }}>
+              <button className="btn btn-danger" onClick={handleDeleteInstall} disabled={savingEdit}>Remove Install</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary" onClick={() => setEditingInstall(null)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSaveEdit} disabled={savingEdit}>{savingEdit ? 'Saving...' : 'Save Changes'}</button>
+              </div>
             </div>
           </div>
         </div>
@@ -747,8 +789,8 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   className="install-form-input"
                 >
                   <option value="">Choose a field...</option>
-                  {pickerFields.map((name) => (
-                    <option key={name} value={name}>{name}</option>
+                  {pickerFields.map(([name, operation]) => (
+                    <option key={name} value={name}>{name} — {operation}</option>
                   ))}
                 </select>
               </div>
