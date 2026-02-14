@@ -4730,6 +4730,39 @@ input[type="date"]:focus {
   color: var(--text-muted);
 }
 
+/* Installed probes mobile cards */
+.installed-mobile-list {
+  display: none;
+}
+
+.installed-mobile-card {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.installed-mobile-card:last-child {
+  border-bottom: none;
+}
+
+.installed-mobile-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.installed-mobile-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+  .installed-mobile-list {
+    display: block;
+  }
+}
+
 .install-card {
   background: var(--bg-secondary);
   border-radius: 12px;

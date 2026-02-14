@@ -677,6 +677,34 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 ))}
               </tbody>
             </table>
+            {/* Mobile card view */}
+            <div className="installed-mobile-list">
+              {installedProbes.map((probe) => (
+                <div key={probe.id} className="installed-mobile-card" onClick={() => setViewingInstall(probe)}>
+                  <div className="installed-mobile-card-top">
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{probe.fieldName}</div>
+                      <div className="text-muted" style={{ fontSize: 12 }}>
+                        #{probe.probeSerial}
+                        {(probe.probeNumber > 1 || probe.label) && ` (P${probe.probeNumber}${probe.label ? ` — ${probe.label}` : ''})`}
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 13 }}>
+                      <div className="text-secondary">{probe.installer || '—'}</div>
+                      <div className="text-muted" style={{ fontSize: 12 }}>{probe.installDate ? new Date(probe.installDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</div>
+                    </div>
+                  </div>
+                  <div className="installed-mobile-card-actions">
+                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setViewingInstall(probe); }}>
+                      View
+                    </button>
+                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); handleEditInstall(probe); }}>
+                      Edit
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
