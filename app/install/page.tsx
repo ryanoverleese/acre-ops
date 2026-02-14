@@ -136,27 +136,19 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       }))
       .sort((a, b) => a.serialNumber.localeCompare(b.serialNumber));
 
-    // All current-season probe assignments that have a probe assigned but aren't installed yet
-    // (for the "Perform Install" picker — no "ready_to_install" gate)
+    // All 2026 probe assignments that have a probe assigned
+    // (for the "Perform Install" picker)
     const allAssignable: InstallableProbeAssignment[] = probeAssignments
       .filter((pa) => {
         const fieldSeasonId = pa.field_season?.[0]?.id;
         if (!fieldSeasonId) return false;
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
         if (!fieldSeason) return false;
-        // Must be current season
+        // Must be 2026 season
         if (fieldSeason.season !== 2026) return false;
-        // Must not already be installed
-        const status = pa.probe_status?.value?.toLowerCase() || 'unassigned';
-        if (status === 'installed') return false;
-        // Must have a probe with a serial number
+        // Must have a probe assigned
         const probeId = pa.probe?.[0]?.id;
-        if (probeId) {
-          const probe = probeMap.get(probeId);
-          if (!probe?.serial_number) return false;
-        } else {
-          return false;
-        }
+        if (!probeId) return false;
         return true;
       })
       .map((pa) => {
