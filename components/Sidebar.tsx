@@ -29,6 +29,7 @@ const navSections: NavSection[] = [
   {
     title: 'Field Work',
     items: [
+      { name: 'Installs', href: '/install', icon: 'cpu' },
       { name: 'Approvals', href: '/approvals', icon: 'check' },
       { name: 'Locations', href: '/route', icon: 'route' },
       { name: 'Repairs', href: '/repairs', icon: 'settings' },

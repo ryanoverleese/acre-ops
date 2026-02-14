@@ -146,9 +146,9 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         if (!fieldSeason) return false;
         // Must be current season
         if (fieldSeason.season !== 2026) return false;
-        // Must have a probe assigned and not yet installed
+        // Must not already be installed
         const status = pa.probe_status?.value?.toLowerCase() || 'unassigned';
-        if (status === 'installed' || status === 'unassigned') return false;
+        if (status === 'installed') return false;
         // Must have a probe with a serial number
         const probeId = pa.probe?.[0]?.id;
         if (probeId) {

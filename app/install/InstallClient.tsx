@@ -423,7 +423,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     <>
       <header className="header">
         <div className="header-left">
-          <h2>Install</h2>
+          <h2>Installs</h2>
           <span className="season-badge">{filteredAssignments.length} Ready</span>
         </div>
         <div className="header-right">
