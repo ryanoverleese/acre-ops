@@ -178,6 +178,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [editForm, setEditForm] = useState<EditInstallForm>({ installer: '', installDate: '', installLat: '', installLng: '', cropxTelemetryId: '', signalStrength: '', installNotes: '' });
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewingInstall, setViewingInstall] = useState<InstalledProbeData | null>(null);
+  const [editGettingLocation, setEditGettingLocation] = useState(false);
 
   const handleEditInstall = (probe: InstalledProbeData) => {
     setEditingInstall(probe);
@@ -265,6 +266,32 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     } finally {
       setSavingEdit(false);
     }
+  };
+
+  const handleEditGetLocation = () => {
+    if (!navigator.geolocation) return;
+    setEditGettingLocation(true);
+    let bestPosition: GeolocationPosition | null = null;
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        if (!bestPosition || position.coords.accuracy < bestPosition.coords.accuracy) {
+          bestPosition = position;
+        }
+      },
+      () => { setEditGettingLocation(false); navigator.geolocation.clearWatch(watchId); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+    setTimeout(() => {
+      navigator.geolocation.clearWatch(watchId);
+      if (bestPosition) {
+        setEditForm(prev => ({
+          ...prev,
+          installLat: String(Math.round(bestPosition!.coords.latitude * 1000000) / 1000000),
+          installLng: String(Math.round(bestPosition!.coords.longitude * 1000000) / 1000000),
+        }));
+      }
+      setEditGettingLocation(false);
+    }, 2000);
   };
 
   // Unique field names for the picker (with operation for display)
@@ -736,12 +763,23 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <input type="date" value={editForm.installDate} onChange={(e) => setEditForm({ ...editForm, installDate: e.target.value })} className="install-form-input" />
                 </div>
                 <div className="form-group">
-                  <label>GPS Latitude</label>
-                  <input type="text" value={editForm.installLat} onChange={(e) => setEditForm({ ...editForm, installLat: e.target.value })} className="install-form-input" placeholder="e.g. 41.123456" />
-                </div>
-                <div className="form-group">
-                  <label>GPS Longitude</label>
-                  <input type="text" value={editForm.installLng} onChange={(e) => setEditForm({ ...editForm, installLng: e.target.value })} className="install-form-input" placeholder="e.g. -89.123456" />
+                  <label>GPS Coordinates</label>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleEditGetLocation}
+                    disabled={editGettingLocation}
+                    style={{ marginBottom: 8, width: '100%' }}
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" style={{ marginRight: 6, verticalAlign: 'text-bottom' }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {editGettingLocation ? 'Getting Location...' : 'Use Current Location'}
+                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input type="text" value={editForm.installLat} onChange={(e) => setEditForm({ ...editForm, installLat: e.target.value })} className="install-form-input" placeholder="Latitude" />
+                    <input type="text" value={editForm.installLng} onChange={(e) => setEditForm({ ...editForm, installLng: e.target.value })} className="install-form-input" placeholder="Longitude" />
+                  </div>
                 </div>
                 <div className="form-group">
                   <label>CropX Telemetry ID</label>

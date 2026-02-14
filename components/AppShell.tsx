@@ -276,38 +276,6 @@ export default function AppShell({ children }: AppShellProps) {
         {children}
       </main>
 
-      {/* Mobile Bottom Nav */}
-      <nav className="bottom-nav">
-        {[
-          { name: 'Home', href: '/', icon: 'grid' },
-          { name: 'Install', href: '/install', icon: 'download' },
-          { name: 'Repairs', href: '/repairs', icon: 'settings' },
-          { name: 'Route', href: '/route', icon: 'route' },
-          { name: 'More', href: '#more', icon: 'menu' },
-        ].map((item) => (
-          item.href === '#more' ? (
-            <button
-              key={item.name}
-              className={`bottom-nav-item`}
-              onClick={() => setMobileMenuOpen(true)}
-            >
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              <span>{item.name}</span>
-            </button>
-          ) : (
-            <Link
-              key={item.name}
-              href={item.href}
-              className={`bottom-nav-item${pathname === item.href ? ' active' : ''}`}
-            >
-              {icons[item.icon]}
-              <span>{item.name}</span>
-            </Link>
-          )
-        ))}
-      </nav>
     </>
   );
 }
