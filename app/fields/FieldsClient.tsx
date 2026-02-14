@@ -1280,6 +1280,7 @@ export default function FieldsClient({
     try {
       const apiFieldMap: Record<string, string> = {
         probeId: 'probe',
+        label: 'label',
         probeStatus: 'probe_status',
         antennaType: 'antenna_type',
         batteryType: 'battery_type',
@@ -1467,6 +1468,7 @@ export default function FieldsClient({
           id: created.id,
           fieldSeasonId: fieldSeasonId,
           probeNumber: created.probe_number ?? probeNumber,
+          label: created.label || '',
           probe: probeData ? `#${probeData.serialNumber}` : null,
           probeId: probeLink?.id || null,
           probeStatus: created.probe_status?.value || 'Unassigned',
@@ -2043,10 +2045,19 @@ export default function FieldsClient({
                                       );
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row">
-                                        <td className="fields-probe-number-cell">
+                                        <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
                                           </span>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
+                                            field="label"
+                                            value={pa.label || ''}
+                                            type="text"
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
                                         </td>
                                         <td
                                           className="fields-probe-loc-cell"

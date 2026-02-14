@@ -44,6 +44,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       setField('probe', body.probe ? [body.probe] : []);
     }
     if (body.probe_number !== undefined) setField('probe_number', body.probe_number);
+    if (body.label !== undefined) setField('label', body.label);
     if (body.probe_status !== undefined) setField('probe_status', body.probe_status);
     if (body.antenna_type !== undefined) setField('antenna_type', body.antenna_type);
     if (body.battery_type !== undefined) setField('battery_type', body.battery_type);

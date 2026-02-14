@@ -17,6 +17,7 @@ export interface ProcessedRepair {
   status: 'open' | 'resolved';
   probeAssignmentId?: number;
   probeNumber?: number;
+  label?: string;
   probeSerial?: string | null;
   probeReplaced?: boolean;
   newProbeSerial?: string;
@@ -35,6 +36,7 @@ export interface ProbeAssignmentOption {
   fieldSeasonId: number;
   fieldName: string;
   probeNumber: number;
+  label?: string;
   probeSerial?: string;
 }
 
@@ -504,7 +506,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       {repair.fieldName}
                       {repair.probeNumber && (
                         <span className="probe-detail">
-                          {' '}(Probe {repair.probeNumber}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
+                          {' '}(Probe {repair.probeNumber}{repair.label ? ` — ${repair.label}` : ''}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
                         </span>
                       )}
                     </td>
@@ -579,7 +581,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       {repair.fieldName}
                       {repair.probeNumber && (
                         <span className="probe-detail">
-                          {' '}(Probe {repair.probeNumber}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
+                          {' '}(Probe {repair.probeNumber}{repair.label ? ` — ${repair.label}` : ''}){repair.probeSerial ? ` - #${repair.probeSerial}` : ''}
                         </span>
                       )}
                     </span>
@@ -674,7 +676,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                       <option value="">Select probe...</option>
                       {availableProbeAssignments.map((pa) => (
                         <option key={pa.id} value={pa.id}>
-                          Probe {pa.probeNumber}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}
+                          Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}
                         </option>
                       ))}
                     </select>
@@ -685,7 +687,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     <label>Probe</label>
                     <input
                       type="text"
-                      value={`Probe ${availableProbeAssignments[0].probeNumber}${availableProbeAssignments[0].probeSerial ? ` - #${availableProbeAssignments[0].probeSerial}` : ''}`}
+                      value={`Probe ${availableProbeAssignments[0].probeNumber}${availableProbeAssignments[0].label ? ` — ${availableProbeAssignments[0].label}` : ''}${availableProbeAssignments[0].probeSerial ? ` - #${availableProbeAssignments[0].probeSerial}` : ''}`}
                       disabled
                     />
                   </div>
@@ -829,7 +831,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                 <div className="repair-summary-detail">{repairToComplete.operation}</div>
                 {repairToComplete.probeNumber && (
                   <div className="repair-summary-detail">
-                    Probe {repairToComplete.probeNumber}{repairToComplete.probeSerial ? ` - #${repairToComplete.probeSerial}` : ''}
+                    Probe {repairToComplete.probeNumber}{repairToComplete.label ? ` — ${repairToComplete.label}` : ''}{repairToComplete.probeSerial ? ` - #${repairToComplete.probeSerial}` : ''}
                   </div>
                 )}
                 <div className="repair-summary-problem">

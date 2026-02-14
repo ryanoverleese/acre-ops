@@ -9,6 +9,7 @@ export interface ProcessedProbeAssignment {
   id: number;
   fieldSeasonId: number;
   probeNumber: number;
+  label: string;
   probe: string | null;
   probeId: number | null;
   probeStatus: string;
@@ -469,6 +470,7 @@ async function getFieldsData(): Promise<{
         id: pa.id,
         fieldSeasonId: fsId || 0,
         probeNumber: pa.probe_number || 1,
+        label: pa.label || '',
         probe: probeData ? `#${probeData.serial_number}` : null,
         probeId: probeLink?.id || null,
         probeStatus: pa.probe_status?.value || 'Unassigned',

@@ -107,6 +107,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           plannedInstaller: fieldSeason?.planned_installer?.value || '',
           // Probe info
           probeNumber: pa.probe_number || 1,
+          label: pa.label || '',
           probeId: probeId || null,
           probeSerial: probe?.serial_number || '',
           probeBrand: probe?.brand?.value || '',
@@ -176,6 +177,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           routeOrder: fieldSeason?.route_order || 999,
           plannedInstaller: fieldSeason?.planned_installer?.value || '',
           probeNumber: pa.probe_number || 1,
+          label: pa.label || '',
           probeId: probeId || null,
           probeSerial: probe?.serial_number || '',
           probeBrand: probe?.brand?.value || '',
@@ -213,6 +215,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           fieldName: field?.name || 'Unknown Field',
           operation: operationName,
           probeNumber: pa.probe_number || 1,
+          label: pa.label || '',
           probeSerial: probe?.serial_number || '',
           probeBrand: probe?.brand?.value || '',
           crop: fieldSeason?.crop?.value || '',

@@ -649,7 +649,7 @@ export default function ApprovalsClient({
                           {group.items.map((item) => (
                             <tr key={item.id}>
                               <td className="approvals-field-name">
-                                {item.fieldName} - Probe {item.probeNumber}
+                                {item.fieldName} - Probe {item.probeNumber}{item.label ? ` — ${item.label}` : ''}
                               </td>
                               <td className="approvals-serial">
                                 {item.probeSerial || '\u2014'}
@@ -714,7 +714,7 @@ export default function ApprovalsClient({
                           <div key={item.id} className="approvals-mobile-card">
                             <div className="approvals-mobile-card-header">
                               <div className="approvals-mobile-card-title">
-                                {item.fieldName} - Probe {item.probeNumber}
+                                {item.fieldName} - Probe {item.probeNumber}{item.label ? ` — ${item.label}` : ''}
                               </div>
                               <span className={`status-badge ${
                                 item.approvalStatus === 'Approved' ? 'installed' :

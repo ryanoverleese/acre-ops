@@ -423,7 +423,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                       {/* Card Header */}
                       <div className="card-header">
                         <div className="card-title">
-                          <h3>{fieldName} - Probe {pa.probeNumber}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
+                          <h3>{fieldName} - Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
                           <span className={`status-badge ${pa.approvalStatus === 'Approved' ? 'status-approved' : pa.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
                             {pa.approvalStatus}
                           </span>
@@ -435,7 +435,7 @@ export default function ApprovalClient({ operationName, season, fields: initialF
                         {/* Map */}
                         {pa.placementLat && pa.placementLng && (
                           <div className="card-map">
-                            <ApprovalMap lat={Number(pa.placementLat)} lng={Number(pa.placementLng)} fieldName={`${fieldName} - Probe ${pa.probeNumber}`} />
+                            <ApprovalMap lat={Number(pa.placementLat)} lng={Number(pa.placementLng)} fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`} />
                           </div>
                         )}
 

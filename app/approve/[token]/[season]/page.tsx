@@ -32,6 +32,7 @@ export interface ApprovalProbeAssignment {
   fieldSeasonId: number;
   fieldName: string;
   probeNumber: number;
+  label: string;
   probeSerial?: string;
   placementLat?: number;
   placementLng?: number;
@@ -144,6 +145,7 @@ export default async function ApprovePage({ params }: PageProps) {
         fieldSeasonId: pa.field_season?.[0]?.id || 0,
         fieldName: field?.name || 'Unknown Field',
         probeNumber: pa.probe_number || 1,
+        label: pa.label || '',
         probeSerial,
         placementLat: pa.placement_lat,
         placementLng: pa.placement_lng,

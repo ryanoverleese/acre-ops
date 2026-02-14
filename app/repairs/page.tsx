@@ -78,6 +78,7 @@ async function getRepairsData(): Promise<{
         status: repair.repaired_at ? 'resolved' as const : 'open' as const,
         probeAssignmentId: paLink?.id,
         probeNumber: probeAssignment?.probe_number,
+        label: probeAssignment?.label || '',
         probeSerial,
         probeReplaced: repair.probe_replaced || false,
         newProbeSerial: repair.new_probe_serial,
@@ -117,6 +118,7 @@ async function getRepairsData(): Promise<{
         fieldSeasonId: pa.field_season?.[0]?.id || 0,
         fieldName: field?.name || 'Unknown Field',
         probeNumber: pa.probe_number || 1,
+        label: pa.label || '',
         probeSerial,
       };
     }).sort((a, b) => {

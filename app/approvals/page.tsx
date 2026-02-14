@@ -18,6 +18,7 @@ export interface ApprovalItem {
   fieldName: string;
   fieldSeasonId: number;
   probeNumber: number;
+  label: string;
   probeSerial?: string;
   placementLat?: number;
   placementLng?: number;
@@ -134,6 +135,7 @@ async function getApprovalsData(): Promise<ApprovalsData> {
           fieldName: field.name,
           fieldSeasonId: fieldSeason.id,
           probeNumber: pa.probe_number || 1,
+          label: pa.label || '',
           probeSerial,
           placementLat: pa.placement_lat,
           placementLng: pa.placement_lng,

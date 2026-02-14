@@ -82,6 +82,7 @@ export interface InstallableProbeAssignment {
   routeOrder: number;
   plannedInstaller: string;
   probeNumber: number;
+  label: string;
   probeId: number | null;
   probeSerial: string;
   probeBrand: string;
@@ -129,6 +130,7 @@ export interface InstalledProbeData {
   fieldName: string;
   operation: string;
   probeNumber: number;
+  label: string;
   probeSerial: string;
   probeBrand: string;
   crop: string;
@@ -541,9 +543,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     <div className="install-card-header-row">
                       <h3 className="install-field-name">
                         {assignment.fieldName}
-                        {assignment.probeNumber > 1 && (
+                        {(assignment.probeNumber > 1 || assignment.label) && (
                           <span className="install-probe-number-suffix">
-                            {' '}(Probe {assignment.probeNumber})
+                            {' '}(Probe {assignment.probeNumber}{assignment.label ? ` — ${assignment.label}` : ''})
                           </span>
                         )}
                       </h3>
@@ -573,7 +575,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     <div className="install-probe-info-row">
                       <div>
                         <span className="install-probe-label">
-                          Probe {assignment.probeNumber}
+                          Probe {assignment.probeNumber}{assignment.label ? ` — ${assignment.label}` : ''}
                         </span>
                         <div className="install-probe-serial">
                           #{assignment.probeSerial}
@@ -644,7 +646,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </td>
                     <td>
                       <span className="text-secondary">#{probe.probeSerial}</span>
-                      {probe.probeNumber > 1 && <span className="text-muted" style={{ fontSize: 12 }}> (P{probe.probeNumber})</span>}
+                      {(probe.probeNumber > 1 || probe.label) && <span className="text-muted" style={{ fontSize: 12 }}> (P{probe.probeNumber}{probe.label ? ` — ${probe.label}` : ''})</span>}
                     </td>
                     <td><span className="text-secondary">{probe.installer || '—'}</span></td>
                     <td><span className="text-secondary">{probe.installDate ? new Date(probe.installDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span></td>
@@ -657,7 +659,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           className="text-secondary"
                           style={{ textDecoration: 'underline' }}
                         >
-                          {probe.installLat.toFixed(4)}, {probe.installLng.toFixed(4)}
+                          {Number(probe.installLat).toFixed(4)}, {Number(probe.installLng).toFixed(4)}
                         </a>
                       ) : '—'}
                     </td>
@@ -704,7 +706,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <span className="detail-value">
                     {viewingInstall.installLat && viewingInstall.installLng ? (
                       <a href={`https://www.google.com/maps?q=${viewingInstall.installLat},${viewingInstall.installLng}`} target="_blank" rel="noopener noreferrer">
-                        {viewingInstall.installLat.toFixed(6)}, {viewingInstall.installLng.toFixed(6)}
+                        {Number(viewingInstall.installLat).toFixed(6)}, {Number(viewingInstall.installLng).toFixed(6)}
                       </a>
                     ) : '—'}
                   </span>
@@ -845,7 +847,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       >
                         <div className="install-picker-item-main">
                           <span className="install-picker-item-name">
-                            Probe {pa.probeNumber} — #{pa.probeSerial}
+                            Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''} — #{pa.probeSerial}
                           </span>
                           <span className="install-picker-item-meta">
                             {pa.operation} {pa.crop ? `• ${pa.crop}` : ''}

@@ -317,6 +317,7 @@ export interface ProbeAssignment {
   field_season?: { id: number; value: string }[];
   probe?: { id: number; value: string }[];
   probe_number?: number; // 1, 2, 3, etc.
+  label?: string; // e.g. "NE", "SW" for multi-probe fields
   antenna_type?: { id: number; value: string };
   battery_type?: { id: number; value: string };
   // Placement data (defaulted from field, can be overridden)
