@@ -12,7 +12,7 @@ export interface ProbeOption {
   rackSlot: string;
 }
 
-async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[]; allAssignable: InstallableProbeAssignment[]; installedProbes: InstalledProbeData[] }> {
+async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[]; allAssignable: InstallableProbeAssignment[]; installedProbes: InstalledProbeData[]; operationContacts: Record<string, { name: string; email: string; phone: string }[]> }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getFields(),
@@ -232,15 +232,34 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       })
       .sort((a, b) => (b.installDate || '').localeCompare(a.installDate || ''));
 
-    return { probeAssignments: installableAssignments, probes: probeOptions, allAssignable, installedProbes };
+    // Build operation → probe-type contacts map for grower notifications
+    const operationContacts: Record<string, { name: string; email: string; phone: string }[]> = {};
+    contacts.forEach((contact) => {
+      const isProbeContact = contact.customer_type?.some(
+        (ct) => ct.value.toLowerCase().includes('probe')
+      );
+      if (!isProbeContact || (!contact.email && !contact.phone)) return;
+      const contactOps = contact.operations || [];
+      contactOps.forEach((op) => {
+        const opName = operationMap.get(op.id) || op.value;
+        if (!operationContacts[opName]) operationContacts[opName] = [];
+        operationContacts[opName].push({
+          name: contact.name || '',
+          email: contact.email || '',
+          phone: contact.phone || '',
+        });
+      });
+    });
+
+    return { probeAssignments: installableAssignments, probes: probeOptions, allAssignable, installedProbes, operationContacts };
   } catch (error) {
     console.error('Error fetching install data:', error);
-    return { probeAssignments: [], probes: [], allAssignable: [], installedProbes: [] };
+    return { probeAssignments: [], probes: [], allAssignable: [], installedProbes: [], operationContacts: {} };
   }
 }
 
 export default async function InstallPage() {
-  const { probeAssignments, probes, allAssignable, installedProbes } = await getInstallData();
+  const { probeAssignments, probes, allAssignable, installedProbes, operationContacts } = await getInstallData();
 
-  return <InstallClient probeAssignments={probeAssignments} probes={probes} allAssignable={allAssignable} installedProbes={installedProbes} />;
+  return <InstallClient probeAssignments={probeAssignments} probes={probes} allAssignable={allAssignable} installedProbes={installedProbes} operationContacts={operationContacts} />;
 }

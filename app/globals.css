@@ -4763,6 +4763,138 @@ input[type="date"]:focus {
   }
 }
 
+/* Share / Notify Grower Modal */
+.share-install-summary {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.share-install-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.share-install-summary-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: white;
+  flex-shrink: 0;
+}
+
+.share-install-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.share-install-detail {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  gap: 12px;
+}
+
+.share-contacts-section {
+  margin-bottom: 16px;
+}
+
+.share-contacts-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.share-contact-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.share-contact-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.share-contact-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.share-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  white-space: nowrap;
+}
+
+.share-copy-section {
+  margin-bottom: 8px;
+}
+
+.share-message-preview {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.share-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .share-contact-card {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .share-contact-actions {
+    justify-content: stretch;
+  }
+
+  .share-action-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
 .install-card {
   background: var(--bg-secondary);
   border-radius: 12px;

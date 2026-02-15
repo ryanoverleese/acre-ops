@@ -155,14 +155,21 @@ interface EditInstallForm {
   installNotes: string;
 }
 
+export interface OperationContact {
+  name: string;
+  email: string;
+  phone: string;
+}
+
 interface InstallClientProps {
   probeAssignments: InstallableProbeAssignment[];
   probes: ProbeOption[];
   allAssignable: InstallableProbeAssignment[];
   installedProbes: InstalledProbeData[];
+  operationContacts: Record<string, OperationContact[]>;
 }
 
-export default function InstallClient({ probeAssignments: initialAssignments, probes, allAssignable, installedProbes: initialInstalled }: InstallClientProps) {
+export default function InstallClient({ probeAssignments: initialAssignments, probes, allAssignable, installedProbes: initialInstalled, operationContacts }: InstallClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialAssignments);
   const [installedProbes, setInstalledProbes] = useState(initialInstalled);
   const [installerFilter, setInstallerFilter] = useState<string>('all');
@@ -181,6 +188,8 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewingInstall, setViewingInstall] = useState<InstalledProbeData | null>(null);
   const [editGettingLocation, setEditGettingLocation] = useState(false);
+  const [sharingInstall, setSharingInstall] = useState<InstalledProbeData | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const handleEditInstall = (probe: InstalledProbeData) => {
     setEditingInstall(probe);
@@ -294,6 +303,25 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
       }
       setEditGettingLocation(false);
     }, 2000);
+  };
+
+  const buildShareMessage = (probe: InstalledProbeData, contactName?: string) => {
+    const greeting = contactName ? `Hi ${contactName},` : 'Hi,';
+    const dateStr = probe.installDate
+      ? new Date(probe.installDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      : 'recently';
+    const probeLabel = probe.label ? ` (${probe.label})` : '';
+    const mapsLink = probe.installLat && probe.installLng
+      ? `\nhttps://www.google.com/maps?q=${probe.installLat},${probe.installLng}`
+      : '';
+    return `${greeting}\n\nYour soil moisture probe has been installed at ${probe.fieldName}${probeLabel}.\n\nProbe: #${probe.probeSerial} (${probe.probeBrand})\nInstalled: ${dateStr}\nInstaller: ${probe.installer || 'Acre Insights'}${mapsLink}\n\nWe'll be monitoring your field throughout the season. If you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
+  };
+
+  const handleCopyMessage = async (probe: InstalledProbeData, contactName?: string) => {
+    const msg = buildShareMessage(probe, contactName);
+    await navigator.clipboard.writeText(msg);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // Unique field names for the picker (with operation for display)
@@ -671,6 +699,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => handleEditInstall(probe)}>
                           Edit
                         </button>
+                        <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setSharingInstall(probe)}>
+                          Notify
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -700,6 +731,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </button>
                     <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); handleEditInstall(probe); }}>
                       Edit
+                    </button>
+                    <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setSharingInstall(probe); }}>
+                      Notify
                     </button>
                   </div>
                 </div>
@@ -835,6 +869,139 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
           </div>
         </div>
       )}
+
+      {/* Share / Notify Grower Modal */}
+      {sharingInstall && (() => {
+        const contacts = operationContacts[sharingInstall.operation] || [];
+        const dateStr = sharingInstall.installDate
+          ? new Date(sharingInstall.installDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+          : 'recently';
+        const probeLabel = sharingInstall.label ? ` (${sharingInstall.label})` : '';
+
+        return (
+          <div className="detail-panel-overlay" onClick={() => { setSharingInstall(null); setCopied(false); }}>
+            <div className="detail-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+              <div className="detail-panel-header">
+                <div>
+                  <h3>Notify Grower</h3>
+                  <p className="text-muted">{sharingInstall.fieldName}{probeLabel} — #{sharingInstall.probeSerial}</p>
+                </div>
+                <button className="close-btn" onClick={() => { setSharingInstall(null); setCopied(false); }}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                {/* Install Summary Card */}
+                <div className="share-install-summary">
+                  <div className="share-install-summary-row">
+                    <span className="share-install-summary-icon">
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{sharingInstall.fieldName}{probeLabel}</div>
+                      <div className="text-muted" style={{ fontSize: 12 }}>{sharingInstall.operation}</div>
+                    </div>
+                  </div>
+                  <div className="share-install-details">
+                    <div className="share-install-detail"><span className="text-muted">Probe</span><span>#{sharingInstall.probeSerial} ({sharingInstall.probeBrand})</span></div>
+                    <div className="share-install-detail"><span className="text-muted">Installed</span><span>{dateStr}</span></div>
+                    <div className="share-install-detail"><span className="text-muted">Installer</span><span>{sharingInstall.installer || '—'}</span></div>
+                    {sharingInstall.installLat && sharingInstall.installLng && (
+                      <div className="share-install-detail">
+                        <span className="text-muted">Location</span>
+                        <a href={`https://www.google.com/maps?q=${sharingInstall.installLat},${sharingInstall.installLng}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)' }}>
+                          View on Map
+                        </a>
+                      </div>
+                    )}
+                    {sharingInstall.crop && <div className="share-install-detail"><span className="text-muted">Crop</span><span>{sharingInstall.crop}</span></div>}
+                  </div>
+                </div>
+
+                {/* Contacts */}
+                {contacts.length > 0 ? (
+                  <div className="share-contacts-section">
+                    <div className="share-contacts-label">Grower Contacts</div>
+                    {contacts.map((contact, i) => (
+                      <div key={i} className="share-contact-card">
+                        <div className="share-contact-info">
+                          <div style={{ fontWeight: 500 }}>{contact.name}</div>
+                          <div className="text-muted" style={{ fontSize: 12 }}>
+                            {contact.email && contact.phone ? `${contact.email} · ${contact.phone}` : contact.email || contact.phone}
+                          </div>
+                        </div>
+                        <div className="share-contact-actions">
+                          {contact.phone && (
+                            <a
+                              href={`sms:${contact.phone}?body=${encodeURIComponent(buildShareMessage(sharingInstall, contact.name))}`}
+                              className="btn btn-primary share-action-btn"
+                              title="Send text"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                              Text
+                            </a>
+                          )}
+                          {contact.email && (
+                            <a
+                              href={`mailto:${contact.email}?subject=${encodeURIComponent(`Probe Installed — ${sharingInstall.fieldName}`)}&body=${encodeURIComponent(buildShareMessage(sharingInstall, contact.name))}`}
+                              className="btn btn-secondary share-action-btn"
+                              title="Send email"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                              Email
+                            </a>
+                          )}
+                          {contact.phone && (
+                            <a
+                              href={`tel:${contact.phone}`}
+                              className="btn btn-secondary share-action-btn"
+                              title="Call"
+                            >
+                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                              Call
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="share-contacts-section">
+                    <div className="share-contacts-label">Grower Contacts</div>
+                    <p className="text-muted" style={{ fontSize: 13, padding: '8px 0' }}>
+                      No &quot;Probe&quot; type contacts found for {sharingInstall.operation}. Add contacts with the &quot;Probe&quot; customer type in CRM.
+                    </p>
+                  </div>
+                )}
+
+                {/* Copy Message */}
+                <div className="share-copy-section">
+                  <div className="share-contacts-label">Message Preview</div>
+                  <pre className="share-message-preview">{buildShareMessage(sharingInstall)}</pre>
+                  <button
+                    className={`btn ${copied ? 'btn-primary' : 'btn-secondary'} share-copy-btn`}
+                    onClick={() => handleCopyMessage(sharingInstall)}
+                  >
+                    {copied ? (
+                      <>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                        Copy Message
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Perform Install Picker Modal */}
       {showPicker && (
