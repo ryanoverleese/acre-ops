@@ -7,6 +7,7 @@ import LoadingBar from '@/components/LoadingBar';
 import Providers from '@/components/Providers';
 
 const AskAI = dynamic(() => import('@/components/AskAI'), { loading: () => null });
+const BootSplash = dynamic(() => import('@/components/BootSplash'), { loading: () => null });
 
 export const metadata: Metadata = {
   title: 'Acre Insights Operation Center',
@@ -25,6 +26,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://api.baserow.io" />
       </head>
       <body>
+        <BootSplash />
         <Providers>
           <Suspense fallback={null}>
             <LoadingBar />

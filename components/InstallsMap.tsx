@@ -35,8 +35,8 @@ interface InstallsMapProps {
 }
 
 const OPERATION_COLORS = [
-  '#4a7a5b', '#60a5fa', '#d97706', '#dc2626', '#a78bfa',
-  '#f472b6', '#2dd4bf', '#fb923c', '#818cf8', '#4ade80',
+  '#ff4444', '#ffcc00', '#ff69b4', '#00ccff', '#ff8c00',
+  '#a78bfa', '#00ff88', '#ff6347', '#818cf8', '#40e0d0',
 ];
 
 const MapContainer = dynamic(

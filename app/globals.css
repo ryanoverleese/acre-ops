@@ -7945,3 +7945,20 @@ input[type="date"]:focus {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+.boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.3s ease;
+}
+
+.boot-splash-fade {
+  opacity: 0;
+  pointer-events: none;
+}
