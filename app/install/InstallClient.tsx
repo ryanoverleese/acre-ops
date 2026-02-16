@@ -256,6 +256,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [viewingInstall, setViewingInstall] = useState<InstalledProbeData | null>(null);
   const [editGettingLocation, setEditGettingLocation] = useState(false);
   const [editChangedProbeId, setEditChangedProbeId] = useState<number | null>(null);
+  const [manualGps, setManualGps] = useState(false);
   const [sharingInstall, setSharingInstall] = useState<InstalledProbeData | null>(null);
   const [copied, setCopied] = useState(false);
   // Batch notify state
@@ -521,6 +522,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     setFormData({ ...initialFormData, installer: assignment.plannedInstaller || '' });
     setShowCropChange(false);
     setLocationError(null);
+    setManualGps(false);
     setShowForm(true);
   };
 
@@ -1532,7 +1534,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </svg>
                     {gettingLocation ? 'Getting Location...' : 'Capture GPS Location'}
                   </button>
-                  {formData.lat && formData.lng && (
+                  {formData.lat && formData.lng && !manualGps && (
                     <div className="install-gps-result">
                       <div>
                         {formData.lat}, {formData.lng}
@@ -1542,6 +1544,32 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           Accuracy: ±{Math.round(formData.accuracy * 3.28084)} feet ({Math.round(formData.accuracy)}m)
                         </div>
                       )}
+                      <button type="button" onClick={() => setManualGps(true)} className="install-link-btn" style={{ marginTop: 4 }}>
+                        Edit coordinates
+                      </button>
+                    </div>
+                  )}
+                  {manualGps && (
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          type="text"
+                          value={formData.lat ? String(formData.lat) : ''}
+                          onChange={(e) => setFormData({ ...formData, lat: e.target.value ? parseFloat(e.target.value) : null })}
+                          className="install-form-input"
+                          placeholder="Latitude"
+                        />
+                        <input
+                          type="text"
+                          value={formData.lng ? String(formData.lng) : ''}
+                          onChange={(e) => setFormData({ ...formData, lng: e.target.value ? parseFloat(e.target.value) : null })}
+                          className="install-form-input"
+                          placeholder="Longitude"
+                        />
+                      </div>
+                      <button type="button" onClick={() => setManualGps(false)} className="install-link-btn-muted" style={{ marginTop: 4 }}>
+                        Done editing
+                      </button>
                     </div>
                   )}
                   {locationError && (
