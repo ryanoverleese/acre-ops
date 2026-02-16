@@ -1,16 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function SplashTimer() {
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   const [elapsed, setElapsed] = useState('0.0');
 
   useEffect(() => {
-    const start = Date.now();
-    const iv = setInterval(() => {
-      setElapsed(((Date.now() - start) / 1000).toFixed(1));
-    }, 100);
-    return () => clearInterval(iv);
+    startRef.current = performance.now();
+
+    const tick = () => {
+      const start = startRef.current ?? performance.now();
+      const s = (performance.now() - start) / 1000;
+      setElapsed(s.toFixed(1));
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
 
   return (

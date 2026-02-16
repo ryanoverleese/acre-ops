@@ -1,5 +1,3 @@
-import SplashTimer from '@/components/SplashTimer';
-
 export default function Loading() {
   return (
     <>
@@ -30,7 +28,19 @@ export default function Loading() {
           </svg>
         </div>
         <div className="splash-label">Loading data...</div>
-        <SplashTimer />
+        <div className="splash-timer">
+          <div className="splash-timer-dot" />
+          <span id="splash-elapsed">0.0s</span>
+        </div>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            var s=Date.now(),e=document.getElementById('splash-elapsed');
+            var iv=setInterval(function(){
+              if(!e||!document.contains(e)){clearInterval(iv);return}
+              e.textContent=((Date.now()-s)/1000).toFixed(1)+'s';
+            },100);
+          })();
+        `}} />
       </div>
     </>
   );
