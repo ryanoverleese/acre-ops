@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -129,12 +130,11 @@ export default function InstallsMap({ probes, visible, onClose }: InstallsMapPro
     border: 'none',
   };
 
-  const fullscreenStyle: React.CSSProperties = isFullscreen
-    ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'block', borderRadius: 0, border: 'none' }
-    : { display: 'block', position: 'relative', height: '400px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' };
+  const inlineStyle: React.CSSProperties = { display: 'block', position: 'relative', height: '400px', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)' };
+  const fullscreenStyle: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'block', borderRadius: 0, border: 'none' };
 
-  return (
-    <div style={fullscreenStyle} ref={mapRef}>
+  const mapContent = (
+    <div style={isFullscreen ? fullscreenStyle : inlineStyle} ref={mapRef}>
       {/* Top-right controls */}
       <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, display: 'flex', gap: '6px', alignItems: 'center' }}>
         <label style={{ ...controlStyle, cursor: 'pointer' }}>
@@ -238,4 +238,11 @@ export default function InstallsMap({ probes, visible, onClose }: InstallsMapPro
       )}
     </div>
   );
+
+  // Portal to document.body when fullscreen to escape overflow:hidden containers
+  if (isFullscreen) {
+    return ReactDOM.createPortal(mapContent, document.body);
+  }
+
+  return mapContent;
 }

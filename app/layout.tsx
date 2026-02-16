@@ -5,7 +5,6 @@ import './globals.css';
 import AppShell from '@/components/AppShell';
 import LoadingBar from '@/components/LoadingBar';
 import Providers from '@/components/Providers';
-import BootSplash from '@/components/BootSplash';
 
 const AskAI = dynamic(() => import('@/components/AskAI'), { loading: () => null });
 
@@ -26,17 +25,6 @@ export default function RootLayout({
         <link rel="preconnect" href="https://api.baserow.io" />
       </head>
       <body>
-        <BootSplash />
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            var s=Date.now(),e=document.getElementById('boot-splash-elapsed');
-            if(!e)return;
-            var iv=setInterval(function(){
-              if(!e||!document.contains(e)){clearInterval(iv);return}
-              e.textContent=((Date.now()-s)/1000).toFixed(1)+'s';
-            },100);
-          })();
-        `}} />
         <Providers>
           <Suspense fallback={null}>
             <LoadingBar />
