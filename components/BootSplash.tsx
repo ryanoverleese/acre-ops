@@ -7,46 +7,33 @@ export default function BootSplash() {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    // Check if this is a cold start (first load) vs client navigation
-    // performance.navigation is deprecated but getEntriesByType works
+    // Check if this is a cold start (first page load) vs client-side navigation
     const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-    const isReload = navEntries.length > 0 && (navEntries[0].type === 'navigate' || navEntries[0].type === 'reload');
+    const isColdStart = navEntries.length > 0 && (navEntries[0].type === 'navigate' || navEntries[0].type === 'reload');
 
-    if (!isReload) {
-      // Client-side navigation — don't show splash
+    if (!isColdStart) {
       setVisible(false);
       return;
     }
 
-    // Start timer
-    const startTime = Date.now();
-    const el = document.getElementById('boot-splash-elapsed');
-    const iv = setInterval(() => {
-      if (el) el.textContent = ((Date.now() - startTime) / 1000).toFixed(1) + 's';
-    }, 100);
-
-    // Watch for the main content to appear, then fade out
+    // Watch for real page content to appear, then fade out
     const check = setInterval(() => {
-      const mainContent = document.querySelector('.header h2');
-      if (mainContent && mainContent.textContent && mainContent.textContent.trim().length > 0) {
+      const h2 = document.querySelector('.header h2');
+      if (h2 && h2.textContent && h2.textContent.trim().length > 0) {
         setFadeOut(true);
         setTimeout(() => setVisible(false), 300);
         clearInterval(check);
       }
     }, 50);
 
-    // Safety timeout — hide after 15s no matter what
+    // Safety: hide after 15s no matter what
     const safety = setTimeout(() => {
       setFadeOut(true);
       setTimeout(() => setVisible(false), 300);
       clearInterval(check);
     }, 15000);
 
-    return () => {
-      clearInterval(iv);
-      clearInterval(check);
-      clearTimeout(safety);
-    };
+    return () => { clearInterval(check); clearTimeout(safety); };
   }, []);
 
   if (!visible) return null;
