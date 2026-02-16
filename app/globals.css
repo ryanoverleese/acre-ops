@@ -599,7 +599,8 @@ body::before {
 
 table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 thead {
@@ -2972,7 +2973,8 @@ input[type="date"]:focus {
 
 .approvals-items-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .approvals-items-table thead tr {
@@ -4014,7 +4016,8 @@ input[type="date"]:focus {
 /* Billing Table Styles */
 .billing-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .billing-table th {
@@ -4181,7 +4184,8 @@ input[type="date"]:focus {
 
 /* List table view */
 .order-list-table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
 }
 
@@ -4391,7 +4395,8 @@ input[type="date"]:focus {
 
 .order-items-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 14px;
 }
 
@@ -6761,7 +6766,8 @@ input[type="date"]:focus {
 .fields-probe-table {
   width: 100%;
   font-size: 12px;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .fields-probe-expand-cell {
