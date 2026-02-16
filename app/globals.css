@@ -1886,6 +1886,11 @@ tr.selected {
   text-align: center;
 }
 
+.table-container .empty-state {
+  border: none;
+  border-radius: 0;
+}
+
 /* Mobile Responsive Table Styles */
 @media (max-width: 1024px) {
   .table-actions {
