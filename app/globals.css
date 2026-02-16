@@ -570,10 +570,10 @@ body::before {
 /* Table */
 .table-container {
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: none;
   border-radius: var(--radius);
   overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
   animation: fadeInUp 0.3s ease 0.1s both;
 }
 
