@@ -7891,3 +7891,57 @@ input[type="date"]:focus {
   align-items: center;
   gap: 4px;
 }
+
+/* Loading / Splash Screen */
+.splash-icon {
+  width: 48px;
+  height: 48px;
+  animation: splash-draw 2s ease-in-out infinite;
+}
+
+.splash-drop-path {
+  stroke-dasharray: 80;
+  stroke-dashoffset: 80;
+  animation: splash-stroke 2s ease-in-out infinite;
+}
+
+.splash-label {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.splash-timer {
+  margin-top: 16px;
+  font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.splash-timer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: splash-blink 1s ease-in-out infinite;
+}
+
+@keyframes splash-stroke {
+  0% { stroke-dashoffset: 80; opacity: 0.3; }
+  40% { stroke-dashoffset: 0; opacity: 1; }
+  60% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: -80; opacity: 0.3; }
+}
+
+@keyframes splash-draw {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+@keyframes splash-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
