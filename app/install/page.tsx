@@ -1,7 +1,7 @@
-import { getFields, getFieldSeasons, getProbes, getBillingEntities, getOperations, getProbeAssignments, getContacts } from '@/lib/baserow';
+import { getProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type BillingEntity, type Operation, type Contact } from '@/lib/baserow';
 import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
 
-// Force dynamic rendering - don't cache this page
+// Force dynamic rendering - probe assignments need to be fresh
 export const dynamic = 'force-dynamic';
 
 export interface ProbeOption {
@@ -14,14 +14,15 @@ export interface ProbeOption {
 
 async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAssignment[]; probes: ProbeOption[]; allAssignable: InstallableProbeAssignment[]; installedProbes: InstalledProbeData[]; operationContacts: Record<string, { name: string; email: string; phone: string }[]> }> {
   try {
+    // Probe assignments are fetched fresh; reference data is cached
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
-      getFields(),
-      getFieldSeasons(),
-      getProbes(),
-      getBillingEntities(),
-      getOperations(),
+      getCachedRows<Field>('fields', undefined, 300),
+      getCachedRows<FieldSeason>('field_seasons', undefined, 120),
+      getCachedRows<Probe>('probes', undefined, 120),
+      getCachedRows<BillingEntity>('billing_entities', undefined, 300),
+      getCachedRows<Operation>('operations', undefined, 300),
       getProbeAssignments(),
-      getContacts(),
+      getCachedRows<Contact>('contacts', undefined, 300),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));

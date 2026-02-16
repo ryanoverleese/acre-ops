@@ -190,6 +190,12 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [editGettingLocation, setEditGettingLocation] = useState(false);
   const [sharingInstall, setSharingInstall] = useState<InstalledProbeData | null>(null);
   const [copied, setCopied] = useState(false);
+  // Batch notify state
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedProbeIds, setSelectedProbeIds] = useState<Set<number>>(new Set());
+  const [operationFilter, setOperationFilter] = useState<string>('all');
+  const [showBatchNotify, setShowBatchNotify] = useState(false);
+  const [batchCopied, setBatchCopied] = useState<string | null>(null);
 
   const handleEditInstall = (probe: InstalledProbeData) => {
     setEditingInstall(probe);
@@ -312,9 +318,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
       : 'recently';
     const probeLabel = probe.label ? ` (${probe.label})` : '';
     const mapsLink = probe.installLat && probe.installLng
-      ? `\nhttps://www.google.com/maps?q=${probe.installLat},${probe.installLng}`
+      ? `\nLocation: https://www.google.com/maps?q=${probe.installLat},${probe.installLng}`
       : '';
-    return `${greeting}\n\nYour soil moisture probe has been installed at ${probe.fieldName}${probeLabel}.\n\nProbe: #${probe.probeSerial} (${probe.probeBrand})\nInstalled: ${dateStr}\nInstaller: ${probe.installer || 'Acre Insights'}${mapsLink}\n\nWe'll be monitoring your field throughout the season. If you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
+    return `${greeting}\n\nYour soil moisture probe has been installed at ${probe.fieldName}${probeLabel}.\n\nProbe #${probe.probeNumber}: ${probe.probeSerial}\nDate: ${dateStr}${mapsLink}\n\nWe'll be monitoring your field throughout the season. If you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
   };
 
   const handleCopyMessage = async (probe: InstalledProbeData, contactName?: string) => {
@@ -345,6 +351,73 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     setShowPicker(false);
     setPickerField('');
     handleLogInstall(assignment);
+  };
+
+  // Unique operations from installed probes
+  const installedOperations = useMemo(() => {
+    const ops = new Set<string>();
+    installedProbes.forEach(p => ops.add(p.operation));
+    return Array.from(ops).sort();
+  }, [installedProbes]);
+
+  // Filtered installed probes by operation
+  const filteredInstalled = useMemo(() => {
+    if (operationFilter === 'all') return installedProbes;
+    return installedProbes.filter(p => p.operation === operationFilter);
+  }, [installedProbes, operationFilter]);
+
+  const toggleProbeSelection = (id: number) => {
+    setSelectedProbeIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProbeIds.size === filteredInstalled.length) {
+      setSelectedProbeIds(new Set());
+    } else {
+      setSelectedProbeIds(new Set(filteredInstalled.map(p => p.id)));
+    }
+  };
+
+  const selectedProbes = useMemo(() => {
+    return installedProbes.filter(p => selectedProbeIds.has(p.id));
+  }, [installedProbes, selectedProbeIds]);
+
+  // Group selected probes by operation for batch notify
+  const selectedByOperation = useMemo(() => {
+    const groups = new Map<string, InstalledProbeData[]>();
+    selectedProbes.forEach(p => {
+      const existing = groups.get(p.operation) || [];
+      existing.push(p);
+      groups.set(p.operation, existing);
+    });
+    return groups;
+  }, [selectedProbes]);
+
+  const buildBatchMessage = (probes: InstalledProbeData[], contactName?: string) => {
+    const greeting = contactName ? `Hi ${contactName},` : 'Hi,';
+    const lines = probes.map(p => {
+      const dateStr = p.installDate
+        ? new Date(p.installDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+        : 'recently';
+      const probeLabel = p.label ? ` (${p.label})` : '';
+      const mapsLink = p.installLat && p.installLng
+        ? `  Location: https://www.google.com/maps?q=${p.installLat},${p.installLng}`
+        : '';
+      return `- ${p.fieldName}${probeLabel}\n  Probe #${p.probeNumber}: ${p.probeSerial}\n  Date: ${dateStr}${mapsLink ? '\n' + mapsLink : ''}`;
+    });
+    return `${greeting}\n\nYour soil moisture probes have been installed:\n\n${lines.join('\n\n')}\n\nWe'll be monitoring your fields throughout the season. If you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
+  };
+
+  const handleBatchCopy = async (probes: InstalledProbeData[], contactName?: string) => {
+    const msg = buildBatchMessage(probes, contactName);
+    await navigator.clipboard.writeText(msg);
+    setBatchCopied(contactName || '__generic__');
+    setTimeout(() => setBatchCopied(null), 2000);
   };
 
   // Filter by planned installer
@@ -651,12 +724,56 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             <div className="table-header">
               <h3 className="table-title">
                 Installed
-                <span className="season-badge" style={{ marginLeft: 8 }}>{installedProbes.length}</span>
+                <span className="season-badge" style={{ marginLeft: 8 }}>{filteredInstalled.length}</span>
               </h3>
+              <div className="table-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {installedOperations.length > 1 && (
+                  <select
+                    value={operationFilter}
+                    onChange={(e) => { setOperationFilter(e.target.value); setSelectedProbeIds(new Set()); }}
+                    className="install-filter-select"
+                    style={{ minWidth: 140 }}
+                  >
+                    <option value="all">All Operations</option>
+                    {installedOperations.map(op => (
+                      <option key={op} value={op}>{op}</option>
+                    ))}
+                  </select>
+                )}
+                {batchMode ? (
+                  <>
+                    <button
+                      className="btn btn-primary"
+                      style={{ fontSize: 13 }}
+                      disabled={selectedProbeIds.size === 0}
+                      onClick={() => setShowBatchNotify(true)}
+                    >
+                      Notify {selectedProbeIds.size > 0 ? `(${selectedProbeIds.size})` : 'Selected'}
+                    </button>
+                    <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => { setBatchMode(false); setSelectedProbeIds(new Set()); }}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setBatchMode(true)}>
+                    Send Reports
+                  </button>
+                )}
+              </div>
             </div>
             <table className="desktop-table">
               <thead>
                 <tr>
+                  {batchMode && (
+                    <th style={{ width: 36 }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedProbeIds.size === filteredInstalled.length && filteredInstalled.length > 0}
+                        onChange={toggleSelectAll}
+                        style={{ cursor: 'pointer' }}
+                      />
+                    </th>
+                  )}
                   <th>Field</th>
                   <th>Probe</th>
                   <th>Installer</th>
@@ -666,8 +783,18 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 </tr>
               </thead>
               <tbody>
-                {installedProbes.map((probe) => (
-                  <tr key={probe.id}>
+                {filteredInstalled.map((probe) => (
+                  <tr key={probe.id} style={batchMode && selectedProbeIds.has(probe.id) ? { background: 'var(--accent-bg)' } : undefined}>
+                    {batchMode && (
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedProbeIds.has(probe.id)}
+                          onChange={() => toggleProbeSelection(probe.id)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </td>
+                    )}
                     <td>
                       <div>{probe.fieldName}</div>
                       <div className="text-muted" style={{ fontSize: 12 }}>{probe.operation}</div>
@@ -692,17 +819,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       ) : '—'}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setViewingInstall(probe)}>
-                          View
-                        </button>
-                        <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => handleEditInstall(probe)}>
-                          Edit
-                        </button>
-                        <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setSharingInstall(probe)}>
-                          Notify
-                        </button>
-                      </div>
+                      {!batchMode && (
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setViewingInstall(probe)}>
+                            View
+                          </button>
+                          <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => handleEditInstall(probe)}>
+                            Edit
+                          </button>
+                          <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setSharingInstall(probe)}>
+                            Notify
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -710,14 +839,30 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             </table>
             {/* Mobile card view */}
             <div className="installed-mobile-list">
-              {installedProbes.map((probe) => (
-                <div key={probe.id} className="installed-mobile-card" onClick={() => setViewingInstall(probe)}>
+              {filteredInstalled.map((probe) => (
+                <div
+                  key={probe.id}
+                  className="installed-mobile-card"
+                  onClick={() => batchMode ? toggleProbeSelection(probe.id) : setViewingInstall(probe)}
+                  style={batchMode && selectedProbeIds.has(probe.id) ? { background: 'var(--accent-bg)', borderColor: 'var(--accent-primary)' } : undefined}
+                >
                   <div className="installed-mobile-card-top">
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{probe.fieldName}</div>
-                      <div className="text-muted" style={{ fontSize: 12 }}>
-                        #{probe.probeSerial}
-                        {(probe.probeNumber > 1 || probe.label) && ` (P${probe.probeNumber}${probe.label ? ` — ${probe.label}` : ''})`}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                      {batchMode && (
+                        <input
+                          type="checkbox"
+                          checked={selectedProbeIds.has(probe.id)}
+                          onChange={() => toggleProbeSelection(probe.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ cursor: 'pointer', marginTop: 3 }}
+                        />
+                      )}
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{probe.fieldName}</div>
+                        <div className="text-muted" style={{ fontSize: 12 }}>
+                          #{probe.probeSerial}
+                          {(probe.probeNumber > 1 || probe.label) && ` (P${probe.probeNumber}${probe.label ? ` — ${probe.label}` : ''})`}
+                        </div>
                       </div>
                     </div>
                     <div style={{ textAlign: 'right', fontSize: 13 }}>
@@ -725,17 +870,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       <div className="text-muted" style={{ fontSize: 12 }}>{probe.installDate ? new Date(probe.installDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</div>
                     </div>
                   </div>
-                  <div className="installed-mobile-card-actions">
-                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setViewingInstall(probe); }}>
-                      View
-                    </button>
-                    <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); handleEditInstall(probe); }}>
-                      Edit
-                    </button>
-                    <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setSharingInstall(probe); }}>
-                      Notify
-                    </button>
-                  </div>
+                  {!batchMode && (
+                    <div className="installed-mobile-card-actions">
+                      <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setViewingInstall(probe); }}>
+                        View
+                      </button>
+                      <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); handleEditInstall(probe); }}>
+                        Edit
+                      </button>
+                      <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setSharingInstall(probe); }}>
+                        Notify
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -905,9 +1052,8 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </div>
                   </div>
                   <div className="share-install-details">
-                    <div className="share-install-detail"><span className="text-muted">Probe</span><span>#{sharingInstall.probeSerial} ({sharingInstall.probeBrand})</span></div>
-                    <div className="share-install-detail"><span className="text-muted">Installed</span><span>{dateStr}</span></div>
-                    <div className="share-install-detail"><span className="text-muted">Installer</span><span>{sharingInstall.installer || '—'}</span></div>
+                    <div className="share-install-detail"><span className="text-muted">Probe</span><span>#{sharingInstall.probeNumber}: {sharingInstall.probeSerial}</span></div>
+                    <div className="share-install-detail"><span className="text-muted">Date</span><span>{dateStr}</span></div>
                     {sharingInstall.installLat && sharingInstall.installLng && (
                       <div className="share-install-detail">
                         <span className="text-muted">Location</span>
@@ -916,7 +1062,6 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         </a>
                       </div>
                     )}
-                    {sharingInstall.crop && <div className="share-install-detail"><span className="text-muted">Crop</span><span>{sharingInstall.crop}</span></div>}
                   </div>
                 </div>
 
@@ -1002,6 +1147,129 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
           </div>
         );
       })()}
+
+      {/* Batch Notify Modal */}
+      {showBatchNotify && selectedProbes.length > 0 && (
+        <div className="detail-panel-overlay" onClick={() => { setShowBatchNotify(false); setBatchCopied(null); }}>
+          <div className="detail-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
+            <div className="detail-panel-header">
+              <div>
+                <h3>Send Reports</h3>
+                <p className="text-muted">{selectedProbes.length} probe{selectedProbes.length > 1 ? 's' : ''} selected</p>
+              </div>
+              <button className="close-btn" onClick={() => { setShowBatchNotify(false); setBatchCopied(null); }}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              {/* Summary of selected probes */}
+              <div className="share-install-summary" style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Selected Installs</div>
+                {selectedProbes.map(p => (
+                  <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, borderBottom: '1px solid var(--border)' }}>
+                    <span>{p.fieldName}{p.label ? ` (${p.label})` : ''}</span>
+                    <span className="text-muted">#{p.probeSerial}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Per-operation contacts and actions */}
+              {Array.from(selectedByOperation.entries()).map(([opName, probes]) => {
+                const contacts = operationContacts[opName] || [];
+                return (
+                  <div key={opName} style={{ marginBottom: 20 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {opName}
+                      <span className="season-badge">{probes.length}</span>
+                    </div>
+
+                    {contacts.length > 0 ? (
+                      <div className="share-contacts-section" style={{ marginTop: 0 }}>
+                        {contacts.map((contact, i) => {
+                          const msg = buildBatchMessage(probes, contact.name);
+                          return (
+                            <div key={i} className="share-contact-card">
+                              <div className="share-contact-info">
+                                <div style={{ fontWeight: 500 }}>{contact.name}</div>
+                                <div className="text-muted" style={{ fontSize: 12 }}>
+                                  {contact.email && contact.phone ? `${contact.email} · ${contact.phone}` : contact.email || contact.phone}
+                                </div>
+                              </div>
+                              <div className="share-contact-actions">
+                                {contact.phone && (
+                                  <a
+                                    href={`sms:${contact.phone}?body=${encodeURIComponent(msg)}`}
+                                    className="btn btn-primary share-action-btn"
+                                  >
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                                    Text
+                                  </a>
+                                )}
+                                {contact.email && (
+                                  <a
+                                    href={`mailto:${contact.email}?subject=${encodeURIComponent(`Probes Installed — ${opName}`)}&body=${encodeURIComponent(msg)}`}
+                                    className="btn btn-secondary share-action-btn"
+                                  >
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                    Email
+                                  </a>
+                                )}
+                                <button
+                                  className={`btn ${batchCopied === contact.name ? 'btn-primary' : 'btn-secondary'} share-action-btn`}
+                                  onClick={() => handleBatchCopy(probes, contact.name)}
+                                >
+                                  {batchCopied === contact.name ? (
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                  ) : (
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                  )}
+                                  {batchCopied === contact.name ? 'Copied' : 'Copy'}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-muted" style={{ fontSize: 13, padding: '4px 0' }}>
+                        No &quot;Probe&quot; type contacts found for {opName}.
+                      </p>
+                    )}
+
+                    {/* Generic message preview for this operation */}
+                    <div style={{ marginTop: 8 }}>
+                      <pre className="share-message-preview" style={{ fontSize: 11 }}>{buildBatchMessage(probes)}</pre>
+                      <button
+                        className={`btn ${batchCopied === '__generic_' + opName ? 'btn-primary' : 'btn-secondary'} share-copy-btn`}
+                        onClick={() => { handleBatchCopy(probes); setBatchCopied('__generic_' + opName); setTimeout(() => setBatchCopied(null), 2000); }}
+                        style={{ marginTop: 4 }}
+                      >
+                        {batchCopied === '__generic_' + opName ? (
+                          <>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                            Copied!
+                          </>
+                        ) : (
+                          <>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                            Copy Message
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => { setShowBatchNotify(false); setBatchCopied(null); }}>Close</button>
+              <button className="btn btn-primary" onClick={() => { setShowBatchNotify(false); setBatchMode(false); setSelectedProbeIds(new Set()); setBatchCopied(null); }}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Perform Install Picker Modal */}
       {showPicker && (

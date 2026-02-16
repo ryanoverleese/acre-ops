@@ -1,10 +1,12 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import './globals.css';
 import AppShell from '@/components/AppShell';
 import LoadingBar from '@/components/LoadingBar';
-import AskAI from '@/components/AskAI';
 import Providers from '@/components/Providers';
+
+const AskAI = dynamic(() => import('@/components/AskAI'), { loading: () => null });
 
 export const metadata: Metadata = {
   title: 'Acre Insights Operation Center',
@@ -18,6 +20,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="dns-prefetch" href="https://api.baserow.io" />
+        <link rel="preconnect" href="https://api.baserow.io" />
+      </head>
       <body>
         <Providers>
           <Suspense fallback={null}>

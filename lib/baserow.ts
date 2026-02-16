@@ -1,3 +1,5 @@
+import { unstable_cache } from 'next/cache';
+
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 // JWT auth for schema operations (field modifications).
@@ -178,6 +180,16 @@ export async function getRows<T>(tableName: TableName, options?: FetchOptions): 
   }
 
   return allResults;
+}
+
+// Cached version of getRows - caches results for revalidateSeconds
+// Use this for server components that don't need real-time data
+export function getCachedRows<T>(tableName: TableName, options?: FetchOptions, revalidateSeconds = 120): Promise<T[]> {
+  return unstable_cache(
+    () => getRows<T>(tableName, options),
+    [`baserow-${tableName}-${JSON.stringify(options || {})}`],
+    { revalidate: revalidateSeconds, tags: [`baserow-${tableName}`] }
+  )();
 }
 
 // Get a single row by ID

@@ -1,15 +1,18 @@
-import { getRepairs, getFieldSeasons, getProbeAssignments, getOrders, getBillingEntities, getProbes } from '@/lib/baserow';
+import { getCachedRows, type Repair, type FieldSeason, type ProbeAssignment, type Order, type BillingEntity, type Probe } from '@/lib/baserow';
 import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe } from './DashboardClient';
+
+// Revalidate dashboard data every 2 minutes instead of force-dynamic
+export const revalidate = 120;
 
 async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[] }> {
   try {
     const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes] = await Promise.all([
-      getRepairs(),
-      getFieldSeasons(),
-      getProbeAssignments(),
-      getOrders(),
-      getBillingEntities(),
-      getProbes(),
+      getCachedRows<Repair>('repairs', undefined, 120),
+      getCachedRows<FieldSeason>('field_seasons', undefined, 120),
+      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
+      getCachedRows<Order>('orders', undefined, 120),
+      getCachedRows<BillingEntity>('billing_entities', undefined, 300),
+      getCachedRows<Probe>('probes', undefined, 120),
     ]);
 
     // Calculate install stats from probe_assignments for current season
