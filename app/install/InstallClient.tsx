@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import type { ProbeOption } from './page';
+
+const InstallsMap = dynamic(() => import('@/components/InstallsMap'), { ssr: false });
 
 // Searchable probe selector component
 function ProbeSearchSelect({ probes, value, onChange, placeholder }: {
@@ -266,6 +269,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [operationFilter, setOperationFilter] = useState<string>('all');
   const [showBatchNotify, setShowBatchNotify] = useState(false);
   const [batchCopied, setBatchCopied] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
 
   const handleEditInstall = (probe: InstalledProbeData) => {
     setEditingInstall(probe);
@@ -839,6 +843,16 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     <option key={op} value={op}>{op}</option>
                   ))}
                 </select>
+                <button
+                  className={`btn ${showMap ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: 13 }}
+                  onClick={() => setShowMap(!showMap)}
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14" style={{ marginRight: 4, verticalAlign: 'text-bottom' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0020 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Map
+                </button>
                 {batchMode ? (
                   <>
                     <button
@@ -860,6 +874,15 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 )}
               </div>
             </div>
+            {showMap && (
+              <div style={{ padding: '12px 16px' }}>
+                <InstallsMap
+                  probes={filteredInstalled}
+                  visible={showMap}
+                  onClose={() => setShowMap(false)}
+                />
+              </div>
+            )}
             <table className="desktop-table">
               <thead>
                 <tr>
