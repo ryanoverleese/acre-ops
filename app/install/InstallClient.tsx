@@ -727,19 +727,17 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 <span className="season-badge" style={{ marginLeft: 8 }}>{filteredInstalled.length}</span>
               </h3>
               <div className="table-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                {installedOperations.length > 1 && (
-                  <select
-                    value={operationFilter}
-                    onChange={(e) => { setOperationFilter(e.target.value); setSelectedProbeIds(new Set()); }}
-                    className="install-filter-select"
-                    style={{ minWidth: 140 }}
-                  >
-                    <option value="all">All Operations</option>
-                    {installedOperations.map(op => (
-                      <option key={op} value={op}>{op}</option>
-                    ))}
-                  </select>
-                )}
+                <select
+                  value={operationFilter}
+                  onChange={(e) => { setOperationFilter(e.target.value); setSelectedProbeIds(new Set()); }}
+                  className="install-filter-select"
+                  style={{ minWidth: 140 }}
+                >
+                  <option value="all">All Operations</option>
+                  {installedOperations.map(op => (
+                    <option key={op} value={op}>{op}</option>
+                  ))}
+                </select>
                 {batchMode ? (
                   <>
                     <button
