@@ -249,6 +249,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [showCropChange, setShowCropChange] = useState(false);
   const [compressing, setCompressing] = useState<'photoFieldEnd' | 'photoExtra' | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [pickerOperation, setPickerOperation] = useState<string>('');
   const [pickerField, setPickerField] = useState<string>('');
   const [editingInstall, setEditingInstall] = useState<InstalledProbeData | null>(null);
   const [editForm, setEditForm] = useState<EditInstallForm>({ installer: '', installDate: '', installLat: '', installLng: '', cropxTelemetryId: '', signalStrength: '', installNotes: '' });
@@ -420,16 +421,24 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Unique field names for the picker (with operation for display)
+  // Unique operations for the picker
+  const pickerOperations = useMemo(() => {
+    const ops = new Set<string>();
+    allAssignable.forEach(pa => ops.add(pa.operation));
+    return Array.from(ops).sort();
+  }, [allAssignable]);
+
+  // Fields filtered by selected operation
   const pickerFields = useMemo(() => {
     const fieldMap = new Map<string, string>();
     allAssignable.forEach(pa => {
+      if (pickerOperation && pa.operation !== pickerOperation) return;
       if (!fieldMap.has(pa.fieldName)) {
         fieldMap.set(pa.fieldName, pa.operation);
       }
     });
     return Array.from(fieldMap.entries()).sort(([a], [b]) => a.localeCompare(b));
-  }, [allAssignable]);
+  }, [allAssignable, pickerOperation]);
 
   // Probe assignments for the selected field in the picker
   const pickerAssignments = useMemo(() => {
@@ -439,6 +448,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
 
   const handlePickerSelect = (assignment: InstallableProbeAssignment) => {
     setShowPicker(false);
+    setPickerOperation('');
     setPickerField('');
     handleLogInstall(assignment);
   };
@@ -1385,11 +1395,11 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
 
       {/* Perform Install Picker Modal */}
       {showPicker && (
-        <div className="detail-panel-overlay" onClick={() => { setShowPicker(false); setPickerField(''); }}>
+        <div className="detail-panel-overlay" onClick={() => { setShowPicker(false); setPickerOperation(''); setPickerField(''); }}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
               <h3>Perform Install</h3>
-              <button className="close-btn" onClick={() => { setShowPicker(false); setPickerField(''); }}>
+              <button className="close-btn" onClick={() => { setShowPicker(false); setPickerOperation(''); setPickerField(''); }}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -1397,18 +1407,34 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             </div>
             <div className="detail-panel-content">
               <div className="form-group">
-                <label>Select Field</label>
+                <label>Select Operation</label>
                 <select
-                  value={pickerField}
-                  onChange={(e) => setPickerField(e.target.value)}
+                  value={pickerOperation}
+                  onChange={(e) => { setPickerOperation(e.target.value); setPickerField(''); }}
                   className="install-form-input"
                 >
-                  <option value="">Choose a field...</option>
-                  {pickerFields.map(([name, operation]) => (
-                    <option key={name} value={name}>{name} — {operation}</option>
+                  <option value="">Choose an operation...</option>
+                  {pickerOperations.map(op => (
+                    <option key={op} value={op}>{op}</option>
                   ))}
                 </select>
               </div>
+
+              {pickerOperation && (
+                <div className="form-group">
+                  <label>Select Field</label>
+                  <select
+                    value={pickerField}
+                    onChange={(e) => setPickerField(e.target.value)}
+                    className="install-form-input"
+                  >
+                    <option value="">Choose a field...</option>
+                    {pickerFields.map(([name]) => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {pickerField && pickerAssignments.length > 0 && (
                 <div className="form-group">
