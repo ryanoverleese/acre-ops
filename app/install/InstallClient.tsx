@@ -866,7 +866,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <th>Field</th>
                   <th>Probe</th>
                   <th>Installer</th>
-                  <th>Date</th>
+                  <th>Install Date</th>
                   <th>GPS</th>
                   <th></th>
                 </tr>
@@ -903,7 +903,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           className="text-secondary"
                           style={{ textDecoration: 'underline' }}
                         >
-                          {Number(probe.installLat).toFixed(4)}, {Number(probe.installLng).toFixed(4)}
+                          {Number(probe.installLat).toFixed(5)}, {Number(probe.installLng).toFixed(5)}
                         </a>
                       ) : '—'}
                     </td>
