@@ -5090,6 +5090,61 @@ input[type="date"]:focus {
   font-weight: 500;
 }
 
+/* Probe search dropdown */
+.probe-search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 50;
+  margin-top: 2px;
+}
+
+.probe-search-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-primary);
+}
+
+.probe-search-option:hover {
+  background: var(--bg-secondary);
+}
+
+.probe-search-option.selected {
+  background: var(--accent-bg);
+  color: var(--accent-primary);
+}
+
+.probe-search-serial {
+  font-weight: 500;
+}
+
+.probe-search-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.probe-search-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 /* Link-style button (no background/border) */
 .install-link-btn {
   background: none;

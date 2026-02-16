@@ -1,7 +1,74 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { ProbeOption } from './page';
+
+// Searchable probe selector component
+function ProbeSearchSelect({ probes, value, onChange, placeholder }: {
+  probes: ProbeOption[];
+  value: number | null;
+  onChange: (id: number | null) => void;
+  placeholder?: string;
+}) {
+  const [search, setSearch] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const filtered = useMemo(() => {
+    if (!search) return probes;
+    const q = search.toLowerCase();
+    return probes.filter(p =>
+      p.serialNumber.toLowerCase().includes(q) ||
+      p.brand.toLowerCase().includes(q) ||
+      p.rack.toLowerCase().includes(q)
+    );
+  }, [probes, search]);
+
+  const selected = value ? probes.find(p => p.id === value) : null;
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <input
+        type="text"
+        className="install-form-input"
+        style={{ width: '100%' }}
+        placeholder={placeholder || 'Search probes by serial, brand, or rack...'}
+        value={open ? search : (selected ? `#${selected.serialNumber}${selected.rack ? ` (${selected.rack}${selected.rackSlot ? `-${selected.rackSlot}` : ''})` : ''}` : '')}
+        onChange={(e) => { setSearch(e.target.value); if (!open) setOpen(true); }}
+        onFocus={() => { setOpen(true); setSearch(''); }}
+      />
+      {open && (
+        <div className="probe-search-dropdown">
+          {filtered.length === 0 ? (
+            <div className="probe-search-empty">No probes match &quot;{search}&quot;</div>
+          ) : (
+            filtered.slice(0, 50).map(p => (
+              <button
+                key={p.id}
+                type="button"
+                className={`probe-search-option${value === p.id ? ' selected' : ''}`}
+                onClick={() => { onChange(p.id); setOpen(false); setSearch(''); }}
+              >
+                <span className="probe-search-serial">#{p.serialNumber}</span>
+                <span className="probe-search-meta">
+                  {p.brand}{p.rack ? ` · ${p.rack}${p.rackSlot ? `-${p.rackSlot}` : ''}` : ''}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Target photo size: 2MB (compress anything larger)
 const TARGET_PHOTO_SIZE_MB = 2;
@@ -188,6 +255,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [savingEdit, setSavingEdit] = useState(false);
   const [viewingInstall, setViewingInstall] = useState<InstalledProbeData | null>(null);
   const [editGettingLocation, setEditGettingLocation] = useState(false);
+  const [editChangedProbeId, setEditChangedProbeId] = useState<number | null>(null);
   const [sharingInstall, setSharingInstall] = useState<InstalledProbeData | null>(null);
   const [copied, setCopied] = useState(false);
   // Batch notify state
@@ -199,6 +267,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
 
   const handleEditInstall = (probe: InstalledProbeData) => {
     setEditingInstall(probe);
+    setEditChangedProbeId(null);
     setEditForm({
       installer: probe.installer,
       installDate: probe.installDate,
@@ -214,6 +283,21 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     if (!editingInstall) return;
     setSavingEdit(true);
     try {
+      // If probe was changed, log it in notes
+      let notes = editForm.installNotes || '';
+      let newSerial = editingInstall.probeSerial;
+      let newBrand = editingInstall.probeBrand;
+      if (editChangedProbeId && editChangedProbeId !== editingInstall.id) {
+        const newProbe = probes.find(p => p.id === editChangedProbeId);
+        if (newProbe) {
+          newSerial = newProbe.serialNumber;
+          newBrand = newProbe.brand;
+          const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          const changeNote = `[${dateStr}] Probe replaced: #${editingInstall.probeSerial} → #${newProbe.serialNumber}`;
+          notes = notes ? `${changeNote}\n${notes}` : changeNote;
+        }
+      }
+
       const update: Record<string, unknown> = {
         installer: editForm.installer,
         install_date: editForm.installDate,
@@ -221,8 +305,11 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
         install_lng: editForm.installLng ? parseFloat(editForm.installLng) : null,
         cropx_telemetry_id: editForm.cropxTelemetryId || null,
         signal_strength: editForm.signalStrength || null,
-        install_notes: editForm.installNotes || null,
+        install_notes: notes || null,
       };
+      if (editChangedProbeId) {
+        update.probe = editChangedProbeId;
+      }
       const response = await fetch(`/api/probe-assignments/${editingInstall.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -237,7 +324,9 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
           installLng: editForm.installLng ? parseFloat(editForm.installLng) : 0,
           cropxTelemetryId: editForm.cropxTelemetryId,
           signalStrength: editForm.signalStrength,
-          installNotes: editForm.installNotes,
+          installNotes: notes,
+          probeSerial: newSerial,
+          probeBrand: newBrand,
         } : p));
         setEditingInstall(null);
       } else {
@@ -961,6 +1050,29 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             <div className="detail-panel-content">
               <div className="edit-form">
                 <div className="form-group">
+                  <label>Probe</label>
+                  {!editChangedProbeId ? (
+                    <div className="install-probe-display">
+                      <span className="install-probe-display-serial">#{editingInstall.probeSerial}</span>
+                      <button type="button" onClick={() => setEditChangedProbeId(-1)} className="install-link-btn">
+                        Replace probe
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <ProbeSearchSelect
+                        probes={probes}
+                        value={editChangedProbeId === -1 ? null : editChangedProbeId}
+                        onChange={(id) => setEditChangedProbeId(id || -1)}
+                        placeholder="Search for replacement probe..."
+                      />
+                      <button type="button" onClick={() => setEditChangedProbeId(null)} className="install-link-btn-muted" style={{ marginTop: 4 }}>
+                        Cancel — keep #{editingInstall.probeSerial}
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
                   <label>Installer</label>
                   <select value={editForm.installer} onChange={(e) => setEditForm({ ...editForm, installer: e.target.value })} className="install-form-input">
                     <option value="">Select installer...</option>
@@ -1372,22 +1484,17 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </div>
                   ) : (
                     <div>
-                      <select
-                        value={formData.changedProbeId === -1 ? '' : formData.changedProbeId}
-                        onChange={(e) => setFormData({ ...formData, changedProbeId: e.target.value ? parseInt(e.target.value, 10) : null })}
-                        className="install-form-input-full"
-                      >
-                        <option value="">Select the actual probe...</option>
-                        {probes.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            #{p.serialNumber} {p.rack ? `(${p.rack}${p.rackSlot ? `-${p.rackSlot}` : ''})` : ''}
-                          </option>
-                        ))}
-                      </select>
+                      <ProbeSearchSelect
+                        probes={probes}
+                        value={formData.changedProbeId === -1 ? null : formData.changedProbeId}
+                        onChange={(id) => setFormData({ ...formData, changedProbeId: id || -1 })}
+                        placeholder="Search by serial, brand, or rack..."
+                      />
                       <button
                         type="button"
                         onClick={() => setFormData({ ...formData, changedProbeId: null })}
                         className="install-link-btn-muted"
+                        style={{ marginTop: 4 }}
                       >
                         Cancel - use original probe
                       </button>
