@@ -603,10 +603,6 @@ table {
   border-spacing: 0;
 }
 
-thead {
-  background: var(--bg-secondary);
-}
-
 th {
   text-align: left;
   padding: var(--space-3) var(--space-4);
