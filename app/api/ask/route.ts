@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities } from '@/lib/baserow';
+import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities, updateRow, createRow } from '@/lib/baserow';
+import type { FieldSeason, Probe, Repair, ProbeAssignment } from '@/lib/baserow';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 
@@ -41,7 +42,11 @@ How to behave:
 
 7. You cannot search by geographic proximity or distance. If a user asks for fields near a city, within X miles of a location, or "what's nearby", explain that you can only search by name.
 
-8. If you don't know something or the data isn't there, say so. Never make up information.`;
+8. If you don't know something or the data isn't there, say so. Never make up information.
+
+9. You have WRITE tools (update_field_season, update_probe, update_probe_assignment, create_repair). Before making changes, ALWAYS confirm with the user what you're about to do. After a successful write, confirm what was changed.
+
+10. When updating records, use the exact field names and value formats from search results. For single_select fields, use the option ID number. For link_row fields, use an array of row IDs.`;
 }
 
 // Tool definitions for Claude
@@ -142,6 +147,83 @@ const TOOLS = [
           description: "Filter to a specific season/year (e.g., '2025', '2024')"
         }
       }
+    }
+  },
+  // Write tools
+  {
+    name: "update_field_season",
+    description: "Update a field_season record. Use to change crop, service_type, route_order, planned_installer, etc. ALWAYS confirm with user before calling.",
+    input_schema: {
+      type: "object",
+      properties: {
+        field_season_id: {
+          type: "number",
+          description: "The row ID of the field_season to update"
+        },
+        updates: {
+          type: "object",
+          description: "Fields to update. Use Baserow field names. For single_select, use option ID. For link_row, use array of row IDs."
+        }
+      },
+      required: ["field_season_id", "updates"]
+    }
+  },
+  {
+    name: "update_probe",
+    description: "Update a probe record. Use to change status, rack, rack_slot, notes, etc. ALWAYS confirm with user before calling.",
+    input_schema: {
+      type: "object",
+      properties: {
+        probe_id: {
+          type: "number",
+          description: "The row ID of the probe to update"
+        },
+        updates: {
+          type: "object",
+          description: "Fields to update. Use Baserow field names."
+        }
+      },
+      required: ["probe_id", "updates"]
+    }
+  },
+  {
+    name: "update_probe_assignment",
+    description: "Update a probe_assignment record. Use to change probe_status, installer, install_date, antenna_type, notes, etc. ALWAYS confirm with user before calling.",
+    input_schema: {
+      type: "object",
+      properties: {
+        probe_assignment_id: {
+          type: "number",
+          description: "The row ID of the probe_assignment to update"
+        },
+        updates: {
+          type: "object",
+          description: "Fields to update. Use Baserow field names."
+        }
+      },
+      required: ["probe_assignment_id", "updates"]
+    }
+  },
+  {
+    name: "create_repair",
+    description: "Create a new repair record. Use when a probe needs repair. ALWAYS confirm with user before calling.",
+    input_schema: {
+      type: "object",
+      properties: {
+        field_season_id: {
+          type: "number",
+          description: "The field_season row ID (link_row field)"
+        },
+        probe_assignment_id: {
+          type: "number",
+          description: "The probe_assignment row ID (link_row field)"
+        },
+        problem: {
+          type: "string",
+          description: "Description of the problem"
+        }
+      },
+      required: ["problem"]
     }
   }
 ];
@@ -475,6 +557,49 @@ async function executeSearchByName(params: { name: string }) {
   };
 }
 
+// Write tool execution functions
+async function executeUpdateFieldSeason(params: { field_season_id: number; updates: Record<string, unknown> }) {
+  try {
+    const result = await updateRow<FieldSeason>('field_seasons', params.field_season_id, params.updates);
+    return { success: true, updated_id: result.id, field: result.field?.[0]?.value, season: result.season };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+async function executeUpdateProbe(params: { probe_id: number; updates: Record<string, unknown> }) {
+  try {
+    const result = await updateRow<Probe>('probes', params.probe_id, params.updates);
+    return { success: true, updated_id: result.id, serial_number: result.serial_number, status: result.status?.value };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+async function executeUpdateProbeAssignment(params: { probe_assignment_id: number; updates: Record<string, unknown> }) {
+  try {
+    const result = await updateRow<ProbeAssignment>('probe_assignments', params.probe_assignment_id, params.updates);
+    return { success: true, updated_id: result.id, probe_status: result.probe_status?.value, installer: result.installer };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
+async function executeCreateRepair(params: { field_season_id?: number; probe_assignment_id?: number; problem: string }) {
+  try {
+    const data: Record<string, unknown> = {
+      problem: params.problem,
+      reported_at: new Date().toISOString().split('T')[0],
+    };
+    if (params.field_season_id) data.field_season = [params.field_season_id];
+    if (params.probe_assignment_id) data.probe_assignment = [params.probe_assignment_id];
+    const result = await createRow<Repair>('repairs', data);
+    return { success: true, created_id: result.id, problem: result.problem };
+  } catch (error) {
+    return { success: false, error: String(error) };
+  }
+}
+
 // Execute a tool call
 async function executeTool(name: string, input: Record<string, unknown>) {
   switch (name) {
@@ -490,6 +615,14 @@ async function executeTool(name: string, input: Record<string, unknown>) {
       return await executeSearchByName(input as { name: string });
     case 'search_field_seasons':
       return await executeSearchFieldSeasons(input as { field_name_contains?: string; season?: string });
+    case 'update_field_season':
+      return await executeUpdateFieldSeason(input as { field_season_id: number; updates: Record<string, unknown> });
+    case 'update_probe':
+      return await executeUpdateProbe(input as { probe_id: number; updates: Record<string, unknown> });
+    case 'update_probe_assignment':
+      return await executeUpdateProbeAssignment(input as { probe_assignment_id: number; updates: Record<string, unknown> });
+    case 'create_repair':
+      return await executeCreateRepair(input as { field_season_id?: number; probe_assignment_id?: number; problem: string });
     default:
       return { error: `Unknown tool: ${name}` };
   }
@@ -497,7 +630,7 @@ async function executeTool(name: string, input: Record<string, unknown>) {
 
 interface Message {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
 }
 
 export async function POST(request: NextRequest) {
@@ -509,7 +642,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { question, history = [] } = await request.json();
+    const { question, history = [], images = [] } = await request.json();
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
@@ -521,8 +654,26 @@ export async function POST(request: NextRequest) {
         role: msg.role,
         content: msg.content
       })),
-      { role: 'user', content: question }
     ];
+
+    // Build user message content - may include images
+    if (images.length > 0) {
+      const contentBlocks: Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }> = [];
+      for (const img of images) {
+        contentBlocks.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: img.media_type,
+            data: img.data,
+          },
+        });
+      }
+      contentBlocks.push({ type: 'text', text: question });
+      messages.push({ role: 'user', content: contentBlocks });
+    } else {
+      messages.push({ role: 'user', content: question });
+    }
 
     // Initial API call with tools
     let response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -533,8 +684,8 @@ export async function POST(request: NextRequest) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
-        max_tokens: 1024,
+        model: 'claude-sonnet-4-5-20250929',
+        max_tokens: 4096,
         system: getSystemPrompt(),
         tools: TOOLS,
         messages

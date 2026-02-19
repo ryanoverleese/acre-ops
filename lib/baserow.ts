@@ -192,6 +192,52 @@ export function getCachedRows<T>(tableName: TableName, options?: FetchOptions, r
   )();
 }
 
+// Update a row by ID (PATCH)
+export async function updateRow<T>(tableName: TableName, rowId: number, data: Record<string, unknown>): Promise<T> {
+  const tableId = TABLE_IDS[tableName];
+  const url = `${BASEROW_API_URL}/${tableId}/${rowId}/?user_field_names=true`;
+
+  const response = await fetchWithRetry(url, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Token ${BASEROW_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Baserow update error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  return normalizeKeys(result) as T;
+}
+
+// Create a new row (POST)
+export async function createRow<T>(tableName: TableName, data: Record<string, unknown>): Promise<T> {
+  const tableId = TABLE_IDS[tableName];
+  const url = `${BASEROW_API_URL}/${tableId}/?user_field_names=true`;
+
+  const response = await fetchWithRetry(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Token ${BASEROW_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Baserow create error: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+
+  const result = await response.json();
+  return normalizeKeys(result) as T;
+}
+
 // Get a single row by ID
 export async function getRow<T>(tableName: TableName, rowId: number): Promise<T> {
   const tableId = TABLE_IDS[tableName];
