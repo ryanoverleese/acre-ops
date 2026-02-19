@@ -46,14 +46,16 @@ How to behave:
 
 9. You have WRITE tools (update_field_season, update_probe, update_probe_assignment, create_repair). Before making changes, ALWAYS confirm with the user what you're about to do. After a successful write, confirm what was changed.
 
-10. When updating records, use the exact field names and value formats from search results. For single_select fields, use the option ID number. For link_row fields, use an array of row IDs.`;
+10. Search results include row IDs (field_season_id, probe_id, probe_assignment_id). ALWAYS use these IDs from search results when calling write tools - never guess IDs. If you don't have the ID, search first.
+
+11. When updating records, use Baserow field names with spaces (e.g. "hybrid variety" not "hybrid_variety"). To clear a field, set it to null or empty string.`;
 }
 
 // Tool definitions for Claude
 const TOOLS = [
   {
     name: "search_fields",
-    description: "Find fields by name or billing entity. Returns field info including all season data with linked probes. Use for location questions, finding specific fields, or looking up what probe was on a field in a specific year.",
+    description: "Find fields by name or billing entity. Returns field info including all season data with linked probes and row IDs (field_id, field_season_id, probe_id, probe_assignment_id) needed for write tools.",
     input_schema: {
       type: "object",
       properties: {
@@ -134,7 +136,7 @@ const TOOLS = [
   },
   {
     name: "search_field_seasons",
-    description: "Search field_seasons records directly. Use this to find season data by field name or year. Returns crop, service type, probe info, and installer details.",
+    description: "Search field_seasons records directly. Returns field_season_id, crop, hybrid_variety, service type, probe info, probe_assignment_id, and installer details. Use the returned IDs for write tools.",
     input_schema: {
       type: "object",
       properties: {
@@ -314,17 +316,22 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
       const probeLink = pa?.probe?.[0];
       const probe = probeLink ? probeMap.get(probeLink.id) : null;
       return {
+        field_season_id: s.id,
         season: s.season,
         crop: s.crop?.value,
+        hybrid_variety: s.hybrid_variety,
         service_type: s.service_type?.[0]?.value,
         probe_status: pa?.probe_status?.value || 'Unassigned',
         probe: probe ? `#${probe.serial_number}` : null,
+        probe_id: probe?.id || null,
+        probe_assignment_id: pa?.id || null,
         installer: pa?.installer,
         install_date: pa?.install_date
       };
     });
 
     return {
+      field_id: f.id,
       field_name: f.name,
       acres: f.acres,
       lat: f.lat,
@@ -362,6 +369,7 @@ async function executeSearchProbes(params: { serial_number?: string; status?: st
   return {
     total_found: results.length,
     probes: results.slice(0, 50).map(p => ({
+      probe_id: p.id,
       serial_number: p.serial_number,
       brand: p.brand?.value,
       status: p.status?.value,
@@ -461,12 +469,16 @@ async function executeSearchFieldSeasons(params: { field_name_contains?: string;
       const probeLink = pa?.probe?.[0];
       const probe = probeLink ? probeMap.get(probeLink.id) : null;
       return {
+        field_season_id: fs.id,
         field_name: fs.field?.[0]?.value || 'Unknown',
         season: fs.season,
         crop: fs.crop?.value,
+        hybrid_variety: fs.hybrid_variety,
         service_type: fs.service_type?.[0]?.value,
         probe_status: pa?.probe_status?.value || 'Unassigned',
         probe: probe ? `#${probe.serial_number}` : null,
+        probe_id: probe?.id || null,
+        probe_assignment_id: pa?.id || null,
         installer: pa?.installer,
         install_date: pa?.install_date,
         antenna_type: pa?.antenna_type?.value
