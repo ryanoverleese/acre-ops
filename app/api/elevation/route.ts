@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { fetchElevation } from '@/lib/geo';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -10,22 +11,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch(
-      `https://epqs.nationalmap.gov/v1/json?x=${lng}&y=${lat}&units=Feet&wkid=4326`
-    );
-
-    if (!response.ok) {
-      console.error('USGS API error:', response.status, response.statusText);
-      return NextResponse.json({ error: 'Failed to fetch elevation' }, { status: 500 });
-    }
-
-    const data = await response.json();
-
-    if (data && data.value !== undefined && data.value !== -1000000) {
-      return NextResponse.json({ elevation: Math.round(data.value) });
-    }
-
-    return NextResponse.json({ elevation: null });
+    const elevation = await fetchElevation(Number(lat), Number(lng));
+    return NextResponse.json({ elevation });
   } catch (error) {
     console.error('Error fetching elevation:', error);
     return NextResponse.json({ error: 'Failed to fetch elevation' }, { status: 500 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { TABLE_IDS, getRow, Field, FieldSeason } from '@/lib/baserow';
+import { fetchElevation, fetchSoilType } from '@/lib/geo';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -64,6 +65,19 @@ export async function POST(request: NextRequest) {
     if (body.elevation !== undefined) createData.elevation = body.elevation;
     if (body.soil_type !== undefined) createData.soil_type = body.soil_type;
     if (body.placement_notes !== undefined) createData.placement_notes = body.placement_notes;
+
+    // Auto-fetch elevation/soil from external APIs if we have coords but missing data
+    const hasCoords = createData.placement_lat && createData.placement_lng;
+    if (hasCoords) {
+      const lat = Number(createData.placement_lat);
+      const lng = Number(createData.placement_lng);
+      const [elev, soil] = await Promise.all([
+        !createData.elevation ? fetchElevation(lat, lng) : Promise.resolve(null),
+        !createData.soil_type ? fetchSoilType(lat, lng) : Promise.resolve(null),
+      ]);
+      if (elev && !createData.elevation) createData.elevation = elev;
+      if (soil && !createData.soil_type) createData.soil_type = soil;
+    }
 
     // Other optional fields
     if (body.probe) createData.probe = [body.probe];

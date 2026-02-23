@@ -1,4 +1,5 @@
 import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes, getContacts } from '@/lib/baserow';
+import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ApprovalClient from './ApprovalClient';
 
 interface PageProps {
@@ -170,6 +171,34 @@ export default async function ApprovePage({ params }: PageProps) {
       if (nameCompare !== 0) return nameCompare;
       return a.probeNumber - b.probeNumber;
     });
+
+  // Backfill missing elevation/soil for probe assignments that have coordinates
+  await Promise.all(
+    approvalProbeAssignments
+      .filter(pa => pa.placementLat && pa.placementLng && (!pa.elevation || !pa.soilType))
+      .map(async (pa) => {
+        const [elev, soil] = await Promise.all([
+          !pa.elevation ? fetchElevation(pa.placementLat!, pa.placementLng!) : Promise.resolve(null),
+          !pa.soilType ? fetchSoilType(pa.placementLat!, pa.placementLng!) : Promise.resolve(null),
+        ]);
+        if (elev && !pa.elevation) pa.elevation = elev;
+        if (soil && !pa.soilType) pa.soilType = soil;
+      })
+  );
+
+  // Also backfill missing elevation/soil for fields
+  await Promise.all(
+    approvalFields
+      .filter(f => f.lat && f.lng && (!f.elevation || !f.soilType))
+      .map(async (f) => {
+        const [elev, soil] = await Promise.all([
+          !f.elevation ? fetchElevation(f.lat, f.lng) : Promise.resolve(null),
+          !f.soilType ? fetchSoilType(f.lat, f.lng) : Promise.resolve(null),
+        ]);
+        if (elev && !f.elevation) f.elevation = elev;
+        if (soil && !f.soilType) f.soilType = soil;
+      })
+  );
 
   return (
     <ApprovalClient

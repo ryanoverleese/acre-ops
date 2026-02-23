@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 
 // Dynamically import the map component with SSR disabled
@@ -49,9 +49,8 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
 
 export default function LocationPicker({ lat, lng, onLocationChange, onClose }: LocationPickerProps) {
   const [isClient, setIsClient] = useState(false);
-  const [position, setPosition] = useState<[number, number] | null>(
-    lat && lng ? [Number(lat), Number(lng)] : null
-  );
+  const [position, setPosition] = useState<[number, number] | null>(null);
+  const hasInitialized = useRef(false);
   const [elevation, setElevation] = useState<number | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
   const [soilType, setSoilType] = useState<string | null>(null);
@@ -63,6 +62,14 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Sync lat/lng props to position state (handles late-arriving props from dynamic import)
+  useEffect(() => {
+    if (!hasInitialized.current && lat && lng) {
+      setPosition([Number(lat), Number(lng)]);
+      hasInitialized.current = true;
+    }
+  }, [lat, lng]);
 
   // Fetch elevation and soil type when position changes
   useEffect(() => {
