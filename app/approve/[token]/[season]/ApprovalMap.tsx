@@ -43,7 +43,7 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
   const [showPLSS, setShowPLSS] = useState(false);
-  const [brightness, setBrightness] = useState(1.2);
+  const [brightness, setBrightness] = useState(1.4);
 
   useEffect(() => {
     setIsClient(true);
