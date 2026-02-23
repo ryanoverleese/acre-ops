@@ -50,7 +50,7 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
 export default function LocationPicker({ lat, lng, onLocationChange, onClose }: LocationPickerProps) {
   const [isClient, setIsClient] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(
-    lat && lng ? [lat, lng] : null
+    lat && lng ? [Number(lat), Number(lng)] : null
   );
   const [elevation, setElevation] = useState<number | null>(null);
   const [elevationLoading, setElevationLoading] = useState(false);
