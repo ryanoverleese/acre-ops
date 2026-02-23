@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, WMSTileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, WMSTileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PLSSOverlay from '../../../../components/PLSSOverlay';
@@ -17,6 +17,22 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+// Apply brightness filter to the satellite tile layer only
+function BrightnessFilter({ brightness }: { brightness: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const tilePane = container.querySelector('.leaflet-tile-pane') as HTMLElement;
+    if (tilePane) {
+      const firstLayer = tilePane.querySelector('.leaflet-layer') as HTMLElement;
+      if (firstLayer) {
+        firstLayer.style.filter = `brightness(${brightness})`;
+      }
+    }
+  }, [map, brightness]);
+  return null;
+}
+
 interface ApprovalMapProps {
   lat: number;
   lng: number;
@@ -27,6 +43,7 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
   const [showPLSS, setShowPLSS] = useState(false);
+  const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
     setIsClient(true);
@@ -53,6 +70,28 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
   return (
     <div style={{ height: '100%', position: 'relative' }}>
       <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, display: 'flex', gap: '6px' }}>
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px',
+          fontSize: '12px',
+          background: 'white',
+          padding: '6px 10px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+          whiteSpace: 'nowrap'
+        }}>
+          Brightness
+          <input
+            type="range"
+            min="0.8"
+            max="2"
+            step="0.1"
+            value={brightness}
+            onChange={(e) => setBrightness(parseFloat(e.target.value))}
+            style={{ width: '60px', cursor: 'pointer' }}
+          />
+        </label>
         <label style={{
           display: 'flex',
           alignItems: 'center',
@@ -92,13 +131,14 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
       </div>
       <MapContainer
         center={position}
-        zoom={16}
+        zoom={15}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={false}
         dragging={false}
         touchZoom={false}
         doubleClickZoom={false}
       >
+        <BrightnessFilter brightness={brightness} />
         <TileLayer
           attribution="&copy; Google"
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
