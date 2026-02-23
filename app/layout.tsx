@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import './globals.css';
@@ -11,6 +11,13 @@ const AskAI = dynamic(() => import('@/components/AskAI'), { loading: () => null 
 export const metadata: Metadata = {
   title: 'Acre Insights Operation Center',
   description: 'Agricultural probe management system',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({

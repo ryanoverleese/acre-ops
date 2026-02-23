@@ -373,8 +373,16 @@ async function getFieldsData(): Promise<{
             installNotes: probe1Assignment?.install_notes,
             installPhotoFieldEndUrl: probe1Assignment?.install_photo_field_end_url?.[0]?.url,
             installPhotoExtraUrl: probe1Assignment?.install_photo_extra_url?.[0]?.url,
-            // Approval
-            approvalStatus: fs.approval_status?.value || 'Pending',
+            // Approval — derived from probe_assignments
+            approvalStatus: (() => {
+              const statuses = [probe1Assignment, probe2Assignment]
+                .filter(Boolean)
+                .map(pa => pa!.approval_status?.value || 'Pending');
+              if (statuses.length === 0) return 'No Probes';
+              if (statuses.every(s => s === 'Approved')) return 'Approved';
+              if (statuses.some(s => s === 'Change Requested')) return 'Change Requested';
+              return 'Pending';
+            })(),
             // Removal
             removalDate: fs.removal_date || '',
             removalNotes: fs.removal_notes || '',

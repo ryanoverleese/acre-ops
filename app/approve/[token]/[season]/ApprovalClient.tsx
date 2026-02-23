@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import type { ApprovalField, ApprovalProbeAssignment } from './page';
+import type { ApprovalProbeAssignment } from './page';
 
 // Dynamically import map component
 const ApprovalMap = dynamic(() => import('./ApprovalMap'), {
@@ -17,20 +17,15 @@ const ApprovalMap = dynamic(() => import('./ApprovalMap'), {
 interface ApprovalClientProps {
   operationName: string;
   season: number;
-  fields: ApprovalField[];
   probeAssignments?: ApprovalProbeAssignment[];
 }
 
-export default function ApprovalClient({ operationName, season, fields: initialFields, probeAssignments: initialProbeAssignments = [] }: ApprovalClientProps) {
-  const [fields, setFields] = useState(initialFields);
+export default function ApprovalClient({ operationName, season, probeAssignments: initialProbeAssignments = [] }: ApprovalClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [changeNotes, setChangeNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [bulkLoading, setBulkLoading] = useState(false);
-
-  // Use probe assignments if available, otherwise fall back to fields
-  const hasProbeAssignments = probeAssignments.length > 0;
 
   // Group probe assignments by field
   const groupedProbeAssignments = useMemo(() => {
@@ -44,16 +39,10 @@ export default function ApprovalClient({ operationName, season, fields: initialF
     return groups;
   }, [probeAssignments]);
 
-  const approvedCount = hasProbeAssignments
-    ? probeAssignments.filter((pa) => pa.approvalStatus === 'Approved').length
-    : fields.filter((f) => f.approvalStatus === 'Approved').length;
-  const totalCount = hasProbeAssignments ? probeAssignments.length : fields.length;
-  const pendingCount = hasProbeAssignments
-    ? probeAssignments.filter((pa) => pa.approvalStatus === 'Pending').length
-    : fields.filter((f) => f.approvalStatus === 'Pending').length;
-  const changeRequestedCount = hasProbeAssignments
-    ? probeAssignments.filter((pa) => pa.approvalStatus === 'Change Requested').length
-    : fields.filter((f) => f.approvalStatus === 'Change Requested').length;
+  const approvedCount = probeAssignments.filter((pa) => pa.approvalStatus === 'Approved').length;
+  const totalCount = probeAssignments.length;
+  const pendingCount = probeAssignments.filter((pa) => pa.approvalStatus === 'Pending').length;
+  const changeRequestedCount = probeAssignments.filter((pa) => pa.approvalStatus === 'Change Requested').length;
 
   const showSaved = useCallback((key: string) => {
     setSaved((prev) => ({ ...prev, [key]: true }));
@@ -153,152 +142,34 @@ export default function ApprovalClient({ operationName, season, fields: initialF
     }
   };
 
-  // Auto-save approve for legacy field
-  const handleApprove = async (fieldSeasonId: number) => {
-    const key = `fs-${fieldSeasonId}`;
-    setSaving((prev) => ({ ...prev, [key]: true }));
-    try {
-      const response = await fetch('/api/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fieldSeasonId, action: 'approve' }),
-      });
-
-      if (response.ok) {
-        setFields((prev) =>
-          prev.map((f) =>
-            f.fieldSeasonId === fieldSeasonId
-              ? { ...f, approvalStatus: 'Approved', approvalDate: new Date().toISOString().split('T')[0] }
-              : f
-          )
-        );
-        showSaved(key);
-      }
-    } catch {
-      // silent fail
-    } finally {
-      setSaving((prev) => ({ ...prev, [key]: false }));
-    }
-  };
-
-  // Undo approve for legacy field
-  const handleUndoApprove = async (fieldSeasonId: number) => {
-    const key = `fs-${fieldSeasonId}`;
-    setSaving((prev) => ({ ...prev, [key]: true }));
-    try {
-      const response = await fetch('/api/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fieldSeasonId, action: 'approve', undo: true }),
-      });
-
-      if (response.ok) {
-        setFields((prev) =>
-          prev.map((f) =>
-            f.fieldSeasonId === fieldSeasonId
-              ? { ...f, approvalStatus: 'Pending', approvalDate: '' }
-              : f
-          )
-        );
-      }
-    } catch {
-      // silent fail
-    } finally {
-      setSaving((prev) => ({ ...prev, [key]: false }));
-    }
-  };
-
-  // Auto-save change request on blur for legacy field
-  const handleFieldChangeNotesBlur = async (fieldSeasonId: number) => {
-    const key = `fs-${fieldSeasonId}`;
-    const notes = changeNotes[key]?.trim();
-    if (!notes) return;
-
-    setSaving((prev) => ({ ...prev, [key]: true }));
-    try {
-      const response = await fetch('/api/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fieldSeasonId, action: 'request_change', notes }),
-      });
-
-      if (response.ok) {
-        setFields((prev) =>
-          prev.map((f) =>
-            f.fieldSeasonId === fieldSeasonId
-              ? { ...f, approvalStatus: 'Change Requested', approvalNotes: notes }
-              : f
-          )
-        );
-        setChangeNotes((prev) => ({ ...prev, [key]: '' }));
-        showSaved(key);
-      }
-    } catch {
-      // silent fail
-    } finally {
-      setSaving((prev) => ({ ...prev, [key]: false }));
-    }
-  };
-
   const handleBulkApprove = async () => {
-    if (hasProbeAssignments) {
-      const pendingAssignments = probeAssignments.filter((pa) => pa.approvalStatus === 'Pending');
-      if (pendingAssignments.length === 0) return;
+    const pendingAssignments = probeAssignments.filter((pa) => pa.approvalStatus === 'Pending');
+    if (pendingAssignments.length === 0) return;
 
-      setBulkLoading(true);
-      try {
-        const approvalDate = new Date().toISOString().split('T')[0];
-        await Promise.all(
-          pendingAssignments.map((pa) =>
-            fetch(`/api/probe-assignments/${pa.id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
-            })
-          )
-        );
+    setBulkLoading(true);
+    try {
+      const approvalDate = new Date().toISOString().split('T')[0];
+      await Promise.all(
+        pendingAssignments.map((pa) =>
+          fetch(`/api/probe-assignments/${pa.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
+          })
+        )
+      );
 
-        setProbeAssignments((prev) =>
-          prev.map((pa) =>
-            pa.approvalStatus === 'Pending'
-              ? { ...pa, approvalStatus: 'Approved', approvalDate }
-              : pa
-          )
-        );
-      } catch {
-        // silent fail
-      } finally {
-        setBulkLoading(false);
-      }
-    } else {
-      const pendingFields = fields.filter((f) => f.approvalStatus === 'Pending');
-      if (pendingFields.length === 0) return;
-
-      setBulkLoading(true);
-      try {
-        const response = await fetch('/api/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fieldSeasonIds: pendingFields.map((f) => f.fieldSeasonId),
-            action: 'bulk_approve',
-          }),
-        });
-
-        if (response.ok) {
-          setFields((prev) =>
-            prev.map((f) =>
-              f.approvalStatus === 'Pending'
-                ? { ...f, approvalStatus: 'Approved', approvalDate: new Date().toISOString().split('T')[0] }
-                : f
-            )
-          );
-        }
-      } catch {
-        // silent fail
-      } finally {
-        setBulkLoading(false);
-      }
+      setProbeAssignments((prev) =>
+        prev.map((pa) =>
+          pa.approvalStatus === 'Pending'
+            ? { ...pa, approvalStatus: 'Approved', approvalDate }
+            : pa
+        )
+      );
+    } catch {
+      // silent fail
+    } finally {
+      setBulkLoading(false);
     }
   };
 
@@ -379,223 +250,146 @@ export default function ApprovalClient({ operationName, season, fields: initialF
             <h1>{operationName}</h1>
             <p className="approval-subtitle">{season} Season - Probe Placement Approval</p>
           </div>
-          <div className="approval-progress">
-            <div className="progress-stats">
-              <span className="stat approved">{approvedCount} Approved</span>
-              <span className="stat pending">{pendingCount} Pending</span>
-              {changeRequestedCount > 0 && (
-                <span className="stat change-requested">{changeRequestedCount} Changes Requested</span>
-              )}
+          {totalCount > 0 && (
+            <div className="approval-progress">
+              <div className="progress-stats">
+                <span className="stat approved">{approvedCount} Approved</span>
+                <span className="stat pending">{pendingCount} Pending</span>
+                {changeRequestedCount > 0 && (
+                  <span className="stat change-requested">{changeRequestedCount} Changes Requested</span>
+                )}
+              </div>
+              <div className="progress-bar">
+                <div
+                  className="progress-fill"
+                  style={{ width: `${(approvedCount / totalCount) * 100}%` }}
+                />
+              </div>
+              <p className="progress-text">{approvedCount} of {totalCount} probe locations approved</p>
             </div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${(approvedCount / totalCount) * 100}%` }}
-              />
-            </div>
-            <p className="progress-text">{approvedCount} of {totalCount} {hasProbeAssignments ? 'probe locations' : 'fields'} approved</p>
-          </div>
+          )}
         </header>
 
-        {/* Bulk Actions */}
-        {pendingCount > 0 && (
-          <div className="bulk-actions">
-            <button
-              className="btn btn-primary"
-              onClick={handleBulkApprove}
-              disabled={bulkLoading}
-            >
-              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Locations`}
-            </button>
-          </div>
-        )}
-
-        {/* Probe Assignments grouped by Field */}
-        {hasProbeAssignments ? (
-          <div className="approval-fields">
-            {Object.entries(groupedProbeAssignments).map(([fieldName, probes]) => (
-              <div key={fieldName} className="approval-field-group">
-                {probes.map((pa) => {
-                  const key = `pa-${pa.id}`;
-
-                  return (
-                    <div key={pa.id} className="approval-card expanded approval-card-spaced">
-                      {/* Card Header */}
-                      <div className="card-header">
-                        <div className="card-title">
-                          <h3>{fieldName} - Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
-                          <span className={`status-badge ${pa.approvalStatus === 'Approved' ? 'status-approved' : pa.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
-                            {pa.approvalStatus}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="card-content">
-                        {/* Map */}
-                        {pa.placementLat && pa.placementLng && (
-                          <div className="card-map">
-                            <ApprovalMap lat={Number(pa.placementLat)} lng={Number(pa.placementLng)} fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`} />
-                          </div>
-                        )}
-
-                        {/* Details */}
-                        <div className="card-details">
-                          {pa.placementLat && pa.placementLng && (
-                            <div className="detail-row">
-                              <span className="detail-label">Coordinates</span>
-                              <span className="detail-value">
-                                {Number(pa.placementLat).toFixed(6)}, {Number(pa.placementLng).toFixed(6)}
-                              </span>
-                            </div>
-                          )}
-                          {pa.elevation && (
-                            <div className="detail-row">
-                              <span className="detail-label">Elevation</span>
-                              <span className="detail-value">{pa.elevation} ft</span>
-                            </div>
-                          )}
-                          {pa.soilType && (
-                            <div className="detail-row">
-                              <span className="detail-label">Soil Type</span>
-                              <span className="detail-value">{pa.soilType}</span>
-                            </div>
-                          )}
-                          {pa.waterSource && (
-                            <div className="detail-row">
-                              <span className="detail-label">Primary Water Source</span>
-                              <span className="detail-value">{pa.waterSource}</span>
-                            </div>
-                          )}
-                          {pa.fuelSource && (
-                            <div className="detail-row">
-                              <span className="detail-label">Primary Fuel Source</span>
-                              <span className="detail-value">{pa.fuelSource}</span>
-                            </div>
-                          )}
-                          {pa.placementNotes && (
-                            <div className="detail-row full-width">
-                              <span className="detail-label">Placement Notes</span>
-                              <p className="detail-notes">{pa.placementNotes}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Auto-save actions */}
-                        {renderStatusActions(
-                          pa.approvalStatus,
-                          key,
-                          () => handleApproveProbeAssignment(pa.id),
-                          () => handleUndoApproveProbeAssignment(pa.id),
-                          () => handleChangeNotesBlur(pa.id),
-                          pa.approvalDate,
-                          pa.approvalNotes,
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+        {totalCount === 0 ? (
+          <div className="approval-empty">
+            <p>No probe assignments to approve for this season yet.</p>
           </div>
         ) : (
-          /* Legacy Field Cards */
-          <div className="approval-fields">
-            {fields.map((field) => {
-              const key = `fs-${field.fieldSeasonId}`;
+          <>
+            {/* Bulk Actions */}
+            {pendingCount > 0 && (
+              <div className="bulk-actions">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleBulkApprove}
+                  disabled={bulkLoading}
+                >
+                  {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Locations`}
+                </button>
+              </div>
+            )}
 
-              return (
-                <div key={field.fieldSeasonId} className="approval-card expanded">
-                  {/* Card Header */}
-                  <div className="card-header">
-                    <div className="card-title">
-                      <h3>{field.name}</h3>
-                      <span className={`status-badge ${field.approvalStatus === 'Approved' ? 'status-approved' : field.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
-                        {field.approvalStatus}
-                      </span>
-                    </div>
-                    <div className="card-summary">
-                      <span>{field.acres} acres</span>
-                      <span>{field.crop}</span>
-                      <span>{field.serviceType}</span>
-                    </div>
-                  </div>
+            {/* Probe Assignments grouped by Field */}
+            <div className="approval-fields">
+              {Object.entries(groupedProbeAssignments).map(([fieldName, probes]) => (
+                <div key={fieldName} className="approval-field-group">
+                  {probes.map((pa) => {
+                    const key = `pa-${pa.id}`;
 
-                  {/* Content - Always visible */}
-                  <div className="card-content">
-                    {/* Map */}
-                    <div className="card-map">
-                      <ApprovalMap lat={Number(field.lat)} lng={Number(field.lng)} fieldName={field.name} />
-                    </div>
+                    return (
+                      <div key={pa.id} className="approval-card expanded approval-card-spaced">
+                        {/* Card Header */}
+                        <div className="card-header">
+                          <div className="card-title">
+                            <h3>{fieldName} - Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
+                            <span className={`status-badge ${pa.approvalStatus === 'Approved' ? 'status-approved' : pa.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
+                              {pa.approvalStatus}
+                            </span>
+                          </div>
+                        </div>
 
-                    {/* Details */}
-                    <div className="card-details">
-                      <div className="detail-row">
-                        <span className="detail-label">Coordinates</span>
-                        <span className="detail-value">
-                          {Number(field.lat).toFixed(6)}, {Number(field.lng).toFixed(6)}
-                        </span>
+                        {/* Content */}
+                        <div className="card-content">
+                          {/* Map */}
+                          {pa.placementLat && pa.placementLng && (
+                            <div className="card-map">
+                              <ApprovalMap lat={Number(pa.placementLat)} lng={Number(pa.placementLng)} fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`} />
+                            </div>
+                          )}
+
+                          {/* Details */}
+                          <div className="card-details">
+                            {pa.placementLat && pa.placementLng && (
+                              <div className="detail-row">
+                                <span className="detail-label">Coordinates</span>
+                                <span className="detail-value">
+                                  {Number(pa.placementLat).toFixed(6)}, {Number(pa.placementLng).toFixed(6)}
+                                </span>
+                              </div>
+                            )}
+                            {pa.elevation && (
+                              <div className="detail-row">
+                                <span className="detail-label">Elevation</span>
+                                <span className="detail-value">{pa.elevation} ft</span>
+                              </div>
+                            )}
+                            {pa.soilType && (
+                              <div className="detail-row">
+                                <span className="detail-label">Soil Type</span>
+                                <span className="detail-value">{pa.soilType}</span>
+                              </div>
+                            )}
+                            {pa.waterSource && (
+                              <div className="detail-row">
+                                <span className="detail-label">Primary Water Source</span>
+                                <span className="detail-value">{pa.waterSource}</span>
+                              </div>
+                            )}
+                            {pa.fuelSource && (
+                              <div className="detail-row">
+                                <span className="detail-label">Primary Fuel Source</span>
+                                <span className="detail-value">{pa.fuelSource}</span>
+                              </div>
+                            )}
+                            {pa.placementNotes && (
+                              <div className="detail-row full-width">
+                                <span className="detail-label">Placement Notes</span>
+                                <p className="detail-notes">{pa.placementNotes}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Auto-save actions */}
+                          {renderStatusActions(
+                            pa.approvalStatus,
+                            key,
+                            () => handleApproveProbeAssignment(pa.id),
+                            () => handleUndoApproveProbeAssignment(pa.id),
+                            () => handleChangeNotesBlur(pa.id),
+                            pa.approvalDate,
+                            pa.approvalNotes,
+                          )}
+                        </div>
                       </div>
-                      {field.elevation && (
-                        <div className="detail-row">
-                          <span className="detail-label">Elevation</span>
-                          <span className="detail-value">{field.elevation} ft</span>
-                        </div>
-                      )}
-                      {field.soilType && (
-                        <div className="detail-row">
-                          <span className="detail-label">Soil Type</span>
-                          <span className="detail-value">{field.soilType}</span>
-                        </div>
-                      )}
-                      {field.waterSource && (
-                        <div className="detail-row">
-                          <span className="detail-label">Primary Water Source</span>
-                          <span className="detail-value">{field.waterSource}</span>
-                        </div>
-                      )}
-                      {field.fuelSource && (
-                        <div className="detail-row">
-                          <span className="detail-label">Primary Fuel Source</span>
-                          <span className="detail-value">{field.fuelSource}</span>
-                        </div>
-                      )}
-                      {field.placementNotes && (
-                        <div className="detail-row full-width">
-                          <span className="detail-label">Placement Notes</span>
-                          <p className="detail-notes">{field.placementNotes}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Auto-save actions */}
-                    {renderStatusActions(
-                      field.approvalStatus,
-                      key,
-                      () => handleApprove(field.fieldSeasonId),
-                      () => handleUndoApprove(field.fieldSeasonId),
-                      () => handleFieldChangeNotesBlur(field.fieldSeasonId),
-                      field.approvalDate,
-                      field.approvalNotes,
-                    )}
-                  </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
 
-        {/* Bottom Bulk Actions */}
-        {pendingCount > 0 && (
-          <div className="bulk-actions bulk-actions-bottom">
-            <button
-              className="btn btn-primary"
-              onClick={handleBulkApprove}
-              disabled={bulkLoading}
-            >
-              {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Locations`}
-            </button>
-          </div>
+            {/* Bottom Bulk Actions */}
+            {pendingCount > 0 && (
+              <div className="bulk-actions bulk-actions-bottom">
+                <button
+                  className="btn btn-primary"
+                  onClick={handleBulkApprove}
+                  disabled={bulkLoading}
+                >
+                  {bulkLoading ? 'Approving...' : `Approve All ${pendingCount} Locations`}
+                </button>
+              </div>
+            )}
+          </>
         )}
 
         {/* Footer */}

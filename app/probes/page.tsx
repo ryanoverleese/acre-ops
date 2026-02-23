@@ -58,7 +58,7 @@ async function getProbesData(): Promise<{
     const contactOptions: ContactOption[] = contacts.map((c) => ({
       id: c.id,
       name: c.name,
-      operationName: contactOperationMap.get(c.id) || '—',
+      operationName: (contactToOperationNames.get(c.id) || []).join(', ') || '—',
     }));
 
     // Extract unique brand options from probes

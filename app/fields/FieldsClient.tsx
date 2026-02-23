@@ -553,29 +553,32 @@ export default function FieldsClient({
     return markers;
   }, [filteredFields, probeAssignments]);
 
-  // Calculate approval stats for the Active Season tab
+  // Calculate approval stats for the Active Season tab (derived from probe_assignments)
   const approvalStats = useMemo(() => {
     const pending = seasonFields.filter(f => !f.approvalStatus || f.approvalStatus === 'Pending');
     const approved = seasonFields.filter(f => f.approvalStatus === 'Approved');
-    const rejected = seasonFields.filter(f => f.approvalStatus === 'Rejected');
+    const changeRequested = seasonFields.filter(f => f.approvalStatus === 'Change Requested');
     return {
       pending: pending.length,
       approved: approved.length,
-      rejected: rejected.length,
+      rejected: changeRequested.length,
       total: seasonFields.length,
     };
   }, [seasonFields]);
 
   // Get set of probe IDs that are currently assigned (for the selected season)
   const assignedProbeIds = useMemo(() => {
+    const currentSeasonFieldSeasonIds = new Set(
+      fields.filter(f => f.season === currentSeason && f.fieldSeasonId != null).map(f => f.fieldSeasonId!)
+    );
     const ids = new Set<number>();
     probeAssignments.forEach(pa => {
-      if (pa.probeId) {
+      if (pa.probeId && currentSeasonFieldSeasonIds.has(pa.fieldSeasonId)) {
         ids.add(pa.probeId);
       }
     });
     return ids;
-  }, [probeAssignments]);
+  }, [probeAssignments, fields, currentSeason]);
 
   // All probes with assignment status
   const allProbesWithStatus = useMemo(() => {
@@ -629,7 +632,6 @@ export default function FieldsClient({
         routeOrder: 'route_order',
         plannedInstaller: 'planned_installer',
         readyToInstall: 'ready_to_install',
-        approvalStatus: 'approval_status',
       };
 
       // Probe 1 changes go to probe_assignments, not field_seasons
@@ -817,54 +819,6 @@ export default function FieldsClient({
     } catch (error) {
       console.error('Delete error:', error);
       alert('Failed to delete field season');
-    }
-  };
-
-  // Quick approve/reject handler
-  const handleQuickApproval = async (field: ProcessedField, status: 'Approved' | 'Rejected') => {
-    if (!field.fieldSeasonId) return;
-
-    const cellKey = `${field.fieldSeasonId}-approvalStatus`;
-    setSavingFields(prev => new Set(prev).add(cellKey));
-
-    try {
-      const response = await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          approval_status: status,
-          approval_date: new Date().toISOString().split('T')[0],
-        }),
-      });
-
-      if (response.ok) {
-        setFields(prev => prev.map(f => {
-          if (f.fieldSeasonId === field.fieldSeasonId) {
-            return { ...f, approvalStatus: status };
-          }
-          return f;
-        }));
-
-        setSavedFields(prev => new Set(prev).add(cellKey));
-        setTimeout(() => {
-          setSavedFields(prev => {
-            const next = new Set(prev);
-            next.delete(cellKey);
-            return next;
-          });
-        }, 1500);
-      } else {
-        alert('Failed to update approval status');
-      }
-    } catch (error) {
-      console.error('Approval error:', error);
-      alert('Failed to update approval status');
-    } finally {
-      setSavingFields(prev => {
-        const next = new Set(prev);
-        next.delete(cellKey);
-        return next;
-      });
     }
   };
 
@@ -1697,15 +1651,10 @@ export default function FieldsClient({
               </span>
               <span className="fields-approval-stat">
                 <span className="fields-approval-dot rejected"></span>
-                <span className="fields-approval-stat-label">Rejected: </span>
+                <span className="fields-approval-stat-label">Changes Requested: </span>
                 <strong className="fields-approval-stat-val rejected">{approvalStats.rejected}</strong>
               </span>
             </div>
-            {approvalStats.pending > 0 && (
-              <span className="fields-approval-hint">
-                Use the checkmark/X buttons in each row to quickly approve or reject fields
-              </span>
-            )}
           </div>
         )}
 
@@ -1984,28 +1933,6 @@ export default function FieldsClient({
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
                                           </button>
-                                          {currentTab === 'activeSeason' && field.fieldSeasonId && field.approvalStatus !== 'Approved' && (
-                                            <button
-                                              className="action-btn fields-approve-btn"
-                                              title="Approve"
-                                              onClick={() => handleQuickApproval(field, 'Approved')}
-                                            >
-                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                              </svg>
-                                            </button>
-                                          )}
-                                          {currentTab === 'activeSeason' && field.fieldSeasonId && field.approvalStatus !== 'Rejected' && (
-                                            <button
-                                              className="action-btn fields-reject-btn"
-                                              title="Reject"
-                                              onClick={() => handleQuickApproval(field, 'Rejected')}
-                                            >
-                                              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                              </svg>
-                                            </button>
-                                          )}
                                           {field.fieldSeasonId && (
                                             <button className="action-btn fields-delete-btn" title="Delete season entry" onClick={() => handleDeleteFieldSeason(field.fieldSeasonId!, field.name, field.season)}>
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">

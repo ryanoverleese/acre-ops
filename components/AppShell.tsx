@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
@@ -151,8 +151,21 @@ interface AppShellProps {
 
 export default function AppShell({ children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
+
+  // Initialize collapsed state from localStorage
+  useEffect(() => {
+    const stored = localStorage.getItem('sidebar-collapsed');
+    if (stored === 'true') setSidebarCollapsed(true);
+  }, []);
+
+  const toggleSidebar = () => {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem('sidebar-collapsed', String(next));
+  };
 
   // Don't show navigation on public approval pages or login page
   const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname === '/login';
@@ -210,7 +223,7 @@ export default function AppShell({ children }: AppShellProps) {
       )}
 
       {/* Sidebar */}
-      <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
+      <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="sidebar-header-mobile">
           <div className="logo">
             <h1>Acre Insights</h1>
@@ -235,6 +248,20 @@ export default function AppShell({ children }: AppShellProps) {
           <span>Operation Center</span>
         </div>
 
+        <button
+          className="sidebar-collapse-btn desktop-only"
+          onClick={toggleSidebar}
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+            {sidebarCollapsed
+              ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            }
+          </svg>
+        </button>
+
         {filteredNavSections.map((section) => (
           <nav key={section.title} className="nav-section">
             <div className="nav-section-title">{section.title}</div>
@@ -244,9 +271,10 @@ export default function AppShell({ children }: AppShellProps) {
                 href={item.href}
                 className={`nav-item ${pathname === item.href ? 'active' : ''}`}
                 onClick={handleNavClick}
+                data-tooltip={item.name}
               >
                 {icons[item.icon]}
-                {item.name}
+                <span>{item.name}</span>
               </Link>
             ))}
           </nav>
@@ -278,7 +306,7 @@ export default function AppShell({ children }: AppShellProps) {
         )}
       </aside>
 
-      <main className="main">
+      <main className={`main ${sidebarCollapsed ? 'main-collapsed' : ''}`}>
         {children}
       </main>
 

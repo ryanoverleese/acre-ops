@@ -9,25 +9,6 @@ interface PageProps {
   }>;
 }
 
-export interface ApprovalField {
-  id: number;
-  fieldSeasonId: number;
-  name: string;
-  acres: number;
-  lat: number;
-  lng: number;
-  elevation?: number;
-  soilType?: string;
-  placementNotes?: string;
-  crop: string;
-  serviceType: string;
-  approvalStatus: string;
-  approvalNotes?: string;
-  approvalDate?: string;
-  waterSource?: string;
-  fuelSource?: string;
-}
-
 export interface ApprovalProbeAssignment {
   id: number;
   fieldSeasonId: number;
@@ -102,32 +83,6 @@ export default async function ApprovePage({ params }: PageProps) {
     (fs) => fs.field?.[0]?.id && fieldIds.has(fs.field[0].id) && String(fs.season) === String(seasonYear)
   );
 
-  // Build approval fields
-  const approvalFields: ApprovalField[] = operationFieldSeasons.map((fs) => {
-    const field = operationFields.find((f) => f.id === fs.field?.[0]?.id);
-    return {
-      id: field?.id || 0,
-      fieldSeasonId: fs.id,
-      name: field?.name || 'Unknown Field',
-      acres: field?.acres || 0,
-      lat: field?.lat || 0,
-      lng: field?.lng || 0,
-      elevation: typeof field?.elevation === 'object' ? Number(field?.elevation?.value) || undefined : field?.elevation,
-      soilType: typeof field?.soil_type === 'object' ? field?.soil_type?.value : field?.soil_type,
-      placementNotes: field?.placement_notes,
-      crop: fs.crop?.value || 'Not Set',
-      serviceType: fs.service_type?.[0]?.value || 'Not Set',
-      approvalStatus: fs.approval_status?.value || 'Pending',
-      approvalNotes: fs.approval_notes,
-      approvalDate: fs.approval_date,
-      waterSource: field?.water_source?.value,
-      fuelSource: field?.fuel_source?.value,
-    };
-  });
-
-  // Sort by name
-  approvalFields.sort((a, b) => a.name.localeCompare(b.name));
-
   // Get field season IDs for this operation
   const fieldSeasonIds = new Set(operationFieldSeasons.map((fs) => fs.id));
 
@@ -186,25 +141,10 @@ export default async function ApprovePage({ params }: PageProps) {
       })
   );
 
-  // Also backfill missing elevation/soil for fields
-  await Promise.all(
-    approvalFields
-      .filter(f => f.lat && f.lng && (!f.elevation || !f.soilType))
-      .map(async (f) => {
-        const [elev, soil] = await Promise.all([
-          !f.elevation ? fetchElevation(f.lat, f.lng) : Promise.resolve(null),
-          !f.soilType ? fetchSoilType(f.lat, f.lng) : Promise.resolve(null),
-        ]);
-        if (elev && !f.elevation) f.elevation = elev;
-        if (soil && !f.soilType) f.soilType = soil;
-      })
-  );
-
   return (
     <ApprovalClient
       operationName={operation.name}
       season={seasonYear}
-      fields={approvalFields}
       probeAssignments={approvalProbeAssignments}
     />
   );
