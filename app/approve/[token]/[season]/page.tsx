@@ -140,6 +140,10 @@ export default async function ApprovePage({ params }: PageProps) {
         : null;
       const probeSerial = pa.probe?.[0]?.id ? probeMap.get(pa.probe[0].id) : undefined;
 
+      // Fall back to field-level elevation/soilType if probe assignment lacks them
+      const paElevation = pa.elevation ?? (field ? (typeof field.elevation === 'object' ? (field.elevation as { value: string })?.value : field.elevation) : undefined);
+      const paSoilType = pa.soil_type ?? (field ? (typeof field.soil_type === 'object' ? (field.soil_type as { value: string })?.value : field.soil_type) : undefined);
+
       return {
         id: pa.id,
         fieldSeasonId: pa.field_season?.[0]?.id || 0,
@@ -149,8 +153,8 @@ export default async function ApprovePage({ params }: PageProps) {
         probeSerial,
         placementLat: pa.placement_lat,
         placementLng: pa.placement_lng,
-        elevation: pa.elevation,
-        soilType: pa.soil_type,
+        elevation: paElevation,
+        soilType: paSoilType,
         placementNotes: pa.placement_notes,
         approvalStatus: pa.approval_status?.value || 'Pending',
         approvalNotes: pa.approval_notes,

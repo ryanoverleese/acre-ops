@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, createRow } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -12,6 +12,18 @@ const FIELD_LEVEL_KEYS = ['irrigation_type', 'row_direction', 'water_source', 'f
 const SEASON_LEVEL_KEYS = ['crop', 'side_dress', 'hybrid_variety', 'planting_date'];
 const LINK_FIELD_KEYS = ['billing_entity'];
 const ALLOWED_KEYS = [...FIELD_LEVEL_KEYS, ...SEASON_LEVEL_KEYS, ...LINK_FIELD_KEYS];
+
+const FIELD_LABELS: Record<string, string> = {
+  irrigation_type: 'Irrigation Type',
+  row_direction: 'Row Direction',
+  water_source: 'Water Source',
+  fuel_source: 'Fuel Source',
+  crop: 'Crop',
+  side_dress: 'Side Dress',
+  hybrid_variety: 'Hybrid/Variety',
+  planting_date: 'Planting Date',
+  billing_entity: 'Billing Entity',
+};
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +98,20 @@ export async function POST(request: NextRequest) {
       console.error('Baserow update error:', response.status, errorText);
       return NextResponse.json({ error: 'Failed to update' }, { status: response.status });
     }
+
+    // Fire-and-forget: log notification for customer change
+    const operation = opsData.results[0];
+    const displayValue = typeof value === 'object' && value !== null
+      ? (value.value || JSON.stringify(value))
+      : String(value || '');
+    createRow('notifications', {
+      operation: [operation.id],
+      field: fieldId ? [fieldId] : [],
+      changed_field: FIELD_LABELS[fieldName] || fieldName,
+      new_value: displayValue,
+      page_type: 'Field Info',
+      read: false,
+    }).catch((err) => console.error('Failed to create notification:', err));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -1211,6 +1211,31 @@ select:focus {
   justify-content: space-between;
 }
 
+.notification-mark-read-btn {
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.notification-mark-read-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.notification-mark-read-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+a.notification-item {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
 .notification-empty {
   padding: 32px 16px;
   display: flex;

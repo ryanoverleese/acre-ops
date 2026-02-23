@@ -68,6 +68,7 @@ export const TABLE_IDS = {
   weather_stations: 831050,
   orders: 831072,
   order_items: 831073,
+  notifications: 854433,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -516,6 +517,19 @@ export interface User {
 }
 
 export const getUsers = (options?: FetchOptions) => getRows<User>('users', options);
+
+export interface Notification {
+  id: number;
+  operation?: { id: number; value: string }[];
+  field?: { id: number; value: string }[];
+  changed_field?: string;
+  new_value?: string;
+  page_type?: { id: number; value: string };
+  read?: boolean;
+  created_on?: string;
+}
+
+export const getNotifications = (options?: FetchOptions) => getRows<Notification>('notifications', options);
 
 // ────────────────────────────────────────────────────────────────────────────
 // Field metadata: fetch single_select options from Baserow table schema
