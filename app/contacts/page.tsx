@@ -1,4 +1,5 @@
 import { getContacts, getOperations, getBillingEntities, getTableFieldOptions } from '@/lib/baserow';
+import { buildOperationMap, buildBillingEntityMap } from '@/lib/data-mappings';
 import ContactsClient from './ContactsClient';
 
 export interface ProcessedContact {
@@ -39,8 +40,8 @@ async function getContactsData(): Promise<{ contacts: ProcessedContact[]; operat
 
     const customerTypeOptions = (contactFieldOptions.customer_type || []).map((opt) => opt.value);
 
-    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
-    const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
+    const operationMap = buildOperationMap(operations);
+    const billingEntityMap = buildBillingEntityMap(billingEntities);
 
     const processedContacts: ProcessedContact[] = contacts.map((contact) => {
       const opIds = contact.operations?.map((op) => op.id) || [];

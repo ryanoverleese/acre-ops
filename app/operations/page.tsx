@@ -1,4 +1,5 @@
 import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/baserow';
+import { buildOperationMap, buildBillingEntityMap, buildBillingToOperationMaps, buildOperationToBillingEntityMap } from '@/lib/data-mappings';
 import OperationsClient, { ProcessedOperation, ContactOption, LinkedContact } from './OperationsClient';
 
 async function getOperationsData(): Promise<{
@@ -14,18 +15,15 @@ async function getOperationsData(): Promise<{
       getProbes(),
     ]);
 
-    // Build a map of billing entity ID to name
-    const billingEntityMap = new Map(billingEntities.map((be) => [be.id, be.name]));
+    const operationMap = buildOperationMap(operations);
+    const billingEntityMap = buildBillingEntityMap(billingEntities);
+    const operationToBillingEntityIds = buildOperationToBillingEntityMap(contacts);
+    const { billingToOperationIds } = buildBillingToOperationMaps(contacts, operationMap);
 
-    // Build linked contacts and billing entities for each operation through contacts
+    // Build linked contacts for each operation
     const linkedContactsMap = new Map<number, LinkedContact[]>();
-    const operationBillingMap = new Map<number, Set<number>>(); // operation ID -> set of billing entity IDs
-
     contacts.forEach((contact) => {
       const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
-
-      // Link contacts to operations
       contactOpIds.forEach((opId) => {
         const existing = linkedContactsMap.get(opId) || [];
         existing.push({
@@ -36,35 +34,15 @@ async function getOperationsData(): Promise<{
           isMainContact: contact.is_main_contact?.value === 'Yes',
         });
         linkedContactsMap.set(opId, existing);
-
-        // Link billing entities to operations through this contact
-        contactBeIds.forEach((beId) => {
-          const existingBEs = operationBillingMap.get(opId) || new Set();
-          existingBEs.add(beId);
-          operationBillingMap.set(opId, existingBEs);
-        });
       });
     });
 
-    // Count fields per operation (field -> billing_entity -> contact -> operation)
-    // First, build a map of billing entity ID to operation IDs
-    const beToOperations = new Map<number, Set<number>>();
-    contacts.forEach((contact) => {
-      const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
-
-      contactBeIds.forEach((beId) => {
-        const existingOps = beToOperations.get(beId) || new Set();
-        contactOpIds.forEach((opId) => existingOps.add(opId));
-        beToOperations.set(beId, existingOps);
-      });
-    });
-
+    // Count fields per operation (field -> billing_entity -> operation)
     const operationFieldCount = new Map<number, number>();
     fields.forEach((field) => {
       const beLink = field.billing_entity?.[0];
       if (beLink) {
-        const opIds = beToOperations.get(beLink.id);
+        const opIds = billingToOperationIds.get(beLink.id);
         if (opIds) {
           opIds.forEach((opId) => {
             operationFieldCount.set(opId, (operationFieldCount.get(opId) || 0) + 1);
@@ -73,12 +51,12 @@ async function getOperationsData(): Promise<{
       }
     });
 
-    // Count probes per operation (probe -> billing_entity -> contact -> operation)
+    // Count probes per operation (probe -> billing_entity -> operation)
     const operationProbeCount = new Map<number, number>();
     probes.forEach((probe) => {
       const beLink = probe.billing_entity?.[0];
       if (beLink) {
-        const opIds = beToOperations.get(beLink.id);
+        const opIds = billingToOperationIds.get(beLink.id);
         if (opIds) {
           opIds.forEach((opId) => {
             operationProbeCount.set(opId, (operationProbeCount.get(opId) || 0) + 1);
@@ -95,8 +73,8 @@ async function getOperationsData(): Promise<{
     }));
 
     const processedOperations: ProcessedOperation[] = operations.map((op) => {
-      const beIds = operationBillingMap.get(op.id) || new Set();
-      const billingEntitiesForOp = Array.from(beIds).map((beId) => ({
+      const beIds = operationToBillingEntityIds.get(op.id) || [];
+      const billingEntitiesForOp = beIds.map((beId) => ({
         id: beId,
         name: billingEntityMap.get(beId) || 'Unknown',
       }));

@@ -1,4 +1,5 @@
 import { getWaterRecs, getFieldSeasons, getFields, getOperations, getContacts, getProbeAssignments, getTableFieldOptions } from '@/lib/baserow';
+import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WaterRecsClient from './WaterRecsClient';
 
 export const dynamic = 'force-dynamic';
@@ -43,20 +44,8 @@ export default async function WaterRecsPage() {
     // Get water day options from Baserow single_select field
     const waterDayOptions = (waterRecOptions.suggested_water_day || []).map(o => o.value);
 
-    // Build billing entity → operation mapping via contacts
-    const operationMap = new Map(operations.map(op => [op.id, op.name]));
-    const billingToOperationMap = new Map<number, number>();
-    contacts.forEach(contact => {
-      const opIds = contact.operations?.map(o => o.id) || [];
-      const beIds = contact.billing_entity?.map(b => b.id) || [];
-      for (const beId of beIds) {
-        for (const opId of opIds) {
-          if (!billingToOperationMap.has(beId)) {
-            billingToOperationMap.set(beId, opId);
-          }
-        }
-      }
-    });
+    const operationMap = buildOperationMap(operations);
+    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     // Build field → operation mapping
     const fieldToOperation = new Map<number, number>();

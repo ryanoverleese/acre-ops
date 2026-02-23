@@ -1,5 +1,6 @@
 import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getProductsServices, getAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
+import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import FieldsClient from './FieldsClient';
 
 // Force dynamic rendering to always get fresh data
@@ -174,32 +175,9 @@ async function getFieldsData(): Promise<{
       console.error('Failed to fetch select options (non-fatal):', e);
     }
 
-    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+    const operationMap = buildOperationMap(operations);
     const probeMap = new Map(probes.map((p) => [p.id, p]));
-
-    // Build billing entity to operation mapping through contacts
-    const billingToOperationMap = new Map<number, number>();
-    const billingToOperationNames = new Map<number, string[]>();
-    contacts.forEach((contact) => {
-      const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
-
-      contactBeIds.forEach((beId) => {
-        contactOpIds.forEach((opId) => {
-          // Store first operation ID for each billing entity
-          if (!billingToOperationMap.has(beId)) {
-            billingToOperationMap.set(beId, opId);
-          }
-          // Collect all operation names
-          const existingNames = billingToOperationNames.get(beId) || [];
-          const opName = operationMap.get(opId) || 'Unknown';
-          if (!existingNames.includes(opName)) {
-            existingNames.push(opName);
-          }
-          billingToOperationNames.set(beId, existingNames);
-        });
-      });
-    });
+    const { billingToOperationMap, billingToOperationNames } = buildBillingToOperationMaps(contacts, operationMap);
 
     // Get unique seasons from existing data plus default years
     const currentYear = new Date().getFullYear();

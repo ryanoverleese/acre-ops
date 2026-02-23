@@ -1,4 +1,5 @@
 import { getProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type BillingEntity, type Operation, type Contact } from '@/lib/baserow';
+import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
 
 // Force dynamic rendering - probe assignments need to be fresh
@@ -25,25 +26,11 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       getCachedRows<Contact>('contacts', undefined, 300),
     ]);
 
-    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+    const operationMap = buildOperationMap(operations);
     const probeMap = new Map(probes.map((p) => [p.id, p]));
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
-
-    // Map billing entity to operation through contacts
-    const billingToOperationMap = new Map<number, number>();
-    contacts.forEach((contact) => {
-      const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
-
-      contactBeIds.forEach((beId) => {
-        contactOpIds.forEach((opId) => {
-          if (!billingToOperationMap.has(beId)) {
-            billingToOperationMap.set(beId, opId);
-          }
-        });
-      });
-    });
+    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     // Filter probe_assignments:
     // - probe_status = 'Assigned' (ready to install but not yet installed)

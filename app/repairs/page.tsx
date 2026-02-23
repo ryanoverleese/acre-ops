@@ -1,4 +1,5 @@
 import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes, getProbeAssignments, getContacts } from '@/lib/baserow';
+import { buildOperationMap, buildBillingToOperationMaps, getOperationNameForBillingEntity } from '@/lib/data-mappings';
 import RepairsClient, { ProcessedRepair, FieldSeasonOption, ProbeAssignmentOption } from './RepairsClient';
 
 async function getRepairsData(): Promise<{
@@ -20,33 +21,13 @@ async function getRepairsData(): Promise<{
 
     const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
 
-    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+    const operationMap = buildOperationMap(operations);
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
-
-    // Map billing entity to operation through contacts
-    const billingToOperationMap = new Map<number, number>();
-    contacts.forEach((contact) => {
-      const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
-
-      contactBeIds.forEach((beId) => {
-        contactOpIds.forEach((opId) => {
-          if (!billingToOperationMap.has(beId)) {
-            billingToOperationMap.set(beId, opId);
-          }
-        });
-      });
-    });
+    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     const getOperationName = (field: typeof fields[0] | null | undefined): string => {
-      if (field?.billing_entity?.[0]) {
-        const opId = billingToOperationMap.get(field.billing_entity[0].id);
-        if (opId) {
-          return operationMap.get(opId) || 'Unknown';
-        }
-      }
-      return 'Unknown';
+      return getOperationNameForBillingEntity(field?.billing_entity?.[0]?.id, billingToOperationMap, operationMap);
     };
 
     // Create probe assignment map

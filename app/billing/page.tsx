@@ -1,4 +1,5 @@
 import { getBillingEntities, getInvoices, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices } from '@/lib/baserow';
+import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import BillingClient, { ProcessedBillingEntity } from './BillingClient';
 
 interface BillingData {
@@ -18,7 +19,7 @@ async function getBillingData(): Promise<BillingData> {
       getProductsServices(),
     ]);
 
-    const operationMap = new Map(operations.map((op) => [op.id, op.name]));
+    const operationMap = buildOperationMap(operations);
 
     // Build service rate lookup by service type name (ensure rate is a number)
     const rateMap = new Map(productsServices.map((sr) => {
@@ -26,22 +27,13 @@ async function getBillingData(): Promise<BillingData> {
       return [sr.service_type?.toLowerCase(), isNaN(rate) ? 0 : rate];
     }));
 
-    // Build maps from contacts: billing entity -> operations and billing entity -> contacts
-    const beToOperations = new Map<number, string[]>();
+    const { billingToOperationNames } = buildBillingToOperationMaps(contacts, operationMap);
+
+    // Build billing entity -> contacts map
     const beToContacts = new Map<number, { name: string; email?: string }[]>();
-
     contacts.forEach((contact) => {
-      const contactOpIds = contact.operations?.map((op) => op.id) || [];
-      const contactOpNames = contactOpIds.map((id) => operationMap.get(id) || 'Unknown');
       const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
-
       contactBeIds.forEach((beId) => {
-        const existingOps = beToOperations.get(beId) || [];
-        contactOpNames.forEach((name) => {
-          if (!existingOps.includes(name)) existingOps.push(name);
-        });
-        beToOperations.set(beId, existingOps);
-
         const existingContacts = beToContacts.get(beId) || [];
         if (!existingContacts.some((c) => c.name === contact.name)) {
           existingContacts.push({ name: contact.name, email: contact.email });
@@ -104,7 +96,7 @@ async function getBillingData(): Promise<BillingData> {
     const processedEntities: ProcessedBillingEntity[] = [];
 
     billingEntities.forEach((be) => {
-      const opNames = beToOperations.get(be.id) || [];
+      const opNames = billingToOperationNames.get(be.id) || [];
       const linkedContacts = beToContacts.get(be.id) || [];
 
       // Find all seasons this billing entity has field seasons for
