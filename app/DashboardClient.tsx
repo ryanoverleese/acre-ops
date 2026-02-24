@@ -145,7 +145,9 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
 
         {/* Booking Tracker */}
         {bookings.length > 0 && (() => {
-          const returning = bookings.filter(b => b.status === 'returning').length;
+          const returningOps = bookings.filter(b => b.status === 'returning');
+          const returning = returningOps.length;
+          const returningFieldDelta = returningOps.reduce((sum, b) => sum + (b.fields2026 - b.fields2025), 0);
           const stillToGo = bookings.filter(b => b.status === 'still-to-go').length;
           const newOps = bookings.filter(b => b.status === 'new').length;
 
@@ -180,7 +182,14 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                 <div className="stat-card">
                   <div className="stat-label">Returning</div>
                   <div className="stat-value green">{returning}</div>
-                  <div className="stat-change">Re-enrolled from 2025</div>
+                  <div className="stat-change">
+                    {returningFieldDelta !== 0 && (
+                      <span className={returningFieldDelta > 0 ? 'green' : 'amber'}>
+                        {returningFieldDelta > 0 ? '+' : ''}{returningFieldDelta} fields
+                      </span>
+                    )}
+                    {returningFieldDelta === 0 && 'Same field count'}
+                  </div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">Still to Go</div>
