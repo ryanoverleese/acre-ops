@@ -227,11 +227,11 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                         <td>
                           {(() => {
                             const delta = b.fields2026 - b.fields2025;
-                            if (b.status === 'new') return <span className="text-green">+{b.fields2026}</span>;
-                            if (b.status === 'still-to-go') return <span className="text-amber">-{b.fields2025}</span>;
-                            if (delta > 0) return <span className="text-green">+{delta}</span>;
-                            if (delta < 0) return <span className="text-amber">{delta}</span>;
-                            return <span className="text-muted">=</span>;
+                            if (b.status === 'new') return <span className="status-badge in-stock">+{b.fields2026}</span>;
+                            if (b.status === 'still-to-go') return <span className="status-badge assigned">-{b.fields2025}</span>;
+                            if (delta > 0) return <span className="status-badge installed">+{delta}</span>;
+                            if (delta < 0) return <span className="status-badge assigned">{delta}</span>;
+                            return <span className="status-badge unassigned">=</span>;
                           })()}
                         </td>
                         <td>
@@ -257,11 +257,11 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                         <span>
                           {(() => {
                             const delta = b.fields2026 - b.fields2025;
-                            if (b.status === 'new') return <span className="text-green">+{b.fields2026}</span>;
-                            if (b.status === 'still-to-go') return <span className="text-amber">-{b.fields2025}</span>;
-                            if (delta > 0) return <span className="text-green">+{delta}</span>;
-                            if (delta < 0) return <span className="text-amber">{delta}</span>;
-                            return <span className="text-muted">no change</span>;
+                            if (b.status === 'new') return <span className="status-badge in-stock">+{b.fields2026}</span>;
+                            if (b.status === 'still-to-go') return <span className="status-badge assigned">-{b.fields2025}</span>;
+                            if (delta > 0) return <span className="status-badge installed">+{delta}</span>;
+                            if (delta < 0) return <span className="status-badge assigned">{delta}</span>;
+                            return <span className="status-badge unassigned">=</span>;
                           })()}
                         </span>
                       </div>
