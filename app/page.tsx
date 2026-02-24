@@ -111,7 +111,7 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
     const opFields2026 = new Map<number, Set<number>>();
 
     for (const fs of fieldSeasons) {
-      if (fs.season !== 2025 && fs.season !== 2026) continue;
+      if (fs.season != 2025 && fs.season != 2026) continue;
       const fieldId = fs.field?.[0]?.id;
       if (!fieldId) continue;
       const field = fieldMap.get(fieldId);
@@ -120,7 +120,7 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       const opId = billingToOperationMap.get(beId);
       if (!opId) continue;
 
-      const bucket = fs.season === 2025 ? opFields2025 : opFields2026;
+      const bucket = fs.season == 2025 ? opFields2025 : opFields2026;
       if (!bucket.has(opId)) bucket.set(opId, new Set());
       bucket.get(opId)!.add(fieldId);
     }
