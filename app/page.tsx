@@ -16,13 +16,6 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       getCachedRows<Probe>('probes', undefined, 120),
     ]);
 
-    // Fetch booking-related tables separately to avoid Baserow rate limits
-    const [fields, contacts, operations] = await Promise.all([
-      getCachedRows<Field>('fields', undefined, 600),
-      getCachedRows<Contact>('contacts', undefined, 600),
-      getCachedRows<Operation>('operations', undefined, 600),
-    ]);
-
     // Calculate install stats from probe_assignments for current season
     const currentSeasonFsIds = new Set(
       fieldSeasons.filter(fs => fs.season == 2026).map(fs => fs.id)
@@ -105,53 +98,58 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       totalAssignments,
     };
 
-    // Build operation booking tracker
-    const operationMap = buildOperationMap(operations);
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
-    const fieldMap = new Map(fields.map(f => [f.id, f]));
+    // Build operation booking tracker — isolated so failures don't break the dashboard
+    let bookings: DashboardBooking[] = [];
+    try {
+      // Sequential fetches to avoid Baserow rate limits during deploy storms
+      const fields = await getCachedRows<Field>('fields', undefined, 600);
+      const contacts = await getCachedRows<Contact>('contacts', undefined, 600);
+      const operations = await getCachedRows<Operation>('operations', undefined, 600);
 
-    // For each field_season, resolve to operation and track by season
-    const opFields2025 = new Map<number, Set<number>>(); // opId → set of field IDs
-    const opFields2026 = new Map<number, Set<number>>();
+      const operationMap = buildOperationMap(operations);
+      const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+      const fieldMap = new Map(fields.map(f => [f.id, f]));
 
-    for (const fs of fieldSeasons) {
-      if (fs.season != 2025 && fs.season != 2026) continue;
-      const fieldId = fs.field?.[0]?.id;
-      if (!fieldId) continue;
-      const field = fieldMap.get(fieldId);
-      const beId = field?.billing_entity?.[0]?.id;
-      if (!beId) continue;
-      const opId = billingToOperationMap.get(beId);
-      if (!opId) continue;
+      const opFields2025 = new Map<number, Set<number>>();
+      const opFields2026 = new Map<number, Set<number>>();
 
-      const bucket = fs.season == 2025 ? opFields2025 : opFields2026;
-      if (!bucket.has(opId)) bucket.set(opId, new Set());
-      bucket.get(opId)!.add(fieldId);
+      for (const fs of fieldSeasons) {
+        if (fs.season != 2025 && fs.season != 2026) continue;
+        const fieldId = fs.field?.[0]?.id;
+        if (!fieldId) continue;
+        const field = fieldMap.get(fieldId);
+        const beId = field?.billing_entity?.[0]?.id;
+        if (!beId) continue;
+        const opId = billingToOperationMap.get(beId);
+        if (!opId) continue;
+
+        const bucket = fs.season == 2025 ? opFields2025 : opFields2026;
+        if (!bucket.has(opId)) bucket.set(opId, new Set());
+        bucket.get(opId)!.add(fieldId);
+      }
+
+      const allOpIds = new Set([...opFields2025.keys(), ...opFields2026.keys()]);
+      for (const opId of allOpIds) {
+        const count2025 = opFields2025.get(opId)?.size || 0;
+        const count2026 = opFields2026.get(opId)?.size || 0;
+        let status: DashboardBooking['status'];
+        if (count2025 > 0 && count2026 > 0) status = 'returning';
+        else if (count2025 > 0) status = 'still-to-go';
+        else status = 'new';
+
+        bookings.push({
+          operationName: operationMap.get(opId) || 'Unknown',
+          fields2025: count2025,
+          fields2026: count2026,
+          status,
+        });
+      }
+
+      const statusOrder = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
+      bookings.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.operationName.localeCompare(b.operationName));
+    } catch (e) {
+      console.warn('Booking tracker fetch failed (rate limited?), skipping:', (e as Error).message);
     }
-
-    // Collect all operation IDs that appear in either year
-    const allOpIds = new Set([...opFields2025.keys(), ...opFields2026.keys()]);
-    const bookings: DashboardBooking[] = [];
-
-    for (const opId of allOpIds) {
-      const count2025 = opFields2025.get(opId)?.size || 0;
-      const count2026 = opFields2026.get(opId)?.size || 0;
-      let status: DashboardBooking['status'];
-      if (count2025 > 0 && count2026 > 0) status = 'returning';
-      else if (count2025 > 0) status = 'still-to-go';
-      else status = 'new';
-
-      bookings.push({
-        operationName: operationMap.get(opId) || 'Unknown',
-        fields2025: count2025,
-        fields2026: count2026,
-        status,
-      });
-    }
-
-    // Sort: still-to-go first, then new, then returning
-    const statusOrder = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
-    bookings.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.operationName.localeCompare(b.operationName));
 
     return { stats, openRepairs, recentOrders, installedProbes, bookings };
   } catch (error) {
