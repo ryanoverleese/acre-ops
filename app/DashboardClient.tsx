@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export interface DashboardStats {
@@ -45,7 +45,6 @@ interface DashboardClientProps {
   openRepairs: DashboardRepair[];
   recentOrders: DashboardOrder[];
   installedProbes: DashboardInstalledProbe[];
-  bookings: DashboardBooking[];
 }
 
 function daysAgo(dateStr: string): number {
@@ -61,10 +60,18 @@ function formatDate(dateStr: string): string {
 
 type BookingSortColumn = 'operation' | 'fields2025' | 'fields2026' | 'status';
 
-export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes, bookings }: DashboardClientProps) {
+export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
+  const [bookings, setBookings] = useState<DashboardBooking[]>([]);
   const [bookingSortCol, setBookingSortCol] = useState<BookingSortColumn>('status');
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc');
+
+  useEffect(() => {
+    fetch('/api/bookings')
+      .then(res => res.json())
+      .then((data: DashboardBooking[]) => { if (data.length) setBookings(data); })
+      .catch(() => {}); // Silently fail — section just won't appear
+  }, []);
   const pct = stats.totalAssignments > 0
     ? Math.round((stats.installedCount / stats.totalAssignments) * 100)
     : 0;

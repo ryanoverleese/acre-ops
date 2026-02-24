@@ -1,11 +1,10 @@
-import { getCachedRows, type Repair, type FieldSeason, type ProbeAssignment, type Order, type BillingEntity, type Probe, type Field, type Contact, type Operation } from '@/lib/baserow';
-import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
-import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe, DashboardBooking } from './DashboardClient';
+import { getCachedRows, type Repair, type FieldSeason, type ProbeAssignment, type Order, type BillingEntity, type Probe } from '@/lib/baserow';
+import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe } from './DashboardClient';
 
 // Revalidate dashboard data every 2 minutes instead of force-dynamic
 export const revalidate = 120;
 
-async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[]; bookings: DashboardBooking[] }> {
+async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[] }> {
   try {
     const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes] = await Promise.all([
       getCachedRows<Repair>('repairs', undefined, 120),
@@ -98,60 +97,7 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       totalAssignments,
     };
 
-    // Build operation booking tracker — isolated so failures don't break the dashboard
-    let bookings: DashboardBooking[] = [];
-    try {
-      // Sequential fetches to avoid Baserow rate limits during deploy storms
-      const fields = await getCachedRows<Field>('fields', undefined, 600);
-      const contacts = await getCachedRows<Contact>('contacts', undefined, 600);
-      const operations = await getCachedRows<Operation>('operations', undefined, 600);
-
-      const operationMap = buildOperationMap(operations);
-      const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
-      const fieldMap = new Map(fields.map(f => [f.id, f]));
-
-      const opFields2025 = new Map<number, Set<number>>();
-      const opFields2026 = new Map<number, Set<number>>();
-
-      for (const fs of fieldSeasons) {
-        if (fs.season != 2025 && fs.season != 2026) continue;
-        const fieldId = fs.field?.[0]?.id;
-        if (!fieldId) continue;
-        const field = fieldMap.get(fieldId);
-        const beId = field?.billing_entity?.[0]?.id;
-        if (!beId) continue;
-        const opId = billingToOperationMap.get(beId);
-        if (!opId) continue;
-
-        const bucket = fs.season == 2025 ? opFields2025 : opFields2026;
-        if (!bucket.has(opId)) bucket.set(opId, new Set());
-        bucket.get(opId)!.add(fieldId);
-      }
-
-      const allOpIds = new Set([...opFields2025.keys(), ...opFields2026.keys()]);
-      for (const opId of allOpIds) {
-        const count2025 = opFields2025.get(opId)?.size || 0;
-        const count2026 = opFields2026.get(opId)?.size || 0;
-        let status: DashboardBooking['status'];
-        if (count2025 > 0 && count2026 > 0) status = 'returning';
-        else if (count2025 > 0) status = 'still-to-go';
-        else status = 'new';
-
-        bookings.push({
-          operationName: operationMap.get(opId) || 'Unknown',
-          fields2025: count2025,
-          fields2026: count2026,
-          status,
-        });
-      }
-
-      const statusOrder = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
-      bookings.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.operationName.localeCompare(b.operationName));
-    } catch (e) {
-      console.warn('Booking tracker fetch failed (rate limited?), skipping:', (e as Error).message);
-    }
-
-    return { stats, openRepairs, recentOrders, installedProbes, bookings };
+    return { stats, openRepairs, recentOrders, installedProbes };
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return {
@@ -159,12 +105,11 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       openRepairs: [],
       recentOrders: [],
       installedProbes: [],
-      bookings: [],
     };
   }
 }
 
 export default async function Dashboard() {
-  const { stats, openRepairs, recentOrders, installedProbes, bookings } = await getDashboardData();
-  return <DashboardClient stats={stats} openRepairs={openRepairs} recentOrders={recentOrders} installedProbes={installedProbes} bookings={bookings} />;
+  const { stats, openRepairs, recentOrders, installedProbes } = await getDashboardData();
+  return <DashboardClient stats={stats} openRepairs={openRepairs} recentOrders={recentOrders} installedProbes={installedProbes} />;
 }
