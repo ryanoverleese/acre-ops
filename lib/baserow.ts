@@ -100,6 +100,18 @@ function normalizeKeys(obj: Record<string, unknown>): Record<string, unknown> {
   return normalized;
 }
 
+/** Add space-variant keys for Baserow write compatibility.
+ *  Baserow fields may use spaces or underscores — sending both ensures a match. */
+export function addSpaceVariants(data: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...data };
+  for (const [key, value] of Object.entries(data)) {
+    if (key.includes('_')) {
+      result[key.replace(/_/g, ' ')] = value;
+    }
+  }
+  return result;
+}
+
 // Retry helper for transient API errors (rate limiting, network issues)
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {

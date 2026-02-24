@@ -1,21 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, getRow, Field, FieldSeason } from '@/lib/baserow';
+import { TABLE_IDS, getRow, Field, FieldSeason, addSpaceVariants } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-
-// Add both underscore and space variants so Baserow matches whichever naming it uses
-function addSpaceVariants(data: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...data };
-  for (const [key, value] of Object.entries(data)) {
-    if (key.includes('_')) {
-      result[key.replace(/_/g, ' ')] = value;
-    }
-  }
-  return result;
-}
 
 export async function POST(request: NextRequest) {
   try {

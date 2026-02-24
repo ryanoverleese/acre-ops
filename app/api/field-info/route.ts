@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, createRow } from '@/lib/baserow';
+import { TABLE_IDS, createRow, addSpaceVariants } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -72,14 +72,11 @@ export async function POST(request: NextRequest) {
     let updateBody: Record<string, unknown>;
     if (isLinkField) {
       // Link fields need array format: [id] or []
-      const linkValue = value ? [value] : [];
-      updateBody = {
-        [fieldName]: linkValue,
-        [fieldName.replace(/_/g, ' ')]: linkValue,
-      };
+      updateBody = { [fieldName]: value ? [value] : [] };
     } else {
       updateBody = { [fieldName]: value || '' };
     }
+    updateBody = addSpaceVariants(updateBody);
 
     const response = await fetch(
       `${BASEROW_API_URL}/${tableId}/${rowId}/?user_field_names=true`,

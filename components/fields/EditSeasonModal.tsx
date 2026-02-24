@@ -350,7 +350,7 @@ export default function EditSeasonModal({
                   <option value="">— No Probe —</option>
                   {getProbesForField(field.operation, field.probeId).map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity})
+                      {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - {p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity}
                     </option>
                   ))}
                   <option value="__create_new__">+ Add New Probe</option>
@@ -368,7 +368,7 @@ export default function EditSeasonModal({
                   <option value="">— No Probe —</option>
                   {getProbesForField(field.operation, field.probe2Id).map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} ({p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity})
+                      {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - {p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity}
                     </option>
                   ))}
                   <option value="__create_new__">+ Add New Probe</option>
