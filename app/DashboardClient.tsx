@@ -59,8 +59,12 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+type BookingSortColumn = 'operation' | 'fields2025' | 'fields2026' | 'status';
+
 export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes, bookings }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
+  const [bookingSortCol, setBookingSortCol] = useState<BookingSortColumn>('status');
+  const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc');
   const pct = stats.totalAssignments > 0
     ? Math.round((stats.installedCount / stats.totalAssignments) * 100)
     : 0;
@@ -144,6 +148,31 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           const returning = bookings.filter(b => b.status === 'returning').length;
           const stillToGo = bookings.filter(b => b.status === 'still-to-go').length;
           const newOps = bookings.filter(b => b.status === 'new').length;
+
+          const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
+          const sorted = [...bookings].sort((a, b) => {
+            let cmp = 0;
+            switch (bookingSortCol) {
+              case 'operation': cmp = a.operationName.localeCompare(b.operationName); break;
+              case 'fields2025': cmp = a.fields2025 - b.fields2025; break;
+              case 'fields2026': cmp = a.fields2026 - b.fields2026; break;
+              case 'status': cmp = statusOrder[a.status] - statusOrder[b.status]; break;
+            }
+            return bookingSortDir === 'asc' ? cmp : -cmp;
+          });
+
+          const handleBookingSort = (col: BookingSortColumn) => {
+            if (bookingSortCol === col) {
+              setBookingSortDir(bookingSortDir === 'asc' ? 'desc' : 'asc');
+            } else {
+              setBookingSortCol(col);
+              setBookingSortDir('asc');
+            }
+          };
+
+          const sortArrow = (col: BookingSortColumn) =>
+            bookingSortCol === col ? <span className="sort-indicator">{bookingSortDir === 'asc' ? ' ▲' : ' ▼'}</span> : null;
+
           return (
             <div className="dashboard-section">
               <h3 className="section-label">2026 Booking Tracker</h3>
@@ -168,14 +197,14 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                 <table className="desktop-table">
                   <thead>
                     <tr>
-                      <th>Operation</th>
-                      <th>2025 Fields</th>
-                      <th>2026 Fields</th>
-                      <th>Status</th>
+                      <th className="sortable" onClick={() => handleBookingSort('operation')}>Operation{sortArrow('operation')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('fields2025')}>2025 Fields{sortArrow('fields2025')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('fields2026')}>2026 Fields{sortArrow('fields2026')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('status')}>Status{sortArrow('status')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {bookings.map((b) => (
+                    {sorted.map((b) => (
                       <tr key={b.operationName} className={b.status === 'still-to-go' ? 'row-highlight' : undefined}>
                         <td>{b.operationName}</td>
                         <td><span className="text-secondary">{b.fields2025 || '—'}</span></td>
