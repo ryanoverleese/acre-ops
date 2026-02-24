@@ -1754,6 +1754,18 @@ export default function FieldsClient({
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
+                      <button
+                        className="btn btn-secondary fields-enroll-btn"
+                        onClick={() => {
+                          if (inlineEnrollSelected.size === inlineEnrollEligibleIds.size) {
+                            setInlineEnrollSelected(new Set());
+                          } else {
+                            setInlineEnrollSelected(new Set(inlineEnrollEligibleIds));
+                          }
+                        }}
+                      >
+                        {inlineEnrollSelected.size === inlineEnrollEligibleIds.size ? 'Deselect All' : 'Select All'}
+                      </button>
                       {inlineEnrollSelected.size > 0 && (
                         <button
                           className="btn btn-primary fields-enroll-btn"
