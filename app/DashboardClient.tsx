@@ -37,6 +37,7 @@ export interface DashboardBooking {
   operationName: string;
   fields2025: number;
   fields2026: number;
+  probes2026: number;
   status: 'returning' | 'new' | 'still-to-go';
 }
 
@@ -58,7 +59,7 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type BookingSortColumn = 'operation' | 'change' | 'fields2026' | 'status';
+type BookingSortColumn = 'operation' | 'change' | 'fields2026' | 'probes2026' | 'status';
 
 export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
@@ -165,6 +166,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
               case 'operation': cmp = a.operationName.localeCompare(b.operationName); break;
               case 'change': cmp = (a.fields2026 - a.fields2025) - (b.fields2026 - b.fields2025); break;
               case 'fields2026': cmp = a.fields2026 - b.fields2026; break;
+              case 'probes2026': cmp = a.probes2026 - b.probes2026; break;
               case 'status': cmp = statusOrder[a.status] - statusOrder[b.status]; break;
             }
             return bookingSortDir === 'asc' ? cmp : -cmp;
@@ -214,8 +216,9 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <thead>
                     <tr>
                       <th className="sortable" onClick={() => handleBookingSort('operation')}>Operation{sortArrow('operation')}</th>
-                      <th className="sortable" onClick={() => handleBookingSort('fields2026')}>2026 Fields{sortArrow('fields2026')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('fields2026')}>Fields{sortArrow('fields2026')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('change')}>Change{sortArrow('change')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('probes2026')}>Probes{sortArrow('probes2026')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('status')}>Status{sortArrow('status')}</th>
                     </tr>
                   </thead>
@@ -233,6 +236,13 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                             if (delta < 0) return <span className="status-badge assigned">{delta}</span>;
                             return <span className="status-badge unassigned">=</span>;
                           })()}
+                        </td>
+                        <td>
+                          {b.status !== 'still-to-go' ? (
+                            b.probes2026 >= b.fields2026 && b.fields2026 > 0
+                              ? <span className="status-badge installed">{b.probes2026}</span>
+                              : <span className="status-badge assigned">{b.probes2026}/{b.fields2026}</span>
+                          ) : <span className="text-muted">—</span>}
                         </td>
                         <td>
                           <span className={`status-badge ${b.status}`}>
@@ -254,6 +264,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                       </div>
                       <div className="mobile-card-fields">
                         <span>{b.fields2026 || '—'} fields</span>
+                        <span>{b.status !== 'still-to-go' ? `${b.probes2026} probes` : ''}</span>
                         <span>
                           {(() => {
                             const delta = b.fields2026 - b.fields2025;
