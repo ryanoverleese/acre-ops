@@ -592,10 +592,10 @@ body::before {
   letter-spacing: -0.02em;
 }
 
-.stat-value.green { color: var(--accent-primary); }
-.stat-value.blue { color: var(--accent-blue); }
-.stat-value.amber { color: var(--accent-amber); }
-.stat-value.red { color: var(--accent-red); }
+.stat-value.green, .text-green { color: var(--accent-primary); }
+.stat-value.blue, .text-blue { color: var(--accent-blue); }
+.stat-value.amber, .text-amber { color: var(--accent-amber); }
+.stat-value.red, .text-red { color: var(--accent-red); }
 
 .stat-change {
   font-size: 11px;

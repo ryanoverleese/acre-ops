@@ -191,7 +191,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <div className="stat-value green">{returning}</div>
                   <div className="stat-change">
                     {returningFieldDelta !== 0 && (
-                      <span className={returningFieldDelta > 0 ? 'green' : 'amber'}>
+                      <span className={returningFieldDelta > 0 ? 'text-green' : 'text-amber'}>
                         {returningFieldDelta > 0 ? '+' : ''}{returningFieldDelta} fields
                       </span>
                     )}
@@ -227,10 +227,10 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                         <td>
                           {(() => {
                             const delta = b.fields2026 - b.fields2025;
-                            if (b.status === 'new') return <span className="green">+{b.fields2026}</span>;
-                            if (b.status === 'still-to-go') return <span className="amber">-{b.fields2025}</span>;
-                            if (delta > 0) return <span className="green">+{delta}</span>;
-                            if (delta < 0) return <span className="amber">{delta}</span>;
+                            if (b.status === 'new') return <span className="text-green">+{b.fields2026}</span>;
+                            if (b.status === 'still-to-go') return <span className="text-amber">-{b.fields2025}</span>;
+                            if (delta > 0) return <span className="text-green">+{delta}</span>;
+                            if (delta < 0) return <span className="text-amber">{delta}</span>;
                             return <span className="text-muted">=</span>;
                           })()}
                         </td>
@@ -257,10 +257,10 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                         <span>
                           {(() => {
                             const delta = b.fields2026 - b.fields2025;
-                            if (b.status === 'new') return <span className="green">+{b.fields2026}</span>;
-                            if (b.status === 'still-to-go') return <span className="amber">-{b.fields2025}</span>;
-                            if (delta > 0) return <span className="green">+{delta}</span>;
-                            if (delta < 0) return <span className="amber">{delta}</span>;
+                            if (b.status === 'new') return <span className="text-green">+{b.fields2026}</span>;
+                            if (b.status === 'still-to-go') return <span className="text-amber">-{b.fields2025}</span>;
+                            if (delta > 0) return <span className="text-green">+{delta}</span>;
+                            if (delta < 0) return <span className="text-amber">{delta}</span>;
                             return <span className="text-muted">no change</span>;
                           })()}
                         </span>
