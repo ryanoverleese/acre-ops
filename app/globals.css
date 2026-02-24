@@ -2295,6 +2295,12 @@ tr.selected {
     font-size: 16px;
   }
 
+  .mobile-card-fields {
+    display: flex;
+    gap: 16px;
+    font-size: 14px;
+  }
+
   .mobile-card-body {
     display: flex;
     flex-direction: column;

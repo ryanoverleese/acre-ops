@@ -227,6 +227,22 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                     ))}
                   </tbody>
                 </table>
+                <div className="mobile-cards">
+                  {sorted.map((b) => (
+                    <div key={b.operationName} className={`mobile-card${b.status === 'still-to-go' ? ' row-highlight' : ''}`}>
+                      <div className="mobile-card-header">
+                        <strong>{b.operationName}</strong>
+                        <span className={`status-badge ${b.status}`}>
+                          {b.status === 'returning' ? 'Returning' : b.status === 'still-to-go' ? 'Still to Go' : 'New'}
+                        </span>
+                      </div>
+                      <div className="mobile-card-fields">
+                        <span className="text-secondary">2025: {b.fields2025 || '—'}</span>
+                        <span className="text-secondary">2026: {b.fields2026 || '—'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           );
