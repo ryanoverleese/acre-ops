@@ -7069,6 +7069,14 @@ input[type="date"]:focus {
   padding: 8px 0;
 }
 
+@media (max-width: 768px) {
+  .fields-col-dropdown {
+    right: auto;
+    left: 0;
+    min-width: 200px;
+  }
+}
+
 .fields-col-header {
   padding: 4px 12px 8px;
   border-bottom: 1px solid var(--border);
