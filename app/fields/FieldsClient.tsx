@@ -22,7 +22,7 @@ const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   loading: () => <div className="location-picker-overlay"><div className="location-picker-modal"><div className="loading">Loading map...</div></div></div>,
 });
 
-type TabView = 'fieldData' | 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal';
+type TabView = 'fieldData' | 'signup' | 'seasonSetup' | 'installPlanning' | 'activeSeason' | 'removal' | 'allSeasons';
 
 interface FieldsClientProps {
   initialFields: ProcessedField[];
@@ -102,6 +102,7 @@ const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
   installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
   activeSeason: ['field', 'operation', 'probes', 'probeStatus', 'installDate', 'approvalStatus'],
   removal: ['field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
+  allSeasons: ['field', 'operation', 'billingEntity', 'acres', 'pivotAcres', 'irrigationType', 'rowDirection', 'waterSource', 'fuelSource', 'soilType', 'elevation', 'fieldDirections'],
 };
 
 // Tab display info
@@ -249,11 +250,8 @@ export default function FieldsClient({
   }, [tabColumns]);
 
   // Get visible columns for current tab
-  // When "All Seasons" is selected, only show permanent field-level columns (no seasonal data)
-  const ALL_SEASONS_COLUMNS: FieldColumnKey[] = ['field', 'operation', 'billingEntity', 'acres', 'pivotAcres', 'irrigationType', 'rowDirection', 'waterSource', 'fuelSource', 'soilType', 'elevation', 'fieldDirections'];
-  const visibleColumns = currentSeason === 'all'
-    ? ALL_SEASONS_COLUMNS
-    : (tabColumns[currentTab] || TAB_DEFAULT_COLUMNS[currentTab]);
+  const activeTab: TabView = currentSeason === 'all' ? 'allSeasons' : currentTab;
+  const visibleColumns = tabColumns[activeTab] || TAB_DEFAULT_COLUMNS[activeTab];
 
   // Column label lookup
   const columnLabelMap = useMemo(() => {
@@ -320,9 +318,9 @@ export default function FieldsClient({
     if (column?.alwaysVisible) return;
     setTabColumns((prev) => ({
       ...prev,
-      [currentTab]: prev[currentTab].includes(columnKey)
-        ? prev[currentTab].filter((c) => c !== columnKey)
-        : [...prev[currentTab], columnKey],
+      [activeTab]: prev[activeTab].includes(columnKey)
+        ? prev[activeTab].filter((c) => c !== columnKey)
+        : [...prev[activeTab], columnKey],
     }));
   };
 
@@ -1586,7 +1584,7 @@ export default function FieldsClient({
                       onClick={() => {
                         setTabColumns((prev) => ({
                           ...prev,
-                          [currentTab]: ALL_COLUMN_DEFINITIONS
+                          [activeTab]: ALL_COLUMN_DEFINITIONS
                             .filter((c) => c.alwaysVisible)
                             .map((c) => c.key),
                         }));
@@ -1599,7 +1597,7 @@ export default function FieldsClient({
                       onClick={() => {
                         setTabColumns((prev) => ({
                           ...prev,
-                          [currentTab]: [...TAB_DEFAULT_COLUMNS[currentTab]],
+                          [activeTab]: [...TAB_DEFAULT_COLUMNS[activeTab]],
                         }));
                       }}
                     >
@@ -1609,7 +1607,10 @@ export default function FieldsClient({
                 </div>
               )}
             </div>
-          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+          <button
+            className={`btn ${currentSeason !== 'all' && seasonFields.some(f => f.probeStatus === 'Unassigned') ? 'btn-danger' : 'btn-primary'}`}
+            onClick={() => setShowAddModal(true)}
+          >
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
