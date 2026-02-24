@@ -200,8 +200,8 @@ export function FieldCell({
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           {field.fieldSeasonId ? (
             <button onClick={() => onToggleExpand(field.fieldSeasonId!)}
-              style={{ background: 'none', border: '1px solid var(--border)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
-                color: (hasProbeAssignments || field.probe) ? 'var(--accent-primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              style={{ background: (!hasProbeAssignments && !field.probe) ? 'var(--accent-red-dim)' : 'none', border: '1px solid var(--border)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
+                color: (hasProbeAssignments || field.probe) ? 'var(--accent-primary)' : 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 {hasDuplicateProbeLocation && <span title="Same location" style={{ color: '#f59e0b', fontSize: '13px', lineHeight: 1 }}>&#9888;</span>}
                 {hasProbeAssignments ? <>{probeAssignmentCount} probe{probeAssignmentCount !== 1 ? 's' : ''}</> : field.probe ? <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</> : <>+ Add</>}
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>

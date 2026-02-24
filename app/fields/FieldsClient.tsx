@@ -1607,10 +1607,7 @@ export default function FieldsClient({
                 </div>
               )}
             </div>
-          <button
-            className={`btn ${currentSeason !== 'all' && seasonFields.some(f => f.probeStatus === 'Unassigned') ? 'btn-danger' : 'btn-primary'}`}
-            onClick={() => setShowAddModal(true)}
-          >
+          <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
