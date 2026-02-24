@@ -1,18 +1,22 @@
-import { getCachedRows, type Repair, type FieldSeason, type ProbeAssignment, type Order, type BillingEntity, type Probe } from '@/lib/baserow';
-import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe } from './DashboardClient';
+import { getCachedRows, type Repair, type FieldSeason, type ProbeAssignment, type Order, type BillingEntity, type Probe, type Field, type Contact, type Operation } from '@/lib/baserow';
+import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
+import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe, DashboardBooking } from './DashboardClient';
 
 // Revalidate dashboard data every 2 minutes instead of force-dynamic
 export const revalidate = 120;
 
-async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[] }> {
+async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[]; bookings: DashboardBooking[] }> {
   try {
-    const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes] = await Promise.all([
+    const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes, fields, contacts, operations] = await Promise.all([
       getCachedRows<Repair>('repairs', undefined, 120),
       getCachedRows<FieldSeason>('field_seasons', undefined, 120),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
       getCachedRows<Order>('orders', undefined, 120),
       getCachedRows<BillingEntity>('billing_entities', undefined, 300),
       getCachedRows<Probe>('probes', undefined, 120),
+      getCachedRows<Field>('fields', undefined, 300),
+      getCachedRows<Contact>('contacts', undefined, 300),
+      getCachedRows<Operation>('operations', undefined, 300),
     ]);
 
     // Calculate install stats from probe_assignments for current season
@@ -97,7 +101,55 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       totalAssignments,
     };
 
-    return { stats, openRepairs, recentOrders, installedProbes };
+    // Build operation booking tracker
+    const operationMap = buildOperationMap(operations);
+    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    const fieldMap = new Map(fields.map(f => [f.id, f]));
+
+    // For each field_season, resolve to operation and track by season
+    const opFields2025 = new Map<number, Set<number>>(); // opId → set of field IDs
+    const opFields2026 = new Map<number, Set<number>>();
+
+    for (const fs of fieldSeasons) {
+      if (fs.season !== 2025 && fs.season !== 2026) continue;
+      const fieldId = fs.field?.[0]?.id;
+      if (!fieldId) continue;
+      const field = fieldMap.get(fieldId);
+      const beId = field?.billing_entity?.[0]?.id;
+      if (!beId) continue;
+      const opId = billingToOperationMap.get(beId);
+      if (!opId) continue;
+
+      const bucket = fs.season === 2025 ? opFields2025 : opFields2026;
+      if (!bucket.has(opId)) bucket.set(opId, new Set());
+      bucket.get(opId)!.add(fieldId);
+    }
+
+    // Collect all operation IDs that appear in either year
+    const allOpIds = new Set([...opFields2025.keys(), ...opFields2026.keys()]);
+    const bookings: DashboardBooking[] = [];
+
+    for (const opId of allOpIds) {
+      const count2025 = opFields2025.get(opId)?.size || 0;
+      const count2026 = opFields2026.get(opId)?.size || 0;
+      let status: DashboardBooking['status'];
+      if (count2025 > 0 && count2026 > 0) status = 'returning';
+      else if (count2025 > 0) status = 'still-to-go';
+      else status = 'new';
+
+      bookings.push({
+        operationName: operationMap.get(opId) || 'Unknown',
+        fields2025: count2025,
+        fields2026: count2026,
+        status,
+      });
+    }
+
+    // Sort: still-to-go first, then new, then returning
+    const statusOrder = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
+    bookings.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.operationName.localeCompare(b.operationName));
+
+    return { stats, openRepairs, recentOrders, installedProbes, bookings };
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return {
@@ -105,11 +157,12 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       openRepairs: [],
       recentOrders: [],
       installedProbes: [],
+      bookings: [],
     };
   }
 }
 
 export default async function Dashboard() {
-  const { stats, openRepairs, recentOrders, installedProbes } = await getDashboardData();
-  return <DashboardClient stats={stats} openRepairs={openRepairs} recentOrders={recentOrders} installedProbes={installedProbes} />;
+  const { stats, openRepairs, recentOrders, installedProbes, bookings } = await getDashboardData();
+  return <DashboardClient stats={stats} openRepairs={openRepairs} recentOrders={recentOrders} installedProbes={installedProbes} bookings={bookings} />;
 }

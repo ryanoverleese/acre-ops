@@ -33,11 +33,19 @@ export interface DashboardInstalledProbe {
   installer: string;
 }
 
+export interface DashboardBooking {
+  operationName: string;
+  fields2025: number;
+  fields2026: number;
+  status: 'returning' | 'new' | 'still-to-go';
+}
+
 interface DashboardClientProps {
   stats: DashboardStats;
   openRepairs: DashboardRepair[];
   recentOrders: DashboardOrder[];
   installedProbes: DashboardInstalledProbe[];
+  bookings: DashboardBooking[];
 }
 
 function daysAgo(dateStr: string): number {
@@ -51,7 +59,7 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
+export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes, bookings }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
   const pct = stats.totalAssignments > 0
     ? Math.round((stats.installedCount / stats.totalAssignments) * 100)
@@ -130,6 +138,61 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
             </div>
           )}
         </div>
+
+        {/* Booking Tracker */}
+        {bookings.length > 0 && (() => {
+          const returning = bookings.filter(b => b.status === 'returning').length;
+          const stillToGo = bookings.filter(b => b.status === 'still-to-go').length;
+          const newOps = bookings.filter(b => b.status === 'new').length;
+          return (
+            <div className="dashboard-section">
+              <h3 className="section-label">2026 Booking Tracker</h3>
+              <div className="stats-grid stats-grid-3">
+                <div className="stat-card">
+                  <div className="stat-label">Returning</div>
+                  <div className="stat-value green">{returning}</div>
+                  <div className="stat-change">Re-enrolled from 2025</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Still to Go</div>
+                  <div className="stat-value amber">{stillToGo}</div>
+                  <div className="stat-change">Had 2025, not yet 2026</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">New</div>
+                  <div className="stat-value blue">{newOps}</div>
+                  <div className="stat-change">First time in 2026</div>
+                </div>
+              </div>
+              <div className="table-container">
+                <table className="desktop-table">
+                  <thead>
+                    <tr>
+                      <th>Operation</th>
+                      <th>2025 Fields</th>
+                      <th>2026 Fields</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bookings.map((b) => (
+                      <tr key={b.operationName} className={b.status === 'still-to-go' ? 'row-highlight' : undefined}>
+                        <td>{b.operationName}</td>
+                        <td><span className="text-secondary">{b.fields2025 || '—'}</span></td>
+                        <td><span className="text-secondary">{b.fields2026 || '—'}</span></td>
+                        <td>
+                          <span className={`status-badge ${b.status}`}>
+                            {b.status === 'returning' ? 'Returning' : b.status === 'still-to-go' ? 'Still to Go' : 'New'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Open Repairs */}
         <div className="dashboard-section">
