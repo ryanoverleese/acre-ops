@@ -2205,6 +2205,12 @@ export default function FieldsClient({
                               </span>
                             )}
                             <span className="mobile-card-title">{field.name}</span>
+                            {currentSeason === 'all' && (() => {
+                              const seasons = fieldSeasonsMap.get(field.id)?.existing;
+                              if (!seasons || seasons.size === 0) return null;
+                              const latest = [...seasons.keys()].sort().pop();
+                              return <span className="status-badge unassigned" style={{ fontSize: 11 }}>{latest}</span>;
+                            })()}
                             {getStatusBadge(field.probeStatus)}
                           </div>
                           <div className="mobile-card-body">
