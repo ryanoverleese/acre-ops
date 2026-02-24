@@ -7,16 +7,20 @@ export const revalidate = 120;
 
 async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[]; bookings: DashboardBooking[] }> {
   try {
-    const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes, fields, contacts, operations] = await Promise.all([
+    const [repairs, fieldSeasons, probeAssignments, orders, billingEntities, probes] = await Promise.all([
       getCachedRows<Repair>('repairs', undefined, 120),
       getCachedRows<FieldSeason>('field_seasons', undefined, 120),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
       getCachedRows<Order>('orders', undefined, 120),
       getCachedRows<BillingEntity>('billing_entities', undefined, 300),
       getCachedRows<Probe>('probes', undefined, 120),
-      getCachedRows<Field>('fields', undefined, 300),
-      getCachedRows<Contact>('contacts', undefined, 300),
-      getCachedRows<Operation>('operations', undefined, 300),
+    ]);
+
+    // Fetch booking-related tables separately to avoid Baserow rate limits
+    const [fields, contacts, operations] = await Promise.all([
+      getCachedRows<Field>('fields', undefined, 600),
+      getCachedRows<Contact>('contacts', undefined, 600),
+      getCachedRows<Operation>('operations', undefined, 600),
     ]);
 
     // Calculate install stats from probe_assignments for current season
