@@ -1586,6 +1586,19 @@ export default function FieldsClient({
                       onClick={() => {
                         setTabColumns((prev) => ({
                           ...prev,
+                          [currentTab]: ALL_COLUMN_DEFINITIONS
+                            .filter((c) => c.alwaysVisible)
+                            .map((c) => c.key),
+                        }));
+                      }}
+                    >
+                      Deselect All
+                    </button>
+                    <button
+                      className="btn btn-secondary fields-col-reset"
+                      onClick={() => {
+                        setTabColumns((prev) => ({
+                          ...prev,
                           [currentTab]: [...TAB_DEFAULT_COLUMNS[currentTab]],
                         }));
                       }}

@@ -7123,10 +7123,12 @@ input[type="date"]:focus {
   border-top: 1px solid var(--border);
   margin-top: 4px;
   padding: 4px 12px 4px;
+  display: flex;
+  gap: 6px;
 }
 
 .fields-col-reset {
-  width: 100%;
+  flex: 1;
   font-size: 12px;
   padding: 4px 8px;
 }
