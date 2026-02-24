@@ -2166,9 +2166,44 @@ export default function FieldsClient({
                         action={!searchQuery && currentSeason === 'all' ? { label: 'Add Field', onClick: () => setShowAddModal(true) } : undefined}
                       />
                     ) : (
-                      filteredFields.map((field) => (
-                        <div key={`${field.id}-${field.fieldSeasonId}`} className="mobile-card" onClick={() => handleRowClick(field)}>
+                      filteredFields.map((field) => {
+                        const isEligibleForEnroll = inlineEnrollMode && inlineEnrollEligibleIds.has(field.id);
+                        const isAlreadyEnrolled = inlineEnrollMode && !inlineEnrollEligibleIds.has(field.id);
+                        return (
+                        <div
+                          key={`${field.id}-${field.fieldSeasonId}`}
+                          className={`mobile-card${isAlreadyEnrolled ? ' fields-enrolled-row' : ''}`}
+                          onClick={() => {
+                            if (inlineEnrollMode && isEligibleForEnroll) {
+                              const newSet = new Set(inlineEnrollSelected);
+                              if (newSet.has(field.id)) newSet.delete(field.id);
+                              else newSet.add(field.id);
+                              setInlineEnrollSelected(newSet);
+                            } else if (!inlineEnrollMode) {
+                              handleRowClick(field);
+                            }
+                          }}
+                        >
                           <div className="mobile-card-header">
+                            {inlineEnrollMode && (
+                              <span className="fields-checkbox-cell" onClick={(e) => e.stopPropagation()}>
+                                {isEligibleForEnroll ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={inlineEnrollSelected.has(field.id)}
+                                    onChange={(e) => {
+                                      const newSet = new Set(inlineEnrollSelected);
+                                      if (e.target.checked) newSet.add(field.id);
+                                      else newSet.delete(field.id);
+                                      setInlineEnrollSelected(newSet);
+                                    }}
+                                    className="fields-checkbox"
+                                  />
+                                ) : (
+                                  <span className="fields-enrolled-check" title={`Already in ${inlineEnrollSeason}`}>&#10003;</span>
+                                )}
+                              </span>
+                            )}
                             <span className="mobile-card-title">{field.name}</span>
                             {getStatusBadge(field.probeStatus)}
                           </div>
@@ -2188,7 +2223,7 @@ export default function FieldsClient({
                             </span>
                           </div>
                         </div>
-                      ))
+                      );})
                     )}
                   </div>
             </div>
