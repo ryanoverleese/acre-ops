@@ -58,7 +58,7 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type BookingSortColumn = 'operation' | 'fields2025' | 'fields2026' | 'status';
+type BookingSortColumn = 'operation' | 'change' | 'fields2026' | 'status';
 
 export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
@@ -163,7 +163,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
             let cmp = 0;
             switch (bookingSortCol) {
               case 'operation': cmp = a.operationName.localeCompare(b.operationName); break;
-              case 'fields2025': cmp = a.fields2025 - b.fields2025; break;
+              case 'change': cmp = (a.fields2026 - a.fields2025) - (b.fields2026 - b.fields2025); break;
               case 'fields2026': cmp = a.fields2026 - b.fields2026; break;
               case 'status': cmp = statusOrder[a.status] - statusOrder[b.status]; break;
             }
@@ -214,8 +214,8 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <thead>
                     <tr>
                       <th className="sortable" onClick={() => handleBookingSort('operation')}>Operation{sortArrow('operation')}</th>
-                      <th className="sortable" onClick={() => handleBookingSort('fields2025')}>2025 Fields{sortArrow('fields2025')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('fields2026')}>2026 Fields{sortArrow('fields2026')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('change')}>Change{sortArrow('change')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('status')}>Status{sortArrow('status')}</th>
                     </tr>
                   </thead>
@@ -223,8 +223,17 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                     {sorted.map((b) => (
                       <tr key={b.operationName} className={b.status === 'still-to-go' ? 'row-highlight' : undefined}>
                         <td>{b.operationName}</td>
-                        <td><span className="text-secondary">{b.fields2025 || '—'}</span></td>
-                        <td><span className="text-secondary">{b.fields2026 || '—'}</span></td>
+                        <td>{b.fields2026 || '—'}</td>
+                        <td>
+                          {(() => {
+                            const delta = b.fields2026 - b.fields2025;
+                            if (b.status === 'new') return <span className="green">+{b.fields2026}</span>;
+                            if (b.status === 'still-to-go') return <span className="amber">-{b.fields2025}</span>;
+                            if (delta > 0) return <span className="green">+{delta}</span>;
+                            if (delta < 0) return <span className="amber">{delta}</span>;
+                            return <span className="text-muted">=</span>;
+                          })()}
+                        </td>
                         <td>
                           <span className={`status-badge ${b.status}`}>
                             {b.status === 'returning' ? 'Returning' : b.status === 'still-to-go' ? 'Still to Go' : 'New'}
@@ -244,8 +253,17 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                         </span>
                       </div>
                       <div className="mobile-card-fields">
-                        <span className="text-secondary">2025: {b.fields2025 || '—'}</span>
-                        <span className="text-secondary">2026: {b.fields2026 || '—'}</span>
+                        <span>{b.fields2026 || '—'} fields</span>
+                        <span>
+                          {(() => {
+                            const delta = b.fields2026 - b.fields2025;
+                            if (b.status === 'new') return <span className="green">+{b.fields2026}</span>;
+                            if (b.status === 'still-to-go') return <span className="amber">-{b.fields2025}</span>;
+                            if (delta > 0) return <span className="green">+{delta}</span>;
+                            if (delta < 0) return <span className="amber">{delta}</span>;
+                            return <span className="text-muted">no change</span>;
+                          })()}
+                        </span>
                       </div>
                     </div>
                   ))}
