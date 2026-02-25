@@ -1,12 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
 import './globals.css';
 import AppShell from '@/components/AppShell';
 import LoadingBar from '@/components/LoadingBar';
 import Providers from '@/components/Providers';
 
-const AskAI = dynamic(() => import('@/components/AskAI'), { loading: () => null });
 
 export const metadata: Metadata = {
   title: 'Acre Insights Operation Center',
@@ -42,7 +40,6 @@ export default function RootLayout({
           <div className="app">
             <AppShell>{children}</AppShell>
           </div>
-          <AskAI />
         </Providers>
       </body>
     </html>
