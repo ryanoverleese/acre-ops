@@ -30,30 +30,30 @@ function getFileIcon(mimeType: string): string {
   return 'FILE';
 }
 
+type ModalMode = 'document' | 'note' | null;
+
 export default function DocumentsClient({ initialDocuments }: DocumentsClientProps) {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role !== 'installer';
 
-  const [documents, setDocuments] = useState<ProcessedDocument[]>(initialDocuments);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [allItems, setAllItems] = useState<ProcessedDocument[]>(initialDocuments);
+  const [modalMode, setModalMode] = useState<ModalMode>(null);
+  const [saving, setSaving] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null });
 
-  const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return documents;
-    const q = searchQuery.toLowerCase();
-    return documents.filter(
-      (d) => d.name.toLowerCase().includes(q) || d.description.toLowerCase().includes(q)
-    );
-  }, [documents, searchQuery]);
+  const docs = useMemo(() => allItems.filter((d) => d.fileUrl), [allItems]);
+  const notes = useMemo(() => allItems.filter((d) => !d.fileUrl), [allItems]);
 
-  const handleUpload = async () => {
+  const handleSave = async () => {
     if (!uploadForm.name.trim()) {
       alert('Name is required');
       return;
     }
-    setUploading(true);
+    if (modalMode === 'document' && !uploadForm.file) {
+      alert('File is required for a document');
+      return;
+    }
+    setSaving(true);
 
     try {
       const formData = new FormData();
@@ -68,18 +68,18 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
       });
 
       if (response.ok) {
-        setShowUploadModal(false);
+        setModalMode(null);
         setUploadForm({ name: '', description: '', file: null });
         window.location.reload();
       } else {
         const error = await response.json();
-        alert(error.error || 'Upload failed');
+        alert(error.error || 'Save failed');
       }
     } catch (error) {
-      console.error('Upload error:', error);
-      alert('Upload failed');
+      console.error('Save error:', error);
+      alert('Save failed');
     } finally {
-      setUploading(false);
+      setSaving(false);
     }
   };
 
@@ -89,36 +89,34 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
     try {
       const response = await fetch(`/api/documents/${doc.id}`, { method: 'DELETE' });
       if (response.ok) {
-        setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+        setAllItems((prev) => prev.filter((d) => d.id !== doc.id));
       } else {
-        alert('Failed to delete document');
+        alert('Failed to delete');
       }
     } catch (error) {
       console.error('Delete error:', error);
-      alert('Failed to delete document');
+      alert('Failed to delete');
     }
   };
 
+  const deleteButton = (doc: ProcessedDocument) => (
+    <button className="action-btn" title="Delete" onClick={() => handleDelete(doc)}>
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    </button>
+  );
+
   return (
     <>
-      <div className="table-container">
+      {/* Documents Section */}
+      <div className="table-container" style={{ marginBottom: '24px' }}>
         <div className="table-header">
-          <h3 className="table-title">Documents &amp; Notes</h3>
+          <h3 className="table-title">Documents</h3>
           <div className="table-actions">
-            <div className="search-box">
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
             {isAdmin && (
-              <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
-                + Add
+              <button className="btn btn-primary" onClick={() => setModalMode('document')}>
+                + Upload Document
               </button>
             )}
           </div>
@@ -137,63 +135,47 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && (
+            {docs.length === 0 && (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="entity-empty">
-                  {documents.length === 0 ? 'Nothing here yet. Add a document or note.' : 'No results match your search.'}
+                  No documents yet. Upload your first one.
                 </td>
               </tr>
             )}
-            {filtered.map((doc) => (
+            {docs.map((doc) => (
               <tr key={doc.id}>
                 <td className="operation-name">
-                  {doc.fileUrl ? (
-                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
-                      {doc.name}
-                    </a>
-                  ) : (
-                    <span>{doc.name}</span>
-                  )}
+                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                    {doc.name}
+                  </a>
                 </td>
-                <td><span className={`status-badge ${doc.fileUrl ? 'installed' : 'pending'}`}><span className="status-dot"></span>{doc.fileUrl ? getFileIcon(doc.mimeType) : 'NOTE'}</span></td>
-                <td>{doc.fileUrl ? formatFileSize(doc.fileSize) : '—'}</td>
+                <td><span className="status-badge installed"><span className="status-dot"></span>{getFileIcon(doc.mimeType)}</span></td>
+                <td>{formatFileSize(doc.fileSize)}</td>
                 <td>{doc.uploadedBy}</td>
                 <td>{formatDate(doc.uploadedAt)}</td>
                 <td className="settings-cell-description">{doc.description || '—'}</td>
-                {isAdmin && (
-                  <td>
-                    <button className="action-btn" title="Delete" onClick={() => handleDelete(doc)}>
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </td>
-                )}
+                {isAdmin && <td>{deleteButton(doc)}</td>}
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Mobile cards */}
+        {/* Mobile cards for documents */}
         <div className="mobile-cards">
-          {filtered.length === 0 && (
-            <div className="empty-state">
-              {documents.length === 0 ? 'Nothing here yet.' : 'No results match your search.'}
-            </div>
+          {docs.length === 0 && (
+            <div className="empty-state">No documents yet.</div>
           )}
-          {filtered.map((doc) => (
-            <div key={doc.id} className="mobile-card" onClick={() => doc.fileUrl && window.open(doc.fileUrl, '_blank')}>
+          {docs.map((doc) => (
+            <div key={doc.id} className="mobile-card" onClick={() => window.open(doc.fileUrl, '_blank')}>
               <div className="mobile-card-header">
                 <span className="mobile-card-title">{doc.name}</span>
-                <span className={`status-badge ${doc.fileUrl ? 'installed' : 'pending'}`}><span className="status-dot"></span>{doc.fileUrl ? getFileIcon(doc.mimeType) : 'NOTE'}</span>
+                <span className="status-badge installed"><span className="status-dot"></span>{getFileIcon(doc.mimeType)}</span>
               </div>
               <div className="mobile-card-body">
-                {doc.fileUrl && (
-                  <div className="mobile-card-row">
-                    <span>Size:</span>
-                    <span>{formatFileSize(doc.fileSize)}</span>
-                  </div>
-                )}
+                <div className="mobile-card-row">
+                  <span>Size:</span>
+                  <span>{formatFileSize(doc.fileSize)}</span>
+                </div>
                 <div className="mobile-card-row">
                   <span>By:</span>
                   <span>{doc.uploadedBy} · {formatDate(doc.uploadedAt)}</span>
@@ -207,10 +189,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
               </div>
               {isAdmin && (
                 <div className="mobile-card-footer inv-mobile-footer">
-                  <button
-                    className="btn btn-secondary inv-btn-sm"
-                    onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}
-                  >
+                  <button className="btn btn-secondary inv-btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(doc); }}>
                     Delete
                   </button>
                 </div>
@@ -220,13 +199,92 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
         </div>
       </div>
 
-      {/* Upload Modal */}
-      {showUploadModal && (
-        <div className="detail-panel-overlay" onClick={() => setShowUploadModal(false)}>
+      {/* Notes Section */}
+      <div className="table-container">
+        <div className="table-header">
+          <h3 className="table-title">Notes &amp; Reminders</h3>
+          <div className="table-actions">
+            {isAdmin && (
+              <button className="btn btn-primary" onClick={() => setModalMode('note')}>
+                + Add Note
+              </button>
+            )}
+          </div>
+        </div>
+
+        <table className="desktop-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Note</th>
+              <th>By</th>
+              <th>Date</th>
+              {isAdmin && <th></th>}
+            </tr>
+          </thead>
+          <tbody>
+            {notes.length === 0 && (
+              <tr>
+                <td colSpan={isAdmin ? 5 : 4} className="entity-empty">
+                  No notes yet. Add your first one.
+                </td>
+              </tr>
+            )}
+            {notes.map((note) => (
+              <tr key={note.id}>
+                <td className="operation-name">{note.name}</td>
+                <td style={{ whiteSpace: 'pre-wrap', maxWidth: '400px' }}>{note.description || '—'}</td>
+                <td>{note.uploadedBy}</td>
+                <td>{formatDate(note.uploadedAt)}</td>
+                {isAdmin && <td>{deleteButton(note)}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Mobile cards for notes */}
+        <div className="mobile-cards">
+          {notes.length === 0 && (
+            <div className="empty-state">No notes yet.</div>
+          )}
+          {notes.map((note) => (
+            <div key={note.id} className="mobile-card">
+              <div className="mobile-card-header">
+                <span className="mobile-card-title">{note.name}</span>
+                <span className="status-badge pending"><span className="status-dot"></span>NOTE</span>
+              </div>
+              {note.description && (
+                <div className="mobile-card-body">
+                  <div className="mobile-card-row" style={{ whiteSpace: 'pre-wrap' }}>
+                    {note.description}
+                  </div>
+                </div>
+              )}
+              <div className="mobile-card-body">
+                <div className="mobile-card-row">
+                  <span>By:</span>
+                  <span>{note.uploadedBy} · {formatDate(note.uploadedAt)}</span>
+                </div>
+              </div>
+              {isAdmin && (
+                <div className="mobile-card-footer inv-mobile-footer">
+                  <button className="btn btn-secondary inv-btn-sm" onClick={() => handleDelete(note)}>
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Add Modal */}
+      {modalMode && (
+        <div className="detail-panel-overlay" onClick={() => setModalMode(null)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
-              <h3>Add Document or Note</h3>
-              <button className="close-btn" onClick={() => setShowUploadModal(false)}>
+              <h3>{modalMode === 'document' ? 'Upload Document' : 'Add Note'}</h3>
+              <button className="close-btn" onClick={() => setModalMode(null)}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -234,39 +292,41 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
             </div>
             <div className="detail-panel-content">
               <div className="form-group">
-                <label>Name *</label>
+                <label>{modalMode === 'document' ? 'Name *' : 'Title *'}</label>
                 <input
                   type="text"
                   className="input"
-                  placeholder="e.g. Davis 2026 Price List"
+                  placeholder={modalMode === 'document' ? 'e.g. Davis 2026 Price List' : 'e.g. Remember to call Davis rep'}
                   value={uploadForm.name}
                   onChange={(e) => setUploadForm({ ...uploadForm, name: e.target.value })}
                 />
               </div>
+              {modalMode === 'document' && (
+                <div className="form-group">
+                  <label>File *</label>
+                  <input
+                    type="file"
+                    className="input"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
+                    onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
+                  />
+                </div>
+              )}
               <div className="form-group">
-                <label>File (optional)</label>
-                <input
-                  type="file"
-                  className="input"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
-                  onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
-                />
-              </div>
-              <div className="form-group">
-                <label>Description / Notes</label>
+                <label>{modalMode === 'document' ? 'Description' : 'Note *'}</label>
                 <textarea
                   className="input"
-                  placeholder="Reminders, notes, details..."
+                  placeholder={modalMode === 'document' ? 'Optional notes about this document...' : 'Write your note here...'}
                   value={uploadForm.description}
                   onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
-                  rows={3}
+                  rows={modalMode === 'note' ? 5 : 3}
                   style={{ resize: 'vertical' }}
                 />
               </div>
               <div className="form-actions">
-                <button className="btn btn-secondary" onClick={() => setShowUploadModal(false)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleUpload} disabled={uploading}>
-                  {uploading ? 'Saving...' : 'Save'}
+                <button className="btn btn-secondary" onClick={() => setModalMode(null)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
