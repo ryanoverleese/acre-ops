@@ -836,6 +836,8 @@ export default function FieldsClient({
       crop: field.crop,
       lat: field.lat,
       lng: field.lng,
+      billingEntityId: field.billingEntityId,
+      billingEntityName: field.billingEntityName,
       waterSource: field.waterSource,
       fuelSource: field.fuelSource,
       notes: field.notes,
@@ -889,6 +891,7 @@ export default function FieldsClient({
           pivot_acres: editForm.pivotAcres,
           lat,
           lng,
+          billing_entity: editForm.billingEntityId || null,
           water_source: editForm.waterSource || null,
           fuel_source: editForm.fuelSource || null,
           notes: editForm.notes || null,
@@ -914,6 +917,8 @@ export default function FieldsClient({
           pivotAcres: editForm.pivotAcres,
           lat: lat ?? selectedField.lat,
           lng: lng ?? selectedField.lng,
+          billingEntityId: editForm.billingEntityId ?? selectedField.billingEntityId,
+          billingEntityName: editForm.billingEntityName ?? selectedField.billingEntityName,
           waterSource: editForm.waterSource,
           fuelSource: editForm.fuelSource,
           notes: editForm.notes,
@@ -960,6 +965,8 @@ export default function FieldsClient({
         crop: selectedField.crop,
         lat: selectedField.lat,
         lng: selectedField.lng,
+        billingEntityId: selectedField.billingEntityId,
+        billingEntityName: selectedField.billingEntityName,
         waterSource: selectedField.waterSource,
         fuelSource: selectedField.fuelSource,
         notes: selectedField.notes,
@@ -2329,6 +2336,18 @@ export default function FieldsClient({
                       <label>Field Name</label>
                       <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                     </div>
+                    <div className="form-group">
+                      <label>Billing Entity</label>
+                      <SearchableSelect
+                        value={editForm.billingEntityId?.toString() || ''}
+                        onChange={(v) => {
+                          const be = billingEntities.find(b => b.id.toString() === v);
+                          setEditForm({ ...editForm, billingEntityId: v ? parseInt(v, 10) : null, billingEntityName: be?.name || '' });
+                        }}
+                        options={billingEntities.map(be => ({ value: be.id.toString(), label: be.name })).sort((a, b) => a.label.localeCompare(b.label))}
+                        placeholder="Select billing entity..."
+                      />
+                    </div>
                     <div className="form-row">
                       <div className="form-group">
                         <label>Acres</label>
@@ -2476,6 +2495,10 @@ export default function FieldsClient({
                     <div className="detail-row">
                       <span className="detail-label">Operation</span>
                       <span className="detail-value">{selectedField.operation}</span>
+                    </div>
+                    <div className="detail-row">
+                      <span className="detail-label">Billing Entity</span>
+                      <span className="detail-value">{selectedField.billingEntityName || '—'}</span>
                     </div>
                     <div className="detail-row">
                       <span className="detail-label">Season</span>
