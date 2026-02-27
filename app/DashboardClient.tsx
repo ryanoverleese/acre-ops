@@ -158,6 +158,11 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           const returningFieldDelta = returningOps.reduce((sum, b) => sum + (b.fields2026 - b.fields2025), 0);
           const stillToGo = bookings.filter(b => b.status === 'still-to-go').length;
           const newOps = bookings.filter(b => b.status === 'new').length;
+          const fieldsToGo = bookings.filter(b => b.status === 'still-to-go').reduce((sum, b) => sum + b.fields2025, 0);
+          const activeOps = bookings.filter(b => b.status !== 'still-to-go');
+          const totalFields2026 = activeOps.reduce((sum, b) => sum + b.fields2026, 0);
+          const totalProbesAssigned = activeOps.reduce((sum, b) => sum + b.probes2026, 0);
+          const probesToGo = totalFields2026 - totalProbesAssigned;
 
           const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
           const sorted = [...bookings].sort((a, b) => {
@@ -201,14 +206,31 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   </div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-label">Still to Go</div>
+                  <div className="stat-label">New</div>
+                  <div className="stat-value blue">{newOps}</div>
+                  <div className="stat-change">First time in 2026</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Probes Assigned</div>
+                  <div className="stat-value green">{totalProbesAssigned}</div>
+                  <div className="stat-change">{totalFields2026} fields booked</div>
+                </div>
+              </div>
+              <div className="stats-grid stats-grid-3" style={{ marginTop: '12px' }}>
+                <div className="stat-card">
+                  <div className="stat-label">Ops Still to Go</div>
                   <div className="stat-value amber">{stillToGo}</div>
                   <div className="stat-change">Had 2025, not yet 2026</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-label">New</div>
-                  <div className="stat-value blue">{newOps}</div>
-                  <div className="stat-change">First time in 2026</div>
+                  <div className="stat-label">Fields to Go</div>
+                  <div className="stat-value amber">{fieldsToGo}</div>
+                  <div className="stat-change">From unbooked operations</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Probes to Go</div>
+                  <div className="stat-value">{probesToGo > 0 ? <span className="amber">{probesToGo}</span> : <span className="green">0</span>}</div>
+                  <div className="stat-change">Fields still needing a probe</div>
                 </div>
               </div>
               <div className="table-container">
