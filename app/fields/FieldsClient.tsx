@@ -2007,6 +2007,7 @@ export default function FieldsClient({
                                             <th className="fields-probe-th fields-probe-th-location">Location</th>
                                             <th className="fields-probe-th fields-probe-th-probe">Probe</th>
                                             <th className="fields-probe-th fields-probe-th-status">Status</th>
+                                            <th className="fields-probe-th fields-probe-th-install-date">Install Date</th>
                                             <th className="fields-probe-th fields-probe-th-antenna">Antenna</th>
                                             <th className="fields-probe-th fields-probe-th-battery">Battery</th>
                                             <th className="fields-probe-th fields-probe-th-notes">Notes</th>
@@ -2111,6 +2112,17 @@ export default function FieldsClient({
                                         <td onClick={(e) => e.stopPropagation()}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
+                                            field="installDate"
+                                            value={pa.installDate || ''}
+                                            type="text"
+                                            onSave={handleProbeAssignmentSave}
+                                            savingFields={savingFields}
+                                            savedFields={savedFields}
+                                          />
+                                        </td>
+                                        <td onClick={(e) => e.stopPropagation()}>
+                                          <InlineProbeCell
+                                            probeAssignmentId={pa.id}
                                             field="antennaType"
                                             value={pa.antennaType}
                                             type="select"
@@ -2186,7 +2198,7 @@ export default function FieldsClient({
                                     })}
                                     {/* Add probe assignment row */}
                                     <tr className="fields-probe-row fields-add-probe-row">
-                                      <td colSpan={9}>
+                                      <td colSpan={10}>
                                         <button
                                           onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
                                           disabled={savingProbeAssignment}
