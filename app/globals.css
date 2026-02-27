@@ -26,8 +26,11 @@
   --border: #e7e5e4;
   --border-strong: #d6d3d1;
   --radius: 12px;
+  --radius-xs: 4px;
   --radius-sm: 8px;
   --radius-lg: 16px;
+  --radius-pill: 20px;
+  --radius-full: 50%;
 
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.02);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
@@ -40,6 +43,25 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+
+  /* Z-index layers */
+  --z-base: 0;
+  --z-table: 10;
+  --z-header: 50;
+  --z-sidebar: 60;
+  --z-dropdown: 100;
+  --z-mobile-overlay: 200;
+  --z-modal: 1000;
+  --z-modal-nested: 1001;
+  --z-picker: 1100;
+  --z-toast: 2000;
+  --z-loading: 3000;
+  --z-popover: 4000;
+
+  /* Transitions */
+  --ease-default: 0.15s ease;
+  --ease-slow: 0.2s ease;
+  --ease-slower: 0.3s ease;
 
   /* Sidebar (light with sage accent) */
   --sidebar-bg: #ffffff;
@@ -95,7 +117,7 @@ body::before {
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  z-index: var(--z-base);
   opacity: 0.3;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
 }
@@ -119,8 +141,8 @@ body::before {
   height: 100vh;
   overflow-y: auto;
   box-shadow: var(--shadow-sm);
-  z-index: 60;
-  transition: width 0.2s ease;
+  z-index: var(--z-sidebar);
+  transition: width var(--ease-slow);
 }
 
 .logo {
@@ -187,7 +209,7 @@ body::before {
   border-radius: var(--radius-sm);
   color: var(--sidebar-text);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
   font-size: 13px;
   font-weight: 500;
   text-decoration: none;
@@ -224,7 +246,7 @@ body::before {
   font-size: 10px;
   font-weight: 600;
   padding: 2px 7px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   letter-spacing: 0.02em;
 }
 
@@ -243,8 +265,8 @@ body::before {
   position: absolute;
   top: 20px;
   right: -12px;
-  z-index: 61;
-  transition: all 0.15s ease;
+  z-index: calc(var(--z-sidebar) + 1);
+  transition: all var(--ease-default);
   opacity: 0;
 }
 
@@ -320,8 +342,8 @@ body::before {
   box-shadow: var(--shadow-md);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease;
-  z-index: 100;
+  transition: opacity var(--ease-default);
+  z-index: var(--z-dropdown);
 }
 
 .sidebar-collapsed .nav-item:hover::after {
@@ -353,7 +375,7 @@ body::before {
   flex-direction: column;
   overflow: hidden;
   margin-left: 240px;
-  transition: margin-left 0.2s ease;
+  transition: margin-left var(--ease-slow);
   background: var(--bg-primary);
 }
 
@@ -370,7 +392,7 @@ body::before {
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-header);
 }
 
 .header-left {
@@ -390,7 +412,7 @@ body::before {
   background: var(--accent-blue-dim);
   color: var(--accent-blue);
   padding: 4px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   font-size: 13px;
   font-weight: 600;
 }
@@ -441,7 +463,7 @@ body::before {
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--ease-default);
 }
 
 .filter-select:hover {
@@ -457,7 +479,7 @@ body::before {
   color: var(--text-primary);
   font-size: 13px;
   font-family: inherit;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--ease-default);
 }
 
 .filter-input::placeholder {
@@ -482,7 +504,7 @@ body::before {
   font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.2s ease;
+  transition: all var(--ease-slow);
   white-space: nowrap;
 }
 
@@ -562,7 +584,7 @@ body::before {
   border-radius: var(--radius);
   padding: var(--space-5);
   box-shadow: var(--shadow-md);
-  transition: all 0.2s ease;
+  transition: all var(--ease-slow);
   animation: fadeInUp 0.3s ease both;
 }
 
@@ -617,7 +639,7 @@ body::before {
 .fields-tabs {
   display: flex;
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 4px;
   gap: 4px;
   flex-shrink: 0;
@@ -626,14 +648,14 @@ body::before {
 
 .fields-tabs button {
   padding: 6px 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: none;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   background: transparent;
   color: var(--text-secondary);
-  transition: all 0.2s;
+  transition: all var(--ease-slow);
   white-space: nowrap;
 }
 
@@ -649,7 +671,7 @@ body::before {
   font-size: 14px;
   font-weight: 500;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-tertiary);
   color: var(--text-primary);
   cursor: pointer;
@@ -672,12 +694,12 @@ body::before {
 
 .tab {
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 14px;
   font-weight: 500;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
   background: none;
   border: none;
 }
@@ -738,14 +760,14 @@ th {
   white-space: nowrap;
   position: sticky;
   top: 0;
-  z-index: 10;
+  z-index: var(--z-table);
   background: var(--bg-secondary);
 }
 
 th.sortable {
   cursor: pointer;
   user-select: none;
-  transition: color 0.15s ease;
+  transition: color var(--ease-default);
 }
 
 th.sortable:hover {
@@ -770,7 +792,7 @@ tr:last-child td {
 }
 
 tbody tr {
-  transition: background 0.1s ease;
+  transition: background var(--ease-default);
 }
 
 tbody tr:nth-child(even) {
@@ -807,7 +829,7 @@ tr.clickable-row {
   align-items: center;
   gap: 6px;
   padding: 4px 12px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -874,7 +896,7 @@ tr.clickable-row {
 .status-dot {
   width: 6px;
   height: 6px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: currentColor;
   flex-shrink: 0;
 }
@@ -885,12 +907,12 @@ tr.clickable-row {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: none;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .action-btn:hover {
@@ -958,9 +980,9 @@ tr.clickable-row {
   position: absolute;
   bottom: 10px;
   left: 10px;
-  z-index: 1000;
+  z-index: var(--z-modal);
   background: var(--bg-primary);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   padding: 8px 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   font-size: 11px;
@@ -987,7 +1009,7 @@ tr.clickable-row {
 .map-legend-dot {
   width: 10px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   flex-shrink: 0;
   border: 1.5px solid rgba(255, 255, 255, 0.6);
 }
@@ -1003,7 +1025,7 @@ tr.clickable-row {
   color: var(--text-secondary);
   font-size: 14px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .map-toggle:hover {
@@ -1026,7 +1048,7 @@ tr.clickable-row {
 .custom-marker {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: 3px solid white;
   box-shadow: 0 2px 8px rgba(0,0,0,0.4);
   display: flex;
@@ -1086,7 +1108,7 @@ tr.clickable-row {
 .popup-status {
   display: inline-block;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 11px;
   font-weight: 500;
   margin-top: 6px;
@@ -1121,7 +1143,7 @@ tr.clickable-row {
   background: var(--accent-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
@@ -1134,7 +1156,7 @@ tr.clickable-row {
 /* Crop badges */
 .crop-badge {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
 }
 
@@ -1151,7 +1173,7 @@ tr.clickable-row {
 /* Brand badges */
 .brand-badge {
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
 }
 
@@ -1196,7 +1218,7 @@ select:focus {
   height: 24px;
   border: 2px solid var(--border);
   border-top-color: var(--accent-primary);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: spin 1s linear infinite;
   margin-right: 12px;
 }
@@ -1238,8 +1260,8 @@ select:focus {
   font-weight: 500;
   transform: translateY(100px);
   opacity: 0;
-  transition: all 0.3s ease;
-  z-index: 1000;
+  transition: all var(--ease-slower);
+  z-index: var(--z-modal);
 }
 
 .toast.show {
@@ -1265,7 +1287,7 @@ select:focus {
   padding: 0 16px;
   align-items: center;
   gap: 12px;
-  z-index: 100;
+  z-index: var(--z-dropdown);
 }
 
 .mobile-menu-btn {
@@ -1294,7 +1316,7 @@ select:focus {
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.6);
-  z-index: 200;
+  z-index: var(--z-mobile-overlay);
 }
 
 .sidebar-header-mobile {
@@ -1344,7 +1366,7 @@ select:focus {
 .notification-bell-btn {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   width: 36px;
   height: 36px;
   display: flex;
@@ -1353,7 +1375,7 @@ select:focus {
   cursor: pointer;
   color: var(--text-secondary);
   background: var(--bg-card);
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
   position: relative;
 }
 
@@ -1373,7 +1395,7 @@ select:focus {
   font-weight: 700;
   min-width: 18px;
   height: 18px;
-  border-radius: 9px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1390,7 +1412,7 @@ select:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-  z-index: 1000;
+  z-index: var(--z-modal);
   overflow: hidden;
 }
 
@@ -1409,7 +1431,7 @@ select:focus {
   font-size: 12px;
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .notification-mark-read-btn:hover {
@@ -1446,7 +1468,7 @@ a.notification-item {
   padding: 12px 16px;
   border-bottom: 1px solid var(--border);
   cursor: pointer;
-  transition: background 0.1s ease;
+  transition: background var(--ease-default);
 }
 
 .notification-item:last-child {
@@ -1491,7 +1513,7 @@ a.notification-item {
 .sidebar-user-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
   display: flex;
@@ -1531,7 +1553,7 @@ a.notification-item {
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  transition: color 0.15s;
+  transition: color var(--ease-default);
 }
 
 .sidebar-signout:hover {
@@ -1623,7 +1645,7 @@ a.notification-item {
   color: var(--text-primary);
   outline: none;
   font-family: inherit;
-  transition: border-color 0.15s;
+  transition: border-color var(--ease-default);
 }
 
 .login-input:focus {
@@ -1641,7 +1663,7 @@ a.notification-item {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background var(--ease-default);
 }
 
 .login-submit:hover:not(:disabled) {
@@ -1700,14 +1722,14 @@ a.notification-item {
   left: 0;
   right: 0;
   height: 3px;
-  z-index: 9999;
+  z-index: var(--z-toast);
   background: var(--bg-tertiary);
 }
 
 .loading-bar-fill {
   height: 100%;
   background: var(--accent-primary);
-  transition: width 0.2s ease-out;
+  transition: width var(--ease-slow);
   box-shadow: 0 0 10px var(--accent-primary);
 }
 
@@ -1741,15 +1763,15 @@ a.notification-item {
 .install-progress-bar {
   height: 8px;
   background: var(--bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
 .install-progress-fill {
   height: 100%;
   background: var(--accent-primary);
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-xs);
+  transition: width var(--ease-slower);
 }
 
 .install-progress-label {
@@ -1792,8 +1814,8 @@ a.notification-item {
     left: 0;
     height: 100vh;
     transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    z-index: 300;
+    transition: transform var(--ease-slower);
+    z-index: var(--z-mobile-overlay);
   }
 
   .sidebar.mobile-open {
@@ -1881,7 +1903,7 @@ a.notification-item {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: var(--z-modal);
   padding: var(--space-5);
   animation: fadeIn 0.15s ease;
 }
@@ -1933,7 +1955,7 @@ a.notification-item {
   cursor: pointer;
   padding: var(--space-2);
   border-radius: var(--radius-sm);
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2321,7 +2343,7 @@ tr.selected {
     border-radius: var(--radius);
     padding: 16px;
     box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
+    transition: all var(--ease-slow);
     cursor: pointer;
   }
 
@@ -2413,13 +2435,13 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  z-index: var(--z-picker);
   padding: 20px;
 }
 
 .location-picker-modal {
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: var(--radius);
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
@@ -2473,7 +2495,7 @@ input[type="date"]:focus {
   color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--ease-default);
 }
 
 .location-btn:hover {
@@ -2530,7 +2552,7 @@ input[type="date"]:focus {
 /* Header */
 .approval-header {
   background: var(--bg-card);
-  border-radius: 12px;
+  border-radius: var(--radius);
   padding: 24px;
   margin-bottom: 20px;
   border: 1px solid var(--border);
@@ -2581,15 +2603,15 @@ input[type="date"]:focus {
 .progress-bar {
   height: 8px;
   background: var(--bg-hover);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
   background: var(--accent-primary);
-  border-radius: 4px;
-  transition: width 0.3s ease;
+  border-radius: var(--radius-xs);
+  transition: width var(--ease-slower);
 }
 
 .progress-text {
@@ -2630,10 +2652,10 @@ input[type="date"]:focus {
 
 .approval-card {
   background: var(--bg-card);
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   overflow: hidden;
-  transition: box-shadow 0.2s;
+  transition: box-shadow var(--ease-slow);
 }
 
 .approval-card:hover {
@@ -2704,7 +2726,7 @@ input[type="date"]:focus {
 
 .card-map {
   height: 300px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
   margin-bottom: 20px;
 }
@@ -2782,7 +2804,7 @@ input[type="date"]:focus {
   border-radius: var(--radius);
   border: none;
   width: 100%;
-  transition: all 0.2s;
+  transition: all var(--ease-slow);
   background: var(--accent-blue);
   color: white;
 }
@@ -3061,7 +3083,7 @@ input[type="date"]:focus {
 .approvals-op-toggle {
   flex-shrink: 0;
   color: var(--text-secondary);
-  transition: transform 0.2s;
+  transition: transform var(--ease-slow);
 }
 
 .approvals-op-toggle.expanded {
@@ -3149,13 +3171,13 @@ input[type="date"]:focus {
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   font-size: 12px;
   cursor: pointer;
   background: var(--bg-tertiary);
   color: var(--text-secondary);
   border: 1px solid var(--border);
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
   user-select: none;
 }
 
@@ -3471,7 +3493,7 @@ input[type="date"]:focus {
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--ease-default);
 }
 
 .chat-suggestions button:hover {
@@ -3492,7 +3514,7 @@ input[type="date"]:focus {
 .chat-msg-avatar {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3561,7 +3583,7 @@ input[type="date"]:focus {
 .chat-msg-content code {
   background: var(--bg-tertiary);
   padding: 0.1em 0.4em;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 0.9em;
 }
 
@@ -3596,7 +3618,7 @@ input[type="date"]:focus {
   width: 8px;
   height: 8px;
   background: var(--text-muted);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   animation: bounce 1.4s infinite ease-in-out both;
 }
 
@@ -3636,7 +3658,7 @@ input[type="date"]:focus {
   right: -6px;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--text-muted);
   color: white;
   border: none;
@@ -3670,7 +3692,7 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all var(--ease-default);
   flex-shrink: 0;
 }
 
@@ -3714,7 +3736,7 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: all var(--ease-default);
   flex-shrink: 0;
   height: 40px;
 }
@@ -3891,7 +3913,7 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   color: var(--text-muted);
-  transition: color 0.15s;
+  transition: color var(--ease-default);
 }
 
 .column-tag-remove:hover {
@@ -3969,7 +3991,7 @@ input[type="date"]:focus {
   background: var(--bg-card);
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .crm-tab:hover {
@@ -4121,7 +4143,7 @@ input[type="date"]:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: box-shadow 0.2s;
+  transition: box-shadow var(--ease-slow);
 }
 
 .entity-card:hover {
@@ -4136,7 +4158,7 @@ input[type="date"]:focus {
   align-items: center;
   cursor: pointer;
   background: var(--bg-secondary);
-  transition: background 0.15s;
+  transition: background var(--ease-default);
 }
 
 .entity-header:hover {
@@ -4157,7 +4179,7 @@ input[type="date"]:focus {
 
 .entity-expand-icon {
   color: var(--text-muted);
-  transition: transform 0.2s;
+  transition: transform var(--ease-slow);
 }
 
 .entity-expand-icon.expanded {
@@ -4248,7 +4270,7 @@ input[type="date"]:focus {
   background: var(--bg-secondary);
   min-height: 40px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color var(--ease-default);
 }
 
 .notes-field:hover {
@@ -4357,7 +4379,7 @@ input[type="date"]:focus {
   color: var(--accent-primary);
   border: none;
   padding: var(--space-1) var(--space-3);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -4391,7 +4413,7 @@ input[type="date"]:focus {
   padding: var(--space-3) var(--space-5);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-md);
-  z-index: 9999;
+  z-index: var(--z-toast);
   font-size: 14px;
 }
 
@@ -4405,14 +4427,14 @@ input[type="date"]:focus {
 
 .order-filter-tab {
   padding: 6px 14px;
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   border: 1px solid var(--border);
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .order-filter-tab.active {
@@ -4483,7 +4505,7 @@ input[type="date"]:focus {
 
 .order-list-row {
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background var(--ease-default);
   border-bottom: 1px solid var(--border);
 }
 
@@ -4592,7 +4614,7 @@ input[type="date"]:focus {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .order-btn-outline:hover {
@@ -4607,7 +4629,7 @@ input[type="date"]:focus {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--ease-default);
 }
 
 .order-btn-status.disabled {
@@ -4636,7 +4658,7 @@ input[type="date"]:focus {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--ease-default);
 }
 
 .order-btn-fulfill.disabled {
@@ -4653,7 +4675,7 @@ input[type="date"]:focus {
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .order-btn-delete.disabled {
@@ -4762,7 +4784,7 @@ input[type="date"]:focus {
   font-size: 13px;
   cursor: pointer;
   width: 100%;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .order-add-item-btn:hover {
@@ -4806,7 +4828,7 @@ input[type="date"]:focus {
 .order-add-item-input {
   width: 100%;
   padding: var(--space-2);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border);
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -4956,7 +4978,7 @@ input[type="date"]:focus {
 /* Header filter select */
 .install-filter-select {
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -5000,7 +5022,7 @@ input[type="date"]:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all var(--ease-default);
   text-align: left;
   width: 100%;
 }
@@ -5067,7 +5089,7 @@ input[type="date"]:focus {
 .share-install-summary {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 16px;
   margin-bottom: 16px;
 }
@@ -5087,7 +5109,7 @@ input[type="date"]:focus {
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   background: var(--accent-primary);
   color: white;
   flex-shrink: 0;
@@ -5127,7 +5149,7 @@ input[type="date"]:focus {
   padding: 10px 12px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   margin-bottom: 6px;
 }
 
@@ -5158,7 +5180,7 @@ input[type="date"]:focus {
 .share-message-preview {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 12px;
   font-size: 12px;
   line-height: 1.5;
@@ -5197,7 +5219,7 @@ input[type="date"]:focus {
 
 .install-card {
   background: var(--bg-secondary);
-  border-radius: 12px;
+  border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border);
   display: flex;
@@ -5263,7 +5285,7 @@ input[type="date"]:focus {
   padding: 2px 8px;
   background: var(--accent-amber-dim);
   color: var(--accent-amber);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 500;
 }
 
@@ -5285,14 +5307,14 @@ input[type="date"]:focus {
   padding: 2px 8px;
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .install-antenna-tag {
   font-size: 11px;
   padding: 2px 8px;
   background: var(--bg-tertiary);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--text-secondary);
 }
 
@@ -5348,7 +5370,7 @@ input[type="date"]:focus {
   gap: 8px;
   margin: 0 16px 16px;
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 /* Form modal overrides */
@@ -5374,7 +5396,7 @@ input[type="date"]:focus {
   align-items: center;
   padding: 12px;
   background: var(--bg-tertiary);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
 }
 
 .install-probe-display-serial {
@@ -5393,7 +5415,7 @@ input[type="date"]:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 50;
+  z-index: var(--z-header);
   margin-top: 2px;
 }
 
@@ -5486,7 +5508,7 @@ input[type="date"]:focus {
 .install-gps-result {
   padding: 10px;
   background: var(--accent-primary-dim);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--accent-primary);
   font-size: 14px;
 }
@@ -5501,7 +5523,7 @@ input[type="date"]:focus {
 .install-gps-error {
   padding: 10px;
   background: var(--accent-red-dim);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--accent-red);
   font-size: 14px;
 }
@@ -5525,7 +5547,7 @@ input[type="date"]:focus {
 .install-crop-confirmed {
   padding: 12px;
   background: var(--accent-primary-dim);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--accent-primary);
   display: flex;
   justify-content: space-between;
@@ -5560,7 +5582,7 @@ input[type="date"]:focus {
 .install-photo-status {
   margin-top: 8px;
   padding: 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -5618,7 +5640,7 @@ input[type="date"]:focus {
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: 4px 12px;
   font-weight: 600;
   font-size: 13px;
@@ -5698,7 +5720,7 @@ input[type="date"]:focus {
 .probes-empty-badge {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--bg-secondary);
   color: var(--text-muted);
 }
@@ -5739,9 +5761,9 @@ input[type="date"]:focus {
   background: rgba(var(--bg-tertiary-rgb, 30, 30, 30), 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: 0 4px 20px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.05);
-  z-index: 100;
+  z-index: var(--z-dropdown);
 }
 
 /* Rack scrubber individual buttons */
@@ -5749,14 +5771,14 @@ input[type="date"]:focus {
   width: 30px;
   height: 22px;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   background: transparent;
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
   cursor: default;
   opacity: 0.3;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .rack-scrubber-btn.active {
@@ -5798,7 +5820,7 @@ input[type="date"]:focus {
   background: var(--bg-card);
   color: var(--text-muted);
   font-weight: 400;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .ws-view-toggle-btn.active {
@@ -5892,7 +5914,7 @@ input[type="date"]:focus {
   position: fixed;
   bottom: var(--space-6);
   right: var(--space-6);
-  z-index: 10000;
+  z-index: var(--z-toast);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -5935,7 +5957,7 @@ input[type="date"]:focus {
   width: 100%;
   padding: 4px 8px;
   border: 1px solid var(--accent-blue);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--bg-card);
   color: var(--text-primary);
   font-size: 13px;
@@ -5966,7 +5988,7 @@ input[type="date"]:focus {
 /* Inline type tag picker */
 .contacts-type-picker {
   position: absolute;
-  z-index: 100;
+  z-index: var(--z-dropdown);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -5981,7 +6003,7 @@ input[type="date"]:focus {
 .contacts-type-option {
   cursor: pointer;
   opacity: 0.45;
-  transition: opacity 0.15s;
+  transition: opacity var(--ease-default);
 }
 
 .contacts-type-option.selected {
@@ -6006,7 +6028,7 @@ input[type="date"]:focus {
 .contacts-type-checkbox-label {
   cursor: pointer;
   opacity: 0.45;
-  transition: opacity 0.15s;
+  transition: opacity var(--ease-default);
 }
 
 .contacts-type-checkbox-label.selected {
@@ -6041,7 +6063,7 @@ input[type="date"]:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  z-index: var(--z-dropdown);
   min-width: 180px;
   padding: 8px 0;
 }
@@ -6116,7 +6138,7 @@ input[type="date"]:focus {
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* Role badge: Billing contact */
@@ -6125,7 +6147,7 @@ input[type="date"]:focus {
   background: var(--accent-blue-dim);
   color: var(--accent-blue);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 /* Table cell actions row */
@@ -6176,7 +6198,7 @@ input[type="date"]:focus {
 
 /* Nested modal overlay (higher z-index) */
 .contacts-nested-overlay {
-  z-index: 1001;
+  z-index: var(--z-modal-nested);
 }
 
 /* Nested modal panel (narrower) */
@@ -6220,7 +6242,7 @@ input[type="date"]:focus {
   gap: 8px;
   cursor: pointer;
   padding: 10px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border);
   background: transparent;
 }
@@ -6249,7 +6271,7 @@ input[type="date"]:focus {
   margin-left: 24px;
   padding: 12px;
   background: var(--bg-secondary);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
 }
 
 /* Billing detail nested field label */
@@ -6316,7 +6338,7 @@ input[type="date"]:focus {
   padding: 4px 8px;
   background: var(--accent-blue-dim);
   color: var(--accent-blue);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
 }
 
@@ -6347,7 +6369,7 @@ input[type="date"]:focus {
 .contacts-billing-same-address-display {
   padding: 8px 12px;
   background: var(--bg-secondary);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 13px;
   color: var(--text-muted);
 }
@@ -6408,7 +6430,7 @@ input[type="date"]:focus {
 
 /* Chevron icon for collapsible sections */
 .settings-chevron {
-  transition: transform 0.2s;
+  transition: transform var(--ease-slow);
   flex-shrink: 0;
   color: var(--text-muted);
 }
@@ -6501,7 +6523,7 @@ input[type="date"]:focus {
 /* Inline rename/add input for options */
 .settings-option-input {
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   border: 2px solid var(--accent-primary);
   background: var(--bg-card);
@@ -6515,13 +6537,13 @@ input[type="date"]:focus {
   align-items: center;
   gap: var(--space-1);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
   color: var(--text-primary);
   cursor: grab;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
 }
 
 .settings-option-tag.dragging {
@@ -6565,7 +6587,7 @@ input[type="date"]:focus {
 /* New option input (fixed width) */
 .settings-option-add-input {
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   border: 2px solid var(--accent-primary);
   background: var(--bg-card);
@@ -6601,7 +6623,7 @@ input[type="date"]:focus {
   align-items: center;
   gap: 2px;
   padding: 2px var(--space-2);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   background: none;
   border: 1px dashed var(--border);
@@ -6641,12 +6663,12 @@ input[type="date"]:focus {
   padding: 8px 16px;
   font-size: 14px;
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   background: var(--bg-card);
   color: var(--text-primary);
   font-weight: 400;
-  transition: all 0.15s ease;
+  transition: all var(--ease-default);
   box-shadow: none;
   transform: scale(1);
   display: flex;
@@ -6798,7 +6820,7 @@ input[type="date"]:focus {
   color: var(--accent-primary);
   border: none;
   padding: 4px 12px;
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -6817,7 +6839,7 @@ input[type="date"]:focus {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  z-index: var(--z-dropdown);
   min-width: 180px;
   max-height: 70vh;
   overflow-y: auto;
@@ -6920,7 +6942,7 @@ input[type="date"]:focus {
 .fields-approval-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
 }
 
 .fields-approval-dot.pending {
@@ -7030,7 +7052,7 @@ input[type="date"]:focus {
   padding: 6px 12px;
   font-size: 12px;
   font-weight: 500;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   border: none;
   background: var(--accent-primary);
   color: white;
@@ -7129,7 +7151,7 @@ input[type="date"]:focus {
   background: none;
   border: 1px dashed var(--border);
   padding: 4px 12px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   color: var(--accent-primary);
   cursor: pointer;
   font-size: 12px;
@@ -7233,7 +7255,7 @@ input[type="date"]:focus {
   width: 120px;
   height: 90px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--border);
 }
 
@@ -7318,7 +7340,7 @@ input[type="date"]:focus {
 .measure-tooltip {
   background: rgba(0, 0, 0, 0.8) !important;
   border: 1px solid #facc15 !important;
-  border-radius: 4px !important;
+  border-radius: var(--radius-xs) !important;
   color: #facc15 !important;
   font-size: 13px !important;
   font-weight: 600 !important;
@@ -7334,7 +7356,7 @@ input[type="date"]:focus {
 .measure-cursor-tooltip {
   background: rgba(0, 0, 0, 0.75) !important;
   border: 1px solid rgba(250, 204, 21, 0.6) !important;
-  border-radius: 4px !important;
+  border-radius: var(--radius-xs) !important;
   color: #fff !important;
   font-size: 12px !important;
   padding: 3px 6px !important;
@@ -7385,7 +7407,7 @@ input[type="date"]:focus {
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
   padding: 2px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .ops-contact-phone {
@@ -7512,7 +7534,7 @@ input[type="date"]:focus {
   padding: 12px 12px 12px 44px;
   font-size: 16px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg-secondary);
   color: var(--text-primary);
 }
@@ -7568,14 +7590,14 @@ input[type="date"]:focus {
 /* Field list item */
 .route-field-item {
   background: var(--bg-card);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 12px 16px;
   border: 1px solid var(--border);
   cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  transition: background 0.15s;
+  transition: background var(--ease-default);
 }
 
 .route-field-item:hover {
@@ -7610,7 +7632,7 @@ input[type="date"]:focus {
   gap: 4px;
   padding: 8px 10px;
   color: white;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
   font-weight: 500;
   text-decoration: none;
@@ -7672,7 +7694,7 @@ input[type="date"]:focus {
   color: var(--status-yellow);
   background: rgba(251, 191, 36, 0.1);
   padding: 4px 12px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   font-weight: 600;
 }
 
@@ -7813,7 +7835,7 @@ input[type="date"]:focus {
 .wr-priority-btn {
   width: 28px;
   height: 28px;
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   border: none;
   cursor: pointer;
   display: flex;
@@ -7824,7 +7846,7 @@ input[type="date"]:focus {
   color: var(--text-muted);
   font-size: 14px;
   font-weight: 700;
-  transition: all 0.15s;
+  transition: all var(--ease-default);
 }
 
 .wr-priority-btn.active {
@@ -7868,7 +7890,7 @@ input[type="date"]:focus {
 }
 
 .wr-chevron {
-  transition: transform 0.2s;
+  transition: transform var(--ease-slow);
 }
 
 .wr-expanded-area {
@@ -7920,7 +7942,7 @@ input[type="date"]:focus {
 }
 
 .wr-ref-chevron {
-  transition: transform 0.2s;
+  transition: transform var(--ease-slow);
   color: var(--text-muted);
 }
 
@@ -7951,7 +7973,7 @@ input[type="date"]:focus {
 .wr-ref-day-badge {
   font-size: 12px;
   padding: 1px 8px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
   font-weight: 500;
@@ -7960,7 +7982,7 @@ input[type="date"]:focus {
 .wr-ref-priority-badge {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: rgba(239, 68, 68, 0.15);
   color: var(--status-red);
   font-weight: 600;
@@ -8083,7 +8105,7 @@ input[type="date"]:focus {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 10000;
+  z-index: var(--z-toast);
   padding: 12px 24px;
   border-radius: var(--radius);
   background: var(--bg-primary);
@@ -8238,7 +8260,7 @@ input[type="date"]:focus {
   padding: 4px 6px;
   font-size: 12px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
@@ -8269,10 +8291,10 @@ input[type="date"]:focus {
 
 .searchable-select-dropdown {
   position: fixed;
-  z-index: 99999;
+  z-index: var(--z-popover);
   background: var(--bg-primary);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
   max-height: 300px;
   display: flex;
@@ -8292,7 +8314,7 @@ input[type="date"]:focus {
   padding: 4px 8px;
   font-size: 12px;
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   background: var(--bg-secondary);
   color: var(--text-primary);
   outline: none;
@@ -8311,7 +8333,7 @@ input[type="date"]:focus {
   background: none;
   color: var(--text-muted);
   cursor: pointer;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
 }
 
 .searchable-select-close:hover {
@@ -8321,6 +8343,7 @@ input[type="date"]:focus {
 
 .searchable-select-options {
   overflow-y: auto;
+  overscroll-behavior: contain;
   flex: 1;
 }
 

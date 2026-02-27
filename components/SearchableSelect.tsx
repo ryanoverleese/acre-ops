@@ -55,10 +55,13 @@ export default function SearchableSelect({
     }
   }, [isOpen, updatePosition]);
 
-  // Close on scroll/resize
+  // Close on scroll/resize (but not when scrolling inside the dropdown)
   useEffect(() => {
     if (!isOpen) return;
-    const handleScroll = () => setIsOpen(false);
+    const handleScroll = (e: Event) => {
+      if (dropdownRef.current?.contains(e.target as Node)) return;
+      setIsOpen(false);
+    };
     const handleResize = () => updatePosition();
     window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', handleResize);
