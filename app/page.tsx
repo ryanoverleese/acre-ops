@@ -90,18 +90,23 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
         total: o.total || '',
       }));
 
+    const probesOnOrder = probes.filter(p =>
+      p.status?.value?.toLowerCase() === 'on order'
+    ).length;
+
     const stats: DashboardStats = {
       installedCount,
       assignedCount,
       unassignedCount,
       totalAssignments,
+      probesOnOrder,
     };
 
     return { stats, openRepairs, recentOrders, installedProbes };
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return {
-      stats: { installedCount: 0, assignedCount: 0, unassignedCount: 0, totalAssignments: 0 },
+      stats: { installedCount: 0, assignedCount: 0, unassignedCount: 0, totalAssignments: 0, probesOnOrder: 0 },
       openRepairs: [],
       recentOrders: [],
       installedProbes: [],
