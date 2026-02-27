@@ -954,6 +954,44 @@ tr.clickable-row {
   background: var(--bg-secondary);
 }
 
+.map-legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  font-size: 11px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.map-legend-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.map-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.6);
+}
+
 .map-toggle {
   display: flex;
   align-items: center;
@@ -8337,6 +8375,7 @@ input[type="date"]:focus {
   .fields-map,
   .notification-bell-btn,
   .searchable-select-dropdown,
+  .map-legend,
   .season-selector,
   .fields-tabs,
   .fields-tabs-mobile,

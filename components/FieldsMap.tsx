@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -200,6 +200,41 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
   };
 
   const useColoredMarkers = colorBy !== 'none';
+
+  // Build legend entries from actual map data
+  const legendEntries = useMemo(() => {
+    if (colorBy === 'none') return [];
+    const seen = new Map<string, string>();
+    for (const field of mappableFields) {
+      let label: string;
+      let color: string;
+      switch (colorBy) {
+        case 'crop': {
+          const crop = field.crop || 'Other';
+          label = crop;
+          color = CROP_COLORS[crop.toLowerCase()] || CROP_COLORS.default;
+          break;
+        }
+        case 'status': {
+          const status = field.status || 'unassigned';
+          label = status.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          color = STATUS_COLORS[status] || STATUS_COLORS.default;
+          break;
+        }
+        case 'operation': {
+          label = field.operation || 'Unknown';
+          color = operationColorMap.get(field.operationId) || OPERATION_COLORS[0];
+          break;
+        }
+        default:
+          continue;
+      }
+      if (!seen.has(label)) seen.set(label, color);
+    }
+    return Array.from(seen.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([label, color]) => ({ label, color }));
+  }, [colorBy, mappableFields, operationColorMap]);
 
   const controlStyle: React.CSSProperties = {
     background: 'var(--bg-primary)',
@@ -453,6 +488,21 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           );
         })}
       </MapContainer>
+
+      {/* Color legend */}
+      {useColoredMarkers && legendEntries.length > 0 && (
+        <div className="map-legend">
+          <div className="map-legend-title">
+            {colorBy === 'crop' ? 'Crop' : colorBy === 'status' ? 'Status' : 'Operation'}
+          </div>
+          {legendEntries.map(({ label, color }) => (
+            <div key={label} className="map-legend-item">
+              <span className="map-legend-dot" style={{ background: color }} />
+              {label}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
