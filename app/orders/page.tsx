@@ -30,6 +30,7 @@ export interface CatalogProduct {
   name: string;
   category: string;
   rate: number;
+  dealerFee: number;
   unit: string;
   active: boolean;
 }
@@ -59,6 +60,7 @@ export default async function OrdersPage() {
         name: p.service_type || '',
         category: p.category?.value || '',
         rate: p.rate || 0,
+        dealerFee: p.dealer_fee || 0,
         unit: p.unit?.value || 'each',
         active: !p.status || p.status?.value === 'Active',
       }))

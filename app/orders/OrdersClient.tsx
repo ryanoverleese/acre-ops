@@ -379,6 +379,16 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
     [newItems]
   );
 
+  // Dealer margin total (total - sum of dealer fees)
+  const newItemsMarginTotal = useMemo(() =>
+    newItems.reduce((sum, i) => {
+      const product = catalog.find(p => p.id === i.productId);
+      const dealerFee = product?.dealerFee || 0;
+      return sum + (i.quantity * (i.unitPrice - dealerFee));
+    }, 0),
+    [newItems, catalog]
+  );
+
   // Status badge
   const statusBadge = (status: string) => (
     <span className={`status-badge order-status-${status.toLowerCase()}`}>
@@ -828,6 +838,9 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 <div className="order-modal-total-row">
                   <span className="order-modal-total">
                     Total: {formatCurrency(newItemsTotal)}
+                  </span>
+                  <span className="order-modal-margin">
+                    Margin: {formatCurrency(newItemsMarginTotal)}
                   </span>
                 </div>
 

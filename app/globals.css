@@ -4844,6 +4844,7 @@ input[type="date"]:focus {
 .order-modal-total-row {
   display: flex;
   justify-content: flex-end;
+  gap: var(--space-4);
   padding: var(--space-3) 0;
   border-top: 1px solid var(--border);
 }
@@ -4852,6 +4853,12 @@ input[type="date"]:focus {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
+}
+
+.order-modal-margin {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent-primary);
 }
 
 /* Orders mobile responsive */
@@ -8258,6 +8265,19 @@ input[type="date"]:focus {
   /* Content area */
   .content {
     padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Force desktop table view, hide mobile cards */
+  .desktop-table {
+    display: table !important;
+  }
+
+  .mobile-cards {
+    display: none !important;
+  }
+
+  .fields-table-wrap {
     overflow: visible !important;
   }
 
