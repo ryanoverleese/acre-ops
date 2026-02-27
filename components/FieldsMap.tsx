@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -202,17 +202,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
   const useColoredMarkers = colorBy !== 'none';
 
   // Build legend entries from actual map data
-  const legendEntries = useMemo(() => {
+  const legendEntries: { label: string; color: string }[] = (() => {
     if (colorBy === 'none') return [];
-    // Build local operation color map for legend
-    const opColors = new Map<number | null, string>();
-    let ci = 0;
-    mappableFields.forEach((f) => {
-      if (!opColors.has(f.operationId)) {
-        opColors.set(f.operationId, OPERATION_COLORS[ci % OPERATION_COLORS.length]);
-        ci++;
-      }
-    });
     const seen = new Map<string, string>();
     for (const field of mappableFields) {
       let label: string;
@@ -232,7 +223,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         }
         case 'operation': {
           label = field.operation || 'Unknown';
-          color = opColors.get(field.operationId) || OPERATION_COLORS[0];
+          color = operationColorMap.get(field.operationId) || OPERATION_COLORS[0];
           break;
         }
         default:
@@ -243,7 +234,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
     return Array.from(seen.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([label, color]) => ({ label, color }));
-  }, [colorBy, mappableFields]);
+  })();
 
   const controlStyle: React.CSSProperties = {
     background: 'var(--bg-primary)',
