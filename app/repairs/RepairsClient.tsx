@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import EmptyState from '@/components/EmptyState';
+import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 export interface ProcessedRepair {
@@ -654,17 +655,15 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
               <div className="edit-form">
                 <div className="form-group">
                   <label>Field *</label>
-                  <select
+                  <SearchableSelect
                     value={addForm.field_season}
-                    onChange={(e) => handleFieldSelect(e.target.value)}
-                  >
-                    <option value="">Select field...</option>
-                    {fieldSeasons.map((fs) => (
-                      <option key={fs.id} value={fs.id}>
-                        {fs.fieldName} ({fs.operation})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(v) => handleFieldSelect(v)}
+                    options={fieldSeasons.map((fs) => ({
+                      value: String(fs.id),
+                      label: `${fs.fieldName} (${fs.operation})`,
+                    }))}
+                    placeholder="Select field..."
+                  />
                 </div>
                 {availableProbeAssignments.length > 1 && (
                   <div className="form-group">

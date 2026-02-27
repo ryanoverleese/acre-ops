@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { ProcessedOrder, ProcessedOrderItem, CatalogProduct, BillingEntityOption } from './page';
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
@@ -701,21 +702,21 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   <div className="order-add-item-form">
                     <div className="order-add-item-field order-add-item-field-product">
                       <label className="order-add-item-label">Product</label>
-                      <select
-                        value={addItemProduct || ''}
-                        onChange={e => {
-                          const id = parseInt(e.target.value);
+                      <SearchableSelect
+                        value={addItemProduct ? String(addItemProduct) : ''}
+                        onChange={(v) => {
+                          const id = parseInt(v);
                           setAddItemProduct(id);
                           const product = catalog.find(p => p.id === id);
                           if (product) setAddItemPrice(product.rate);
                         }}
+                        options={catalog.map(p => ({
+                          value: String(p.id),
+                          label: `${p.name} (${formatCurrency(p.rate)})`,
+                        }))}
+                        placeholder="Select product..."
                         className="order-add-item-select"
-                      >
-                        <option value="">Select product...</option>
-                        {catalog.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.rate)})</option>
-                        ))}
-                      </select>
+                      />
                     </div>
                     <div className="order-add-item-field order-add-item-field-qty">
                       <label className="order-add-item-label">Qty</label>
@@ -774,15 +775,15 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
               <div className="edit-form">
                 <div className="form-group">
                   <label>Customer</label>
-                  <select
-                    value={newBillingEntity || ''}
-                    onChange={e => setNewBillingEntity(parseInt(e.target.value) || null)}
-                  >
-                    <option value="">Select customer...</option>
-                    {billingEntities.map(be => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={newBillingEntity ? String(newBillingEntity) : ''}
+                    onChange={(v) => setNewBillingEntity(parseInt(v) || null)}
+                    options={billingEntities.map(be => ({
+                      value: String(be.id),
+                      label: be.name,
+                    }))}
+                    placeholder="Select customer..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Date</label>
@@ -797,16 +798,16 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                   <label>Items</label>
                   {newItems.map((item, idx) => (
                     <div key={idx} className="order-new-item-card">
-                      <select
-                        value={item.productId || ''}
-                        onChange={e => updateNewItem(idx, 'productId', parseInt(e.target.value) || null)}
+                      <SearchableSelect
+                        value={item.productId ? String(item.productId) : ''}
+                        onChange={(v) => updateNewItem(idx, 'productId', parseInt(v) || null)}
+                        options={catalog.map(p => ({
+                          value: String(p.id),
+                          label: `${p.name} (${formatCurrency(p.rate)})`,
+                        }))}
+                        placeholder="Select product..."
                         className="order-new-item-select"
-                      >
-                        <option value="">Select product...</option>
-                        {catalog.map(p => (
-                          <option key={p.id} value={p.id}>{p.name} ({formatCurrency(p.rate)})</option>
-                        ))}
-                      </select>
+                      />
                       <div className="form-row">
                         <div className="form-group">
                           <label>Qty</label>

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { ProcessedField, ProbeOption } from '@/app/fields/page';
 
 interface ProbeWithStatus extends ProbeOption {
@@ -226,25 +227,24 @@ export default function EditSeasonModal({
             <div className="form-row">
               <div className="form-group">
                 <label>Crop</label>
-                <select value={form.crop} onChange={(e) => setForm({ ...form, crop: e.target.value })}>
-                  <option value="">Select crop...</option>
-                  {seasonOpts.crop.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  value={form.crop}
+                  onChange={(v) => setForm({ ...form, crop: v })}
+                  options={seasonOpts.crop.slice().sort((a, b) => a.label.localeCompare(b.label))}
+                  placeholder="Select crop..."
+                />
               </div>
               <div className="form-group">
                 <label>Service Type</label>
-                <select value={form.service_type} onChange={(e) => {
-                  const serviceType = e.target.value;
-                  const rate = getRateForServiceType(serviceType);
-                  setForm({ ...form, service_type: serviceType, billing_rate: rate });
-                }}>
-                  <option value="">Select...</option>
-                  {productTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  value={form.service_type}
+                  onChange={(v) => {
+                    const rate = getRateForServiceType(v);
+                    setForm({ ...form, service_type: v, billing_rate: rate });
+                  }}
+                  options={productTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label))}
+                  placeholder="Select..."
+                />
               </div>
               <div className="form-group">
                 <label>Billing Rate ($)</label>
@@ -340,39 +340,45 @@ export default function EditSeasonModal({
             <div className="form-row">
               <div className="form-group">
                 <label>Probe 1</label>
-                <select value={selectedProbeId} onChange={(e) => {
-                  if (e.target.value === '__create_new__') {
-                    onOpenCreateProbe('probe1', field.operation);
-                  } else {
-                    onProbeIdChange(e.target.value);
-                  }
-                }}>
-                  <option value="">— No Probe —</option>
-                  {getProbesForField(field.operation, field.probeId).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - {p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity}
-                    </option>
-                  ))}
-                  <option value="__create_new__">+ Add New Probe</option>
-                </select>
+                <SearchableSelect
+                  value={selectedProbeId}
+                  onChange={(v) => {
+                    if (v === '__create_new__') {
+                      onOpenCreateProbe('probe1', field.operation);
+                    } else {
+                      onProbeIdChange(v);
+                    }
+                  }}
+                  options={[
+                    ...getProbesForField(field.operation, field.probeId).map((p) => ({
+                      value: String(p.id),
+                      label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity}`,
+                    })),
+                    { value: '__create_new__', label: '+ Add New Probe' },
+                  ]}
+                  placeholder="— No Probe —"
+                />
               </div>
               <div className="form-group">
                 <label>Probe 2 (Optional)</label>
-                <select value={selectedProbe2Id} onChange={(e) => {
-                  if (e.target.value === '__create_new__') {
-                    onOpenCreateProbe('probe2', field.operation);
-                  } else {
-                    onProbe2IdChange(e.target.value);
-                  }
-                }}>
-                  <option value="">— No Probe —</option>
-                  {getProbesForField(field.operation, field.probe2Id).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - {p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity}
-                    </option>
-                  ))}
-                  <option value="__create_new__">+ Add New Probe</option>
-                </select>
+                <SearchableSelect
+                  value={selectedProbe2Id}
+                  onChange={(v) => {
+                    if (v === '__create_new__') {
+                      onOpenCreateProbe('probe2', field.operation);
+                    } else {
+                      onProbe2IdChange(v);
+                    }
+                  }}
+                  options={[
+                    ...getProbesForField(field.operation, field.probe2Id).map((p) => ({
+                      value: String(p.id),
+                      label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity}`,
+                    })),
+                    { value: '__create_new__', label: '+ Add New Probe' },
+                  ]}
+                  placeholder="— No Probe —"
+                />
               </div>
             </div>
             {/* Probe 2 Equipment - only shown when probe 2 is assigned */}

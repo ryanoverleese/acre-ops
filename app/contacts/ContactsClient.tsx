@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { ProcessedContact, OperationOption, BillingEntityOption } from './page';
 
 // Dynamically import map components with SSR disabled
@@ -919,21 +920,19 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
 
     if (isEditing) {
       return (
-        <select
+        <SearchableSelect
           value={editingValue}
-          onChange={(e) => {
-            setEditingValue(e.target.value);
-            saveInlineEdit(contact.id, 'operation', e.target.value);
+          onChange={(v) => {
+            setEditingValue(v);
+            saveInlineEdit(contact.id, 'operation', v);
           }}
-          onBlur={() => cancelEditing()}
-          autoFocus
+          options={sortedOperations.map((op) => ({
+            value: String(op.id),
+            label: op.name,
+          }))}
+          placeholder="Select operation..."
           className="contacts-inline-edit"
-        >
-          <option value="">Select operation...</option>
-          {sortedOperations.map((op) => (
-            <option key={op.id} value={op.id}>{op.name}</option>
-          ))}
-        </select>
+        />
       );
     }
 
@@ -954,26 +953,28 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
   const renderOperationField = () => (
     <div className="form-group">
       <label>Operation</label>
-      <select
+      <SearchableSelect
         value={form.operations[0] || ''}
-        onChange={(e) => {
-          if (e.target.value === 'add_new') {
+        onChange={(v) => {
+          if (v === 'add_new') {
             setShowAddOperationModal(true);
           } else {
-            setForm({ ...form, operations: e.target.value ? [e.target.value] : [] });
+            setForm({ ...form, operations: v ? [v] : [] });
             // Clear billing entities and reset choice when operation changes
             setSelectedBillingEntities([]);
             setBillingEntityChoice('none');
             setNewBillingEntityForm({ name: '', address: '', notes: '', sameAddressAsContact: true });
           }
         }}
-      >
-        <option value="">Select operation...</option>
-        {sortedOperations.map((op) => (
-          <option key={op.id} value={op.id}>{op.name}</option>
-        ))}
-        <option value="add_new">+ Add New Operation...</option>
-      </select>
+        options={[
+          ...sortedOperations.map((op) => ({
+            value: String(op.id),
+            label: op.name,
+          })),
+          { value: 'add_new', label: '+ Add New Operation...' },
+        ]}
+        placeholder="Select operation..."
+      />
     </div>
   );
 

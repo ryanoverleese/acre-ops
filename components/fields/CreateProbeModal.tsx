@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { BillingEntityOption } from '@/app/fields/page';
 
 export interface CreateProbeModalProps {
@@ -105,15 +106,15 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
             </div>
             <div className="form-group">
               <label>Billing Entity</label>
-              <select
+              <SearchableSelect
                 value={form.billing_entity}
-                onChange={(e) => setForm({ ...form, billing_entity: e.target.value })}
-              >
-                <option value="">Select billing entity...</option>
-                {filteredBillingEntities.map((be) => (
-                  <option key={be.id} value={be.id}>{be.name}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, billing_entity: v })}
+                options={filteredBillingEntities.map((be) => ({
+                  value: String(be.id),
+                  label: be.name,
+                }))}
+                placeholder="Select billing entity..."
+              />
             </div>
             <div className="form-group">
               <label>Year New *</label>

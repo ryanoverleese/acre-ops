@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import SearchableSelect from './SearchableSelect';
 
 export interface InlineCellProps {
   fieldSeasonId: number | null;
@@ -40,27 +41,42 @@ export default function InlineCell({ fieldSeasonId, field, value, type, options,
   }
 
   if (type === 'select') {
+    const sorted = options?.slice().sort((a, b) => a.label.localeCompare(b.label)) || [];
+    const useSearchable = sorted.length >= 15;
     return (
       <div style={{ position: 'relative' }}>
-        <select
-          value={value as string || ''}
-          onChange={(e) => handleChange(e.target.value || null)}
-          disabled={isSaving}
-          style={{
-            width: '100%',
-            padding: '4px 6px',
-            fontSize: '12px',
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)',
-            transition: 'background 0.3s',
-          }}
-        >
-          <option value="">—</option>
-          {options?.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
+        {useSearchable ? (
+          <SearchableSelect
+            value={value as string || ''}
+            onChange={(v) => handleChange(v || null)}
+            options={sorted}
+            disabled={isSaving}
+            style={{
+              background: justSaved ? 'var(--accent-primary-dim)' : undefined,
+              transition: 'background 0.3s',
+            }}
+          />
+        ) : (
+          <select
+            value={value as string || ''}
+            onChange={(e) => handleChange(e.target.value || null)}
+            disabled={isSaving}
+            style={{
+              width: '100%',
+              padding: '4px 6px',
+              fontSize: '12px',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)',
+              transition: 'background 0.3s',
+            }}
+          >
+            <option value="">—</option>
+            {sorted.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        )}
         {isSaving && (
           <span style={{ position: 'absolute', right: '24px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>
         )}

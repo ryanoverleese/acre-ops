@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useCallback } from 'react';
 import EmptyState from '@/components/EmptyState';
+import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 export interface ProcessedProbe {
@@ -895,27 +896,27 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Billing Entity</label>
-                  <select
+                  <SearchableSelect
                     value={addForm.billing_entity}
-                    onChange={(e) => setAddForm({ ...addForm, billing_entity: e.target.value })}
-                  >
-                    <option value="">Select billing entity...</option>
-                    {billingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setAddForm({ ...addForm, billing_entity: v })}
+                    options={billingEntities.map((be) => ({
+                      value: String(be.id),
+                      label: be.name,
+                    }))}
+                    placeholder="Select billing entity..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Contact</label>
-                  <select
+                  <SearchableSelect
                     value={addForm.contact}
-                    onChange={(e) => setAddForm({ ...addForm, contact: e.target.value })}
-                  >
-                    <option value="">Select contact...</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.operationName})</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setAddForm({ ...addForm, contact: v })}
+                    options={contacts.map((c) => ({
+                      value: String(c.id),
+                      label: `${c.name} (${c.operationName})`,
+                    }))}
+                    placeholder="Select contact..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Year New</label>
@@ -1025,27 +1026,27 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Billing Entity</label>
-                  <select
+                  <SearchableSelect
                     value={editForm.billing_entity}
-                    onChange={(e) => setEditForm({ ...editForm, billing_entity: e.target.value })}
-                  >
-                    <option value="">Select billing entity...</option>
-                    {billingEntities.map((be) => (
-                      <option key={be.id} value={be.id}>{be.name}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditForm({ ...editForm, billing_entity: v })}
+                    options={billingEntities.map((be) => ({
+                      value: String(be.id),
+                      label: be.name,
+                    }))}
+                    placeholder="Select billing entity..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Contact</label>
-                  <select
+                  <SearchableSelect
                     value={editForm.contact}
-                    onChange={(e) => setEditForm({ ...editForm, contact: e.target.value })}
-                  >
-                    <option value="">Select contact...</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.operationName})</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditForm({ ...editForm, contact: v })}
+                    options={contacts.map((c) => ({
+                      value: String(c.id),
+                      label: `${c.name} (${c.operationName})`,
+                    }))}
+                    placeholder="Select contact..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Year New</label>

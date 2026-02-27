@@ -9,6 +9,7 @@ import EditSeasonModal, { createEditSeasonForm } from '@/components/fields/EditS
 import AddFieldModal from '@/components/fields/AddFieldModal';
 import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
+import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from './page';
 
@@ -1701,12 +1702,18 @@ export default function FieldsClient({
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <select value={currentOperation} onChange={(e) => setCurrentOperation(e.target.value)}>
-                    <option value="all">All Operations</option>
-                    {operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => (
-                      <option key={op.id} value={op.id.toString()}>{op.name}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={currentOperation}
+                    onChange={(v) => setCurrentOperation(v)}
+                    options={[
+                      { value: 'all', label: 'All Operations' },
+                      ...operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => ({
+                        value: op.id.toString(),
+                        label: op.name,
+                      })),
+                    ]}
+                    placeholder="All Operations"
+                  />
                   <button
                     className="btn btn-secondary"
                     onClick={() => {

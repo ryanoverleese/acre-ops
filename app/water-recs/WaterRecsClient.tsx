@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { OperationGroup, WaterRecRecord } from './page';
 
 interface WaterRecsClientProps {
@@ -426,19 +427,19 @@ export default function WaterRecsClient({
       <div className="content">
       {/* Controls */}
       <div className="wr-controls">
-        <select
+        <SearchableSelect
           className="wr-select"
-          value={selectedOperationId || ''}
-          onChange={(e) => setSelectedOperationId(parseInt(e.target.value) || null)}
-        >
-          {operations.length === 0 && <option value="">No operations with active probes</option>}
-          {operations.map(op => (
-            <option key={op.id} value={op.id}>
-              {op.name} ({op.fields.length} fields)
-              {opsNeedingReports.some(o => o.id === op.id) ? ' *' : ''}
-            </option>
-          ))}
-        </select>
+          value={selectedOperationId ? String(selectedOperationId) : ''}
+          onChange={(v) => setSelectedOperationId(parseInt(v) || null)}
+          options={operations.length === 0
+            ? [{ value: '', label: 'No operations with active probes' }]
+            : operations.map(op => ({
+                value: String(op.id),
+                label: `${op.name} (${op.fields.length} fields)${opsNeedingReports.some(o => o.id === op.id) ? ' *' : ''}`,
+              }))
+          }
+          placeholder="Select operation..."
+        />
 
         <input
           type="date"

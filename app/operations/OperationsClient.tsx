@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+import SearchableSelect from '@/components/SearchableSelect';
 
 export interface LinkedContact {
   contactId: number;
@@ -594,16 +595,16 @@ export default function OperationsClient({ operations: initialOperations, allCon
                     </button>
                   ) : (
                     <div className="ops-contact-form">
-                      <select
+                      <SearchableSelect
                         className="ops-full-width"
                         value={newContactId}
-                        onChange={(e) => setNewContactId(e.target.value)}
-                      >
-                        <option value="">Select contact...</option>
-                        {availableContacts.map((c) => (
-                          <option key={c.id} value={c.id}>{c.name}</option>
-                        ))}
-                      </select>
+                        onChange={(v) => setNewContactId(v)}
+                        options={availableContacts.map((c) => ({
+                          value: String(c.id),
+                          label: c.name,
+                        }))}
+                        placeholder="Select contact..."
+                      />
                       <label className="ops-checkbox-label">
                         <input
                           type="checkbox"

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { ApprovalItem, EnrolledOperation } from './page';
 
 interface OperationSummary {
@@ -489,25 +490,25 @@ export default function ApprovalsClient({
               ))}
             </select>
 
-            <select
+            <SearchableSelect
               className="approvals-filter-select-op"
-              value={selectedOperation}
-              onChange={(e) => setSelectedOperation(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-            >
-              <option value="all">All Operations</option>
-              {operationSummaries.map((op) => (
-                <option key={op.id} value={op.id}>
-                  {op.name} ({op.pendingCount} pending)
-                </option>
-              ))}
-              {enrolledOperations
-                .filter((eo) => !operationSummaries.some((os) => os.id === eo.id))
-                .map((op) => (
-                  <option key={op.id} value={op.id}>
-                    {op.name} (enrolled)
-                  </option>
-                ))}
-            </select>
+              value={typeof selectedOperation === 'number' ? String(selectedOperation) : 'all'}
+              onChange={(v) => setSelectedOperation(v === 'all' ? 'all' : parseInt(v))}
+              options={[
+                { value: 'all', label: 'All Operations' },
+                ...operationSummaries.map((op) => ({
+                  value: String(op.id),
+                  label: `${op.name} (${op.pendingCount} pending)`,
+                })),
+                ...enrolledOperations
+                  .filter((eo) => !operationSummaries.some((os) => os.id === eo.id))
+                  .map((op) => ({
+                    value: String(op.id),
+                    label: `${op.name} (enrolled)`,
+                  })),
+              ]}
+              placeholder="All Operations"
+            />
 
             <div className="search-box approvals-search">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

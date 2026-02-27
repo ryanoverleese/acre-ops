@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { ProbeOption } from './page';
 
 const InstallsMap = dynamic(() => import('@/components/InstallsMap'), { ssr: false });
@@ -832,17 +833,17 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 <span className="season-badge" style={{ marginLeft: 8 }}>{filteredInstalled.length}</span>
               </h3>
               <div className="table-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select
+                <SearchableSelect
                   value={operationFilter}
-                  onChange={(e) => { setOperationFilter(e.target.value); setSelectedProbeIds(new Set()); }}
+                  onChange={(v) => { setOperationFilter(v); setSelectedProbeIds(new Set()); }}
+                  options={[
+                    { value: 'all', label: 'All Operations' },
+                    ...installedOperations.map(op => ({ value: op, label: op })),
+                  ]}
+                  placeholder="All Operations"
                   className="install-filter-select"
                   style={{ minWidth: 140 }}
-                >
-                  <option value="all">All Operations</option>
-                  {installedOperations.map(op => (
-                    <option key={op} value={op}>{op}</option>
-                  ))}
-                </select>
+                />
                 <button
                   className={`btn ${showMap ? 'btn-primary' : 'btn-secondary'}`}
                   style={{ fontSize: 13 }}
@@ -1431,31 +1432,25 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             <div className="detail-panel-content">
               <div className="form-group">
                 <label>Select Operation</label>
-                <select
+                <SearchableSelect
                   value={pickerOperation}
-                  onChange={(e) => { setPickerOperation(e.target.value); setPickerField(''); }}
+                  onChange={(v) => { setPickerOperation(v); setPickerField(''); }}
+                  options={pickerOperations.map(op => ({ value: op, label: op }))}
+                  placeholder="Choose an operation..."
                   className="install-form-input"
-                >
-                  <option value="">Choose an operation...</option>
-                  {pickerOperations.map(op => (
-                    <option key={op} value={op}>{op}</option>
-                  ))}
-                </select>
+                />
               </div>
 
               {pickerOperation && (
                 <div className="form-group">
                   <label>Select Field</label>
-                  <select
+                  <SearchableSelect
                     value={pickerField}
-                    onChange={(e) => setPickerField(e.target.value)}
+                    onChange={(v) => setPickerField(v)}
+                    options={pickerFields.map(([name]) => ({ value: name, label: name }))}
+                    placeholder="Choose a field..."
                     className="install-form-input"
-                  >
-                    <option value="">Choose a field...</option>
-                    {pickerFields.map(([name]) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
+                  />
                 </div>
               )}
 

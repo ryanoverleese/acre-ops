@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { ProcessedWeatherStation, BillingEntityOption } from './page';
+import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 const WeatherStationsMap = dynamic(() => import('@/components/WeatherStationsMap'), {
@@ -335,14 +336,16 @@ export default function WeatherStationsClient({
             <option value="all">All Statuses</option>
             {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
-          <select
+          <SearchableSelect
             value={filterBE}
-            onChange={(e) => setFilterBE(e.target.value)}
+            onChange={(v) => setFilterBE(v)}
+            options={[
+              { value: 'all', label: 'All Billing Entities' },
+              ...beWithStations.map(be => ({ value: String(be.id), label: be.name })),
+            ]}
+            placeholder="All Billing Entities"
             className="ws-filter-select"
-          >
-            <option value="all">All Billing Entities</option>
-            {beWithStations.map(be => <option key={be.id} value={String(be.id)}>{be.name}</option>)}
-          </select>
+          />
           <select
             value={filterConnectivity}
             onChange={(e) => setFilterConnectivity(e.target.value)}
@@ -566,10 +569,12 @@ export default function WeatherStationsClient({
                 </div>
                 <div className="form-group">
                   <label>Billing Entity</label>
-                  <select value={form.billingEntity} onChange={(e) => setForm({ ...form, billingEntity: e.target.value })}>
-                    <option value="">Select billing entity...</option>
-                    {billingEntities.map(be => <option key={be.id} value={String(be.id)}>{be.name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    value={form.billingEntity}
+                    onChange={(v) => setForm({ ...form, billingEntity: v })}
+                    options={billingEntities.map(be => ({ value: String(be.id), label: be.name }))}
+                    placeholder="Select billing entity..."
+                  />
                 </div>
                 <div className="form-row">
                   <div className="form-group">

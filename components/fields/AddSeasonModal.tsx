@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 
 interface AddSeasonForm {
   season: string;
@@ -146,27 +147,26 @@ export default function AddSeasonModal({
               </div>
               <div className="form-group">
                 <label>Crop</label>
-                <select value={form.crop} onChange={(e) => setForm({ ...form, crop: e.target.value })}>
-                  <option value="">Select crop...</option>
-                  {seasonOpts.crop.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  value={form.crop}
+                  onChange={(v) => setForm({ ...form, crop: v })}
+                  options={seasonOpts.crop.slice().sort((a, b) => a.label.localeCompare(b.label))}
+                  placeholder="Select crop..."
+                />
               </div>
             </div>
             <div className="form-row">
               <div className="form-group">
                 <label>Service Type</label>
-                <select value={form.service_type} onChange={(e) => {
-                  const serviceType = e.target.value;
-                  const rate = getRateForServiceType(serviceType);
-                  setForm({ ...form, service_type: serviceType, billing_rate: rate });
-                }}>
-                  <option value="">Select...</option>
-                  {productTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label)).map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  value={form.service_type}
+                  onChange={(v) => {
+                    const rate = getRateForServiceType(v);
+                    setForm({ ...form, service_type: v, billing_rate: rate });
+                  }}
+                  options={productTypeOptions.slice().sort((a, b) => a.label.localeCompare(b.label))}
+                  placeholder="Select..."
+                />
               </div>
               <div className="form-group">
                 <label>Billing Rate ($)</label>
