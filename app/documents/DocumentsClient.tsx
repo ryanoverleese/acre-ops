@@ -39,7 +39,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
   const [allItems, setAllItems] = useState<ProcessedDocument[]>(initialDocuments);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [saving, setSaving] = useState(false);
-  const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null });
+  const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null, date: '' });
 
   const docs = useMemo(() => allItems.filter((d) => d.fileUrl), [allItems]);
   const notes = useMemo(() => allItems.filter((d) => !d.fileUrl), [allItems]);
@@ -60,6 +60,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
       if (uploadForm.file) formData.append('file', uploadForm.file);
       formData.append('name', uploadForm.name);
       if (uploadForm.description) formData.append('description', uploadForm.description);
+      if (uploadForm.date) formData.append('date', uploadForm.date);
       formData.append('uploaded_by', session?.user?.name || 'Unknown');
 
       const response = await fetch('/api/documents', {
@@ -69,7 +70,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
 
       if (response.ok) {
         setModalMode(null);
-        setUploadForm({ name: '', description: '', file: null });
+        setUploadForm({ name: '', description: '', file: null, date: '' });
         window.location.reload();
       } else {
         const error = await response.json();
@@ -309,6 +310,17 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
                     className="input"
                     accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg"
                     onChange={(e) => setUploadForm({ ...uploadForm, file: e.target.files?.[0] || null })}
+                  />
+                </div>
+              )}
+              {modalMode === 'note' && (
+                <div className="form-group">
+                  <label>Date</label>
+                  <input
+                    type="date"
+                    className="input"
+                    value={uploadForm.date}
+                    onChange={(e) => setUploadForm({ ...uploadForm, date: e.target.value })}
                   />
                 </div>
               )}

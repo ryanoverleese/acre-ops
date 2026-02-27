@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File | null;
     const name = formData.get('name') as string;
     const description = formData.get('description') as string | null;
+    const date = formData.get('date') as string | null;
     const uploadedBy = formData.get('uploaded_by') as string;
 
     if (!name) {
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
     const payload: Record<string, unknown> = {
       name,
       uploaded_by: uploadedBy,
-      uploaded_at: new Date().toISOString(),
+      uploaded_at: date || new Date().toISOString(),
     };
     if (description) payload.description = description;
 
