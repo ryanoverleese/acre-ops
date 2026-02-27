@@ -8227,7 +8227,9 @@ input[type="date"]:focus {
   .fields-enrolled-bar,
   .mobile-card-actions,
   .fields-bulk-bar,
-  select,
+  .header select,
+  .fields-filter-row select,
+  .season-selector select,
   input[type="checkbox"],
   input[type="range"] {
     display: none !important;
@@ -8310,6 +8312,26 @@ input[type="date"]:focus {
   .fields-probe-expand-cell {
     background: #fafafa !important;
     padding: 4pt !important;
+  }
+
+  /* Show probe data selects/inputs as plain text for print */
+  .fields-probe-expand-cell select,
+  .fields-probe-expand-cell input {
+    display: inline-block !important;
+    border: none !important;
+    background: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 8pt !important;
+    color: #000 !important;
+  }
+
+  /* Hide action buttons in probe expand rows */
+  .fields-probe-expand-cell .btn,
+  .fields-probe-expand-cell button {
+    display: none !important;
   }
 
   /* Detail panels: clean single-column layout */

@@ -1712,25 +1712,22 @@ export default function FieldsClient({
                   <button
                     className="btn btn-secondary"
                     onClick={() => {
-                      const allIds = filteredFields.filter(f => f.fieldSeasonId).map(f => f.fieldSeasonId!);
-                      setExpandedFieldSeasons(new Set(allIds));
+                      if (expandedFieldSeasons.size > 0) {
+                        setExpandedFieldSeasons(new Set());
+                      } else {
+                        const allIds = filteredFields.filter(f => f.fieldSeasonId).map(f => f.fieldSeasonId!);
+                        setExpandedFieldSeasons(new Set(allIds));
+                      }
                     }}
-                    title="Expand all probes"
+                    title={expandedFieldSeasons.size > 0 ? 'Collapse all probes' : 'Expand all probes'}
                   >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      {expandedFieldSeasons.size > 0
+                        ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      }
                     </svg>
-                    Expand
-                  </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => setExpandedFieldSeasons(new Set())}
-                    title="Collapse all probes"
-                  >
-                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                    </svg>
-                    Collapse
+                    {expandedFieldSeasons.size > 0 ? 'Collapse' : 'Expand'}
                   </button>
                   <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
