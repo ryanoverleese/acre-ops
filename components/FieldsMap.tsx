@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import type { MeasureMode } from './MeasureTool';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -98,12 +99,21 @@ const PLSSOverlay = dynamic(
   { ssr: false }
 );
 
+const MeasureTool = dynamic(
+  () => import('./MeasureTool'),
+  { ssr: false }
+);
+
 export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }: FieldsMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
+  const [measureMode, setMeasureMode] = useState<MeasureMode>(null);
+  const [showMeasureMenu, setShowMeasureMenu] = useState(false);
+  const [clearMeasureCounter, setClearMeasureCounter] = useState(0);
   const mapRef = useRef<HTMLDivElement>(null);
+  const measureMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -128,6 +138,18 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isFullscreen]);
+
+  // Close measure menu when clicking outside
+  useEffect(() => {
+    if (!showMeasureMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (measureMenuRef.current && !measureMenuRef.current.contains(e.target as Node)) {
+        setShowMeasureMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMeasureMenu]);
 
   // Invalidate map size when fullscreen changes
   useEffect(() => {
@@ -211,6 +233,90 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
     <div className={isFullscreen ? '' : 'fields-map'} style={fullscreenStyle} ref={mapRef}>
       {/* Top-right controls */}
       <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 1000, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {/* Measure tool */}
+        <div ref={measureMenuRef} style={{ position: 'relative' }}>
+          <button
+            onClick={() => setShowMeasureMenu(!showMeasureMenu)}
+            style={{
+              ...controlStyle,
+              color: measureMode ? '#facc15' : 'var(--text-secondary)',
+            }}
+            title="Measure distances and areas"
+          >
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21l18-18M5.5 18.5l1-1M8.5 15.5l1-1M11.5 12.5l1-1M14.5 9.5l1-1M17.5 6.5l1-1" />
+            </svg>
+            Measure
+          </button>
+          {showMeasureMenu && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                marginTop: '4px',
+                background: 'var(--bg-primary)',
+                borderRadius: '6px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+                padding: '4px',
+                zIndex: 1001,
+                display: 'flex',
+                flexDirection: 'column' as const,
+                gap: '2px',
+                minWidth: '140px',
+              }}
+            >
+              {([
+                { mode: 'line' as MeasureMode, icon: '📏', label: 'Distance' },
+                { mode: 'polygon' as MeasureMode, icon: '⬡', label: 'Area (Polygon)' },
+                { mode: 'circle' as MeasureMode, icon: '⊙', label: 'Area (Circle)' },
+              ] as const).map((item) => (
+                <button
+                  key={item.mode}
+                  onClick={() => {
+                    if (measureMode === item.mode) {
+                      setMeasureMode(null);
+                    } else {
+                      setMeasureMode(item.mode);
+                    }
+                    setShowMeasureMenu(false);
+                  }}
+                  style={{
+                    ...controlStyle,
+                    boxShadow: 'none',
+                    width: '100%',
+                    justifyContent: 'flex-start' as const,
+                    background: measureMode === item.mode ? 'var(--bg-secondary)' : 'transparent',
+                    color: measureMode === item.mode ? '#facc15' : 'var(--text-secondary)',
+                  }}
+                >
+                  <span>{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+              <div style={{ borderTop: '1px solid var(--border-primary)', margin: '2px 0' }} />
+              <button
+                onClick={() => {
+                  setClearMeasureCounter((c) => c + 1);
+                  setMeasureMode(null);
+                  setShowMeasureMenu(false);
+                }}
+                style={{
+                  ...controlStyle,
+                  boxShadow: 'none',
+                  width: '100%',
+                  justifyContent: 'flex-start' as const,
+                  background: 'transparent',
+                  color: 'var(--accent-red, #dc2626)',
+                }}
+              >
+                <span>✕</span>
+                Clear All
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* PLSS Grid toggle */}
         <label style={{ ...controlStyle, cursor: 'pointer' }}>
           <input
@@ -287,6 +393,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
         <PLSSOverlay show={showPLSS} />
+        <MeasureTool mode={measureMode} onModeChange={setMeasureMode} clearSignal={clearMeasureCounter} />
         {mappableFields.map((field) => {
           const popupContent = (
             <Popup>
