@@ -11,6 +11,7 @@ export interface CreateProbeModalProps {
   onCreated: (newProbeId: number, newProbeOption: {
     id: number;
     serialNumber: string;
+    brand: string;
     ownerBillingEntity: string;
     ownerOperationName: string;
     status: string;
@@ -59,6 +60,7 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
         onCreated(newProbe.id, {
           id: newProbe.id,
           serialNumber: newProbe.serial_number || '',
+          brand: form.brand || '',
           ownerBillingEntity: be?.name || 'On Order',
           ownerOperationName: be?.operationName || '',
           status: 'On Order',

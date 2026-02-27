@@ -319,7 +319,7 @@ export default function EditSeasonModal({
                   options={[
                     ...getProbesForField(field.operation, field.probeId).map((p) => ({
                       value: String(p.id),
-                      label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity}`,
+                      label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbeId ? 'Assigned' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                     })),
                     { value: '__create_new__', label: '+ Add New Probe' },
                   ]}
@@ -340,7 +340,7 @@ export default function EditSeasonModal({
                   options={[
                     ...getProbesForField(field.operation, field.probe2Id).map((p) => ({
                       value: String(p.id),
-                      label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity}`,
+                      label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbe2Id ? 'Assigned' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                     })),
                     { value: '__create_new__', label: '+ Add New Probe' },
                   ]}

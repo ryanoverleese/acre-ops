@@ -2083,7 +2083,7 @@ export default function FieldsClient({
                                             options={[
                                               ...getProbesForField(field.operation, pa.probeId).map(p => ({
                                                 value: p.id.toString(),
-                                                label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} (${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity})`,
+                                                label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                                               })),
                                               { value: '__create_new__', label: '+ Add New Probe' },
                                             ]}

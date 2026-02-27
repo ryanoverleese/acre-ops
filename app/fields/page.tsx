@@ -126,6 +126,7 @@ export interface BillingEntityOption {
 export interface ProbeOption {
   id: number;
   serialNumber: string;
+  brand: string;
   ownerBillingEntity: string;
   ownerOperationName: string;
   status: string;
@@ -428,6 +429,7 @@ async function getFieldsData(): Promise<{
       return {
         id: p.id,
         serialNumber: p.serial_number || '',
+        brand: p.brand?.value || '',
         ownerBillingEntity: beName,
         ownerOperationName: ownerOpName,
         status: p.status?.value || 'Unknown',
