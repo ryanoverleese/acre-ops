@@ -99,7 +99,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
 const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
   fieldData: ['field', 'operation', 'acres', 'pivotAcres', 'irrigationType', 'waterSource', 'fuelSource', 'soilType', 'elevation'],
   signup: ['field', 'operation', 'billingEntity', 'crop', 'service'],
-  seasonSetup: ['field', 'crop', 'hybrid', 'antenna', 'battery', 'sideDress', 'earlyInstall', 'loggerId', 'probes'],
+  seasonSetup: ['field', 'crop', 'hybrid', 'sideDress', 'earlyInstall', 'loggerId', 'probes'],
   installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
   activeSeason: ['field', 'operation', 'probes', 'probeStatus', 'installDate', 'approvalStatus'],
   removal: ['field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
