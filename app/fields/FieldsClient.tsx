@@ -1709,13 +1709,29 @@ export default function FieldsClient({
                       <option key={op.id} value={op.id.toString()}>{op.name}</option>
                     ))}
                   </select>
-                  <select value={currentIrrigationType} onChange={(e) => setCurrentIrrigationType(e.target.value)}>
-                    <option value="all">All Irrigation</option>
-                    {fieldOpts.irrigation_type.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                    <option value="Unknown">Unknown</option>
-                  </select>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      const allIds = filteredFields.filter(f => f.fieldSeasonId).map(f => f.fieldSeasonId!);
+                      setExpandedFieldSeasons(new Set(allIds));
+                    }}
+                    title="Expand all probes"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Expand
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setExpandedFieldSeasons(new Set())}
+                    title="Collapse all probes"
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                    </svg>
+                    Collapse
+                  </button>
                   <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
