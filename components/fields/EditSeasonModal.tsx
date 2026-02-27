@@ -16,8 +16,6 @@ export interface DynamicSeasonOptions {
   early_removal: OptionList;
   ready_to_remove: OptionList;
   planned_installer: OptionList;
-  antenna_type: OptionList;
-  battery_type: OptionList;
 }
 
 export interface EditSeasonModalProps {
@@ -40,10 +38,6 @@ export interface EditSeasonModalProps {
 export interface EditSeasonForm {
   crop: string;
   service_type: string;
-  antenna_type: string;
-  battery_type: string;
-  probe2_antenna_type: string;
-  probe2_battery_type: string;
   side_dress: string;
   logger_id: string;
   early_removal: string;
@@ -59,10 +53,6 @@ export interface EditSeasonForm {
 export const createEditSeasonForm = (field: ProcessedField, getRateForServiceType: (st: string) => string): EditSeasonForm => ({
   crop: field.crop || '',
   service_type: field.serviceTypeId ? String(field.serviceTypeId) : '',
-  antenna_type: field.antennaType || '',
-  battery_type: field.batteryType || '',
-  probe2_antenna_type: field.probe2AntennaType || '',
-  probe2_battery_type: field.probe2BatteryType || '',
   side_dress: field.sideDress || '',
   logger_id: field.loggerId || '',
   early_removal: field.earlyRemoval || '',
@@ -124,12 +114,11 @@ export default function EditSeasonModal({
       });
 
       // Helper to save a probe via probe_assignments
+      // Note: antenna_type and battery_type are managed in the probe expand rows, not here
       const saveProbeAssignment = async (
         assignmentId: number | null,
         probeNumber: number,
         selectedId: string,
-        antennaType: string | undefined,
-        batteryType: string | undefined,
       ) => {
         const probeId = selectedId ? parseInt(selectedId, 10) : 0;
         if (assignmentId) {
@@ -140,8 +129,6 @@ export default function EditSeasonModal({
             body: JSON.stringify({
               probe: probeId,
               probe_status: probeId ? 'Assigned' : 'Unassigned',
-              antenna_type: clean(antennaType),
-              battery_type: clean(batteryType),
             }),
           });
         } else if (probeId) {
@@ -153,8 +140,6 @@ export default function EditSeasonModal({
               field_season: field.fieldSeasonId,
               probe_number: probeNumber,
               probe: probeId,
-              antenna_type: clean(antennaType),
-              battery_type: clean(batteryType),
             }),
           });
         }
@@ -162,8 +147,8 @@ export default function EditSeasonModal({
 
       // Save probe 1 and probe 2 via probe_assignments (both use same pattern)
       await Promise.all([
-        saveProbeAssignment(field.probeAssignmentId, 1, selectedProbeId, form.antenna_type, form.battery_type),
-        saveProbeAssignment(field.probe2AssignmentId, 2, selectedProbe2Id, form.probe2_antenna_type, form.probe2_battery_type),
+        saveProbeAssignment(field.probeAssignmentId, 1, selectedProbeId),
+        saveProbeAssignment(field.probe2AssignmentId, 2, selectedProbe2Id),
       ]);
       if (response.ok) {
         // Create/update invoice line if billing_rate is provided
@@ -258,24 +243,6 @@ export default function EditSeasonModal({
               </div>
             </div>
             <div className="form-row">
-              <div className="form-group">
-                <label>Antenna Type</label>
-                <select value={form.antenna_type} onChange={(e) => setForm({ ...form, antenna_type: e.target.value })}>
-                  <option value="">Select...</option>
-                  {seasonOpts.antenna_type.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="form-group">
-                <label>Battery Type</label>
-                <select value={form.battery_type} onChange={(e) => setForm({ ...form, battery_type: e.target.value })}>
-                  <option value="">Select...</option>
-                  {seasonOpts.battery_type.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
               <div className="form-group">
                 <label>Side Dress</label>
                 <select value={form.side_dress} onChange={(e) => setForm({ ...form, side_dress: e.target.value })}>
@@ -381,30 +348,6 @@ export default function EditSeasonModal({
                 />
               </div>
             </div>
-            {/* Probe 2 Equipment - only shown when probe 2 is assigned */}
-            {selectedProbe2Id && (
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Probe 2 Antenna Type</label>
-                  <select value={form.probe2_antenna_type} onChange={(e) => setForm({ ...form, probe2_antenna_type: e.target.value })}>
-                    <option value="">Select...</option>
-                    {seasonOpts.antenna_type.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Probe 2 Battery Type</label>
-                  <select value={form.probe2_battery_type} onChange={(e) => setForm({ ...form, probe2_battery_type: e.target.value })}>
-                    <option value="">Select...</option>
-                    {seasonOpts.battery_type.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
             {/* Install Planning Section */}
             <div style={{ borderTop: '1px solid var(--border)', marginTop: '16px', paddingTop: '16px' }}>
               <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-secondary)' }}>Install Planning</h4>

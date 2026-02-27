@@ -66,8 +66,6 @@ export interface DynamicSeasonOptions {
   side_dress: OptionList;
   early_removal: OptionList;
   ready_to_remove: OptionList;
-  antenna_type: OptionList;
-  battery_type: OptionList;
 }
 
 export interface AddFieldModalProps {

@@ -106,8 +106,6 @@ interface DynamicSeasonOptions {
   early_install: OptionList;
   ready_to_remove: OptionList;
   planned_installer: OptionList;
-  antenna_type: OptionList;
-  battery_type: OptionList;
 }
 
 interface RenderCellProps {

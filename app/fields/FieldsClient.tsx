@@ -378,9 +378,7 @@ export default function FieldsClient({
     early_install: toOptions(selectOptions.field_seasons.early_install),
     ready_to_remove: toOptions(selectOptions.field_seasons.ready_to_remove),
     planned_installer: toOptions(selectOptions.field_seasons.planned_installer),
-    antenna_type: toOptions(selectOptions.probe_assignments.antenna_type),
-    battery_type: toOptions(selectOptions.probe_assignments.battery_type),
-  }), [selectOptions.field_seasons, selectOptions.probe_assignments]);
+  }), [selectOptions.field_seasons]);
 
   // Helper to get rate for a service type
   const getRateForServiceType = useCallback((serviceType: string): string => {
