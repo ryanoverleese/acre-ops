@@ -8180,3 +8180,161 @@ input[type="date"]:focus {
   gap: 4px;
 }
 
+/* ====================================================================
+   PRINT STYLES
+   ==================================================================== */
+
+@media print {
+  /* Force light background and dark text for ink-friendly printing */
+  * {
+    color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 11pt !important;
+  }
+
+  /* Hide navigation, controls, and interactive elements */
+  .sidebar,
+  .mobile-header,
+  .mobile-overlay,
+  .no-print,
+  .btn,
+  .fields-col-picker,
+  .fields-map,
+  .notification-bell-btn,
+  .season-selector,
+  .fields-tabs,
+  .fields-tabs-mobile,
+  .fields-filter-row,
+  .color-by-select,
+  .detail-panel-close,
+  .popup-actions,
+  .leaflet-container,
+  .search-input-wrapper,
+  .fields-search,
+  .fields-enrolled-bar,
+  .mobile-card-actions,
+  .fields-bulk-bar,
+  select,
+  input[type="checkbox"],
+  input[type="range"] {
+    display: none !important;
+  }
+
+  /* Make main content take full width */
+  .main,
+  .main-collapsed {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Header: keep title, hide buttons */
+  .header {
+    border-bottom: 2px solid #000 !important;
+    padding: 8pt 0 !important;
+    margin-bottom: 8pt !important;
+    background: none !important;
+  }
+
+  .header .btn {
+    display: none !important;
+  }
+
+  .header h2 {
+    color: #000 !important;
+    font-size: 16pt !important;
+  }
+
+  .header-right {
+    display: none !important;
+  }
+
+  /* Content area */
+  .content {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* Tables: full width, visible borders, no truncation */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9pt !important;
+  }
+
+  th, td {
+    border: 1px solid #ccc !important;
+    padding: 1pt 4pt !important;
+    background: #fff !important;
+    color: #000 !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    max-width: none !important;
+    line-height: 1.2 !important;
+    font-size: 8pt !important;
+  }
+
+  th {
+    background: #f0f0f0 !important;
+    font-weight: 700 !important;
+  }
+
+  /* Expanded probe rows: show them cleanly */
+  .fields-probe-expand-cell {
+    background: #fafafa !important;
+    padding: 4pt !important;
+  }
+
+  /* Detail panels: clean single-column layout */
+  .detail-panel {
+    position: static !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+    background: #fff !important;
+    color: #000 !important;
+    page-break-inside: avoid;
+  }
+
+  .detail-panel-header {
+    background: #f0f0f0 !important;
+    color: #000 !important;
+    border-bottom: 1px solid #ccc !important;
+  }
+
+  /* Page break control */
+  tr {
+    page-break-inside: avoid;
+  }
+
+  h2, h3 {
+    page-break-after: avoid;
+  }
+
+  /* Status badges: ensure they're readable */
+  .popup-status,
+  .status-badge {
+    border: 1px solid #999 !important;
+    background: #f0f0f0 !important;
+    color: #000 !important;
+  }
+
+  /* Links: show URL */
+  a[href]::after {
+    content: none;
+  }
+
+  /* Remove shadows and rounded corners for cleaner print */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}
+
