@@ -1769,6 +1769,10 @@ a.notification-item {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.stats-grid-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
 .dashboard-section {
   margin-bottom: 24px;
 }
@@ -1812,6 +1816,10 @@ a.notification-item {
   }
 
   .stats-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid-5 {
     grid-template-columns: repeat(2, 1fr);
   }
 }

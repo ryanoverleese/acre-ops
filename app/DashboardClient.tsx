@@ -158,6 +158,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           const newOps = bookings.filter(b => b.status === 'new').length;
           const activeOps = bookings.filter(b => b.status !== 'still-to-go');
           const totalProbesAssigned = activeOps.reduce((sum, b) => sum + b.probes2026, 0);
+          const totalEnrolledFields = activeOps.reduce((sum, b) => sum + b.fields2026, 0);
 
           const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
           const sorted = [...bookings].sort((a, b) => {
@@ -187,7 +188,12 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           return (
             <div className="dashboard-section">
               <h3 className="section-label">2026 Booking Tracker</h3>
-              <div className="stats-grid stats-grid-4">
+              <div className="stats-grid stats-grid-5">
+                <div className="stat-card">
+                  <div className="stat-label">Enrolled Fields</div>
+                  <div className="stat-value">{totalEnrolledFields}</div>
+                  <div className="stat-change">2026 season</div>
+                </div>
                 <div className="stat-card">
                   <div className="stat-label">New Operations</div>
                   <div className="stat-value blue">{newOps}</div>
