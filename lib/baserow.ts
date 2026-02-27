@@ -69,6 +69,7 @@ export const TABLE_IDS = {
   orders: 831072,
   order_items: 831073,
   notifications: 854433,
+  documents: 861653,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -543,6 +544,19 @@ export interface Notification {
 }
 
 export const getNotifications = (options?: FetchOptions) => getRows<Notification>('notifications', options);
+
+export interface Document {
+  id: number;
+  name?: string;
+  file?: { url: string; name: string; size: number; mime_type: string; is_image: boolean }[];
+  description?: string;
+  uploaded_by?: string;
+  uploaded_at?: string;
+}
+
+export async function getDocuments(): Promise<Document[]> {
+  return getRows<Document>('documents', { orderBy: '-uploaded_at' });
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Field metadata: fetch single_select options from Baserow table schema

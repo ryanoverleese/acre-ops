@@ -56,6 +56,7 @@ const navSections: NavSection[] = [
     title: 'Admin',
     items: [
       { name: 'AI Chat', href: '/chat', icon: 'message-circle' },
+      { name: 'Documents', href: '/documents', icon: 'file-text' },
       { name: 'Settings', href: '/settings', icon: 'settings' },
     ],
   },
@@ -141,6 +142,11 @@ const icons: Record<string, ReactNode> = {
   'message-circle': (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+    </svg>
+  ),
+  'file-text': (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
     </svg>
   ),
 };
