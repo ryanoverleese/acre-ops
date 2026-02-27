@@ -44,7 +44,7 @@ function toOptions(opts: { id: number; value: string; color: string }[] | undefi
 // Column definitions for all tabs
 type FieldColumnKey =
   | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
-  | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
+  | 'hybrid' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
   | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval' | 'earlyInstall'
@@ -61,9 +61,7 @@ interface FieldColumnDefinition {
 const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'field', label: 'Field', alwaysVisible: true },
   { key: 'acres', label: 'Acres' },
-  { key: 'antenna', label: 'Antenna' },
   { key: 'approvalStatus', label: 'Approval Status' },
-  { key: 'battery', label: 'Battery' },
   { key: 'billingEntity', label: 'Billing Entity' },
   { key: 'crop', label: 'Crop' },
   { key: 'cropConfirmed', label: 'Crop Confirmed' },
@@ -122,8 +120,8 @@ const FIELD_COLUMN_WIDTHS_STORAGE_KEY = 'fields-column-widths';
 // Convert string px widths to numeric defaults for resizable columns
 const DEFAULT_FIELD_COLUMN_WIDTHS: Record<string, number> = {
   field: 140, operation: 100, billingEntity: 120, crop: 90,
-  service: 90, cropConfirmed: 60, hybrid: 100, antenna: 90,
-  battery: 90, sideDress: 80, loggerId: 80, probes: 100,
+  service: 90, cropConfirmed: 60, hybrid: 100,
+  sideDress: 80, loggerId: 80, probes: 100,
   routeOrder: 60, plannedInstaller: 110, readyToInstall: 60, nrcsField: 60,
   probeStatus: 100, installDate: 100, installer: 100,
   approvalStatus: 100, removalDate: 100, removalNotes: 150,
@@ -234,8 +232,10 @@ export default function FieldsClient({
             validated[tab] = valid as FieldColumnKey[];
           }
         }
-        // Migration: antenna/battery moved to probe_assignments, remove from seasonSetup
-        validated.seasonSetup = validated.seasonSetup.filter(col => col !== 'antenna' && col !== 'battery');
+        // Migration: antenna/battery moved to probe_assignments, remove from all tabs
+        for (const tab of TAB_INFO.map(t => t.key)) {
+          validated[tab] = validated[tab].filter(col => (col as string) !== 'antenna' && (col as string) !== 'battery');
+        }
         setTabColumns(validated);
       }
     } catch (e) {
@@ -273,8 +273,6 @@ export default function FieldsClient({
       case 'cropConfirmed': return (field.crop && field.crop !== 'Unknown') ? 'Yes' : 'No';
       case 'service': return field.serviceType || '—';
       case 'hybrid': return field.hybridVariety || '—';
-      case 'antenna': return field.antennaType || '—';
-      case 'battery': return field.batteryType || '—';
       case 'sideDress': return field.sideDress || '—';
       case 'loggerId': return field.loggerId || '—';
       case 'probes': return [field.probe, field.probe2].filter(Boolean).join(', ') || '—';

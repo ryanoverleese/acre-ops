@@ -165,22 +165,6 @@ export function FieldCell({
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
-    case 'antenna':
-      return (
-        <td key={colKey} onClick={(e) => e.stopPropagation()}>
-          <InlineCell fieldSeasonId={field.fieldSeasonId} field="antennaType" value={field.antennaType} type="select"
-            options={seasonOpts.antenna_type}
-            onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
-        </td>
-      );
-    case 'battery':
-      return (
-        <td key={colKey} onClick={(e) => e.stopPropagation()}>
-          <InlineCell fieldSeasonId={field.fieldSeasonId} field="batteryType" value={field.batteryType} type="select"
-            options={seasonOpts.battery_type}
-            onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
-        </td>
-      );
     case 'sideDress':
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
