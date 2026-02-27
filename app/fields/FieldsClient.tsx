@@ -234,6 +234,8 @@ export default function FieldsClient({
             validated[tab] = valid as FieldColumnKey[];
           }
         }
+        // Migration: antenna/battery moved to probe_assignments, remove from seasonSetup
+        validated.seasonSetup = validated.seasonSetup.filter(col => col !== 'antenna' && col !== 'battery');
         setTabColumns(validated);
       }
     } catch (e) {
