@@ -58,7 +58,7 @@ type FieldColumnKey =
   | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
-  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval'
+  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval' | 'earlyInstall'
   | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
   | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
 
@@ -69,7 +69,7 @@ export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
   routeOrder: '60px', plannedInstaller: '110px', readyToInstall: '60px', nrcsField: '60px',
   probeStatus: '100px', installDate: '100px', installer: '100px',
   approvalStatus: '100px', removalDate: '100px', removalNotes: '150px',
-  readyToRemove: '60px', earlyRemoval: '60px',
+  readyToRemove: '60px', earlyRemoval: '60px', earlyInstall: '80px',
   acres: '80px', pivotAcres: '90px', irrigationType: '110px', rowDirection: '100px',
   waterSource: '100px', fuelSource: '100px', elevation: '80px', soilType: '100px',
   fieldDirections: '150px',
@@ -88,6 +88,7 @@ interface DynamicSeasonOptions {
   crop: OptionList;
   side_dress: OptionList;
   early_removal: OptionList;
+  early_install: OptionList;
   ready_to_remove: OptionList;
   planned_installer: OptionList;
   antenna_type: OptionList;
@@ -278,6 +279,14 @@ export function FieldCell({
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineCell fieldSeasonId={field.fieldSeasonId} field="earlyRemoval" value={field.earlyRemoval} type="select"
             options={seasonOpts.early_removal}
+            onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
+        </td>
+      );
+    case 'earlyInstall':
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineCell fieldSeasonId={field.fieldSeasonId} field="earlyInstall" value={field.earlyInstall} type="select"
+            options={seasonOpts.early_install}
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );

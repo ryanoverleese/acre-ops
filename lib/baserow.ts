@@ -352,6 +352,7 @@ export interface FieldSeason {
   side_dress?: { id: number; value: string };
   logger_id?: string;
   early_removal?: { id: number; value: string };
+  early_install?: { id: number; value: string };
   hybrid_variety?: string;
   ready_to_remove?: { id: number; value: string };
   planting_date?: string;

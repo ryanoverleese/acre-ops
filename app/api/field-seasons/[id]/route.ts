@@ -37,6 +37,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.side_dress !== undefined) updateData.side_dress = body.side_dress;
     if (body.logger_id !== undefined) updateData.logger_id = body.logger_id;
     if (body.early_removal !== undefined) updateData.early_removal = body.early_removal;
+    if (body.early_install !== undefined) updateData.early_install = body.early_install;
     if (body.hybrid_variety !== undefined) updateData.hybrid_variety = body.hybrid_variety;
     if (body.ready_to_remove !== undefined) updateData.ready_to_remove = body.ready_to_remove;
     if (body.planting_date !== undefined) updateData.planting_date = body.planting_date;

@@ -67,6 +67,7 @@ const FIELD_LABELS: Record<string, string> = {
   service_type: 'Service Type',
   side_dress: 'Side Dress',
   early_removal: 'Early Removal',
+  early_install: 'Early Install',
   ready_to_remove: 'Ready to Remove',
   planned_installer: 'Planned Installer',
   antenna_type: 'Antenna Type',
@@ -848,6 +849,74 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
               ))}
             </tbody>
               </table>
+
+              {/* Mobile cards for active rates */}
+              <div className="mobile-cards">
+                {activeRates.length === 0 && inactiveRates.length === 0 && (
+                  <div className="empty-state">No service rates defined. Tap &quot;Add Rate&quot; to create your first one.</div>
+                )}
+                {activeRates.map((rate) => (
+                  <div key={rate.id} className="mobile-card" onClick={() => handleStartEdit(rate)}>
+                    <div className="mobile-card-header">
+                      <span className="mobile-card-title">{rate.serviceType}</span>
+                      <span className="status-badge installed">
+                        <span className="status-dot"></span>
+                        Active
+                      </span>
+                    </div>
+                    <div className="mobile-card-body">
+                      <div className="mobile-card-row">
+                        <span>Rate:</span>
+                        <strong>{formatCurrency(rate.rate)}</strong>
+                      </div>
+                      <div className="mobile-card-row">
+                        <span>Dealer Fee:</span>
+                        <span>{formatCurrency(rate.dealerFee)}</span>
+                      </div>
+                      <div className="mobile-card-row">
+                        <span>Margin:</span>
+                        <strong>{formatCurrency(rate.rate - rate.dealerFee)}</strong>
+                      </div>
+                      {rate.description && (
+                        <div className="mobile-card-row">
+                          <span>Description:</span>
+                          <span>{rate.description}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {inactiveRates.length > 0 && (
+                  <>
+                    <h4 className="section-subtitle">Inactive Rates</h4>
+                    {inactiveRates.map((rate) => (
+                      <div key={rate.id} className="mobile-card" style={{ opacity: 0.6 }} onClick={() => handleToggleStatus(rate)}>
+                        <div className="mobile-card-header">
+                          <span className="mobile-card-title">{rate.serviceType}</span>
+                          <span className="status-badge pending">
+                            <span className="status-dot"></span>
+                            Inactive
+                          </span>
+                        </div>
+                        <div className="mobile-card-body">
+                          <div className="mobile-card-row">
+                            <span>Rate:</span>
+                            <strong>{formatCurrency(rate.rate)}</strong>
+                          </div>
+                          <div className="mobile-card-row">
+                            <span>Dealer Fee:</span>
+                            <span>{formatCurrency(rate.dealerFee)}</span>
+                          </div>
+                          <div className="mobile-card-row">
+                            <span>Margin:</span>
+                            <strong>{formatCurrency(rate.rate - rate.dealerFee)}</strong>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
 
               {inactiveRates.length > 0 && (
                 <>

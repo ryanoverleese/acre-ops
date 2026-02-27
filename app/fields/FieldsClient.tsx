@@ -47,7 +47,7 @@ type FieldColumnKey =
   | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
-  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval'
+  | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval' | 'earlyInstall'
   | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
   | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
 
@@ -67,6 +67,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'billingEntity', label: 'Billing Entity' },
   { key: 'crop', label: 'Crop' },
   { key: 'cropConfirmed', label: 'Crop Confirmed' },
+  { key: 'earlyInstall', label: 'Early Install' },
   { key: 'earlyRemoval', label: 'Early Removal' },
   { key: 'elevation', label: 'Elevation' },
   { key: 'fieldDirections', label: 'Field Directions' },
@@ -98,7 +99,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
 const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
   fieldData: ['field', 'operation', 'acres', 'pivotAcres', 'irrigationType', 'waterSource', 'fuelSource', 'soilType', 'elevation'],
   signup: ['field', 'operation', 'billingEntity', 'crop', 'service'],
-  seasonSetup: ['field', 'crop', 'hybrid', 'antenna', 'battery', 'sideDress', 'loggerId', 'probes'],
+  seasonSetup: ['field', 'crop', 'hybrid', 'antenna', 'battery', 'sideDress', 'earlyInstall', 'loggerId', 'probes'],
   installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
   activeSeason: ['field', 'operation', 'probes', 'probeStatus', 'installDate', 'approvalStatus'],
   removal: ['field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
@@ -126,7 +127,7 @@ const DEFAULT_FIELD_COLUMN_WIDTHS: Record<string, number> = {
   routeOrder: 60, plannedInstaller: 110, readyToInstall: 60, nrcsField: 60,
   probeStatus: 100, installDate: 100, installer: 100,
   approvalStatus: 100, removalDate: 100, removalNotes: 150,
-  readyToRemove: 60, earlyRemoval: 60,
+  readyToRemove: 60, earlyRemoval: 60, earlyInstall: 80,
   acres: 80, pivotAcres: 90, irrigationType: 110, rowDirection: 100,
   waterSource: 100, fuelSource: 100, elevation: 80, soilType: 100,
   fieldDirections: 150,
@@ -287,6 +288,7 @@ export default function FieldsClient({
       case 'removalNotes': return field.removalNotes || '—';
       case 'readyToRemove': return field.readyToRemove || '—';
       case 'earlyRemoval': return field.earlyRemoval || '—';
+      case 'earlyInstall': return field.earlyInstall || '—';
       case 'acres': return field.acres ? field.acres.toString() : '—';
       case 'pivotAcres': return field.pivotAcres ? field.pivotAcres.toString() : '—';
       case 'irrigationType': return field.irrigationType || '—';
@@ -372,6 +374,7 @@ export default function FieldsClient({
     crop: toOptions(selectOptions.field_seasons.crop),
     side_dress: toOptions(selectOptions.field_seasons.side_dress),
     early_removal: toOptions(selectOptions.field_seasons.early_removal),
+    early_install: toOptions(selectOptions.field_seasons.early_install),
     ready_to_remove: toOptions(selectOptions.field_seasons.ready_to_remove),
     planned_installer: toOptions(selectOptions.field_seasons.planned_installer),
     antenna_type: toOptions(selectOptions.probe_assignments.antenna_type),
@@ -482,6 +485,7 @@ export default function FieldsClient({
         case 'removalNotes': aVal = (a.removalNotes || '').toLowerCase(); bVal = (b.removalNotes || '').toLowerCase(); break;
         case 'readyToRemove': aVal = (a.readyToRemove || '').toLowerCase(); bVal = (b.readyToRemove || '').toLowerCase(); break;
         case 'earlyRemoval': aVal = (a.earlyRemoval || '').toLowerCase(); bVal = (b.earlyRemoval || '').toLowerCase(); break;
+        case 'earlyInstall': aVal = (a.earlyInstall || '').toLowerCase(); bVal = (b.earlyInstall || '').toLowerCase(); break;
         default: aVal = (a.name || '').toLowerCase(); bVal = (b.name || '').toLowerCase();
       }
 
@@ -627,6 +631,10 @@ export default function FieldsClient({
       const apiFieldMap: Record<string, string> = {
         crop: 'crop',
         serviceType: 'service_type',
+        sideDress: 'side_dress',
+        earlyRemoval: 'early_removal',
+        earlyInstall: 'early_install',
+        readyToRemove: 'ready_to_remove',
         routeOrder: 'route_order',
         plannedInstaller: 'planned_installer',
         readyToInstall: 'ready_to_install',
@@ -1124,6 +1132,7 @@ export default function FieldsClient({
             sideDress: '',
             loggerId: '',
             earlyRemoval: '',
+            earlyInstall: '',
             hybridVariety: '',
             readyToRemove: '',
             plantingDate: '',

@@ -56,6 +56,7 @@ export interface ProcessedField {
   sideDress: string;
   loggerId: string;
   earlyRemoval: string;
+  earlyInstall: string;
   hybridVariety: string;
   readyToRemove: string;
   plantingDate: string;
@@ -261,6 +262,7 @@ async function getFieldsData(): Promise<{
           sideDress: '',
           loggerId: '',
           earlyRemoval: '',
+          earlyInstall: '',
           hybridVariety: '',
           readyToRemove: '',
           plantingDate: '',
@@ -330,6 +332,7 @@ async function getFieldsData(): Promise<{
             sideDress: fs.side_dress?.value || '',
             loggerId: fs.logger_id || '',
             earlyRemoval: fs.early_removal?.value || '',
+            earlyInstall: fs.early_install?.value || '',
             hybridVariety: fs.hybrid_variety || '',
             readyToRemove: fs.ready_to_remove?.value || '',
             plantingDate: fs.planting_date || '',
