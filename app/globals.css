@@ -21,7 +21,13 @@
   --accent-amber-dim: rgba(217, 119, 6, 0.1);
   --accent-red: #dc2626;
   --accent-red-dim: rgba(220, 38, 38, 0.1);
+  --accent-red-hover: #b91c1c;
   --accent-orange: #f59e0b;
+  --accent-yellow: #d97706;
+
+  --overlay-light: rgba(0, 0, 0, 0.4);
+  --overlay-medium: rgba(0, 0, 0, 0.5);
+  --overlay-heavy: rgba(0, 0, 0, 0.6);
 
   --border: #e7e5e4;
   --border-strong: #d6d3d1;
@@ -546,7 +552,7 @@ body::before {
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: #b91c1c;
+  background: var(--accent-red-hover);
 }
 
 .btn-sm {
@@ -647,6 +653,9 @@ body::before {
 }
 
 .fields-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 6px 16px;
   border-radius: var(--radius-xs);
   border: none;
@@ -1147,6 +1156,7 @@ tr.clickable-row {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
+  transition: background var(--ease-default);
 }
 
 .popup-btn:hover {
@@ -1315,7 +1325,7 @@ select:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--overlay-heavy);
   z-index: var(--z-mobile-overlay);
 }
 
@@ -1335,11 +1345,15 @@ select:focus {
 }
 
 .mobile-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--sidebar-text-muted);
   cursor: pointer;
   padding: 4px;
+  transition: color var(--ease-default);
 }
 
 .mobile-close-btn:hover {
@@ -1897,7 +1911,7 @@ a.notification-item {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--overlay-light);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -2431,7 +2445,7 @@ input[type="date"]:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--overlay-heavy);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2696,11 +2710,19 @@ input[type="date"]:focus {
 }
 
 .expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
   padding: 4px;
+  transition: color var(--ease-default);
+}
+
+.expand-btn:hover {
+  color: var(--text-primary);
 }
 
 .status-pending {
@@ -2809,8 +2831,9 @@ input[type="date"]:focus {
   color: white;
 }
 
-.approval-action-btn:hover {
-  opacity: 0.9;
+.approval-action-btn:hover:not(:disabled) {
+  background: #0273ad;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .approval-action-btn:disabled {
@@ -3200,7 +3223,7 @@ input[type="date"]:focus {
 .approvals-link-input {
   flex: 1;
   font-size: 12px;
-  font-family: monospace;
+  font-family: inherit;
   padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -6683,7 +6706,7 @@ input[type="date"]:focus {
   background: var(--accent-primary);
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.4);
+  box-shadow: 0 2px 8px rgba(74, 122, 91, 0.4);
   transform: scale(1.05);
 }
 
@@ -6946,7 +6969,7 @@ input[type="date"]:focus {
 }
 
 .fields-approval-dot.pending {
-  background: var(--accent-yellow, #eab308);
+  background: var(--accent-yellow);
 }
 
 .fields-approval-dot.approved {
@@ -6954,7 +6977,7 @@ input[type="date"]:focus {
 }
 
 .fields-approval-dot.rejected {
-  background: var(--accent-red, #ef4444);
+  background: var(--accent-red);
 }
 
 .fields-approval-stat-label {
@@ -6967,7 +6990,7 @@ input[type="date"]:focus {
 }
 
 .fields-approval-stat-val.rejected {
-  color: var(--accent-red, #ef4444);
+  color: var(--accent-red);
 }
 
 .fields-approval-hint {
@@ -7070,7 +7093,7 @@ input[type="date"]:focus {
 }
 
 .fields-reject-btn {
-  color: var(--accent-red, #ef4444);
+  color: var(--accent-red);
 }
 
 .fields-delete-btn {
@@ -8019,7 +8042,7 @@ input[type="date"]:focus {
 
 .wr-update-card.updated {
   border: 2px solid var(--accent-primary);
-  background: rgba(76, 175, 80, 0.05);
+  background: var(--accent-primary-dim);
 }
 
 .wr-update-field-info {
