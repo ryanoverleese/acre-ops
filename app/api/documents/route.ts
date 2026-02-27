@@ -50,24 +50,26 @@ export async function POST(request: NextRequest) {
     const description = formData.get('description') as string | null;
     const uploadedBy = formData.get('uploaded_by') as string;
 
-    if (!file || !name) {
-      return NextResponse.json({ error: 'File and name are required' }, { status: 400 });
-    }
-
-    // Upload file to Baserow storage
-    const uploadedFile = await uploadFileToBaserow(file);
-    if (!uploadedFile) {
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+    if (!name) {
+      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
     }
 
     // Create row in documents table
     const payload: Record<string, unknown> = {
       name,
-      file: [{ name: uploadedFile.name }],
       uploaded_by: uploadedBy,
       uploaded_at: new Date().toISOString(),
     };
     if (description) payload.description = description;
+
+    // Upload file to Baserow storage (optional — notes don't have files)
+    if (file) {
+      const uploadedFile = await uploadFileToBaserow(file);
+      if (!uploadedFile) {
+        return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+      }
+      payload.file = [{ name: uploadedFile.name }];
+    }
 
     const response = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.documents}/?user_field_names=true`, {
       method: 'POST',

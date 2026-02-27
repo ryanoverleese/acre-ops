@@ -39,7 +39,7 @@ export default async function DocumentsPage() {
     <>
       <header className="header">
         <div className="header-left">
-          <h2>Documents</h2>
+          <h2>Documents &amp; Notes</h2>
         </div>
       </header>
 

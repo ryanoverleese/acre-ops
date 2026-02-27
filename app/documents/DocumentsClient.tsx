@@ -49,15 +49,15 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
   }, [documents, searchQuery]);
 
   const handleUpload = async () => {
-    if (!uploadForm.file || !uploadForm.name.trim()) {
-      alert('Name and file are required');
+    if (!uploadForm.name.trim()) {
+      alert('Name is required');
       return;
     }
     setUploading(true);
 
     try {
       const formData = new FormData();
-      formData.append('file', uploadForm.file);
+      if (uploadForm.file) formData.append('file', uploadForm.file);
       formData.append('name', uploadForm.name);
       if (uploadForm.description) formData.append('description', uploadForm.description);
       formData.append('uploaded_by', session?.user?.name || 'Unknown');
@@ -103,7 +103,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
     <>
       <div className="table-container">
         <div className="table-header">
-          <h3 className="table-title">Company Documents</h3>
+          <h3 className="table-title">Documents &amp; Notes</h3>
           <div className="table-actions">
             <div className="search-box">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,14 +111,14 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
               </svg>
               <input
                 type="text"
-                placeholder="Search documents..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             {isAdmin && (
               <button className="btn btn-primary" onClick={() => setShowUploadModal(true)}>
-                + Upload
+                + Add
               </button>
             )}
           </div>
@@ -140,19 +140,23 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="entity-empty">
-                  {documents.length === 0 ? 'No documents yet. Upload your first one.' : 'No documents match your search.'}
+                  {documents.length === 0 ? 'Nothing here yet. Add a document or note.' : 'No results match your search.'}
                 </td>
               </tr>
             )}
             {filtered.map((doc) => (
               <tr key={doc.id}>
                 <td className="operation-name">
-                  <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
-                    {doc.name}
-                  </a>
+                  {doc.fileUrl ? (
+                    <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                      {doc.name}
+                    </a>
+                  ) : (
+                    <span>{doc.name}</span>
+                  )}
                 </td>
-                <td><span className="status-badge installed"><span className="status-dot"></span>{getFileIcon(doc.mimeType)}</span></td>
-                <td>{formatFileSize(doc.fileSize)}</td>
+                <td><span className={`status-badge ${doc.fileUrl ? 'installed' : 'pending'}`}><span className="status-dot"></span>{doc.fileUrl ? getFileIcon(doc.mimeType) : 'NOTE'}</span></td>
+                <td>{doc.fileUrl ? formatFileSize(doc.fileSize) : '—'}</td>
                 <td>{doc.uploadedBy}</td>
                 <td>{formatDate(doc.uploadedAt)}</td>
                 <td className="settings-cell-description">{doc.description || '—'}</td>
@@ -174,22 +178,24 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
         <div className="mobile-cards">
           {filtered.length === 0 && (
             <div className="empty-state">
-              {documents.length === 0 ? 'No documents yet.' : 'No documents match your search.'}
+              {documents.length === 0 ? 'Nothing here yet.' : 'No results match your search.'}
             </div>
           )}
           {filtered.map((doc) => (
-            <div key={doc.id} className="mobile-card" onClick={() => window.open(doc.fileUrl, '_blank')}>
+            <div key={doc.id} className="mobile-card" onClick={() => doc.fileUrl && window.open(doc.fileUrl, '_blank')}>
               <div className="mobile-card-header">
                 <span className="mobile-card-title">{doc.name}</span>
-                <span className="status-badge installed"><span className="status-dot"></span>{getFileIcon(doc.mimeType)}</span>
+                <span className={`status-badge ${doc.fileUrl ? 'installed' : 'pending'}`}><span className="status-dot"></span>{doc.fileUrl ? getFileIcon(doc.mimeType) : 'NOTE'}</span>
               </div>
               <div className="mobile-card-body">
+                {doc.fileUrl && (
+                  <div className="mobile-card-row">
+                    <span>Size:</span>
+                    <span>{formatFileSize(doc.fileSize)}</span>
+                  </div>
+                )}
                 <div className="mobile-card-row">
-                  <span>Size:</span>
-                  <span>{formatFileSize(doc.fileSize)}</span>
-                </div>
-                <div className="mobile-card-row">
-                  <span>Uploaded:</span>
+                  <span>By:</span>
                   <span>{doc.uploadedBy} · {formatDate(doc.uploadedAt)}</span>
                 </div>
                 {doc.description && (
@@ -219,7 +225,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
         <div className="detail-panel-overlay" onClick={() => setShowUploadModal(false)}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
-              <h3>Upload Document</h3>
+              <h3>Add Document or Note</h3>
               <button className="close-btn" onClick={() => setShowUploadModal(false)}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -238,7 +244,7 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
                 />
               </div>
               <div className="form-group">
-                <label>File *</label>
+                <label>File (optional)</label>
                 <input
                   type="file"
                   className="input"
@@ -247,19 +253,20 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
                 />
               </div>
               <div className="form-group">
-                <label>Description</label>
-                <input
-                  type="text"
+                <label>Description / Notes</label>
+                <textarea
                   className="input"
-                  placeholder="Optional notes"
+                  placeholder="Reminders, notes, details..."
                   value={uploadForm.description}
                   onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                  rows={3}
+                  style={{ resize: 'vertical' }}
                 />
               </div>
               <div className="form-actions">
                 <button className="btn btn-secondary" onClick={() => setShowUploadModal(false)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleUpload} disabled={uploading}>
-                  {uploading ? 'Uploading...' : 'Upload'}
+                  {uploading ? 'Saving...' : 'Save'}
                 </button>
               </div>
             </div>
