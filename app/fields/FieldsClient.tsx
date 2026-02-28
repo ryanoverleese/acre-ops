@@ -146,7 +146,7 @@ export default function FieldsClient({
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [expandedFieldSeasons, setExpandedFieldSeasons] = useState<Set<number>>(new Set());
   const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
-  const [savingProbeAssignment, setSavingProbeAssignment] = useState(false);
+  const [savingProbeAssignmentFor, setSavingProbeAssignmentFor] = useState<number | null>(null);
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
   const [customYears, setCustomYears] = useState<string[]>([]);
   const [currentOperation, setCurrentOperation] = useState<string>('all');
@@ -612,6 +612,15 @@ export default function FieldsClient({
       if (!p.ownerOperationName && !p.ownerBillingEntity) return true;
       if (p.ownerBillingEntity === 'Unassigned') return true;
       return false;
+    }).sort((a, b) => {
+      // Push assigned probes (not the current field's probe) to the bottom
+      const aAssigned = a.isAssigned && a.id !== currentProbeId;
+      const bAssigned = b.isAssigned && b.id !== currentProbeId;
+      if (aAssigned !== bAssigned) return aAssigned ? 1 : -1;
+      // Within each group, sort by billing entity then serial number
+      const opCompare = (a.ownerBillingEntity || '').localeCompare(b.ownerBillingEntity || '');
+      if (opCompare !== 0) return opCompare;
+      return (a.serialNumber || '').localeCompare(b.serialNumber || '');
     });
   }, [allProbesWithStatus]);
 
@@ -1413,7 +1422,7 @@ export default function FieldsClient({
   // Add new probe assignment with defaults from field
   const handleAddProbeAssignment = async (fieldSeasonId: number, probeNumber: number) => {
     console.log('Adding probe assignment:', { fieldSeasonId, probeNumber });
-    setSavingProbeAssignment(true);
+    setSavingProbeAssignmentFor(fieldSeasonId);
     try {
       const response = await fetch('/api/probe-assignments', {
         method: 'POST',
@@ -1461,7 +1470,7 @@ export default function FieldsClient({
       console.error('Add probe assignment error:', error);
       alert('Failed to create probe assignment');
     } finally {
-      setSavingProbeAssignment(false);
+      setSavingProbeAssignmentFor(null);
     }
   };
 
@@ -2083,7 +2092,7 @@ export default function FieldsClient({
                                             options={[
                                               ...getProbesForField(field.operation, pa.probeId).map(p => ({
                                                 value: p.id.toString(),
-                                                label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id !== pa.probeId ? 'Assigned' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
+                                                label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id !== pa.probeId ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                                               })),
                                               { value: '__create_new__', label: '+ Add New Probe' },
                                             ]}
@@ -2213,10 +2222,10 @@ export default function FieldsClient({
                                       <td colSpan={10}>
                                         <button
                                           onClick={() => handleAddProbeAssignment(field.fieldSeasonId!, fieldSeasonProbeAssignments.length + 1)}
-                                          disabled={savingProbeAssignment}
+                                          disabled={savingProbeAssignmentFor === field.fieldSeasonId}
                                           className="fields-add-probe-btn"
                                         >
-                                          {savingProbeAssignment ? 'Adding...' : `+ Add Probe ${fieldSeasonProbeAssignments.length + 1}`}
+                                          {savingProbeAssignmentFor === field.fieldSeasonId ? 'Adding...' : `+ Add Probe ${fieldSeasonProbeAssignments.length + 1}`}
                                         </button>
                                       </td>
                                     </tr>

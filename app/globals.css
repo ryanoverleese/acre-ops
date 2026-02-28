@@ -7360,7 +7360,11 @@ input[type="date"]:focus {
 }
 
 .fields-probe-th-probe {
-  width: 200px;
+  width: 280px;
+}
+
+.fields-probe-th-install-date {
+  width: 100px;
 }
 
 .fields-probe-th-status {
