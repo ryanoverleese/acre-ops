@@ -8489,12 +8489,22 @@ input[type="date"]:focus {
     display: none !important;
   }
 
-  /* Make main content take full width */
+  /* Make main content take full width and allow it to grow for print */
   .main,
   .main-collapsed {
     margin-left: 0 !important;
     padding: 0 !important;
     width: 100% !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  .app {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
   /* Header: keep title, hide buttons */
@@ -8566,6 +8576,11 @@ input[type="date"]:focus {
   .fields-probe-expand-cell {
     background: #fafafa !important;
     padding: 4pt !important;
+  }
+
+  /* Multi-assigned probe cell: keep red shading in print */
+  .fields-probe-cell-danger {
+    background: rgba(220, 38, 38, 0.12) !important;
   }
 
   /* Show probe data selects/inputs as plain text for print */
