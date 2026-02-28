@@ -1725,15 +1725,12 @@ export default function FieldsClient({
                     />
                   </div>
                   <SearchableSelect
-                    value={currentOperation}
-                    onChange={(v) => setCurrentOperation(v)}
-                    options={[
-                      { value: 'all', label: 'All Operations' },
-                      ...operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => ({
-                        value: op.id.toString(),
-                        label: op.name,
-                      })),
-                    ]}
+                    value={currentOperation === 'all' ? '' : currentOperation}
+                    onChange={(v) => setCurrentOperation(v || 'all')}
+                    options={operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => ({
+                      value: op.id.toString(),
+                      label: op.name,
+                    }))}
                     placeholder="All Operations"
                   />
                   <button
