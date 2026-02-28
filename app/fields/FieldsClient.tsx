@@ -2051,8 +2051,9 @@ export default function FieldsClient({
                                           && Number(other.placementLat).toFixed(6) === Number(pa.placementLat).toFixed(6)
                                           && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
                                       );
+                                      const probeIsMultiAssigned = pa.probeId ? multiAssignedProbeIds.has(pa.probeId) : false;
                                       return (
-                                      <tr key={`pa-${pa.id}`} className="fields-probe-row">
+                                      <tr key={`pa-${pa.id}`} className={`fields-probe-row ${probeIsMultiAssigned ? 'fields-probe-row-danger' : ''}`}>
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
