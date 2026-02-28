@@ -748,8 +748,39 @@ body::before {
 
 .table-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+}
+
+/* Normalize all controls in table-actions to consistent height and style */
+.table-actions .search-box {
+  padding: 0 12px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+}
+
+.table-actions .searchable-select-trigger {
+  padding: 0 10px;
+  height: 36px;
+  min-height: 36px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  min-width: 160px;
+}
+
+.table-actions .btn {
+  padding: 0 14px;
+  height: 36px;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+}
+
+.table-actions .map-toggle {
+  padding: 0 14px;
+  height: 36px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
 }
 
 table {
