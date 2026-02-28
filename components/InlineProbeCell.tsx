@@ -51,7 +51,7 @@ export default function InlineProbeCell({ probeAssignmentId, field, value, type,
       const bSpecial = b.value.startsWith('__');
       if (aSpecial && !bSpecial) return 1;
       if (!aSpecial && bSpecial) return -1;
-      return a.label.localeCompare(b.label);
+      return 0;
     }) || [];
     const regularOptions = sorted.filter(o => !o.value.startsWith('__'));
     const useSearchable = regularOptions.length >= 15;
