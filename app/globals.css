@@ -8597,9 +8597,22 @@ input[type="date"]:focus {
     color: #000 !important;
   }
 
-  /* Hide action buttons in probe expand rows */
+  /* Hide action buttons in probe expand rows, but keep searchable select triggers */
   .fields-probe-expand-cell .btn,
-  .fields-probe-expand-cell button {
+  .fields-probe-expand-cell button:not(.searchable-select-trigger) {
+    display: none !important;
+  }
+
+  .fields-probe-expand-cell .searchable-select-trigger {
+    display: inline-block !important;
+    border: none !important;
+    background: none !important;
+    padding: 0 !important;
+    font-size: 8pt !important;
+    color: #000 !important;
+  }
+
+  .fields-probe-expand-cell .searchable-select-chevron {
     display: none !important;
   }
 
