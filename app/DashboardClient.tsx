@@ -72,9 +72,12 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
   useEffect(() => {
     fetch('/api/bookings')
       .then(res => res.json())
-      .then((data: { bookings: DashboardBooking[]; remainingFields: number }) => {
-        if (data.bookings?.length) setBookings(data.bookings);
-        setRemainingFields(data.remainingFields || 0);
+      .then((data: { bookings: DashboardBooking[]; remainingFields: number } | DashboardBooking[]) => {
+        // Handle both old (array) and new (object) response shapes during cache transition
+        const list = Array.isArray(data) ? data : data.bookings;
+        const remaining = Array.isArray(data) ? 0 : data.remainingFields || 0;
+        if (list?.length) setBookings(list);
+        setRemainingFields(remaining);
       })
       .catch(() => {}); // Silently fail — section just won't appear
   }, []);

@@ -86,6 +86,6 @@ export async function GET() {
     return NextResponse.json({ bookings, remainingFields: totalRemainingFields });
   } catch (error) {
     console.error('Bookings API error:', (error as Error).message);
-    return NextResponse.json([], { status: 200 });
+    return NextResponse.json({ bookings: [], remainingFields: 0 }, { status: 200 });
   }
 }
