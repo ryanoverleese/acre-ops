@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 export interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
-  options: { value: string; label: string }[];
+  options: { value: string; label: string; className?: string }[];
   placeholder?: string;
   disabled?: boolean;
   style?: React.CSSProperties;
@@ -158,7 +158,7 @@ export default function SearchableSelect({
             {filtered.map(o => (
               <div
                 key={o.value}
-                className={`searchable-select-option ${o.value === value ? 'selected' : ''}`}
+                className={`searchable-select-option ${o.value === value ? 'selected' : ''} ${o.className || ''}`}
                 onClick={() => handleSelect(o.value)}
               >
                 {o.label}

@@ -8418,6 +8418,15 @@ input[type="date"]:focus {
   font-weight: 600;
 }
 
+.searchable-select-option-danger {
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+}
+
+.searchable-select-option-danger:hover {
+  background: rgba(220, 38, 38, 0.15);
+}
+
 .searchable-select-empty {
   padding: 12px 10px;
   font-size: 12px;

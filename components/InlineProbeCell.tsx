@@ -8,7 +8,7 @@ export interface InlineProbeCellProps {
   field: string;
   value: string | number | boolean | null | undefined;
   type: 'text' | 'select' | 'number' | 'checkbox';
-  options?: { value: string; label: string }[];
+  options?: { value: string; label: string; className?: string }[];
   onSave: (probeAssignmentId: number, field: string, value: unknown) => Promise<void>;
   onAction?: (actionValue: string) => void;
   savingFields: Set<string>;

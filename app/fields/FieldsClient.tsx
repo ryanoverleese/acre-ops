@@ -568,17 +568,24 @@ export default function FieldsClient({
   }, [seasonFields]);
 
   // Get set of probe IDs that are currently assigned (for the selected season)
-  const assignedProbeIds = useMemo(() => {
+  // Also track probes assigned to multiple fields
+  const { assignedProbeIds, multiAssignedProbeIds } = useMemo(() => {
     const currentSeasonFieldSeasonIds = new Set(
       fields.filter(f => f.season === currentSeason && f.fieldSeasonId != null).map(f => f.fieldSeasonId!)
     );
-    const ids = new Set<number>();
+    const counts = new Map<number, number>();
     probeAssignments.forEach(pa => {
       if (pa.probeId && currentSeasonFieldSeasonIds.has(pa.fieldSeasonId)) {
-        ids.add(pa.probeId);
+        counts.set(pa.probeId, (counts.get(pa.probeId) || 0) + 1);
       }
     });
-    return ids;
+    const ids = new Set<number>();
+    const multi = new Set<number>();
+    counts.forEach((count, probeId) => {
+      ids.add(probeId);
+      if (count > 1) multi.add(probeId);
+    });
+    return { assignedProbeIds: ids, multiAssignedProbeIds: multi };
   }, [probeAssignments, fields, currentSeason]);
 
   // All probes with assignment status
@@ -587,6 +594,7 @@ export default function FieldsClient({
       .map(p => ({
         ...p,
         isAssigned: assignedProbeIds.has(p.id),
+        isMultiAssigned: multiAssignedProbeIds.has(p.id),
       }))
       .sort((a, b) => {
         // Sort by owner billing entity first, then by serial number
@@ -2093,6 +2101,7 @@ export default function FieldsClient({
                                               ...getProbesForField(field.operation, pa.probeId).map(p => ({
                                                 value: p.id.toString(),
                                                 label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id !== pa.probeId ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
+                                                ...(p.isMultiAssigned ? { className: 'searchable-select-option-danger' } : {}),
                                               })),
                                               { value: '__create_new__', label: '+ Add New Probe' },
                                             ]}

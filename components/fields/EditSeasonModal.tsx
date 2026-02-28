@@ -6,6 +6,7 @@ import type { ProcessedField, ProbeOption } from '@/app/fields/page';
 
 interface ProbeWithStatus extends ProbeOption {
   isAssigned: boolean;
+  isMultiAssigned: boolean;
 }
 
 type OptionList = { value: string; label: string }[];
@@ -320,6 +321,7 @@ export default function EditSeasonModal({
                     ...getProbesForField(field.operation, field.probeId).map((p) => ({
                       value: String(p.id),
                       label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbeId ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
+                      ...(p.isMultiAssigned ? { className: 'searchable-select-option-danger' } : {}),
                     })),
                     { value: '__create_new__', label: '+ Add New Probe' },
                   ]}
@@ -341,6 +343,7 @@ export default function EditSeasonModal({
                     ...getProbesForField(field.operation, field.probe2Id).map((p) => ({
                       value: String(p.id),
                       label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbe2Id ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
+                      ...(p.isMultiAssigned ? { className: 'searchable-select-option-danger' } : {}),
                     })),
                     { value: '__create_new__', label: '+ Add New Probe' },
                   ]}
