@@ -7147,10 +7147,6 @@ input[type="date"]:focus {
   background-color: rgba(220, 38, 38, 0.08);
 }
 
-.fields-probe-row-danger td {
-  color: #dc2626;
-}
-
 .fields-probe-number-cell {
   padding-left: 32px;
 }
