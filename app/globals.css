@@ -7143,8 +7143,9 @@ input[type="date"]:focus {
   background-color: var(--bg-tertiary);
 }
 
-.fields-probe-row-danger {
-  background-color: rgba(220, 38, 38, 0.08);
+.fields-probe-cell-danger {
+  background-color: rgba(220, 38, 38, 0.12);
+  border-radius: 4px;
 }
 
 .fields-probe-number-cell {

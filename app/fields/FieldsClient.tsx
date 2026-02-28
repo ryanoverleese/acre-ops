@@ -2050,7 +2050,7 @@ export default function FieldsClient({
                                       );
                                       const probeIsMultiAssigned = pa.probeId ? multiAssignedProbeIds.has(pa.probeId) : false;
                                       return (
-                                      <tr key={`pa-${pa.id}`} className={`fields-probe-row ${probeIsMultiAssigned ? 'fields-probe-row-danger' : ''}`}>
+                                      <tr key={`pa-${pa.id}`} className="fields-probe-row">
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
@@ -2089,7 +2089,7 @@ export default function FieldsClient({
                                             <span className="fields-set-location">Set location</span>
                                           )}
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()} className={probeIsMultiAssigned ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="probeId"
