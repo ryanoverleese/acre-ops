@@ -1773,6 +1773,10 @@ a.notification-item {
   grid-template-columns: repeat(5, 1fr);
 }
 
+.stats-grid-6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
 .dashboard-section {
   margin-bottom: 24px;
 }
@@ -1821,6 +1825,10 @@ a.notification-item {
 
   .stats-grid-5 {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid-6 {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -5829,6 +5837,10 @@ input[type="date"]:focus {
 
 @media (max-width: 768px) {
   .stats-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid-6 {
     grid-template-columns: repeat(2, 1fr);
   }
 }

@@ -51,6 +51,18 @@ export async function GET() {
     const allOpIds = new Set([...opFields2025.keys(), ...opFields2026.keys()]);
     const bookings: { operationName: string; fields2025: number; fields2026: number; probes2026: number; status: string }[] = [];
 
+    // Count 2025 fields not yet enrolled in 2026 (across all operations)
+    let totalRemainingFields = 0;
+    for (const opId of allOpIds) {
+      const fields25 = opFields2025.get(opId);
+      const fields26 = opFields2026.get(opId);
+      if (fields25) {
+        for (const fieldId of fields25) {
+          if (!fields26 || !fields26.has(fieldId)) totalRemainingFields++;
+        }
+      }
+    }
+
     for (const opId of allOpIds) {
       const count2025 = opFields2025.get(opId)?.size || 0;
       const count2026 = opFields2026.get(opId)?.size || 0;
@@ -71,7 +83,7 @@ export async function GET() {
     const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
     bookings.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.operationName.localeCompare(b.operationName));
 
-    return NextResponse.json(bookings);
+    return NextResponse.json({ bookings, remainingFields: totalRemainingFields });
   } catch (error) {
     console.error('Bookings API error:', (error as Error).message);
     return NextResponse.json([], { status: 200 });

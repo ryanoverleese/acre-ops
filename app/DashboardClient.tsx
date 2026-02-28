@@ -65,13 +65,17 @@ type BookingSortColumn = 'operation' | 'change' | 'fields2026' | 'probes2026' | 
 export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
   const [bookings, setBookings] = useState<DashboardBooking[]>([]);
+  const [remainingFields, setRemainingFields] = useState(0);
   const [bookingSortCol, setBookingSortCol] = useState<BookingSortColumn>('status');
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     fetch('/api/bookings')
       .then(res => res.json())
-      .then((data: DashboardBooking[]) => { if (data.length) setBookings(data); })
+      .then((data: { bookings: DashboardBooking[]; remainingFields: number }) => {
+        if (data.bookings?.length) setBookings(data.bookings);
+        setRemainingFields(data.remainingFields || 0);
+      })
       .catch(() => {}); // Silently fail — section just won't appear
   }, []);
   const pct = stats.totalAssignments > 0
@@ -188,11 +192,16 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           return (
             <div className="dashboard-section">
               <h3 className="section-label">2026 Booking Tracker</h3>
-              <div className="stats-grid stats-grid-5">
+              <div className="stats-grid stats-grid-6">
                 <div className="stat-card">
                   <div className="stat-label">Enrolled Fields</div>
                   <div className="stat-value">{totalEnrolledFields}</div>
                   <div className="stat-change">2026 season</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-label">Remaining Fields</div>
+                  <div className="stat-value">{remainingFields > 0 ? <span className="amber">{remainingFields}</span> : <span className="green">0</span>}</div>
+                  <div className="stat-change">Were in 2025, not yet 2026</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">New Operations</div>
