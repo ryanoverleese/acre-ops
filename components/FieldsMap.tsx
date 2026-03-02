@@ -71,9 +71,12 @@ const OPERATION_COLORS = [
 ];
 
 const BRAND_COLORS: Record<string, string> = {
-  sentek: '#2563eb',    // blue
-  cropx: '#16a34a',     // green
-  default: '#78716c',   // muted gray
+  'cropx v4': '#2563eb',                                        // blue
+  'sentek 36"/cropx gateway (large diameter)': '#eab308',       // yellow
+  'sentek 36"/cropx gateway (small diameter)': '#dc2626',       // red
+  'sentek 36"/sentek rocket dtu': '#ffffff',                    // white
+  'sentek 48" blue/sentek rocket': '#16a34a',                   // green
+  default: '#78716c',                                           // muted gray
 };
 
 const MapContainer = dynamic(
@@ -483,7 +486,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
                 pathOptions={{
                   fillColor: color,
                   fillOpacity: 0.8,
-                  color: '#fff',
+                  color: color === '#ffffff' ? '#333' : '#fff',
                   weight: 2,
                 }}
               >
