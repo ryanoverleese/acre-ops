@@ -35,7 +35,7 @@ async function getProbesData(): Promise<{
         || (contactLink ? (contactToOperationNames.get(contactLink.id) || []).join(', ') || '—' : '—');
       return {
         id: probe.id,
-        serialNumber: probe.serial_number || 'Unknown',
+        serialNumber: probe.serial_number || `On Order #${probe.id}`,
         brand: probe.brand?.value || 'Unknown',
         status: probe.status?.value || 'Unknown',
         rack: probe.rack?.value || '—',

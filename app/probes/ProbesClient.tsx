@@ -139,6 +139,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [customYears, setCustomYears] = useState<string[]>([]);
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
   const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterBrand, setFilterBrand] = useState('');
+  const [filterOperation, setFilterOperation] = useState('');
+  const [filterBillingEntity, setFilterBillingEntity] = useState('');
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -160,6 +164,22 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     defaultWidths: DEFAULT_COLUMN_WIDTHS,
     storageKey: COLUMN_WIDTHS_STORAGE_KEY,
   });
+
+  // Unique values for filter dropdowns
+  const filterOptions = useMemo(() => {
+    const statuses = new Set<string>();
+    const brands = new Set<string>();
+    const operations = new Set<string>();
+    const billingEntities = new Set<string>();
+    probes.forEach(p => {
+      if (p.status && p.status !== 'Unknown') statuses.add(p.status);
+      if (p.brand && p.brand !== 'Unknown') brands.add(p.brand);
+      if (p.operation && p.operation !== '—') operations.add(p.operation);
+      if (p.billingEntity && p.billingEntity !== '—') billingEntities.add(p.billingEntity);
+    });
+    const sort = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b));
+    return { statuses: sort(statuses), brands: sort(brands), operations: sort(operations), billingEntities: sort(billingEntities) };
+  }, [probes]);
 
   // Rack numbers for the scrubber (1-15)
   const rackNumbers = Array.from({ length: 15 }, (_, i) => i + 1);
@@ -275,6 +295,20 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       );
     }
 
+    // Apply quick filters
+    if (filterStatus) {
+      filtered = filtered.filter(p => p.status === filterStatus);
+    }
+    if (filterBrand) {
+      filtered = filtered.filter(p => p.brand === filterBrand);
+    }
+    if (filterOperation) {
+      filtered = filtered.filter(p => p.operation === filterOperation);
+    }
+    if (filterBillingEntity) {
+      filtered = filtered.filter(p => p.billingEntity === filterBillingEntity);
+    }
+
     // Sort (only if not in rack view, which has its own sort)
     if (viewMode !== 'rack') {
       filtered = [...filtered].sort((a, b) => {
@@ -304,7 +338,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity]);
 
   // Get unique rack prefixes (numbers) from filtered probes for highlighting active ones
   const activeRackNumbers = useMemo(() => {
@@ -694,6 +728,31 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="probes-filter-select">
+              <option value="">All Statuses</option>
+              {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filterBrand} onChange={(e) => setFilterBrand(e.target.value)} className="probes-filter-select">
+              <option value="">All Brands</option>
+              {filterOptions.brands.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <select value={filterOperation} onChange={(e) => setFilterOperation(e.target.value)} className="probes-filter-select">
+              <option value="">All Operations</option>
+              {filterOptions.operations.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            <select value={filterBillingEntity} onChange={(e) => setFilterBillingEntity(e.target.value)} className="probes-filter-select">
+              <option value="">All Billing Entities</option>
+              {filterOptions.billingEntities.map(be => <option key={be} value={be}>{be}</option>)}
+            </select>
+            {(filterStatus || filterBrand || filterOperation || filterBillingEntity) && (
+              <button
+                className="btn btn-secondary btn-compact"
+                onClick={() => { setFilterStatus(''); setFilterBrand(''); setFilterOperation(''); setFilterBillingEntity(''); }}
+                title="Clear all filters"
+              >
+                Clear
+              </button>
+            )}
           </div>
           <div className="probes-filter-right">
             {viewMode === 'rack' && (
@@ -774,6 +833,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </button>
           </div>
         </div>
+
+        {(filterStatus || filterBrand || filterOperation || filterBillingEntity || searchQuery) && (
+          <div className="probes-row-count">
+            Showing {filteredProbes.length} of {probes.length} probes
+          </div>
+        )}
 
         <div className="table-container">
           <table className="desktop-table" ref={desktopTableRef} style={{ userSelect: resizingColumn ? 'none' : undefined }}>

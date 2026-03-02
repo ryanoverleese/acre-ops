@@ -5742,8 +5742,25 @@ input[type="date"]:focus {
 .probes-filter-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   flex-wrap: wrap;
+}
+
+.probes-filter-select {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 13px;
+  height: 34px;
+  cursor: pointer;
+}
+
+.probes-row-count {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 4px 0 0 2px;
 }
 
 .probes-filter-right {
