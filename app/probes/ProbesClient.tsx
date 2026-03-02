@@ -146,6 +146,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [columnPickerPos, setColumnPickerPos] = useState({ top: 0, right: 0 });
   const [visibleColumns, setVisibleColumns] = useState<ProbeColumnKey[]>(() => {
     try {
       const saved = localStorage.getItem(PROBE_COLUMNS_STORAGE_KEY);
@@ -779,7 +780,15 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             <div ref={columnPickerRef} className="fields-col-picker">
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowColumnPicker(!showColumnPicker)}
+                onClick={(e) => {
+                  if (showColumnPicker) {
+                    setShowColumnPicker(false);
+                  } else {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setColumnPickerPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                    setShowColumnPicker(true);
+                  }
+                }}
                 title="Configure visible columns"
               >
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
@@ -788,7 +797,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 Columns
               </button>
               {showColumnPicker && (
-                <div className="fields-col-dropdown">
+                <div className="fields-col-dropdown" style={{ position: 'fixed', top: columnPickerPos.top, right: columnPickerPos.right }}>
                   <div className="fields-col-header">
                     <span className="fields-col-label">Show Columns</span>
                   </div>
