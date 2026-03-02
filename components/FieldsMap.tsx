@@ -17,7 +17,16 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-interface FieldData {
+export type ColorByMode = 'none' | 'crop' | 'status' | 'operation' | 'probeBrand';
+
+const COLOR_BY_LABELS: Record<Exclude<ColorByMode, 'none'>, string> = {
+  crop: 'Crop',
+  status: 'Status',
+  operation: 'Operation',
+  probeBrand: 'Probe Brand',
+};
+
+export interface FieldData {
   id: string;
   name: string;
   operation: string;
@@ -35,7 +44,7 @@ interface FieldData {
 interface FieldsMapProps {
   fields: FieldData[];
   visible: boolean;
-  colorBy?: 'none' | 'crop' | 'status' | 'operation' | 'probeBrand';
+  colorBy?: ColorByMode;
   onClose?: () => void;
 }
 
@@ -518,7 +527,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
       {useColoredMarkers && legendEntries.length > 0 && (
         <div className="map-legend">
           <div className="map-legend-title">
-            {colorBy === 'crop' ? 'Crop' : colorBy === 'status' ? 'Status' : colorBy === 'probeBrand' ? 'Probe Brand' : 'Operation'}
+            {COLOR_BY_LABELS[colorBy as Exclude<ColorByMode, 'none'>]}
           </div>
           {legendEntries.map(({ label, color }) => (
             <div key={label} className="map-legend-item">

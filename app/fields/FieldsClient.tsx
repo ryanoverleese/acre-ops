@@ -12,6 +12,7 @@ import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from './page';
+import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -153,7 +154,7 @@ export default function FieldsClient({
   const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [mapVisible, setMapVisible] = useState(false);
-  const [colorBy, setColorBy] = useState<'none' | 'crop' | 'status' | 'operation' | 'probeBrand'>('none');
+  const [colorBy, setColorBy] = useState<ColorByMode>('none');
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
@@ -507,49 +508,42 @@ export default function FieldsClient({
   }, [fields, filteredFields, inlineEnrollSeason]);
 
   const mapFields = useMemo(() => {
-    const markers: { id: string; name: string; operation: string; operationId: number | null; acres: number; crop: string; probe: string | null; probeBrand: string; probeNumber: number; status: string; lat: number; lng: number }[] = [];
+    const markers: FieldData[] = [];
+
+    const buildMarker = (
+      f: ProcessedField,
+      probeNum: 1 | 2,
+      probe: string | null,
+      probeBrand: string,
+      status: string,
+      lat: number,
+      lng: number,
+    ): FieldData => ({
+      id: `${f.id}-p${probeNum}`,
+      name: f.name,
+      operation: f.operation,
+      operationId: f.operationId,
+      acres: f.acres,
+      crop: f.crop,
+      probe,
+      probeBrand,
+      probeNumber: probeNum,
+      status: (status || 'unassigned').toLowerCase().replace(' ', '-'),
+      lat,
+      lng,
+    });
 
     filteredFields.forEach((f) => {
-      // Probe 1
       const pa1 = f.probeAssignmentId
         ? probeAssignments.find((pa) => pa.id === f.probeAssignmentId)
         : null;
-      const lat1 = pa1?.placementLat || f.lat;
-      const lng1 = pa1?.placementLng || f.lng;
-      markers.push({
-        id: `${f.id}-p1`,
-        name: f.name,
-        operation: f.operation,
-        operationId: f.operationId,
-        acres: f.acres,
-        crop: f.crop,
-        probe: f.probe,
-        probeBrand: f.probeBrand,
-        probeNumber: 1,
-        status: (f.probeStatus || 'unassigned').toLowerCase().replace(' ', '-'),
-        lat: lat1,
-        lng: lng1,
-      });
+      markers.push(buildMarker(f, 1, f.probe, f.probeBrand, f.probeStatus, pa1?.placementLat || f.lat, pa1?.placementLng || f.lng));
 
-      // Probe 2
       if (f.probe2AssignmentId) {
         const pa2 = probeAssignments.find((pa) => pa.id === f.probe2AssignmentId);
         const lat2 = pa2?.placementLat || f.lat;
         const lng2 = pa2?.placementLng || (f.lng ? f.lng + 0.0003 : f.lng);
-        markers.push({
-          id: `${f.id}-p2`,
-          name: f.name,
-          operation: f.operation,
-          operationId: f.operationId,
-          acres: f.acres,
-          crop: f.crop,
-          probe: f.probe2,
-          probeBrand: f.probe2Brand,
-          probeNumber: 2,
-          status: (f.probe2Status || 'unassigned').toLowerCase().replace(' ', '-'),
-          lat: lat2,
-          lng: lng2,
-        });
+        markers.push(buildMarker(f, 2, f.probe2, f.probe2Brand, f.probe2Status, lat2, lng2));
       }
     });
 
@@ -1764,7 +1758,7 @@ export default function FieldsClient({
                   {mapVisible && (
                     <select
                       value={colorBy}
-                      onChange={(e) => setColorBy(e.target.value as 'none' | 'crop' | 'status' | 'operation' | 'probeBrand')}
+                      onChange={(e) => setColorBy(e.target.value as ColorByMode)}
                       className="color-by-select"
                     >
                       <option value="none">Color by...</option>
