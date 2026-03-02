@@ -1,5 +1,5 @@
 import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations, getProbeAssignments } from '@/lib/baserow';
-import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps } from '@/lib/data-mappings';
+import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
 async function getProbesData(): Promise<{
@@ -26,13 +26,15 @@ async function getProbesData(): Promise<{
     const operationMap = buildOperationMap(operations);
     const fieldMap = new Map(fields.map((f) => [f.id, f.name]));
     const { contactToOperationNames } = buildContactToOperationMaps(contacts, operationMap);
+    const { billingToOperationNames } = buildBillingToOperationMaps(contacts, operationMap);
 
     const processedProbes: ProcessedProbe[] = probes.map((probe) => {
       const billingEntityLink = probe.billing_entity?.[0];
       const contactLink = probe.contact?.[0];
       const ownerOp = probe.owner_operation?.[0];
       const operationName = ownerOp?.value
-        || (contactLink ? (contactToOperationNames.get(contactLink.id) || []).join(', ') || '—' : '—');
+        || (contactLink ? (contactToOperationNames.get(contactLink.id) || []).join(', ') || '—' : null)
+        || (billingEntityLink ? (billingToOperationNames.get(billingEntityLink.id) || []).join(', ') || '—' : '—');
       return {
         id: probe.id,
         serialNumber: probe.serial_number || `On Order #${probe.id}`,
