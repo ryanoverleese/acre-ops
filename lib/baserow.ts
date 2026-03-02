@@ -325,6 +325,10 @@ export interface Field {
   drip_depth?: number;
   field_directions?: string;
   nrcs_field?: boolean;
+  plss_township?: number;
+  plss_range?: number;
+  plss_section?: number;
+  plss_description?: string;
 }
 
 export interface Probe {
