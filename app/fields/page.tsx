@@ -63,11 +63,13 @@ export interface ProcessedField {
   // Probe 1 (from probe_assignments, probe_number=1)
   probe: string | null;
   probeId: number | null;
+  probeBrand: string;
   probeStatus: string;
   probeAssignmentId: number | null;
   // Probe 2 (from probe_assignments, probe_number=2)
   probe2: string | null;
   probe2Id: number | null;
+  probe2Brand: string;
   probe2Status: string;
   probe2AssignmentId: number | null;
   probe2AntennaType: string;
@@ -269,10 +271,12 @@ async function getFieldsData(): Promise<{
           plantingDate: '',
           probe: null,
           probeId: null,
+          probeBrand: '',
           probeStatus: 'Unassigned',
           probeAssignmentId: null,
           probe2: null,
           probe2Id: null,
+          probe2Brand: '',
           probe2Status: 'Unassigned',
           probe2AssignmentId: null,
           probe2AntennaType: '',
@@ -339,10 +343,12 @@ async function getFieldsData(): Promise<{
             plantingDate: fs.planting_date || '',
             probe: probeData ? (probeData.serial_number ? `#${probeData.serial_number}` : `(On Order #${probeLink!.id})`) : null,
             probeId: probeLink?.id || null,
+            probeBrand: probeData?.brand?.value || '',
             probeStatus: probe1Assignment?.probe_status?.value || 'Unassigned',
             probeAssignmentId: probe1Assignment?.id || null,
             probe2: probe2Data ? (probe2Data.serial_number ? `#${probe2Data.serial_number}` : `(On Order #${probe2Link!.id})`) : null,
             probe2Id: probe2Link?.id || null,
+            probe2Brand: probe2Data?.brand?.value || '',
             probe2Status: probe2Assignment?.probe_status?.value || 'Unassigned',
             probe2AssignmentId: probe2Assignment?.id || null,
             probe2AntennaType: probe2Assignment?.antenna_type?.value || '',

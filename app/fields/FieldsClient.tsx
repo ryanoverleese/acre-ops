@@ -153,7 +153,7 @@ export default function FieldsClient({
   const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [mapVisible, setMapVisible] = useState(false);
-  const [colorBy, setColorBy] = useState<'none' | 'crop' | 'status' | 'operation'>('none');
+  const [colorBy, setColorBy] = useState<'none' | 'crop' | 'status' | 'operation' | 'probeBrand'>('none');
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
@@ -507,7 +507,7 @@ export default function FieldsClient({
   }, [fields, filteredFields, inlineEnrollSeason]);
 
   const mapFields = useMemo(() => {
-    const markers: { id: string; name: string; operation: string; operationId: number | null; acres: number; crop: string; probe: string | null; probeNumber: number; status: string; lat: number; lng: number }[] = [];
+    const markers: { id: string; name: string; operation: string; operationId: number | null; acres: number; crop: string; probe: string | null; probeBrand: string; probeNumber: number; status: string; lat: number; lng: number }[] = [];
 
     filteredFields.forEach((f) => {
       // Probe 1
@@ -524,6 +524,7 @@ export default function FieldsClient({
         acres: f.acres,
         crop: f.crop,
         probe: f.probe,
+        probeBrand: f.probeBrand,
         probeNumber: 1,
         status: (f.probeStatus || 'unassigned').toLowerCase().replace(' ', '-'),
         lat: lat1,
@@ -543,6 +544,7 @@ export default function FieldsClient({
           acres: f.acres,
           crop: f.crop,
           probe: f.probe2,
+          probeBrand: f.probe2Brand,
           probeNumber: 2,
           status: (f.probe2Status || 'unassigned').toLowerCase().replace(' ', '-'),
           lat: lat2,
@@ -1762,13 +1764,14 @@ export default function FieldsClient({
                   {mapVisible && (
                     <select
                       value={colorBy}
-                      onChange={(e) => setColorBy(e.target.value as 'none' | 'crop' | 'status' | 'operation')}
+                      onChange={(e) => setColorBy(e.target.value as 'none' | 'crop' | 'status' | 'operation' | 'probeBrand')}
                       className="color-by-select"
                     >
                       <option value="none">Color by...</option>
                       <option value="crop">Crop</option>
                       <option value="status">Status</option>
                       <option value="operation">Operation</option>
+                      <option value="probeBrand">Probe Brand</option>
                     </select>
                   )}
                   {/* Enroll button - visible on All Seasons view */}

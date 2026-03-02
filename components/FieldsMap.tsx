@@ -25,6 +25,7 @@ interface FieldData {
   acres: number;
   crop: string;
   probe: string | null;
+  probeBrand: string;
   probeNumber: number;
   status: string;
   lat: number;
@@ -34,7 +35,7 @@ interface FieldData {
 interface FieldsMapProps {
   fields: FieldData[];
   visible: boolean;
-  colorBy?: 'none' | 'crop' | 'status' | 'operation';
+  colorBy?: 'none' | 'crop' | 'status' | 'operation' | 'probeBrand';
   onClose?: () => void;
 }
 
@@ -68,6 +69,12 @@ const OPERATION_COLORS = [
   '#818cf8', // indigo
   '#4ade80', // lime
 ];
+
+const BRAND_COLORS: Record<string, string> = {
+  sentek: '#2563eb',    // blue
+  cropx: '#16a34a',     // green
+  default: '#78716c',   // muted gray
+};
 
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -194,6 +201,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         return STATUS_COLORS[field.status] || STATUS_COLORS.default;
       case 'operation':
         return operationColorMap.get(field.operationId) || OPERATION_COLORS[0];
+      case 'probeBrand':
+        return BRAND_COLORS[(field.probeBrand || '').toLowerCase()] || BRAND_COLORS.default;
       default:
         return '#60a5fa'; // default blue
     }
@@ -224,6 +233,12 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         case 'operation': {
           label = field.operation || 'Unknown';
           color = operationColorMap.get(field.operationId) || OPERATION_COLORS[0];
+          break;
+        }
+        case 'probeBrand': {
+          const brand = field.probeBrand || 'None';
+          label = brand;
+          color = BRAND_COLORS[brand.toLowerCase()] || BRAND_COLORS.default;
           break;
         }
         default:
@@ -493,7 +508,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
       {useColoredMarkers && legendEntries.length > 0 && (
         <div className="map-legend">
           <div className="map-legend-title">
-            {colorBy === 'crop' ? 'Crop' : colorBy === 'status' ? 'Status' : 'Operation'}
+            {colorBy === 'crop' ? 'Crop' : colorBy === 'status' ? 'Status' : colorBy === 'probeBrand' ? 'Probe Brand' : 'Operation'}
           </div>
           {legendEntries.map(({ label, color }) => (
             <div key={label} className="map-legend-item">
