@@ -6,7 +6,6 @@ import type { Notification } from '@/lib/baserow';
 export async function GET() {
   try {
     const notifications = await getRows<Notification>('notifications', {
-      orderBy: '-created_on',
       size: 50,
     });
 
