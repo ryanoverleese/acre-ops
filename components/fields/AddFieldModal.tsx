@@ -13,6 +13,10 @@ export interface AddFieldForm {
   row_direction: string;
   lat: string;
   lng: string;
+  plss_township: string;
+  plss_range: string;
+  plss_section: string;
+  plss_description: string;
   water_source: string;
   fuel_source: string;
   notes: string;
@@ -37,6 +41,10 @@ export const createInitialAddFieldForm = (season: string): AddFieldForm => ({
   row_direction: '',
   lat: '',
   lng: '',
+  plss_township: '',
+  plss_range: '',
+  plss_section: '',
+  plss_description: '',
   water_source: '',
   fuel_source: '',
   notes: '',
@@ -79,6 +87,8 @@ export interface AddFieldModalProps {
   onSaved: () => void;
   onOpenLocationPicker: () => void;
   latLng: { lat: string; lng: string } | null;
+  onPlssLocate?: (lat: number, lng: number, bounds: [[number, number], [number, number]]) => void;
+  plss?: { township: number; range: number; section: number } | null;
 }
 
 export default function AddFieldModal({
@@ -92,6 +102,8 @@ export default function AddFieldModal({
   onSaved,
   onOpenLocationPicker,
   latLng,
+  onPlssLocate,
+  plss,
 }: AddFieldModalProps) {
   const [form, setForm] = useState<AddFieldForm>(() => createInitialAddFieldForm(currentSeason));
   const [saving, setSaving] = useState(false);
@@ -102,6 +114,18 @@ export default function AddFieldModal({
       setForm(prev => ({ ...prev, lat: latLng.lat, lng: latLng.lng }));
     }
   }, [latLng]);
+
+  // Sync PLSS from reverse-lookup
+  useEffect(() => {
+    if (plss) {
+      setForm(prev => ({
+        ...prev,
+        plss_township: String(plss.township),
+        plss_range: String(plss.range),
+        plss_section: String(plss.section),
+      }));
+    }
+  }, [plss]);
 
   const handleSubmit = async () => {
     if (!form.billing_entity) {
@@ -126,6 +150,10 @@ export default function AddFieldModal({
           row_direction: form.row_direction || undefined,
           lat: form.lat ? parseFloat(form.lat) : undefined,
           lng: form.lng ? parseFloat(form.lng) : undefined,
+          plss_township: form.plss_township || null,
+          plss_range: form.plss_range || null,
+          plss_section: form.plss_section || null,
+          plss_description: form.plss_description || '',
           water_source: form.water_source || undefined,
           fuel_source: form.fuel_source || undefined,
           notes: form.notes || undefined,
@@ -232,6 +260,68 @@ export default function AddFieldModal({
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
                   ))}
                 </select>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label>Township</label>
+                <select value={form.plss_township} onChange={(e) => setForm({ ...form, plss_township: e.target.value })}>
+                  <option value="">—</option>
+                  {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={String(n)}>{n}N</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Range</label>
+                <select value={form.plss_range} onChange={(e) => setForm({ ...form, plss_range: e.target.value })}>
+                  <option value="">—</option>
+                  {Array.from({ length: 16 }, (_, i) => i + 7).map((n) => (
+                    <option key={n} value={String(n)}>{n}W</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Section</label>
+                <select value={form.plss_section} onChange={(e) => setForm({ ...form, plss_section: e.target.value })}>
+                  <option value="">—</option>
+                  {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={String(n)}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled={!form.plss_township || !form.plss_range || !form.plss_section}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`/api/plss/lookup?township=${form.plss_township}&range=${form.plss_range}&section=${form.plss_section}`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        onPlssLocate?.(data.lat, data.lng, data.bounds);
+                      } else {
+                        alert('Section not found. Check Township, Range, and Section values.');
+                      }
+                    } catch {
+                      alert('Failed to look up section. Please try again.');
+                    }
+                  }}
+                >
+                  Locate
+                </button>
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>PLSS Description</label>
+                <input
+                  type="text"
+                  value={form.plss_description}
+                  onChange={(e) => setForm({ ...form, plss_description: e.target.value })}
+                  placeholder="e.g. NE 40 of the NW 1/4"
+                />
               </div>
             </div>
             <div className="form-row">

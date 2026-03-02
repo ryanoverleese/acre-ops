@@ -23,6 +23,8 @@ interface LocationPickerMapProps {
   showSoilLayer?: boolean;
   showPLSS?: boolean;
   brightness?: number;
+  initialCenter?: [number, number];
+  initialZoom?: number;
 }
 
 // Component to apply brightness filter to the satellite tile layer
@@ -52,7 +54,7 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
   return null;
 }
 
-export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, brightness = 1.2 }: LocationPickerMapProps) {
+export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, brightness = 1.2, initialCenter, initialZoom }: LocationPickerMapProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -67,12 +69,13 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
     );
   }
 
-  const center: [number, number] = position || [41.23, -99.5];
+  const center: [number, number] = position || initialCenter || [41.23, -99.5];
+  const zoom = position ? 14 : initialZoom || 7;
 
   return (
     <MapContainer
       center={center}
-      zoom={position ? 14 : 7}
+      zoom={zoom}
       style={{ height: '100%', width: '100%' }}
     >
       <TileLayer

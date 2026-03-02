@@ -50,6 +50,11 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.drip_zones !== undefined) updateData.drip_zones = body.drip_zones;
     if (body.drip_gpm !== undefined) updateData.drip_gpm = body.drip_gpm;
     if (body.drip_depth !== undefined) updateData.drip_depth = body.drip_depth;
+    // PLSS location fields
+    if (body.plss_township !== undefined) updateData.plss_township = body.plss_township;
+    if (body.plss_range !== undefined) updateData.plss_range = body.plss_range;
+    if (body.plss_section !== undefined) updateData.plss_section = body.plss_section;
+    if (body.plss_description !== undefined) updateData.plss_description = body.plss_description;
 
     // Add space variants for Baserow field name compatibility
     const patchData = addSpaceVariants(updateData);

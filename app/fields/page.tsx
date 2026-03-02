@@ -91,6 +91,11 @@ export interface ProcessedField {
   dripGpm?: number;
   dripDepth?: number;
   fieldDirections?: string;
+  // PLSS
+  plssTownship: number | null;
+  plssRange: number | null;
+  plssSection: number | null;
+  plssDescription: string;
   // NRCS
   nrcsField?: boolean;
   // Install planning fields
@@ -298,6 +303,10 @@ async function getFieldsData(): Promise<{
           dripGpm: field.drip_gpm,
           dripDepth: field.drip_depth,
           fieldDirections: field.field_directions,
+          plssTownship: field.plss_township ?? null,
+          plssRange: field.plss_range ?? null,
+          plssSection: field.plss_section ?? null,
+          plssDescription: field.plss_description || '',
           // No season = no approval status
           approvalStatus: undefined,
           // Removal
@@ -370,6 +379,10 @@ async function getFieldsData(): Promise<{
             dripGpm: field.drip_gpm,
             dripDepth: field.drip_depth,
             fieldDirections: field.field_directions,
+            plssTownship: field.plss_township ?? null,
+            plssRange: field.plss_range ?? null,
+            plssSection: field.plss_section ?? null,
+            plssDescription: field.plss_description || '',
             // Install planning fields
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
