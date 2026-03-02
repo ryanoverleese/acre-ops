@@ -871,6 +871,10 @@ export default function FieldsClient({
       dripZones: field.dripZones,
       dripGpm: field.dripGpm,
       dripDepth: field.dripDepth,
+      plssTownship: field.plssTownship,
+      plssRange: field.plssRange,
+      plssSection: field.plssSection,
+      plssDescription: field.plssDescription,
     });
     setIsEditing(false);
     setShowProbeAssign(false);
@@ -925,6 +929,10 @@ export default function FieldsClient({
           drip_zones: editForm.dripZones || null,
           drip_gpm: editForm.dripGpm || null,
           drip_depth: editForm.dripDepth || null,
+          plss_township: editForm.plssTownship ?? null,
+          plss_range: editForm.plssRange ?? null,
+          plss_section: editForm.plssSection ?? null,
+          plss_description: editForm.plssDescription || '',
         }),
       });
       if (response.ok) {
@@ -952,6 +960,10 @@ export default function FieldsClient({
           dripZones: editForm.dripZones,
           dripGpm: editForm.dripGpm,
           dripDepth: editForm.dripDepth,
+          plssTownship: editForm.plssTownship ?? selectedField.plssTownship,
+          plssRange: editForm.plssRange ?? selectedField.plssRange,
+          plssSection: editForm.plssSection ?? selectedField.plssSection,
+          plssDescription: editForm.plssDescription ?? selectedField.plssDescription,
         };
 
         // Update fields array
@@ -1000,6 +1012,10 @@ export default function FieldsClient({
         dripZones: selectedField.dripZones,
         dripGpm: selectedField.dripGpm,
         dripDepth: selectedField.dripDepth,
+        plssTownship: selectedField.plssTownship,
+        plssRange: selectedField.plssRange,
+        plssSection: selectedField.plssSection,
+        plssDescription: selectedField.plssDescription,
       });
     }
     setIsEditing(false);
@@ -2495,6 +2511,44 @@ export default function FieldsClient({
                       <h4 className="fields-edit-section-title">Location Data</h4>
                       <div className="form-row">
                         <div className="form-group">
+                          <label>Township</label>
+                          <select value={editForm.plssTownship || ''} onChange={(e) => setEditForm({ ...editForm, plssTownship: e.target.value ? parseInt(e.target.value) : null })}>
+                            <option value="">—</option>
+                            {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
+                              <option key={n} value={n}>{n}N</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Range</label>
+                          <select value={editForm.plssRange || ''} onChange={(e) => setEditForm({ ...editForm, plssRange: e.target.value ? parseInt(e.target.value) : null })}>
+                            <option value="">—</option>
+                            {Array.from({ length: 16 }, (_, i) => i + 7).map((n) => (
+                              <option key={n} value={n}>{n}W</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Section</label>
+                          <select value={editForm.plssSection || ''} onChange={(e) => setEditForm({ ...editForm, plssSection: e.target.value ? parseInt(e.target.value) : null })}>
+                            <option value="">—</option>
+                            {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
+                              <option key={n} value={n}>{n}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>PLSS Description</label>
+                        <input
+                          type="text"
+                          value={editForm.plssDescription || ''}
+                          onChange={(e) => setEditForm({ ...editForm, plssDescription: e.target.value })}
+                          placeholder="e.g. NE 40 of the NW 1/4"
+                        />
+                      </div>
+                      <div className="form-row">
+                        <div className="form-group">
                           <label>Elevation (ft)</label>
                           <input type="number" value={editForm.elevation || ''} onChange={(e) => setEditForm({ ...editForm, elevation: parseInt(e.target.value) || undefined })} />
                         </div>
@@ -2647,11 +2701,20 @@ export default function FieldsClient({
                     )}
 
                     {/* Location Data Section */}
-                    {(selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
+                    {(selectedField.plssTownship || selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
                       <div className="fields-section-divider">
                         <div className="detail-row fields-section-title">
                           <span className="detail-label">Location Data</span>
                         </div>
+                        {selectedField.plssTownship && (
+                          <div className="detail-row">
+                            <span className="detail-label">PLSS Location</span>
+                            <span className="detail-value">
+                              T{selectedField.plssTownship}N R{selectedField.plssRange}W Sec {selectedField.plssSection}
+                              {selectedField.plssDescription ? ` — ${selectedField.plssDescription}` : ''}
+                            </span>
+                          </div>
+                        )}
                         {selectedField.elevation && (
                           <div className="detail-row">
                             <span className="detail-label">Elevation</span>
