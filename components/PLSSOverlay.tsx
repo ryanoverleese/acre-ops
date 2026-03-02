@@ -26,7 +26,7 @@ export default function PLSSOverlay({ show }: { show: boolean }) {
       // Shift pink/red grid lines to bright yellow for visibility on satellite imagery
       const container = (layerRef.current as unknown as { getContainer?: () => HTMLElement }).getContainer?.();
       if (container) {
-        container.style.filter = 'hue-rotate(60deg) saturate(2) brightness(1.5)';
+        container.style.filter = 'hue-rotate(200deg) saturate(3) brightness(1.5)';
       }
     } else if (!show && layerRef.current) {
       map.removeLayer(layerRef.current);
