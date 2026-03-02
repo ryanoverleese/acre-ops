@@ -16,8 +16,16 @@ const LocationPickerMap = dynamic(() => import('./LocationPickerMap'), {
 interface LocationPickerProps {
   lat: number | null;
   lng: number | null;
-  onLocationChange: (lat: number, lng: number, elevation?: number | null, soilType?: string | null) => void | Promise<void>;
+  onLocationChange: (
+    lat: number,
+    lng: number,
+    elevation?: number | null,
+    soilType?: string | null,
+    plss?: { township: number; range: number; section: number } | null,
+  ) => void | Promise<void>;
   onClose: () => void;
+  initialCenter?: [number, number];
+  initialZoom?: number;
 }
 
 // Fetch elevation via our API proxy (avoids CORS issues with USGS)
@@ -47,7 +55,7 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
   }
 }
 
-export default function LocationPicker({ lat, lng, onLocationChange, onClose }: LocationPickerProps) {
+export default function LocationPicker({ lat, lng, onLocationChange, onClose, initialCenter, initialZoom }: LocationPickerProps) {
   const [isClient, setIsClient] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(null);
   const hasInitialized = useRef(false);
@@ -55,6 +63,8 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
   const [elevationLoading, setElevationLoading] = useState(false);
   const [soilType, setSoilType] = useState<string | null>(null);
   const [soilLoading, setSoilLoading] = useState(false);
+  const [plss, setPlss] = useState<{ township: number; range: number; section: number } | null>(null);
+  const [plssLoading, setPlssLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
   const [showPLSS, setShowPLSS] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
@@ -84,9 +94,17 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
         setSoilType(soil);
         setSoilLoading(false);
       });
+      // PLSS reverse lookup
+      setPlssLoading(true);
+      fetch(`/api/plss/lookup?lat=${position[0]}&lng=${position[1]}`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => setPlss(data))
+        .catch(() => setPlss(null))
+        .finally(() => setPlssLoading(false));
     } else {
       setElevation(null);
       setSoilType(null);
+      setPlss(null);
     }
   }, [position]);
 
@@ -101,7 +119,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
 
   const handleSave = async () => {
     if (position) {
-      await onLocationChange(position[0], position[1], elevation, soilType);
+      await onLocationChange(position[0], position[1], elevation, soilType, plss);
       onClose();
     }
   };
@@ -163,6 +181,8 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
             showSoilLayer={showSoilLayer}
             showPLSS={showPLSS}
             brightness={brightness}
+            initialCenter={initialCenter}
+            initialZoom={initialZoom}
           />
         </div>
         <div className="location-picker-coords">
@@ -187,6 +207,16 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose }: 
                   <span style={{ color: 'var(--text-muted)' }}>Loading...</span>
                 ) : soilType ? (
                   soilType
+                ) : (
+                  <span style={{ color: 'var(--text-muted)' }}>N/A</span>
+                )}
+              </span>
+              <span>
+                <strong>PLSS:</strong>{' '}
+                {plssLoading ? (
+                  <span style={{ color: 'var(--text-muted)' }}>Loading...</span>
+                ) : plss ? (
+                  `T${plss.township}N R${plss.range}W Sec ${plss.section}`
                 ) : (
                   <span style={{ color: 'var(--text-muted)' }}>N/A</span>
                 )}

@@ -172,6 +172,9 @@ export default function FieldsClient({
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addFieldLatLng, setAddFieldLatLng] = useState<{ lat: string; lng: string } | null>(null);
+  const [addFieldPlss, setAddFieldPlss] = useState<{ township: number; range: number; section: number } | null>(null);
+  const [locationPickerInitialCenter, setLocationPickerInitialCenter] = useState<[number, number] | undefined>();
+  const [locationPickerInitialZoom, setLocationPickerInitialZoom] = useState<number | undefined>();
   const [sortColumn, setSortColumn] = useState<string>('field');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [showProbeAssign, setShowProbeAssign] = useState(false);
@@ -2929,10 +2932,12 @@ export default function FieldsClient({
             onClose={() => {
               setShowAddModal(false);
               setAddFieldLatLng(null);
+              setAddFieldPlss(null);
             }}
             onSaved={() => {
               setShowAddModal(false);
               setAddFieldLatLng(null);
+              setAddFieldPlss(null);
               window.location.reload();
             }}
             onOpenLocationPicker={() => {
@@ -2940,6 +2945,13 @@ export default function FieldsClient({
               setShowLocationPicker(true);
             }}
             latLng={addFieldLatLng}
+            onPlssLocate={(lat, lng, bounds) => {
+              setLocationPickerInitialCenter([lat, lng]);
+              setLocationPickerInitialZoom(14);
+              setLocationPickerTarget('add');
+              setShowLocationPicker(true);
+            }}
+            plss={addFieldPlss}
           />
         )}
 
@@ -3044,15 +3056,18 @@ export default function FieldsClient({
                   ? (editingProbeAssignmentLocation?.placementLng ?? null)
                   : (addFieldLatLng?.lng ? parseFloat(addFieldLatLng.lng) : null)
             }
-            onLocationChange={async (lat, lng, elevation, soilType) => {
-              if (locationPickerTarget === 'edit') {
-                setEditForm({
-                  ...editForm,
+            onLocationChange={async (lat, lng, elevation, soilType, plss) => {
+              if (locationPickerTarget === 'edit' && selectedField) {
+                setEditForm(prev => ({
+                  ...prev,
                   lat,
                   lng,
-                  elevation: elevation ?? editForm.elevation,
-                  soilType: soilType ?? editForm.soilType,
-                });
+                  elevation: elevation ?? prev.elevation,
+                  soilType: soilType ?? prev.soilType,
+                  plssTownship: plss?.township ?? prev.plssTownship,
+                  plssRange: plss?.range ?? prev.plssRange,
+                  plssSection: plss?.section ?? prev.plssSection,
+                }));
               } else if (locationPickerTarget === 'probeAssignment' && editingProbeAssignmentLocation) {
                 // Save location directly to probe assignment (single API call)
                 await handleProbeAssignmentLocationSave(
@@ -3062,14 +3077,19 @@ export default function FieldsClient({
                   elevation,
                   soilType
                 );
-              } else {
+              } else if (locationPickerTarget === 'add') {
                 setAddFieldLatLng({ lat: lat.toString(), lng: lng.toString() });
+                setAddFieldPlss(plss ?? null);
               }
             }}
             onClose={() => {
               setShowLocationPicker(false);
               setEditingProbeAssignmentLocation(null);
+              setLocationPickerInitialCenter(undefined);
+              setLocationPickerInitialZoom(undefined);
             }}
+            initialCenter={locationPickerInitialCenter}
+            initialZoom={locationPickerInitialZoom}
           />
         )}
       </div>
