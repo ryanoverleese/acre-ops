@@ -20,7 +20,7 @@ export interface PlssReverseResult {
 /**
  * Forward lookup: Township/Range/Section → section center + bounds.
  * Queries BLM section layer (2) by PLSSID + section number.
- * PLSSID format: NE06{TTT}0N0{RRR}0W0 (Nebraska, 6th PM, North, West)
+ * PLSSID format: NE06{TTT}0N{RRR}0W0 (Nebraska, 6th PM, North, West)
  */
 export async function plssForwardLookup(
   township: number,
@@ -29,7 +29,7 @@ export async function plssForwardLookup(
 ): Promise<PlssForwardResult | null> {
   const twp = String(township).padStart(3, '0');
   const rng = String(range).padStart(3, '0');
-  const plssId = `NE06${twp}0N0${rng}0W0`;
+  const plssId = `NE06${twp}0N${rng}0W0`;
 
   const params = new URLSearchParams({
     where: `PLSSID='${plssId}' AND FRSTDIVNO='${section}'`,

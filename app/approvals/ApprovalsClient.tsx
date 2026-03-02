@@ -792,7 +792,12 @@ export default function ApprovalsClient({
                   </Link>
 
                   <span className="approvals-op-count">
-                    {op.fieldCount} field{op.fieldCount !== 1 ? 's' : ''} enrolled
+                    {(() => {
+                      const count = selectedSeason === 'all'
+                        ? (op.fieldCountBySeason[0] || 0)
+                        : (op.fieldCountBySeason[selectedSeason] || 0);
+                      return `${count} field${count !== 1 ? 's' : ''} enrolled`;
+                    })()}
                   </span>
 
                   <span className="status-badge pending approvals-op-pending">
