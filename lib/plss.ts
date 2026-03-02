@@ -32,7 +32,7 @@ export async function plssForwardLookup(
   const plssId = `NE06${twp}0N${rng}0W0`;
 
   const params = new URLSearchParams({
-    where: `PLSSID='${plssId}' AND FRSTDIVNO='${section}'`,
+    where: `PLSSID='${plssId}' AND FRSTDIVNO='${String(section).padStart(2, '0')}'`,
     outFields: '*',
     returnGeometry: 'true',
     outSR: '4326',
