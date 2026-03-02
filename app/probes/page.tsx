@@ -30,7 +30,9 @@ async function getProbesData(): Promise<{
     const processedProbes: ProcessedProbe[] = probes.map((probe) => {
       const billingEntityLink = probe.billing_entity?.[0];
       const contactLink = probe.contact?.[0];
-      const operationName = contactLink ? (contactToOperationNames.get(contactLink.id) || []).join(', ') || '—' : '—';
+      const ownerOp = probe.owner_operation?.[0];
+      const operationName = ownerOp?.value
+        || (contactLink ? (contactToOperationNames.get(contactLink.id) || []).join(', ') || '—' : '—');
       return {
         id: probe.id,
         serialNumber: probe.serial_number || 'Unknown',
