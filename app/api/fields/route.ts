@@ -45,6 +45,18 @@ export async function POST(request: NextRequest) {
       // Round to 6 decimal places (Baserow limit)
       createData.lng = Math.round(Number(body.lng) * 1000000) / 1000000;
     }
+    if (body.plss_township !== undefined && body.plss_township !== null && body.plss_township !== '') {
+      createData.plss_township = Number(body.plss_township);
+    }
+    if (body.plss_range !== undefined && body.plss_range !== null && body.plss_range !== '') {
+      createData.plss_range = Number(body.plss_range);
+    }
+    if (body.plss_section !== undefined && body.plss_section !== null && body.plss_section !== '') {
+      createData.plss_section = Number(body.plss_section);
+    }
+    if (body.plss_description !== undefined) {
+      createData.plss_description = body.plss_description || '';
+    }
     if (body.notes && body.notes.trim() !== '') {
       createData.notes = body.notes;
     }
