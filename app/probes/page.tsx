@@ -31,10 +31,9 @@ async function getProbesData(): Promise<{
     const processedProbes: ProcessedProbe[] = probes.map((probe) => {
       const billingEntityLink = probe.billing_entity?.[0];
       const contactLink = probe.contact?.[0];
-      const ownerOp = probe.owner_operation?.[0];
-      const operationName = ownerOp?.value
-        || (contactLink ? (contactToOperationNames.get(contactLink.id) || []).join(', ') || '—' : null)
-        || (billingEntityLink ? (billingToOperationNames.get(billingEntityLink.id) || []).join(', ') || '—' : '—');
+      const operationName = billingEntityLink
+        ? (billingToOperationNames.get(billingEntityLink.id) || []).join(', ') || '—'
+        : '—';
       return {
         id: probe.id,
         serialNumber: probe.serial_number || `On Order #${probe.id}`,
