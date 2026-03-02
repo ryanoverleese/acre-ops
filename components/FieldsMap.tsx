@@ -70,13 +70,21 @@ const OPERATION_COLORS = [
   '#4ade80', // lime
 ];
 
-const BRAND_COLORS: Record<string, string> = {
-  'cropx v4': '#2563eb',                                        // blue
-  'sentek 36"/cropx gateway (large diameter)': '#eab308',       // yellow
-  'sentek 36"/cropx gateway (small diameter)': '#dc2626',       // red
-  'sentek 36"/sentek rocket dtu': '#ffffff',                    // white
-  'sentek 48" blue/sentek rocket': '#16a34a',                   // green
-  default: '#78716c',                                           // muted gray
+const BRAND_COLOR_RULES: { match: string; color: string }[] = [
+  { match: 'cropx v4', color: '#2563eb' },                       // blue
+  { match: 'cropx gateway (large', color: '#eab308' },           // yellow
+  { match: 'cropx gateway (small', color: '#dc2626' },           // red
+  { match: 'sentek rocket dtu', color: '#ffffff' },               // white
+  { match: 'sentek rocket', color: '#16a34a' },                   // green (must be after DTU)
+];
+const DEFAULT_BRAND_COLOR = '#78716c';
+
+const getBrandColor = (brand: string): string => {
+  const lower = brand.toLowerCase();
+  for (const rule of BRAND_COLOR_RULES) {
+    if (lower.includes(rule.match)) return rule.color;
+  }
+  return DEFAULT_BRAND_COLOR;
 };
 
 const MapContainer = dynamic(
@@ -205,7 +213,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
       case 'operation':
         return operationColorMap.get(field.operationId) || OPERATION_COLORS[0];
       case 'probeBrand':
-        return BRAND_COLORS[(field.probeBrand || '').toLowerCase()] || BRAND_COLORS.default;
+        return getBrandColor(field.probeBrand || '');
       default:
         return '#60a5fa'; // default blue
     }
@@ -239,9 +247,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           break;
         }
         case 'probeBrand': {
-          const brand = field.probeBrand || 'None';
-          label = brand;
-          color = BRAND_COLORS[brand.toLowerCase()] || BRAND_COLORS.default;
+          label = field.probeBrand || 'None';
+          color = getBrandColor(field.probeBrand || '');
           break;
         }
         default:
