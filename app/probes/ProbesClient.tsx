@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import EmptyState from '@/components/EmptyState';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
@@ -66,6 +66,35 @@ const RACK_OPTIONS = [
   '11A', '11B', '12A', '12B', '13A', '13B', '14A', '14B', '15A', '15B',
 ];
 
+// Column picker types and definitions
+type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'notes' | 'damagesRepairs' | 'dateCreated';
+
+interface ProbeColumnDefinition {
+  key: ProbeColumnKey;
+  label: string;
+  alwaysVisible?: boolean;
+}
+
+const ALL_PROBE_COLUMNS: ProbeColumnDefinition[] = [
+  { key: 'serialNumber', label: 'Serial Number', alwaysVisible: true },
+  { key: 'brand', label: 'Brand' },
+  { key: 'status', label: 'Status' },
+  { key: 'field', label: 'Field' },
+  { key: 'rack', label: 'Rack Location' },
+  { key: 'operation', label: 'Operation' },
+  { key: 'yearNew', label: 'Year New' },
+  { key: 'billingEntity', label: 'Billing Entity' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'damagesRepairs', label: 'Damages/Repairs' },
+  { key: 'dateCreated', label: 'Date Created' },
+];
+
+const DEFAULT_PROBE_COLUMNS: ProbeColumnKey[] = [
+  'serialNumber', 'brand', 'status', 'field', 'rack', 'operation', 'yearNew', 'billingEntity',
+];
+
+const PROBE_COLUMNS_STORAGE_KEY = 'probes-visible-columns';
+
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   serialNumber: 140,
   brand: 100,
@@ -74,6 +103,10 @@ const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
   rack: 120,
   operation: 130,
   yearNew: 90,
+  billingEntity: 140,
+  notes: 160,
+  damagesRepairs: 160,
+  dateCreated: 110,
 };
 const COLUMN_WIDTHS_STORAGE_KEY = 'probes-column-widths';
 
@@ -107,6 +140,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
   const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
   const mobileCardsRef = useRef<HTMLDivElement>(null);
+  const columnPickerRef = useRef<HTMLDivElement>(null);
+  const [showColumnPicker, setShowColumnPicker] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<ProbeColumnKey[]>(() => {
+    try {
+      const saved = localStorage.getItem(PROBE_COLUMNS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved) as ProbeColumnKey[];
+        const validKeys = new Set(ALL_PROBE_COLUMNS.map(c => c.key));
+        const validated = parsed.filter(k => validKeys.has(k));
+        if (!validated.includes('serialNumber')) validated.unshift('serialNumber');
+        return validated.length > 0 ? validated : DEFAULT_PROBE_COLUMNS;
+      }
+    } catch (e) { /* ignore */ }
+    return DEFAULT_PROBE_COLUMNS;
+  });
 
   const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
     defaultWidths: DEFAULT_COLUMN_WIDTHS,
@@ -136,6 +184,25 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     return probeFieldMap.get(`${probeId}-${currentSeason}`) || null;
   };
 
+  // Save column preferences
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROBE_COLUMNS_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch (e) { /* ignore */ }
+  }, [visibleColumns]);
+
+  // Close column picker on click outside
+  useEffect(() => {
+    if (!showColumnPicker) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (columnPickerRef.current && !columnPickerRef.current.contains(event.target as Node)) {
+        setShowColumnPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showColumnPicker]);
+
   const handleSort = (column: string) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -144,6 +211,18 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       setSortDirection('asc');
     }
   };
+
+  const toggleColumn = (columnKey: ProbeColumnKey) => {
+    const column = ALL_PROBE_COLUMNS.find(col => col.key === columnKey);
+    if (column?.alwaysVisible) return;
+    setVisibleColumns(prev =>
+      prev.includes(columnKey)
+        ? prev.filter(c => c !== columnKey)
+        : [...prev, columnKey]
+    );
+  };
+
+  const isColumnVisible = (columnKey: ProbeColumnKey) => visibleColumns.includes(columnKey);
 
   const filteredProbes = useMemo(() => {
     let filtered = probes;
@@ -209,7 +288,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           case 'field': aVal = (getFieldForProbe(a.id) || '').toLowerCase(); bVal = (getFieldForProbe(b.id) || '').toLowerCase(); break;
           case 'operation': aVal = a.operation.toLowerCase(); bVal = b.operation.toLowerCase(); break;
           case 'year': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
+          case 'yearNew': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
           case 'rack': aVal = `${a.rack || ''}-${a.rackSlot || ''}`; bVal = `${b.rack || ''}-${b.rackSlot || ''}`; break;
+          case 'billingEntity': aVal = a.billingEntity.toLowerCase(); bVal = b.billingEntity.toLowerCase(); break;
+          case 'notes': aVal = (a.notes || '').toLowerCase(); bVal = (b.notes || '').toLowerCase(); break;
+          case 'damagesRepairs': aVal = (a.damagesRepairs || '').toLowerCase(); bVal = (b.damagesRepairs || '').toLowerCase(); break;
+          case 'dateCreated': aVal = a.dateCreated || ''; bVal = b.dateCreated || ''; break;
           default: aVal = a.serialNumber.toLowerCase(); bVal = b.serialNumber.toLowerCase();
         }
 
@@ -492,6 +576,35 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     );
   };
 
+  const renderProbeCell = (probe: ProcessedProbe, colKey: ProbeColumnKey) => {
+    switch (colKey) {
+      case 'serialNumber':
+        return <td key={colKey} className="cell-semibold">#{probe.serialNumber}</td>;
+      case 'brand':
+        return <td key={colKey}>{getBrandBadge(probe.brand)}</td>;
+      case 'status':
+        return <td key={colKey}>{getStatusBadge(probe.status)}</td>;
+      case 'field':
+        return <td key={colKey} className="cell-sm">{getFieldForProbe(probe.id) || '—'}</td>;
+      case 'rack':
+        return <td key={colKey} className="cell-sm">{probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}</td>;
+      case 'operation':
+        return <td key={colKey} className="cell-sm">{probe.operation || '—'}</td>;
+      case 'yearNew':
+        return <td key={colKey} className="field-count">{probe.yearNew || '—'}</td>;
+      case 'billingEntity':
+        return <td key={colKey} className="cell-sm">{probe.billingEntity || '—'}</td>;
+      case 'notes':
+        return <td key={colKey} className="cell-sm cell-wrap">{probe.notes || '—'}</td>;
+      case 'damagesRepairs':
+        return <td key={colKey} className="cell-sm cell-wrap">{probe.damagesRepairs || '—'}</td>;
+      case 'dateCreated':
+        return <td key={colKey} className="cell-sm">{probe.dateCreated ? new Date(probe.dateCreated).toLocaleDateString() : '—'}</td>;
+      default:
+        return <td key={colKey}>—</td>;
+    }
+  };
+
   return (
     <>
       <header className="header">
@@ -604,6 +717,55 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </select>
               </>
             )}
+            <div ref={columnPickerRef} className="fields-col-picker">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowColumnPicker(!showColumnPicker)}
+                title="Configure visible columns"
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                Columns
+              </button>
+              {showColumnPicker && (
+                <div className="fields-col-dropdown">
+                  <div className="fields-col-header">
+                    <span className="fields-col-label">Show Columns</span>
+                  </div>
+                  {ALL_PROBE_COLUMNS.map(col => (
+                    <label
+                      key={col.key}
+                      className={`fields-col-item ${col.alwaysVisible ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        if (!col.alwaysVisible) {
+                          e.preventDefault();
+                          toggleColumn(col.key);
+                        }
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isColumnVisible(col.key)}
+                        disabled={col.alwaysVisible}
+                        onChange={() => {}}
+                        className={`fields-col-checkbox ${col.alwaysVisible ? 'disabled' : ''}`}
+                      />
+                      {col.label}
+                      {col.alwaysVisible && <span className="fields-col-required">(required)</span>}
+                    </label>
+                  ))}
+                  <div className="fields-col-footer">
+                    <button className="btn btn-secondary fields-col-reset" onClick={() => setVisibleColumns(ALL_PROBE_COLUMNS.filter(c => c.alwaysVisible).map(c => c.key))}>
+                      Deselect All
+                    </button>
+                    <button className="btn btn-secondary fields-col-reset" onClick={() => setVisibleColumns([...DEFAULT_PROBE_COLUMNS])}>
+                      Reset to Defaults
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -616,70 +778,32 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         <div className="table-container">
           <table className="desktop-table" ref={desktopTableRef} style={{ userSelect: resizingColumn ? 'none' : undefined }}>
             <colgroup>
-              <col style={{ width: columnWidths.serialNumber }} />
-              <col style={{ width: columnWidths.brand }} />
-              <col style={{ width: columnWidths.status }} />
-              <col style={{ width: columnWidths.field }} />
-              <col style={{ width: columnWidths.rack }} />
-              <col style={{ width: columnWidths.operation }} />
-              <col style={{ width: columnWidths.yearNew }} />
+              {visibleColumns.map(colKey => (
+                <col key={colKey} style={{ width: columnWidths[colKey] || DEFAULT_COLUMN_WIDTHS[colKey] || 100 }} />
+              ))}
               <col style={{ width: 80 }} />
             </colgroup>
             <thead>
               <tr>
-                <th className="sortable th-resizable" onClick={() => handleSort('serialNumber')}>
-                  <span className="th-content">
-                    Serial Number
-                    {sortColumn === 'serialNumber' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </span>
-                  <div onMouseDown={(e) => handleResizeStart('serialNumber', e)} onDoubleClick={() => handleResetColumnWidth('serialNumber')} className={`resize-handle${resizingColumn === 'serialNumber' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th className="sortable th-resizable" onClick={() => handleSort('brand')}>
-                  <span className="th-content">
-                    Brand
-                    {sortColumn === 'brand' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </span>
-                  <div onMouseDown={(e) => handleResizeStart('brand', e)} onDoubleClick={() => handleResetColumnWidth('brand')} className={`resize-handle${resizingColumn === 'brand' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th className="sortable th-resizable" onClick={() => handleSort('status')}>
-                  <span className="th-content">
-                    Status
-                    {sortColumn === 'status' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </span>
-                  <div onMouseDown={(e) => handleResizeStart('status', e)} onDoubleClick={() => handleResetColumnWidth('status')} className={`resize-handle${resizingColumn === 'status' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th className="sortable th-resizable" onClick={() => handleSort('field')}>
-                  <span className="th-content">
-                    Field
-                    {sortColumn === 'field' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </span>
-                  <div onMouseDown={(e) => handleResizeStart('field', e)} onDoubleClick={() => handleResetColumnWidth('field')} className={`resize-handle${resizingColumn === 'field' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th className="th-resizable">
-                  <span className="th-content">Rack Location</span>
-                  <div onMouseDown={(e) => handleResizeStart('rack', e)} onDoubleClick={() => handleResetColumnWidth('rack')} className={`resize-handle${resizingColumn === 'rack' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th className="sortable th-resizable" onClick={() => handleSort('operation')}>
-                  <span className="th-content">
-                    Operation
-                    {sortColumn === 'operation' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </span>
-                  <div onMouseDown={(e) => handleResizeStart('operation', e)} onDoubleClick={() => handleResetColumnWidth('operation')} className={`resize-handle${resizingColumn === 'operation' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th className="sortable th-resizable" onClick={() => handleSort('year')}>
-                  <span className="th-content">
-                    Year New
-                    {sortColumn === 'year' && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
-                  </span>
-                  <div onMouseDown={(e) => handleResizeStart('yearNew', e)} onDoubleClick={() => handleResetColumnWidth('yearNew')} className={`resize-handle${resizingColumn === 'yearNew' ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
-                </th>
-                <th></th>
+                {visibleColumns.map(colKey => {
+                  const colDef = ALL_PROBE_COLUMNS.find(c => c.key === colKey);
+                  return (
+                    <th key={colKey} className="sortable th-resizable" onClick={() => handleSort(colKey)}>
+                      <span className="th-content">
+                        {colDef?.label || colKey}
+                        {sortColumn === colKey && <span className="sort-indicator">{sortDirection === 'asc' ? ' ▲' : ' ▼'}</span>}
+                      </span>
+                      <div onMouseDown={(e) => handleResizeStart(colKey, e)} onDoubleClick={() => handleResetColumnWidth(colKey)} className={`resize-handle${resizingColumn === colKey ? ' active' : ''}`} title="Drag to resize, double-click to reset" />
+                    </th>
+                  );
+                })}
+                <th style={{ width: 80 }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredProbes.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={visibleColumns.length + 1}>
                     <EmptyState
                       icon={searchQuery ? 'search' : 'probes'}
                       title={searchQuery ? 'No matching probes' : 'No probes yet'}
@@ -691,19 +815,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               ) : (
                 filteredProbes.map((probe) => (
                   <tr key={probe.id}>
-                    <td className="cell-semibold">
-                      #{probe.serialNumber}
-                    </td>
-                    <td>{getBrandBadge(probe.brand)}</td>
-                    <td>{getStatusBadge(probe.status)}</td>
-                    <td className="cell-sm">
-                      {getFieldForProbe(probe.id) || '—'}
-                    </td>
-                    <td className="cell-sm">
-                      {probe.rack && probe.rack !== '—' ? `${probe.rack}${probe.rackSlot ? `-${probe.rackSlot}` : ''}` : '—'}
-                    </td>
-                    <td className="cell-sm">{probe.operation}</td>
-                    <td className="field-count">{probe.yearNew || '—'}</td>
+                    {visibleColumns.map(colKey => renderProbeCell(probe, colKey))}
                     <td>
                       <div className="action-btn-group">
                         <button className="action-btn" title="Edit" onClick={() => openEditModal(probe)}>

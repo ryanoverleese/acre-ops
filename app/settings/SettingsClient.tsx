@@ -79,6 +79,7 @@ const FIELD_LABELS: Record<string, string> = {
 
 const GLOBAL_SEASON_KEY = 'acre-ops-global-season';
 const FIELD_COLUMNS_STORAGE_KEY = 'fields-tab-columns';
+const PROBE_COLUMNS_STORAGE_KEY = 'probes-visible-columns';
 
 // Column definitions matching Fields page
 type FieldColumnKey =
@@ -151,6 +152,33 @@ const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
   removal: ['field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
 };
 
+// Probe column definitions matching Probes page
+type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'notes' | 'damagesRepairs' | 'dateCreated';
+
+interface ProbeColumnDefinition {
+  key: ProbeColumnKey;
+  label: string;
+  alwaysVisible?: boolean;
+}
+
+const ALL_PROBE_COLUMNS: ProbeColumnDefinition[] = [
+  { key: 'serialNumber', label: 'Serial Number', alwaysVisible: true },
+  { key: 'brand', label: 'Brand' },
+  { key: 'status', label: 'Status' },
+  { key: 'field', label: 'Field' },
+  { key: 'rack', label: 'Rack Location' },
+  { key: 'operation', label: 'Operation' },
+  { key: 'yearNew', label: 'Year New' },
+  { key: 'billingEntity', label: 'Billing Entity' },
+  { key: 'notes', label: 'Notes' },
+  { key: 'damagesRepairs', label: 'Damages/Repairs' },
+  { key: 'dateCreated', label: 'Date Created' },
+];
+
+const DEFAULT_PROBE_COLUMNS: ProbeColumnKey[] = [
+  'serialNumber', 'brand', 'status', 'field', 'rack', 'operation', 'yearNew', 'billingEntity',
+];
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -181,6 +209,8 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
   const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
   const [selectedColumnTab, setSelectedColumnTab] = useState<TabView>('signup');
   const [columnsSaved, setColumnsSaved] = useState(false);
+  const [probeColumns, setProbeColumns] = useState<ProbeColumnKey[]>(() => [...DEFAULT_PROBE_COLUMNS]);
+  const [probeColumnsSaved, setProbeColumnsSaved] = useState(false);
 
   // Collapsible sections - all collapsed by default
   const [openSections, setOpenSections] = useState<Set<string>>(new Set());
@@ -404,6 +434,22 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     }
   }, []);
 
+  // Load probe columns from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PROBE_COLUMNS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as ProbeColumnKey[];
+        const validKeys = new Set(ALL_PROBE_COLUMNS.map(c => c.key));
+        const validated = parsed.filter(k => validKeys.has(k));
+        if (!validated.includes('serialNumber')) validated.unshift('serialNumber');
+        if (validated.length > 0) setProbeColumns(validated);
+      }
+    } catch (e) {
+      console.error('Failed to load probe columns:', e);
+    }
+  }, []);
+
   // Save global season to localStorage
   const handleSeasonChange = (newSeason: string) => {
     setGlobalSeason(newSeason);
@@ -456,6 +502,41 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       setTimeout(() => setColumnsSaved(false), 2000);
     } catch (e) {
       console.error('Failed to save column settings:', e);
+    }
+  };
+
+  // Toggle probe column visibility
+  const handleToggleProbeColumn = (columnKey: ProbeColumnKey) => {
+    if (columnKey === 'serialNumber') return;
+
+    let newColumns: ProbeColumnKey[];
+    if (probeColumns.includes(columnKey)) {
+      newColumns = probeColumns.filter(c => c !== columnKey);
+    } else {
+      const allKeys = ALL_PROBE_COLUMNS.map(c => c.key);
+      newColumns = [...probeColumns, columnKey].sort((a, b) =>
+        allKeys.indexOf(a) - allKeys.indexOf(b)
+      );
+    }
+
+    setProbeColumns(newColumns);
+    try {
+      localStorage.setItem(PROBE_COLUMNS_STORAGE_KEY, JSON.stringify(newColumns));
+      setProbeColumnsSaved(true);
+      setTimeout(() => setProbeColumnsSaved(false), 2000);
+    } catch (e) {
+      console.error('Failed to save probe column settings:', e);
+    }
+  };
+
+  const handleResetProbeColumns = () => {
+    setProbeColumns([...DEFAULT_PROBE_COLUMNS]);
+    try {
+      localStorage.setItem(PROBE_COLUMNS_STORAGE_KEY, JSON.stringify(DEFAULT_PROBE_COLUMNS));
+      setProbeColumnsSaved(true);
+      setTimeout(() => setProbeColumnsSaved(false), 2000);
+    } catch (e) {
+      console.error('Failed to save probe column settings:', e);
     }
   };
 
@@ -707,6 +788,78 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
 
               <div className="column-count">
                 {tabColumns[selectedColumnTab].length} columns selected
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Probes Column Settings */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('probeColumns')}>
+            <h3 className="table-title">Probes Columns</h3>
+            <div className="table-actions">
+              <SavedIndicator show={probeColumnsSaved} />
+              <svg
+                fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+                className={`settings-chevron${openSections.has('probeColumns') ? ' open' : ''}`}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+
+          {openSections.has('probeColumns') && (
+            <div className="settings-section-content">
+              <p className="section-description">
+                Configure which columns are visible on the Probes page.
+              </p>
+
+              <div className="form-field-row mb-4">
+                <div>
+                  <label className="form-group-label">Add Column</label>
+                  <select
+                    className="inline-select"
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleToggleProbeColumn(e.target.value as ProbeColumnKey);
+                      }
+                    }}
+                  >
+                    <option value="">Select column to add...</option>
+                    {ALL_PROBE_COLUMNS
+                      .filter(col => !col.alwaysVisible && !probeColumns.includes(col.key))
+                      .map((col) => (
+                        <option key={col.key} value={col.key}>{col.label}</option>
+                      ))}
+                  </select>
+                </div>
+
+                <button
+                  className="btn btn-secondary btn-sm settings-btn-end"
+                  onClick={handleResetProbeColumns}
+                >
+                  Reset to Defaults
+                </button>
+              </div>
+
+              <ColumnTagsContainer>
+                {probeColumns.map((colKey) => {
+                  const col = ALL_PROBE_COLUMNS.find(c => c.key === colKey);
+                  if (!col) return null;
+                  return (
+                    <ColumnTag
+                      key={colKey}
+                      label={col.label}
+                      locked={col.alwaysVisible}
+                      onRemove={() => handleToggleProbeColumn(colKey)}
+                    />
+                  );
+                })}
+              </ColumnTagsContainer>
+
+              <div className="column-count">
+                {probeColumns.length} columns selected
               </div>
             </div>
           )}

@@ -5785,6 +5785,12 @@ input[type="date"]:focus {
   font-size: 13px;
 }
 
+.cell-wrap {
+  white-space: normal;
+  word-break: break-word;
+  max-width: 200px;
+}
+
 /* Mobile wrapper for relative positioning of scrubber */
 .probes-mobile-wrapper {
   position: relative;
