@@ -11,8 +11,12 @@ export async function GET(request: NextRequest) {
 
   // Reverse lookup: lat/lng -> T/R/S
   if (lat && lng) {
+    const latNum = Number(lat), lngNum = Number(lng);
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      return NextResponse.json({ error: 'Invalid lat/lng values' }, { status: 400 });
+    }
     try {
-      const result = await plssReverseLookup(Number(lat), Number(lng));
+      const result = await plssReverseLookup(latNum, lngNum);
       if (!result) {
         return NextResponse.json({ error: 'No PLSS data found for this location' }, { status: 404 });
       }
@@ -25,8 +29,12 @@ export async function GET(request: NextRequest) {
 
   // Forward lookup: T/R/S -> coordinates
   if (township && range && section) {
+    const t = Number(township), r = Number(range), s = Number(section);
+    if (isNaN(t) || isNaN(r) || isNaN(s)) {
+      return NextResponse.json({ error: 'Invalid township/range/section values' }, { status: 400 });
+    }
     try {
-      const result = await plssForwardLookup(Number(township), Number(range), Number(section));
+      const result = await plssForwardLookup(t, r, s);
       if (!result) {
         return NextResponse.json({ error: 'Section not found' }, { status: 404 });
       }

@@ -296,10 +296,16 @@ export default function AddFieldModal({
                   className="btn btn-secondary"
                   disabled={!form.plss_township || !form.plss_range || !form.plss_section}
                   onClick={async () => {
-                    const res = await fetch(`/api/plss/lookup?township=${form.plss_township}&range=${form.plss_range}&section=${form.plss_section}`);
-                    if (res.ok) {
-                      const data = await res.json();
-                      onPlssLocate?.(data.lat, data.lng, data.bounds);
+                    try {
+                      const res = await fetch(`/api/plss/lookup?township=${form.plss_township}&range=${form.plss_range}&section=${form.plss_section}`);
+                      if (res.ok) {
+                        const data = await res.json();
+                        onPlssLocate?.(data.lat, data.lng, data.bounds);
+                      } else {
+                        alert('Section not found. Check Township, Range, and Section values.');
+                      }
+                    } catch {
+                      alert('Failed to look up section. Please try again.');
                     }
                   }}
                 >
