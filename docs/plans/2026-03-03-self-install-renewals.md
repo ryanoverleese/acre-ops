@@ -2,9 +2,9 @@
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Allow billing entities to be flagged as "self-install" so renewal-only customers can be tracked without requiring full field details.
+**Goal:** Allow billing entities to be flagged as "self-install" so renewal-only customers can be tracked without requiring full field details. Add quantity support to invoice lines so renewal customers can be billed per-probe (e.g., 16 probes × $375 = $6,000).
 
-**Architecture:** Add a `self_install` boolean field to the billing_entities Baserow table. When toggled on, auto-create a dummy field named "[Customer] - Renewals" linked to that billing entity. Field_seasons are created through the existing enrollment flow. No new tables or API routes needed.
+**Architecture:** Add a `self_install` boolean field to the billing_entities Baserow table. When toggled on, auto-create a dummy field named "[Customer] - Renewals" linked to that billing entity. Field_seasons are created through the existing enrollment flow. Add `quantity` field to invoice_lines (default 1) so billing displays and calculates rate × quantity. No new tables or API routes needed.
 
 **Tech Stack:** Next.js, Baserow API, TypeScript
 
@@ -229,7 +229,140 @@ git commit -m "feat: add self-install badge to billing entities list"
 
 ---
 
-### Task 5: Test the full flow end-to-end
+### Task 5: Add quantity support to invoice lines
+
+**Prereq:** `quantity` number field (default 1) already added to `invoice_lines` table (817304) in Baserow.
+
+**Files:**
+- Modify: `lib/baserow.ts:467-473` (InvoiceLine interface)
+- Modify: `app/billing/BillingClient.tsx` (display interface, table rendering, subtotal calculation)
+- Modify: `app/billing/page.tsx` (server-side processing, subtotal calculation)
+- Modify: `app/api/billing/enroll/route.ts` (updateInvoiceTotal helper)
+
+**Step 1: Update the InvoiceLine interface in baserow.ts**
+
+In `lib/baserow.ts`, update the interface at lines 467-473:
+
+```typescript
+export interface InvoiceLine {
+  id: number;
+  invoice?: { id: number; value: string }[];
+  field_season?: { id: number; value: string }[];
+  service_type?: string;
+  rate?: number;
+  quantity?: number;
+}
+```
+
+**Step 2: Update the client-side InvoiceLine interface**
+
+In `app/billing/BillingClient.tsx`, update the interface at lines 13-18:
+
+```typescript
+export interface InvoiceLine {
+  id: number;
+  fieldName: string;
+  serviceType: string;
+  rate: number;
+  quantity: number;
+}
+```
+
+**Step 3: Pass quantity through from server to client**
+
+In `app/billing/page.tsx`, update the line processing (~line 50) to include quantity in the beSeasonLines map type:
+
+Change the map type:
+```typescript
+const beSeasonLines = new Map<string, { fieldSeasonId: number; fieldName: string; serviceType: string; rate: number; quantity: number }[]>();
+```
+
+In the `fieldSeasons.forEach` loop (~line 74), add quantity when pushing to the map. Note: quantity comes from invoice_lines, not field_seasons. Since the current billing page derives lines from field_seasons (not from the invoice_lines table directly), we need to also fetch invoice_lines and merge the quantity in.
+
+Add `getInvoiceLines` to the data fetch at the top of `getData()`, then build a map of field_season_id → quantity from invoice_lines. When pushing to beSeasonLines, look up quantity from that map, defaulting to 1.
+
+In the processed invoice lines (~line 130-135):
+```typescript
+lines: lines.map((line) => ({
+  id: line.fieldSeasonId,
+  fieldName: line.fieldName,
+  serviceType: line.serviceType,
+  rate: line.rate,
+  quantity: line.quantity,
+})),
+```
+
+**Step 4: Update subtotal calculation on the server side**
+
+In `app/billing/page.tsx` (~line 118), change:
+```typescript
+const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
+```
+
+**Step 5: Update the billing table display**
+
+In `app/billing/BillingClient.tsx`, update the table header (~line 399):
+```tsx
+<thead>
+  <tr>
+    <th>Field</th>
+    <th>Service Type</th>
+    <th className="align-right">Qty</th>
+    <th className="align-right">Rate</th>
+    <th className="align-right">Total</th>
+  </tr>
+</thead>
+```
+
+Update the table body row (~line 405):
+```tsx
+{lines.map((line) => (
+  <tr key={line.id}>
+    <td>{line.fieldName}</td>
+    <td className="text-secondary">{line.serviceType || '—'}</td>
+    <td className="align-right">{line.quantity}</td>
+    <td className="align-right">{formatCurrency(line.rate)}</td>
+    <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
+  </tr>
+))}
+```
+
+Update the subtotal/total rows colSpan from 2 to 4:
+```tsx
+<tr className="subtotal-row">
+  <td colSpan={4} className="align-right">Subtotal</td>
+  <td className="align-right">{formatCurrency(subtotal)}</td>
+</tr>
+```
+
+And same for discount and total rows.
+
+**Step 6: Update the subtotal calculation in BillingClient**
+
+Find where subtotal is calculated from lines in BillingClient.tsx and update to:
+```typescript
+const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
+```
+
+**Step 7: Update updateInvoiceTotal helper**
+
+In `app/api/billing/enroll/route.ts` (~line 207), update the total calculation:
+```typescript
+const total = linesData.results.reduce((sum: number, line: { rate?: number; quantity?: number }) => {
+  return sum + ((line.rate || 0) * (line.quantity || 1));
+}, 0);
+```
+
+**Step 8: Commit**
+
+```bash
+git add lib/baserow.ts app/billing/BillingClient.tsx app/billing/page.tsx app/api/billing/enroll/route.ts
+git commit -m "feat: add quantity support to invoice lines for per-probe billing"
+```
+
+---
+
+### Task 6: Test the full flow end-to-end
 
 **Steps:**
 
