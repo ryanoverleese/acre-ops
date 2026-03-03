@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (body.crop) fieldSeasonData.crop = body.crop;
-    if (body.service_type) fieldSeasonData.service_type = body.service_type;
+    if (body.service_type) fieldSeasonData.service_type = [parseInt(body.service_type, 10)];
     if (body.side_dress) fieldSeasonData.side_dress = body.side_dress;
     if (body.logger_id) fieldSeasonData.logger_id = body.logger_id;
     if (body.early_removal) fieldSeasonData.early_removal = body.early_removal;
