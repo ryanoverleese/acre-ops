@@ -748,6 +748,7 @@ body::before {
 
 .table-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: center;
 }
@@ -2230,10 +2231,6 @@ tr.selected {
 
 /* Mobile Responsive Table Styles */
 @media (max-width: 1024px) {
-  .table-actions {
-    flex-wrap: wrap;
-  }
-
   .table-header {
     flex-direction: column;
     align-items: flex-start;

@@ -81,12 +81,19 @@ interface BaserowResponse<T> {
   results: T[];
 }
 
+export interface BaserowFilter {
+  field: string;
+  type: 'equal' | 'not_equal' | 'contains' | 'higher_than' | 'lower_than';
+  value: string;
+}
+
 interface FetchOptions {
   page?: number;
   size?: number;
   search?: string;
   orderBy?: string;
   filters?: Record<string, unknown>;
+  baserowFilters?: BaserowFilter[];
 }
 
 // Normalize Baserow field names: replace spaces with underscores and lowercase.
@@ -153,6 +160,12 @@ async function baserowFetch<T>(
     params.append('order_by', orderBy);
   }
 
+  if (options.baserowFilters?.length) {
+    options.baserowFilters.forEach((f) => {
+      params.append(`filter__${f.field}__${f.type}`, f.value);
+    });
+  }
+
   const url = `${BASEROW_API_URL}/${tableId}/?${params.toString()}`;
 
   const response = await fetchWithRetry(url, {
@@ -177,21 +190,30 @@ async function baserowFetch<T>(
   return data;
 }
 
-// Generic get all rows for a table (fetches ALL pages)
+// Generic get all rows for a table (fetches ALL pages in parallel)
 export async function getRows<T>(tableName: TableName, options?: FetchOptions): Promise<T[]> {
   const tableId = TABLE_IDS[tableName];
-  const allResults: T[] = [];
-  let page = 1;
-  let hasMore = true;
+  const size = options?.size || 200;
 
-  while (hasMore) {
-    const response = await baserowFetch<T>(tableId, { ...options, page, size: 200 });
-    allResults.push(...response.results);
+  // Fetch first page to get total count
+  const firstPage = await baserowFetch<T>(tableId, { ...options, page: 1, size });
+  const allResults: T[] = [...firstPage.results];
 
-    // Check if there are more pages
-    hasMore = response.next !== null;
-    page++;
+  if (firstPage.next === null) {
+    return allResults;
   }
+
+  // Calculate remaining pages and fetch them all in parallel
+  const totalPages = Math.ceil(firstPage.count / size);
+  const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+
+  const remainingResults = await Promise.all(
+    remainingPages.map((page) => baserowFetch<T>(tableId, { ...options, page, size }))
+  );
+
+  remainingResults.forEach((response) => {
+    allResults.push(...response.results);
+  });
 
   return allResults;
 }

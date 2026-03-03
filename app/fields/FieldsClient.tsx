@@ -11,7 +11,7 @@ import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
-import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from './page';
+import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -149,6 +149,9 @@ export default function FieldsClient({
   const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
   const [savingProbeAssignmentFor, setSavingProbeAssignmentFor] = useState<number | null>(null);
   const [currentSeason, setCurrentSeason] = useState(availableSeasons[0] || '2026');
+  // Track which seasons have been loaded (initial load is current year)
+  const [loadedSeasons, setLoadedSeasons] = useState<Set<string>>(() => new Set([availableSeasons[0] || String(new Date().getFullYear())]));
+  const [loadingSeason, setLoadingSeason] = useState(false);
   const [customYears, setCustomYears] = useState<string[]>([]);
   const [currentOperation, setCurrentOperation] = useState<string>('all');
   const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
@@ -216,6 +219,41 @@ export default function FieldsClient({
     defaultWidths: DEFAULT_FIELD_COLUMN_WIDTHS,
     storageKey: FIELD_COLUMN_WIDTHS_STORAGE_KEY,
   });
+
+  // Fetch season data on demand when switching to an unloaded season
+  const switchSeason = useCallback(async (season: string) => {
+    setCurrentSeason(season);
+
+    // "all" view works with whatever data is already loaded
+    if (season === 'all' || loadedSeasons.has(season)) return;
+
+    setLoadingSeason(true);
+    try {
+      const res = await fetch(`/api/fields/season-data?season=${season}`);
+      if (!res.ok) throw new Error('Failed to fetch season data');
+      const data = await res.json();
+
+      // Merge new season's fields into state (replace any no-season placeholders for these field IDs)
+      setFields((prev) => {
+        const newFieldIds = new Set(data.fields.filter((f: ProcessedField) => f.fieldSeasonId).map((f: ProcessedField) => f.id));
+        // Keep existing fields, but remove no-season placeholders for fields that now have season data
+        const kept = prev.filter((f) => !(f.season === '' && newFieldIds.has(f.id)));
+        return [...kept, ...data.fields.filter((f: ProcessedField) => f.fieldSeasonId)];
+      });
+
+      setProbeAssignments((prev) => {
+        const newIds = new Set(data.probeAssignments.map((pa: ProcessedProbeAssignment) => pa.id));
+        const kept = prev.filter((pa) => !newIds.has(pa.id));
+        return [...kept, ...data.probeAssignments];
+      });
+
+      setLoadedSeasons((prev) => new Set([...prev, season]));
+    } catch (e) {
+      console.error('Failed to load season data:', e);
+    } finally {
+      setLoadingSeason(false);
+    }
+  }, [loadedSeasons]);
 
   // Persist currentTab to sessionStorage so it survives page reloads
   useEffect(() => {
@@ -1567,10 +1605,10 @@ export default function FieldsClient({
                   if (!allSeasons.includes(newYear)) {
                     setCustomYears(prev => [...prev, newYear]);
                   }
-                  setCurrentSeason(newYear);
+                  switchSeason(newYear);
                 }
               } else {
-                setCurrentSeason(e.target.value);
+                switchSeason(e.target.value);
               }
               // Exit inline enrollment mode on season change
               setInlineEnrollMode(false);
@@ -1922,7 +1960,13 @@ export default function FieldsClient({
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredFields.length === 0 ? (
+                        {loadingSeason ? (
+                          <tr>
+                            <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)}>
+                              <div className="loading"><div className="loading-spinner"></div>Loading {currentSeason} season data...</div>
+                            </td>
+                          </tr>
+                        ) : filteredFields.length === 0 ? (
                           <tr>
                             <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)}>
                               <EmptyState
@@ -2265,7 +2309,9 @@ export default function FieldsClient({
                     </table>
                   </div>
                   <div className="mobile-cards">
-                    {filteredFields.length === 0 ? (
+                    {loadingSeason ? (
+                      <div className="loading"><div className="loading-spinner"></div>Loading {currentSeason} season data...</div>
+                    ) : filteredFields.length === 0 ? (
                       <EmptyState
                         icon={searchQuery ? 'search' : currentSeason !== 'all' ? 'calendar' : 'fields'}
                         title={searchQuery ? 'No matching fields' : currentSeason !== 'all' ? `No fields for ${currentSeason}` : 'No fields yet'}
