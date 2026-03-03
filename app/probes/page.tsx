@@ -2,6 +2,8 @@ import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts,
 import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
+export const dynamic = 'force-dynamic';
+
 async function getProbesData(): Promise<{
   probes: ProcessedProbe[];
   billingEntities: BillingEntityOption[];
