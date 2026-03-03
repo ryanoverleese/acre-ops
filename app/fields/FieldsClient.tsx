@@ -13,6 +13,7 @@ import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
+import { useOperationFocus } from '@/lib/OperationFocusContext';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -143,6 +144,7 @@ export default function FieldsClient({
   productsServices,
   selectOptions,
 }: FieldsClientProps) {
+  const { focusedOperation } = useOperationFocus();
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [expandedFieldSeasons, setExpandedFieldSeasons] = useState<Set<number>>(new Set());
@@ -154,6 +156,7 @@ export default function FieldsClient({
   const [loadingSeason, setLoadingSeason] = useState(false);
   const [customYears, setCustomYears] = useState<string[]>([]);
   const [currentOperation, setCurrentOperation] = useState<string>('all');
+  const effectiveOperation = focusedOperation ? focusedOperation.id.toString() : currentOperation;
   const [currentIrrigationType, setCurrentIrrigationType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [mapVisible, setMapVisible] = useState(false);
@@ -488,8 +491,8 @@ export default function FieldsClient({
       );
     }
 
-    if (currentOperation !== 'all') {
-      filtered = filtered.filter((f) => f.operationId?.toString() === currentOperation);
+    if (effectiveOperation !== 'all') {
+      filtered = filtered.filter((f) => f.operationId?.toString() === effectiveOperation);
     }
 
     if (currentIrrigationType !== 'all') {
@@ -536,7 +539,7 @@ export default function FieldsClient({
     });
 
     return filtered;
-  }, [seasonFields, searchQuery, currentOperation, currentIrrigationType, sortColumn, sortDirection]);
+  }, [seasonFields, searchQuery, effectiveOperation, currentIrrigationType, sortColumn, sortDirection]);
 
   // Fields eligible for inline enrollment (on All Seasons view, not already in target season)
   const inlineEnrollEligibleIds = useMemo(() => {
@@ -1777,15 +1780,17 @@ export default function FieldsClient({
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <SearchableSelect
-                    value={currentOperation === 'all' ? '' : currentOperation}
-                    onChange={(v) => setCurrentOperation(v || 'all')}
-                    options={operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => ({
-                      value: op.id.toString(),
-                      label: op.name,
-                    }))}
-                    placeholder="All Operations"
-                  />
+                  {!focusedOperation && (
+                    <SearchableSelect
+                      value={currentOperation === 'all' ? '' : currentOperation}
+                      onChange={(v) => setCurrentOperation(v || 'all')}
+                      options={operations.slice().sort((a, b) => a.name.localeCompare(b.name)).map((op) => ({
+                        value: op.id.toString(),
+                        label: op.name,
+                      }))}
+                      placeholder="All Operations"
+                    />
+                  )}
                   <button
                     className="btn btn-secondary"
                     onClick={() => {

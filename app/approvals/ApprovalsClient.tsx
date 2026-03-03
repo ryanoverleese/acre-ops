@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import SearchableSelect from '@/components/SearchableSelect';
+import { useOperationFocus } from '@/lib/OperationFocusContext';
 import type { ApprovalItem, EnrolledOperation } from './page';
 
 interface OperationSummary {
@@ -34,6 +35,7 @@ export default function ApprovalsClient({
     availableSeasons[0] || new Date().getFullYear()
   );
   const [selectedOperation, setSelectedOperation] = useState<number | 'all'>('all');
+  const { focusedOperation } = useOperationFocus();
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [expandedOperations, setExpandedOperations] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState<Record<number, boolean>>({});
@@ -61,6 +63,9 @@ export default function ApprovalsClient({
   const ALL_QUESTION_KEYS = FIELD_INFO_QUESTIONS.map(q => q.key);
   const [selectedQuestions, setSelectedQuestions] = useState<Set<string>>(new Set(ALL_QUESTION_KEYS));
 
+  // When a global operation focus is active, override the local operation filter
+  const effectiveOperation: number | 'all' = focusedOperation ? focusedOperation.id : selectedOperation;
+
   // Filter items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -68,7 +73,7 @@ export default function ApprovalsClient({
       if (selectedSeason !== 'all' && item.season !== selectedSeason) return false;
 
       // Operation filter
-      if (selectedOperation !== 'all' && item.operationId !== selectedOperation) return false;
+      if (effectiveOperation !== 'all' && item.operationId !== effectiveOperation) return false;
 
       // Status filter
       if (statusFilter === 'pending' && item.approvalStatus !== 'Pending') return false;
@@ -89,7 +94,7 @@ export default function ApprovalsClient({
 
       return true;
     });
-  }, [items, selectedSeason, selectedOperation, statusFilter, searchQuery]);
+  }, [items, selectedSeason, effectiveOperation, statusFilter, searchQuery]);
 
   // Group by operation
   const groupedItems = useMemo(() => {
@@ -120,11 +125,11 @@ export default function ApprovalsClient({
         if (searchQuery.trim()) {
           if (!op.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         }
-        if (selectedOperation !== 'all' && op.id !== selectedOperation) return false;
+        if (effectiveOperation !== 'all' && op.id !== effectiveOperation) return false;
         return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [enrolledOperations, groupedItems, selectedSeason, searchQuery, selectedOperation]);
+  }, [enrolledOperations, groupedItems, selectedSeason, searchQuery, effectiveOperation]);
 
   // Stats
   const stats = useMemo(() => {
@@ -490,25 +495,27 @@ export default function ApprovalsClient({
               ))}
             </select>
 
-            <SearchableSelect
-              className="approvals-filter-select-op"
-              value={typeof selectedOperation === 'number' ? String(selectedOperation) : 'all'}
-              onChange={(v) => setSelectedOperation(v === 'all' ? 'all' : parseInt(v))}
-              options={[
-                { value: 'all', label: 'All Operations' },
-                ...operationSummaries.map((op) => ({
-                  value: String(op.id),
-                  label: `${op.name} (${op.pendingCount} pending)`,
-                })),
-                ...enrolledOperations
-                  .filter((eo) => !operationSummaries.some((os) => os.id === eo.id))
-                  .map((op) => ({
+            {!focusedOperation && (
+              <SearchableSelect
+                className="approvals-filter-select-op"
+                value={typeof selectedOperation === 'number' ? String(selectedOperation) : 'all'}
+                onChange={(v) => setSelectedOperation(v === 'all' ? 'all' : parseInt(v))}
+                options={[
+                  { value: 'all', label: 'All Operations' },
+                  ...operationSummaries.map((op) => ({
                     value: String(op.id),
-                    label: `${op.name} (enrolled)`,
+                    label: `${op.name} (${op.pendingCount} pending)`,
                   })),
-              ]}
-              placeholder="All Operations"
-            />
+                  ...enrolledOperations
+                    .filter((eo) => !operationSummaries.some((os) => os.id === eo.id))
+                    .map((op) => ({
+                      value: String(op.id),
+                      label: `${op.name} (enrolled)`,
+                    })),
+                ]}
+                placeholder="All Operations"
+              />
+            )}
 
             <div className="search-box approvals-search">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">

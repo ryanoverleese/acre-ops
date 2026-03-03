@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import EmptyState from '@/components/EmptyState';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+import { useOperationFocus } from '@/lib/OperationFocusContext';
 
 export interface ProcessedProbe {
   id: number;
@@ -124,6 +125,7 @@ const initialAddForm = {
 };
 
 export default function ProbesClient({ probes: initialProbes, billingEntities, contacts, brandOptions, statusCounts, availableSeasons, probeFieldAssignments }: ProbesClientProps) {
+  const { focusedOperation } = useOperationFocus();
   const [probes, setProbes] = useState(initialProbes);
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'all' | 'rack' | 'on-order'>('all');
@@ -303,8 +305,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     if (filterBrand) {
       filtered = filtered.filter(p => p.brand === filterBrand);
     }
-    if (filterOperation) {
-      filtered = filtered.filter(p => p.operation === filterOperation);
+    const effectiveOperationFilter = focusedOperation ? focusedOperation.name : filterOperation;
+    if (effectiveOperationFilter) {
+      filtered = filtered.filter(p => p.operation === effectiveOperationFilter);
     }
     if (filterBillingEntity) {
       filtered = filtered.filter(p => p.billingEntity === filterBillingEntity);
@@ -339,7 +342,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, focusedOperation]);
 
   // Get unique rack prefixes (numbers) from filtered probes for highlighting active ones
   const activeRackNumbers = useMemo(() => {
@@ -737,10 +740,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               <option value="">All Brands</option>
               {filterOptions.brands.map(b => <option key={b} value={b}>{b}</option>)}
             </select>
-            <select value={filterOperation} onChange={(e) => setFilterOperation(e.target.value)} className="probes-filter-select">
-              <option value="">All Operations</option>
-              {filterOptions.operations.map(o => <option key={o} value={o}>{o}</option>)}
-            </select>
+            {!focusedOperation && (
+              <select value={filterOperation} onChange={(e) => setFilterOperation(e.target.value)} className="probes-filter-select">
+                <option value="">All Operations</option>
+                {filterOptions.operations.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            )}
             <select value={filterBillingEntity} onChange={(e) => setFilterBillingEntity(e.target.value)} className="probes-filter-select">
               <option value="">All Billing Entities</option>
               {filterOptions.billingEntities.map(be => <option key={be} value={be}>{be}</option>)}
