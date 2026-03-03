@@ -19,53 +19,48 @@ interface SettingsData {
 }
 
 async function getSettingsData(): Promise<SettingsData> {
-  try {
-    const [productsServices, fieldSeasons, allSelectOptions, operations] = await Promise.all([
-      getProductsServices(),
-      getFieldSeasons(),
-      getAllSelectOptionsWithMeta(['fields', 'field_seasons', 'probe_assignments', 'contacts']),
-      getOperations(),
-    ]);
+  const [productsServicesResult, fieldSeasonsResult, selectOptionsResult, operationsResult] = await Promise.allSettled([
+    getProductsServices(),
+    getFieldSeasons(),
+    getAllSelectOptionsWithMeta(['fields', 'field_seasons', 'probe_assignments', 'contacts']),
+    getOperations(),
+  ]);
 
-    // Collect unique seasons from field_seasons
-    const currentYear = new Date().getFullYear();
-    const seasons = new Set<string>();
-    seasons.add(String(currentYear));
-    seasons.add(String(currentYear + 1));
+  const productsServices = productsServicesResult.status === 'fulfilled' ? productsServicesResult.value : [];
+  const fieldSeasons = fieldSeasonsResult.status === 'fulfilled' ? fieldSeasonsResult.value : [];
+  const allSelectOptions = selectOptionsResult.status === 'fulfilled' ? selectOptionsResult.value : { fields: {}, field_seasons: {}, probe_assignments: {}, contacts: {} };
+  const operations = operationsResult.status === 'fulfilled' ? operationsResult.value : [];
 
-    fieldSeasons.forEach((fs) => {
-      if (fs.season) {
-        seasons.add(String(fs.season));
-      }
-    });
+  // Collect unique seasons from field_seasons
+  const currentYear = new Date().getFullYear();
+  const seasons = new Set<string>();
+  seasons.add(String(currentYear));
+  seasons.add(String(currentYear + 1));
 
-    return {
-      productsServices: productsServices.map((sr) => ({
-        id: sr.id,
-        serviceType: sr.service_type || '',
-        rate: sr.rate || 0,
-        dealerFee: sr.dealer_fee || 0,
-        description: sr.description || '',
-        status: sr.status?.value || 'Active',
-      })),
-      availableSeasons: Array.from(seasons).sort((a, b) => b.localeCompare(a)),
-      selectOptions: {
-        fields: allSelectOptions.fields || {},
-        field_seasons: allSelectOptions.field_seasons || {},
-        probe_assignments: allSelectOptions.probe_assignments || {},
-        contacts: allSelectOptions.contacts || {},
-      },
-      operations: operations.map(op => ({ id: op.id, name: op.name })),
-    };
-  } catch (error) {
-    console.error('Error fetching settings data:', error);
-    return {
-      productsServices: [],
-      availableSeasons: [String(new Date().getFullYear())],
-      selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {}, contacts: {} },
-      operations: [],
-    };
-  }
+  fieldSeasons.forEach((fs) => {
+    if (fs.season) {
+      seasons.add(String(fs.season));
+    }
+  });
+
+  return {
+    productsServices: productsServices.map((sr) => ({
+      id: sr.id,
+      serviceType: sr.service_type || '',
+      rate: sr.rate || 0,
+      dealerFee: sr.dealer_fee || 0,
+      description: sr.description || '',
+      status: sr.status?.value || 'Active',
+    })),
+    availableSeasons: Array.from(seasons).sort((a, b) => b.localeCompare(a)),
+    selectOptions: {
+      fields: allSelectOptions.fields || {},
+      field_seasons: allSelectOptions.field_seasons || {},
+      probe_assignments: allSelectOptions.probe_assignments || {},
+      contacts: allSelectOptions.contacts || {},
+    },
+    operations: operations.map(op => ({ id: op.id, name: op.name })),
+  };
 }
 
 export default async function SettingsPage() {
