@@ -155,7 +155,7 @@ const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
 };
 
 // Probe column definitions matching Probes page
-type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'notes' | 'damagesRepairs' | 'dateCreated';
+type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'tradeYear' | 'notes' | 'damagesRepairs' | 'dateCreated';
 
 interface ProbeColumnDefinition {
   key: ProbeColumnKey;
@@ -172,13 +172,14 @@ const ALL_PROBE_COLUMNS: ProbeColumnDefinition[] = [
   { key: 'operation', label: 'Operation' },
   { key: 'yearNew', label: 'Year New' },
   { key: 'billingEntity', label: 'Billing Entity' },
+  { key: 'tradeYear', label: 'Trade Year' },
   { key: 'notes', label: 'Notes' },
   { key: 'damagesRepairs', label: 'Damages/Repairs' },
   { key: 'dateCreated', label: 'Date Created' },
 ];
 
 const DEFAULT_PROBE_COLUMNS: ProbeColumnKey[] = [
-  'serialNumber', 'brand', 'status', 'field', 'rack', 'operation', 'yearNew', 'billingEntity',
+  'serialNumber', 'brand', 'status', 'field', 'rack', 'operation', 'yearNew', 'billingEntity', 'tradeYear',
 ];
 
 function formatCurrency(amount: number): string {

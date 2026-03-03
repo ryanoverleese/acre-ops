@@ -22,6 +22,7 @@ export interface ProcessedProbe {
   contact: string;
   contactId?: number;
   operation: string;
+  tradeYear: string;
 }
 
 export interface BillingEntityOption {
@@ -68,7 +69,7 @@ const RACK_OPTIONS = [
 ];
 
 // Column picker types and definitions
-type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'notes' | 'damagesRepairs' | 'dateCreated';
+type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'tradeYear' | 'notes' | 'damagesRepairs' | 'dateCreated';
 
 interface ProbeColumnDefinition {
   key: ProbeColumnKey;
@@ -85,13 +86,14 @@ const ALL_PROBE_COLUMNS: ProbeColumnDefinition[] = [
   { key: 'operation', label: 'Operation' },
   { key: 'yearNew', label: 'Year New' },
   { key: 'billingEntity', label: 'Billing Entity' },
+  { key: 'tradeYear', label: 'Trade Year' },
   { key: 'notes', label: 'Notes' },
   { key: 'damagesRepairs', label: 'Damages/Repairs' },
   { key: 'dateCreated', label: 'Date Created' },
 ];
 
 const DEFAULT_PROBE_COLUMNS: ProbeColumnKey[] = [
-  'serialNumber', 'brand', 'status', 'field', 'rack', 'operation', 'yearNew', 'billingEntity',
+  'serialNumber', 'brand', 'status', 'field', 'rack', 'operation', 'yearNew', 'billingEntity', 'tradeYear',
 ];
 
 const PROBE_COLUMNS_STORAGE_KEY = 'probes-visible-columns';
@@ -145,6 +147,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [filterBrand, setFilterBrand] = useState('');
   const [filterOperation, setFilterOperation] = useState('');
   const [filterBillingEntity, setFilterBillingEntity] = useState('');
+  const [filterTradeYear, setFilterTradeYear] = useState('');
+  const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
+  const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -174,14 +179,16 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     const brands = new Set<string>();
     const operations = new Set<string>();
     const billingEntities = new Set<string>();
+    const tradeYears = new Set<string>();
     probes.forEach(p => {
       if (p.status && p.status !== 'Unknown') statuses.add(p.status);
       if (p.brand && p.brand !== 'Unknown') brands.add(p.brand);
       if (p.operation && p.operation !== '—') operations.add(p.operation);
       if (p.billingEntity && p.billingEntity !== '—') billingEntities.add(p.billingEntity);
+      if (p.tradeYear) tradeYears.add(p.tradeYear);
     });
     const sort = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b));
-    return { statuses: sort(statuses), brands: sort(brands), operations: sort(operations), billingEntities: sort(billingEntities) };
+    return { statuses: sort(statuses), brands: sort(brands), operations: sort(operations), billingEntities: sort(billingEntities), tradeYears: sort(tradeYears) };
   }, [probes]);
 
   // Rack numbers for the scrubber (1-15)
@@ -312,6 +319,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     if (filterBillingEntity) {
       filtered = filtered.filter(p => p.billingEntity === filterBillingEntity);
     }
+    if (filterTradeYear) {
+      filtered = filtered.filter(p => p.tradeYear === filterTradeYear);
+    }
 
     // Sort (only if not in rack view, which has its own sort)
     if (viewMode !== 'rack') {
@@ -329,6 +339,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           case 'yearNew': aVal = a.yearNew || 0; bVal = b.yearNew || 0; break;
           case 'rack': aVal = `${a.rack || ''}-${a.rackSlot || ''}`; bVal = `${b.rack || ''}-${b.rackSlot || ''}`; break;
           case 'billingEntity': aVal = a.billingEntity.toLowerCase(); bVal = b.billingEntity.toLowerCase(); break;
+          case 'tradeYear': aVal = a.tradeYear || ''; bVal = b.tradeYear || ''; break;
           case 'notes': aVal = (a.notes || '').toLowerCase(); bVal = (b.notes || '').toLowerCase(); break;
           case 'damagesRepairs': aVal = (a.damagesRepairs || '').toLowerCase(); bVal = (b.damagesRepairs || '').toLowerCase(); break;
           case 'dateCreated': aVal = a.dateCreated || ''; bVal = b.dateCreated || ''; break;
@@ -342,7 +353,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, focusedOperation]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, filterTradeYear, focusedOperation]);
 
   // Get unique rack prefixes (numbers) from filtered probes for highlighting active ones
   const activeRackNumbers = useMemo(() => {
@@ -501,6 +512,26 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
   };
 
+  const handleTradeYearChange = async (probeId: number, value: string) => {
+    setSavingTradeYear(prev => new Set(prev).add(probeId));
+    try {
+      const response = await fetch(`/api/probes/${probeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trade_year: value || null }),
+      });
+      if (response.ok) {
+        setProbes(prev => prev.map(p => p.id === probeId ? { ...p, tradeYear: value } : p));
+        setSavedTradeYear(prev => new Set(prev).add(probeId));
+        setTimeout(() => setSavedTradeYear(prev => { const next = new Set(prev); next.delete(probeId); return next; }), 1500);
+      }
+    } catch (error) {
+      console.error('Failed to update trade year:', error);
+    } finally {
+      setSavingTradeYear(prev => { const next = new Set(prev); next.delete(probeId); return next; });
+    }
+  };
+
   const handleEdit = async () => {
     if (!selectedProbe) return;
     if (!editForm.serial_number.trim()) {
@@ -632,6 +663,26 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         return <td key={colKey} className="field-count">{probe.yearNew || '—'}</td>;
       case 'billingEntity':
         return <td key={colKey} className="cell-sm">{probe.billingEntity || '—'}</td>;
+      case 'tradeYear':
+        return (
+          <td key={colKey} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <select
+                value={probe.tradeYear}
+                onChange={(e) => handleTradeYearChange(probe.id, e.target.value)}
+                disabled={savingTradeYear.has(probe.id)}
+                className="inline-select"
+                style={{ fontSize: '12px', padding: '2px 4px', minWidth: '70px' }}
+              >
+                <option value="">—</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+              </select>
+              {savingTradeYear.has(probe.id) && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+              {savedTradeYear.has(probe.id) && <span style={{ fontSize: '10px', color: 'var(--accent-primary)' }}>✓</span>}
+            </div>
+          </td>
+        );
       case 'notes':
         return <td key={colKey} className="cell-sm cell-wrap">{probe.notes || '—'}</td>;
       case 'damagesRepairs':
@@ -750,10 +801,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               <option value="">All Billing Entities</option>
               {filterOptions.billingEntities.map(be => <option key={be} value={be}>{be}</option>)}
             </select>
-            {(filterStatus || filterBrand || filterOperation || filterBillingEntity) && (
+            <select value={filterTradeYear} onChange={(e) => setFilterTradeYear(e.target.value)} className="probes-filter-select">
+              <option value="">All Trade Years</option>
+              {filterOptions.tradeYears.map(ty => <option key={ty} value={ty}>{ty}</option>)}
+            </select>
+            {(filterStatus || filterBrand || filterOperation || filterBillingEntity || filterTradeYear) && (
               <button
                 className="btn btn-secondary btn-compact"
-                onClick={() => { setFilterStatus(''); setFilterBrand(''); setFilterOperation(''); setFilterBillingEntity(''); }}
+                onClick={() => { setFilterStatus(''); setFilterBrand(''); setFilterOperation(''); setFilterBillingEntity(''); setFilterTradeYear(''); }}
                 title="Clear all filters"
               >
                 Clear
@@ -848,7 +903,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           </div>
         </div>
 
-        {(filterStatus || filterBrand || filterOperation || filterBillingEntity || searchQuery) && (
+        {(filterStatus || filterBrand || filterOperation || filterBillingEntity || filterTradeYear || searchQuery) && (
           <div className="probes-row-count">
             Showing {filteredProbes.length} of {probes.length} probes
           </div>

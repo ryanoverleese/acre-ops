@@ -367,6 +367,7 @@ export interface Probe {
   notes?: string;
   damages_repairs?: string;
   date_created?: string;
+  trade_year?: { id: number; value: string };
 }
 
 export interface FieldSeason {

@@ -50,6 +50,7 @@ async function getProbesData(): Promise<{
         contact: contactLink ? (contacts.find((c) => c.id === contactLink.id)?.name || contactLink.value) : '—',
         contactId: contactLink?.id,
         operation: operationName,
+        tradeYear: probe.trade_year?.value || '',
       };
     });
 
