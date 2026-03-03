@@ -24,6 +24,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedEntity, setSelectedEntity] = useState<ProcessedBillingEntity | null>(null);
   const [formName, setFormName] = useState('');
+  const [formSelfInstall, setFormSelfInstall] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sortColumn, setSortColumn] = useState<string>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -123,14 +124,14 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       const response = await fetch(`/api/billing-entities/${selectedEntity.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: formName }),
+        body: JSON.stringify({ name: formName, self_install: formSelfInstall }),
       });
 
       if (response.ok) {
         setEntities(
           entities.map((e) =>
             e.id === selectedEntity.id
-              ? { ...e, name: formName }
+              ? { ...e, name: formName, selfInstall: formSelfInstall }
               : e
           )
         );
@@ -171,6 +172,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
   const openEditModal = (entity: ProcessedBillingEntity) => {
     setSelectedEntity(entity);
     setFormName(entity.name);
+    setFormSelfInstall(entity.selfInstall);
     setShowEditModal(true);
   };
 
@@ -372,6 +374,19 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                   />
+                </div>
+                <div className="form-group">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={formSelfInstall}
+                      onChange={(e) => setFormSelfInstall(e.target.checked)}
+                    />
+                    Self-Install Customer
+                  </label>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                    Customer installs their own probes. A renewal field will be auto-created.
+                  </span>
                 </div>
               </div>
             </div>
