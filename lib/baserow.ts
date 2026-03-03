@@ -470,6 +470,7 @@ export interface InvoiceLine {
   field_season?: { id: number; value: string }[];
   service_type?: string;
   rate?: number;
+  quantity?: number;
 }
 
 export interface ProductService {

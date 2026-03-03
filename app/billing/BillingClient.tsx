@@ -15,6 +15,7 @@ export interface InvoiceLine {
   fieldName: string;
   serviceType: string;
   rate: number;
+  quantity: number;
 }
 
 export interface ProcessedInvoice {
@@ -73,7 +74,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const getEntityTotal = (be: ProcessedBillingEntity) => {
     const invoice = be.invoices[0];
     if (!invoice) return 0;
-    const subtotal = invoice.lines.reduce((sum, line) => sum + line.rate, 0);
+    const subtotal = invoice.lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
     const entityBulkCount = invoice.lines.filter(line =>
       line.serviceType.toLowerCase().includes('bulk')
     ).length;
@@ -204,13 +205,13 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   };
 
   const handleExport = () => {
-    const headers = ['Billing Entity', 'Operation', 'Field', 'Service Type', 'Rate', 'Discount', 'Total'];
+    const headers = ['Billing Entity', 'Operation', 'Field', 'Service Type', 'Qty', 'Rate', 'Discount', 'Total'];
     const rows: (string | number)[][] = [];
 
     filteredEntities.forEach((be) => {
       be.invoices.forEach((inv) => {
         const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
-        const subtotal = inv.lines.reduce((sum, line) => sum + line.rate, 0);
+        const subtotal = inv.lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
 
         inv.lines.forEach((line, idx) => {
           rows.push([
@@ -218,6 +219,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             idx === 0 ? be.operation : '',
             line.fieldName,
             line.serviceType,
+            line.quantity,
             line.rate,
             idx === 0 ? discount : '',
             idx === 0 ? subtotal - discount : '',
@@ -243,7 +245,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   // Calculate totals for filtered entities
   const totalSubtotal = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
-      invSum + inv.lines.reduce((lineSum, line) => lineSum + line.rate, 0), 0), 0);
+      invSum + inv.lines.reduce((lineSum, line) => lineSum + (line.rate * line.quantity), 0), 0), 0);
 
   const totalDiscount = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
@@ -255,7 +257,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     sum + be.invoices
       .filter(inv => inv.status.toLowerCase() === 'paid')
       .reduce((invSum, inv) => {
-        const subtotal = inv.lines.reduce((s, l) => s + l.rate, 0);
+        const subtotal = inv.lines.reduce((s, l) => s + (l.rate * l.quantity), 0);
         const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
         return invSum + subtotal - discount;
       }, 0), 0);
@@ -360,7 +362,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               const isExpanded = expandedEntities.has(be.id);
               const invoice = be.invoices[0];
               const lines = invoice?.lines || [];
-              const subtotal = lines.reduce((sum, line) => sum + line.rate, 0);
+              const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
               const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
               const total = subtotal - discount;
 
@@ -398,7 +400,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             <tr>
                               <th>Field</th>
                               <th>Service Type</th>
+                              <th className="align-right">Qty</th>
                               <th className="align-right">Rate</th>
+                              <th className="align-right">Total</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -406,23 +410,25 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                               <tr key={line.id}>
                                 <td>{line.fieldName}</td>
                                 <td className="text-secondary">{line.serviceType || '—'}</td>
+                                <td className="align-right">{line.quantity}</td>
                                 <td className="align-right">{formatCurrency(line.rate)}</td>
+                                <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
                               </tr>
                             ))}
                             <tr className="subtotal-row">
-                              <td colSpan={2} className="align-right">Subtotal</td>
+                              <td colSpan={4} className="align-right">Subtotal</td>
                               <td className="align-right">{formatCurrency(subtotal)}</td>
                             </tr>
                             {discount > 0 && (
                               <tr className="discount-row">
-                                <td colSpan={2} className="align-right discount-text">
+                                <td colSpan={4} className="align-right discount-text">
                                   Bulk Discount ({eligibleCount} fields × ${BULK_DISCOUNT_PER_FIELD})
                                 </td>
                                 <td className="align-right discount-text">-{formatCurrency(discount)}</td>
                               </tr>
                             )}
                             <tr className="total-row">
-                              <td colSpan={2} className="align-right">Total</td>
+                              <td colSpan={4} className="align-right">Total</td>
                               <td className="align-right">{formatCurrency(total)}</td>
                             </tr>
                           </tbody>

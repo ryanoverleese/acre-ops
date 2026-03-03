@@ -206,8 +206,8 @@ async function updateInvoiceTotal(invoiceId: number) {
     }
 
     const linesData = await linesResponse.json();
-    const total = linesData.results.reduce((sum: number, line: { rate?: number }) => {
-      return sum + (line.rate || 0);
+    const total = linesData.results.reduce((sum: number, line: { rate?: number; quantity?: number }) => {
+      return sum + ((line.rate || 0) * (line.quantity || 1));
     }, 0);
 
     // Update invoice amount

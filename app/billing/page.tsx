@@ -1,4 +1,4 @@
-import { getBillingEntities, getInvoices, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices } from '@/lib/baserow';
+import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import BillingClient, { ProcessedBillingEntity } from './BillingClient';
 
@@ -9,9 +9,10 @@ interface BillingData {
 
 async function getBillingData(): Promise<BillingData> {
   try {
-    const [billingEntities, invoices, operations, contacts, fieldSeasons, fields, productsServices] = await Promise.all([
+    const [billingEntities, invoices, invoiceLines, operations, contacts, fieldSeasons, fields, productsServices] = await Promise.all([
       getBillingEntities(),
       getInvoices(),
+      getInvoiceLines(),
       getOperations(),
       getContacts(),
       getFieldSeasons(),
@@ -45,9 +46,18 @@ async function getBillingData(): Promise<BillingData> {
     // Build map of field ID to field details (including billing entity)
     const fieldMap = new Map(fields.map((f) => [f.id, { name: f.name, billingEntityId: f.billing_entity?.[0]?.id }]));
 
+    // Build field_season_id → quantity map from invoice_lines
+    const fsQuantityMap = new Map<number, number>();
+    invoiceLines.forEach((il) => {
+      const fsId = il.field_season?.[0]?.id;
+      if (fsId) {
+        fsQuantityMap.set(fsId, il.quantity || 1);
+      }
+    });
+
     // Track field seasons grouped by billing entity and season
-    // Key: "beId-season", Value: array of line items (field name, service type, rate)
-    const beSeasonLines = new Map<string, { fieldSeasonId: number; fieldName: string; serviceType: string; rate: number }[]>();
+    // Key: "beId-season", Value: array of line items (field name, service type, rate, quantity)
+    const beSeasonLines = new Map<string, { fieldSeasonId: number; fieldName: string; serviceType: string; rate: number; quantity: number }[]>();
     const allSeasons = new Set<number>();
 
     fieldSeasons.forEach((fs) => {
@@ -71,7 +81,7 @@ async function getBillingData(): Promise<BillingData> {
       if (billingEntityId && season) {
         const key = `${billingEntityId}-${season}`;
         const existing = beSeasonLines.get(key) || [];
-        existing.push({ fieldSeasonId: fs.id, fieldName, serviceType, rate });
+        existing.push({ fieldSeasonId: fs.id, fieldName, serviceType, rate, quantity: fsQuantityMap.get(fs.id) || 1 });
         beSeasonLines.set(key, existing);
       }
     });
@@ -115,7 +125,7 @@ async function getBillingData(): Promise<BillingData> {
         const invoice = invoicesByBEAndSeason.get(key);
 
         // Calculate totals from lines
-        const subtotal = lines.reduce((sum, line) => sum + line.rate, 0);
+        const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
 
         // Create processed invoice structure
         const processedInvoice = {
@@ -132,6 +142,7 @@ async function getBillingData(): Promise<BillingData> {
             fieldName: line.fieldName,
             serviceType: line.serviceType,
             rate: line.rate,
+            quantity: line.quantity,
           })),
         };
 
