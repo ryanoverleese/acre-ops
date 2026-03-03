@@ -171,6 +171,7 @@ async function getCRMData() {
       return {
         id: be.id,
         name: be.name || '',
+        selfInstall: be.self_install === true,
         operationNames: opNames,
         contactIds: linkedContacts.map((c) => c.id),
         contactNames: linkedContacts.map((c) => c.name),
