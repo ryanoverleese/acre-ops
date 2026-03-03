@@ -93,6 +93,7 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
           {
             id: newEntity.id,
             name: newEntity.name || '',
+            selfInstall: false,
             operationNames: [],
             contactIds: [],
             contactNames: [],

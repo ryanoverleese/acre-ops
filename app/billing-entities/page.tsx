@@ -4,6 +4,7 @@ import BillingEntitiesClient from './BillingEntitiesClient';
 export interface ProcessedBillingEntity {
   id: number;
   name: string;
+  selfInstall: boolean;
   operationNames: string[];
   contactIds: number[];
   contactNames: string[];
@@ -62,6 +63,7 @@ async function getData() {
       return {
         id: be.id,
         name: be.name || '',
+        selfInstall: be.self_install === true,
         operationNames: opNames,
         contactIds: linkedContacts.map((c) => c.id),
         contactNames: linkedContacts.map((c) => c.name),

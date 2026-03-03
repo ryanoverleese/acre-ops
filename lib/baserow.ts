@@ -321,6 +321,7 @@ export interface Operation {
 export interface BillingEntity {
   id: number;
   name: string;
+  self_install?: boolean;
 }
 
 export interface Field {
