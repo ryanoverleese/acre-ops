@@ -595,11 +595,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     setSelectedProbe(probe);
     setEditForm({
       serial_number: probe.serialNumber,
-      brand: probe.brand,
+      brand: probe.brand === 'Unknown' ? '' : probe.brand,
       billing_entity: probe.billingEntityId?.toString() || '',
       contact: probe.contactId?.toString() || '',
       year_new: probe.yearNew?.toString() || '',
-      status: probe.status,
+      status: probe.status === 'Unknown' ? '' : probe.status,
       rack: probe.rack === '—' ? '' : probe.rack,
       rack_slot: probe.rackSlot === '—' ? '' : probe.rackSlot,
       notes: probe.notes || '',
