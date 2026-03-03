@@ -128,6 +128,25 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
       });
 
       if (response.ok) {
+        // If self-install was just toggled ON, auto-create the renewal field
+        if (formSelfInstall && !selectedEntity.selfInstall) {
+          try {
+            const currentYear = new Date().getFullYear();
+            await fetch('/api/fields', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: `${formName} - Renewals`,
+                billing_entity: selectedEntity.id,
+                season: String(currentYear),
+              }),
+            });
+          } catch (err) {
+            console.error('Failed to create renewal field:', err);
+            // Non-blocking — the toggle still saved, field can be created manually
+          }
+        }
+
         setEntities(
           entities.map((e) =>
             e.id === selectedEntity.id
