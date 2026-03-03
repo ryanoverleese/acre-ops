@@ -1,4 +1,4 @@
-import { getProductsServices, getFieldSeasons, getAllSelectOptionsWithMeta } from '@/lib/baserow';
+import { getProductsServices, getFieldSeasons, getAllSelectOptionsWithMeta, getOperations } from '@/lib/baserow';
 import type { TableSelectOptionsWithMeta } from '@/lib/baserow';
 import SettingsClient, { ProcessedProductService } from './SettingsClient';
 
@@ -15,14 +15,16 @@ interface SettingsData {
   productsServices: ProcessedProductService[];
   availableSeasons: string[];
   selectOptions: SerializedSelectOptionsWithMeta;
+  operations: { id: number; name: string }[];
 }
 
 async function getSettingsData(): Promise<SettingsData> {
   try {
-    const [productsServices, fieldSeasons, allSelectOptions] = await Promise.all([
+    const [productsServices, fieldSeasons, allSelectOptions, operations] = await Promise.all([
       getProductsServices(),
       getFieldSeasons(),
       getAllSelectOptionsWithMeta(['fields', 'field_seasons', 'probe_assignments', 'contacts']),
+      getOperations(),
     ]);
 
     // Collect unique seasons from field_seasons
@@ -53,6 +55,7 @@ async function getSettingsData(): Promise<SettingsData> {
         probe_assignments: allSelectOptions.probe_assignments || {},
         contacts: allSelectOptions.contacts || {},
       },
+      operations: operations.map(op => ({ id: op.id, name: op.name })),
     };
   } catch (error) {
     console.error('Error fetching settings data:', error);
@@ -60,11 +63,12 @@ async function getSettingsData(): Promise<SettingsData> {
       productsServices: [],
       availableSeasons: [String(new Date().getFullYear())],
       selectOptions: { fields: {}, field_seasons: {}, probe_assignments: {}, contacts: {} },
+      operations: [],
     };
   }
 }
 
 export default async function SettingsPage() {
-  const { productsServices, availableSeasons, selectOptions } = await getSettingsData();
-  return <SettingsClient initialProductsServices={productsServices} availableSeasons={availableSeasons} selectOptions={selectOptions} />;
+  const { productsServices, availableSeasons, selectOptions, operations } = await getSettingsData();
+  return <SettingsClient initialProductsServices={productsServices} availableSeasons={availableSeasons} selectOptions={selectOptions} operations={operations} />;
 }

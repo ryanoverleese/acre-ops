@@ -6,6 +6,7 @@ import {
   ColumnTag,
   ColumnTagsContainer,
 } from '@/components/ui';
+import { useOperationFocus } from '@/lib/OperationFocusContext';
 
 export interface ProcessedProductService {
   id: number;
@@ -42,6 +43,7 @@ interface SettingsClientProps {
   initialProductsServices: ProcessedProductService[];
   availableSeasons: string[];
   selectOptions: SerializedSelectOptionsWithMeta;
+  operations: { id: number; name: string }[];
 }
 
 const BASEROW_OPTION_COLORS = [
@@ -195,7 +197,8 @@ const initialAddForm = {
   description: '',
 };
 
-export default function SettingsClient({ initialProductsServices, availableSeasons, selectOptions }: SettingsClientProps) {
+export default function SettingsClient({ initialProductsServices, availableSeasons, selectOptions, operations }: SettingsClientProps) {
+  const { focusedOperation, setFocusedOperation, clearFocusedOperation } = useOperationFocus();
   const [productsServices, setProductsServices] = useState(initialProductsServices);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState(initialAddForm);
@@ -670,6 +673,47 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       </header>
 
       <div className="content">
+        {/* Operation Focus */}
+        <div className="table-container settings-section">
+          <div className="table-header">
+            <h3 className="table-title">Operation Focus</h3>
+          </div>
+          <div className="settings-section-content">
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '12px', fontSize: '14px' }}>
+              Focus on a single operation to filter all pages. Useful for customer meetings.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <select
+                className="inline-select"
+                value={focusedOperation?.id ?? ''}
+                onChange={(e) => {
+                  const id = Number(e.target.value);
+                  if (!id) {
+                    clearFocusedOperation();
+                    return;
+                  }
+                  const op = operations.find(o => o.id === id);
+                  if (op) setFocusedOperation({ id: op.id, name: op.name });
+                }}
+              >
+                <option value="">No focus (show all operations)</option>
+                {operations.map(op => (
+                  <option key={op.id} value={op.id}>{op.name}</option>
+                ))}
+              </select>
+              {focusedOperation && (
+                <button
+                  onClick={clearFocusedOperation}
+                  className="btn btn-secondary"
+                  style={{ padding: '6px 12px', fontSize: '13px' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Application Settings */}
         <div className="table-container settings-section">
           <div className="table-header settings-section-toggle" onClick={() => toggleSection('appSettings')}>
