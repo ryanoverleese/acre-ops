@@ -279,7 +279,14 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
             ) : (
               filteredEntities.map((entity) => (
                 <tr key={entity.id}>
-                  <td className="operation-name">{entity.name}</td>
+                  <td className="operation-name">
+                    {entity.name}
+                    {entity.selfInstall && (
+                      <span className="status-badge self-install" style={{ marginLeft: '8px', fontSize: '11px' }}>
+                        Self-Install
+                      </span>
+                    )}
+                  </td>
                   <td className="be-detail-cell">
                     {entity.operationNames.length > 0 ? entity.operationNames.join(', ') : '—'}
                   </td>
@@ -313,7 +320,14 @@ export default function BillingEntitiesClient({ initialEntities, operations, con
             filteredEntities.map((entity) => (
               <div key={entity.id} className="mobile-card">
                 <div className="mobile-card-header">
-                  <span className="mobile-card-title">{entity.name}</span>
+                  <span className="mobile-card-title">
+                    {entity.name}
+                    {entity.selfInstall && (
+                      <span className="status-badge self-install" style={{ marginLeft: '8px', fontSize: '11px' }}>
+                        Self-Install
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="mobile-card-body">
                   {entity.operationNames.length > 0 && (

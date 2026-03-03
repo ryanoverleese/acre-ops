@@ -933,6 +933,11 @@ tr.clickable-row {
   color: var(--accent-blue);
 }
 
+.status-badge.self-install {
+  background: var(--accent-primary-dim);
+  color: var(--accent-primary);
+}
+
 .row-highlight {
   background: var(--accent-amber-dim);
 }
