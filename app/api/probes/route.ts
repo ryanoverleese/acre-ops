@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     if (body.rack_slot) createData.rack_slot = parseInt(body.rack_slot, 10);
     if (body.notes) createData.notes = body.notes;
     if (body.damages_repairs) createData.damages_repairs = body.damages_repairs;
+    if (body.is_trade !== undefined) createData.is_trade = body.is_trade;
     // Auto-fill date_created with current date
     createData.date_created = new Date().toISOString().split('T')[0];
 

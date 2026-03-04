@@ -56,6 +56,7 @@ interface ProbesClientProps {
 
 const STATUS_OPTIONS = [
   'On Order',
+  'On Order - Trade',
   'In Stock',
   'Assigned',
   'Installed',

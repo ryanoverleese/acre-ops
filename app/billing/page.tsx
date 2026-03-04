@@ -184,27 +184,37 @@ async function getBillingData(): Promise<BillingData> {
       entity.operationBulkFieldCount = operationBulkCounts.get(opKey) || 0;
     });
 
-    // Build on-order probe lines grouped by billing entity + brand
-    const onOrderProbes = probes.filter((p) => p.status?.value === 'On Order' && p.billing_entity?.length);
-    const onOrderGrouped = new Map<string, { billingEntityId: number; billingEntityName: string; brand: string; count: number }>();
+    // Build on-order probe lines grouped by billing entity + brand + trade status
+    const onOrderProbes = probes.filter((p) =>
+      (p.status?.value === 'On Order' || p.status?.value === 'On Order - Trade') && p.billing_entity?.length
+    );
+    const onOrderGrouped = new Map<string, { billingEntityId: number; billingEntityName: string; brand: string; isTrade: boolean; count: number }>();
     onOrderProbes.forEach((p) => {
       const beId = p.billing_entity![0].id;
       const beName = p.billing_entity![0].value;
       const brand = p.brand?.value || 'Unknown';
-      const key = `${beId}-${brand}`;
+      const isTrade = p.is_trade === true || p.status?.value === 'On Order - Trade';
+      const key = `${beId}-${brand}-${isTrade ? 'trade' : 'new'}`;
       const existing = onOrderGrouped.get(key);
       if (existing) {
         existing.count++;
       } else {
-        onOrderGrouped.set(key, { billingEntityId: beId, billingEntityName: beName, brand, count: 1 });
+        onOrderGrouped.set(key, { billingEntityId: beId, billingEntityName: beName, brand, isTrade, count: 1 });
       }
     });
 
-    // Match each on-order group to a products_services rate by brand name in service_type
+    // Match each on-order group to a products_services rate
+    // Trade probes match "Trade-In" service types, regular probes match by brand name
     const onOrderLines: OnOrderLine[] = Array.from(onOrderGrouped.values()).map((group) => {
-      const matchingService = productsServices.find((ps) =>
-        ps.service_type?.toLowerCase().includes(group.brand.toLowerCase())
-      );
+      const matchingService = group.isTrade
+        ? productsServices.find((ps) =>
+            ps.service_type?.toLowerCase().includes('trade') &&
+            ps.service_type?.toLowerCase().includes(group.brand.toLowerCase().split(' ')[0])
+          )
+        : productsServices.find((ps) =>
+            ps.service_type?.toLowerCase().includes(group.brand.toLowerCase()) &&
+            !ps.service_type?.toLowerCase().includes('trade')
+          );
       const rate = matchingService
         ? (typeof matchingService.rate === 'string' ? parseFloat(matchingService.rate) : (matchingService.rate || 0))
         : 0;
@@ -212,7 +222,7 @@ async function getBillingData(): Promise<BillingData> {
         billingEntityId: group.billingEntityId,
         billingEntityName: group.billingEntityName,
         brand: group.brand,
-        serviceType: matchingService?.service_type || `${group.brand} Sensor`,
+        serviceType: matchingService?.service_type || `${group.brand} Sensor${group.isTrade ? ' - Trade-In' : ''}`,
         quantity: group.count,
         rate: isNaN(rate) ? 0 : rate,
       };

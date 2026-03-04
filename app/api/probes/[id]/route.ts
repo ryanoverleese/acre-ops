@@ -77,6 +77,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.notes !== undefined) updateData.notes = body.notes;
     if (body.damages_repairs !== undefined) updateData.damages_repairs = body.damages_repairs;
     if (body.trade_year !== undefined) updateData.trade_year = body.trade_year;
+    if (body.is_trade !== undefined) updateData.is_trade = body.is_trade;
 
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probes}/${probeId}/?user_field_names=true`;
     const response = await fetch(url, {

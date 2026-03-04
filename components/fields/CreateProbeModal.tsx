@@ -53,7 +53,8 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
     try {
       const payload: Record<string, unknown> = {
         brand: form.brand,
-        status: 'On Order',
+        status: isTradeIn ? 'On Order - Trade' : 'On Order',
+        is_trade: isTradeIn,
       };
       if (form.year_new) {
         payload.year_new = parseInt(form.year_new, 10);
@@ -77,7 +78,7 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
           brand: form.brand || '',
           ownerBillingEntity: be?.name || 'On Order',
           ownerOperationName: be?.operationName || '',
-          status: 'On Order',
+          status: isTradeIn ? 'On Order - Trade' : 'On Order',
         });
 
         // Set trade_year on old probe
