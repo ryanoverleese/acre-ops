@@ -60,7 +60,7 @@ const STATUS_OPTIONS = [
   'In Stock',
   'Assigned',
   'Installed',
-  'Trade-In',
+  'Trade Ordered',
   'RMA',
   'Retired',
 ];
@@ -608,10 +608,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       const response = await fetch(`/api/probes/${oldProbeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ trade_year: tradeYear, status: 'Trade-In' }),
+        body: JSON.stringify({ trade_year: tradeYear, status: 'Trade Ordered' }),
       });
       if (response.ok) {
-        setProbes(prev => prev.map(p => p.id === oldProbeId ? { ...p, tradeYear, status: 'Trade-In' } : p));
+        setProbes(prev => prev.map(p => p.id === oldProbeId ? { ...p, tradeYear, status: 'Trade Ordered' } : p));
       }
     } catch (error) {
       console.error('Failed to set trade year:', error);
@@ -711,8 +711,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       className += 'on-order-trade';
     } else if (statusLower === 'on order') {
       className += 'on-order';
-    } else if (statusLower === 'trade-in') {
-      className += 'trade-in';
+    } else if (statusLower === 'trade ordered') {
+      className += 'trade-ordered';
     } else {
       className += 'pending';
     }

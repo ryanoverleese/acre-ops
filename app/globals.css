@@ -954,7 +954,7 @@ tr.clickable-row {
   color: var(--accent-purple);
 }
 
-.status-badge.trade-in {
+.status-badge.trade-ordered {
   background: var(--accent-pink-dim);
   color: var(--accent-pink);
 }
