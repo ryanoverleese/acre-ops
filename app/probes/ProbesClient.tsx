@@ -707,8 +707,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       className += 'repair';
     } else if (statusLower === 'retired') {
       className += 'retired';
+    } else if (statusLower === 'on order - trade') {
+      className += 'on-order-trade';
     } else if (statusLower === 'on order') {
-      className += 'pending';
+      className += 'on-order';
+    } else if (statusLower === 'trade-in') {
+      className += 'trade-in';
     } else {
       className += 'pending';
     }

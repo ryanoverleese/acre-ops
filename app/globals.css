@@ -22,6 +22,12 @@
   --accent-red: #dc2626;
   --accent-red-dim: rgba(220, 38, 38, 0.1);
   --accent-red-hover: #b91c1c;
+  --accent-purple: #7c3aed;
+  --accent-purple-dim: rgba(124, 58, 237, 0.1);
+  --accent-teal: #0d9488;
+  --accent-teal-dim: rgba(13, 148, 136, 0.1);
+  --accent-pink: #db2777;
+  --accent-pink-dim: rgba(219, 39, 119, 0.1);
   --accent-orange: #f59e0b;
   --accent-yellow: #d97706;
 
@@ -936,6 +942,27 @@ tr.clickable-row {
 .status-badge.self-install {
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
+}
+
+.status-badge.on-order {
+  background: var(--accent-teal-dim);
+  color: var(--accent-teal);
+}
+
+.status-badge.on-order-trade {
+  background: var(--accent-purple-dim);
+  color: var(--accent-purple);
+}
+
+.status-badge.trade-in {
+  background: var(--accent-pink-dim);
+  color: var(--accent-pink);
+}
+
+.status-badge.retired {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 
 .row-highlight {
