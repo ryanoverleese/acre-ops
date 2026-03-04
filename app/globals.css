@@ -4444,6 +4444,20 @@ input[type="date"]:focus {
   color: var(--accent-primary);
 }
 
+.billing-table .inline-input {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-primary, #fff);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.billing-table .inline-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-primary-dim);
+}
+
 /* Sort Controls */
 .sort-controls {
   display: flex;
