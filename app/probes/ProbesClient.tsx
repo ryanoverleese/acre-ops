@@ -982,11 +982,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           </div>
         </div>
 
-        {(filterStatus || filterBrand || filterOperation || filterBillingEntity || filterTradeYear || searchQuery) && (
-          <div className="probes-row-count">
-            Showing {filteredProbes.length} of {probes.length} probes
-          </div>
-        )}
+        <div className="probes-row-count">
+          Showing {filteredProbes.length} of {probes.length} probes
+        </div>
 
         <div className="table-container">
           <table className="desktop-table" ref={desktopTableRef} style={{ userSelect: resizingColumn ? 'none' : undefined }}>
