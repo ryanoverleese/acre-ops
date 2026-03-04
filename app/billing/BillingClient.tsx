@@ -122,8 +122,6 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       return 0;
     });
 
-    // Auto-expand all entities for current season
-    setExpandedEntities(new Set(filtered.map(be => be.id)));
     return filtered;
   }, [billingEntities, currentSeason, sortBy, sortDirection]);
 
