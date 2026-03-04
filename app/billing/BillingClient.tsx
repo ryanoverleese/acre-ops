@@ -44,9 +44,19 @@ export interface ProcessedBillingEntity {
   operationBulkFieldCount?: number;
 }
 
+export interface OnOrderLine {
+  billingEntityId: number;
+  billingEntityName: string;
+  brand: string;
+  serviceType: string;
+  quantity: number;
+  rate: number;
+}
+
 interface BillingClientProps {
   billingEntities: ProcessedBillingEntity[];
   availableSeasons: number[];
+  onOrderLines: OnOrderLine[];
 }
 
 const BULK_DISCOUNT_PER_FIELD = 25;
@@ -61,7 +71,7 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export default function BillingClient({ billingEntities: initialEntities, availableSeasons }: BillingClientProps) {
+export default function BillingClient({ billingEntities: initialEntities, availableSeasons, onOrderLines }: BillingClientProps) {
   const [billingEntities, setBillingEntities] = useState(initialEntities);
   const [currentSeason, setCurrentSeason] = useState<number>(availableSeasons[0] || new Date().getFullYear());
   const [expandedEntities, setExpandedEntities] = useState<Set<number>>(new Set());
@@ -459,6 +469,17 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
                               </tr>
                             ))}
+                            {onOrderLines
+                              .filter((ol) => ol.billingEntityId === be.id)
+                              .map((ol) => (
+                                <tr key={`on-order-${ol.brand}`} style={{ opacity: 0.55, fontStyle: 'italic' }}>
+                                  <td>On Order</td>
+                                  <td className="text-secondary">{ol.serviceType}</td>
+                                  <td className="align-right">{ol.quantity}</td>
+                                  <td className="align-right">{formatCurrency(ol.rate)}</td>
+                                  <td className="align-right">{formatCurrency(ol.rate * ol.quantity)}</td>
+                                </tr>
+                              ))}
                             <tr className="subtotal-row">
                               <td colSpan={4} className="align-right">Subtotal</td>
                               <td className="align-right">{formatCurrency(subtotal)}</td>

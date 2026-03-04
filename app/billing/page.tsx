@@ -1,15 +1,16 @@
-import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices } from '@/lib/baserow';
+import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices, getProbes } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
-import BillingClient, { ProcessedBillingEntity } from './BillingClient';
+import BillingClient, { ProcessedBillingEntity, OnOrderLine } from './BillingClient';
 
 interface BillingData {
   billingEntities: ProcessedBillingEntity[];
   availableSeasons: number[];
+  onOrderLines: OnOrderLine[];
 }
 
 async function getBillingData(): Promise<BillingData> {
   try {
-    const [billingEntities, invoices, invoiceLines, operations, contacts, fieldSeasons, fields, productsServices] = await Promise.all([
+    const [billingEntities, invoices, invoiceLines, operations, contacts, fieldSeasons, fields, productsServices, probes] = await Promise.all([
       getBillingEntities(),
       getInvoices(),
       getInvoiceLines(),
@@ -18,6 +19,7 @@ async function getBillingData(): Promise<BillingData> {
       getFieldSeasons(),
       getFields(),
       getProductsServices(),
+      getProbes(),
     ]);
 
     const operationMap = buildOperationMap(operations);
@@ -182,20 +184,55 @@ async function getBillingData(): Promise<BillingData> {
       entity.operationBulkFieldCount = operationBulkCounts.get(opKey) || 0;
     });
 
+    // Build on-order probe lines grouped by billing entity + brand
+    const onOrderProbes = probes.filter((p) => p.status?.value === 'On Order' && p.billing_entity?.length);
+    const onOrderGrouped = new Map<string, { billingEntityId: number; billingEntityName: string; brand: string; count: number }>();
+    onOrderProbes.forEach((p) => {
+      const beId = p.billing_entity![0].id;
+      const beName = p.billing_entity![0].value;
+      const brand = p.brand?.value || 'Unknown';
+      const key = `${beId}-${brand}`;
+      const existing = onOrderGrouped.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        onOrderGrouped.set(key, { billingEntityId: beId, billingEntityName: beName, brand, count: 1 });
+      }
+    });
+
+    // Match each on-order group to a products_services rate by brand name in service_type
+    const onOrderLines: OnOrderLine[] = Array.from(onOrderGrouped.values()).map((group) => {
+      const matchingService = productsServices.find((ps) =>
+        ps.service_type?.toLowerCase().includes(group.brand.toLowerCase())
+      );
+      const rate = matchingService
+        ? (typeof matchingService.rate === 'string' ? parseFloat(matchingService.rate) : (matchingService.rate || 0))
+        : 0;
+      return {
+        billingEntityId: group.billingEntityId,
+        billingEntityName: group.billingEntityName,
+        brand: group.brand,
+        serviceType: matchingService?.service_type || `${group.brand} Sensor`,
+        quantity: group.count,
+        rate: isNaN(rate) ? 0 : rate,
+      };
+    });
+
     // Sort seasons descending (newest first)
     const sortedSeasons = Array.from(allSeasons).sort((a, b) => b - a);
 
     return {
       billingEntities: processedEntities,
       availableSeasons: sortedSeasons,
+      onOrderLines,
     };
   } catch (error) {
     console.error('Error fetching billing data:', error);
-    return { billingEntities: [], availableSeasons: [new Date().getFullYear()] };
+    return { billingEntities: [], availableSeasons: [new Date().getFullYear()], onOrderLines: [] };
   }
 }
 
 export default async function BillingPage() {
-  const { billingEntities, availableSeasons } = await getBillingData();
-  return <BillingClient billingEntities={billingEntities} availableSeasons={availableSeasons} />;
+  const { billingEntities, availableSeasons, onOrderLines } = await getBillingData();
+  return <BillingClient billingEntities={billingEntities} availableSeasons={availableSeasons} onOrderLines={onOrderLines} />;
 }
