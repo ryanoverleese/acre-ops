@@ -1763,6 +1763,10 @@ export default function FieldsClient({
           </div>
         )}
 
+        <div className="probes-row-count">
+          Showing {filteredFields.length} of {seasonFields.length} fields
+        </div>
+
         <div className={`fields-container ${mapVisible ? 'map-visible' : ''}`}>
           <div className="fields-list">
             <div className="table-container">
