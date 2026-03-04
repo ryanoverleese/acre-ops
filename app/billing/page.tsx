@@ -46,18 +46,18 @@ async function getBillingData(): Promise<BillingData> {
     // Build map of field ID to field details (including billing entity)
     const fieldMap = new Map(fields.map((f) => [f.id, { name: f.name, billingEntityId: f.billing_entity?.[0]?.id }]));
 
-    // Build field_season_id → quantity map from invoice_lines
-    const fsQuantityMap = new Map<number, number>();
+    // Build field_season_id → { quantity, invoiceLineId } map from invoice_lines
+    const fsInvoiceLineMap = new Map<number, { quantity: number; invoiceLineId: number }>();
     invoiceLines.forEach((il) => {
       const fsId = il.field_season?.[0]?.id;
       if (fsId) {
-        fsQuantityMap.set(fsId, il.quantity || 1);
+        fsInvoiceLineMap.set(fsId, { quantity: il.quantity || 1, invoiceLineId: il.id });
       }
     });
 
     // Track field seasons grouped by billing entity and season
     // Key: "beId-season", Value: array of line items (field name, service type, rate, quantity)
-    const beSeasonLines = new Map<string, { fieldSeasonId: number; fieldName: string; serviceType: string; rate: number; quantity: number }[]>();
+    const beSeasonLines = new Map<string, { fieldSeasonId: number; invoiceLineId: number; fieldName: string; serviceType: string; rate: number; quantity: number }[]>();
     const allSeasons = new Set<number>();
 
     fieldSeasons.forEach((fs) => {
@@ -81,7 +81,8 @@ async function getBillingData(): Promise<BillingData> {
       if (billingEntityId && season) {
         const key = `${billingEntityId}-${season}`;
         const existing = beSeasonLines.get(key) || [];
-        existing.push({ fieldSeasonId: fs.id, fieldName, serviceType, rate, quantity: fsQuantityMap.get(fs.id) || 1 });
+        const ilData = fsInvoiceLineMap.get(fs.id);
+        existing.push({ fieldSeasonId: fs.id, invoiceLineId: ilData?.invoiceLineId || 0, fieldName, serviceType, rate, quantity: ilData?.quantity || 1 });
         beSeasonLines.set(key, existing);
       }
     });
@@ -139,6 +140,7 @@ async function getBillingData(): Promise<BillingData> {
           notes: invoice?.notes || '',
           lines: lines.map((line) => ({
             id: line.fieldSeasonId,
+            invoiceLineId: line.invoiceLineId,
             fieldName: line.fieldName,
             serviceType: line.serviceType,
             rate: line.rate,

@@ -8,6 +8,50 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  try {
+    const { id } = await params;
+    const invoiceLineId = parseInt(id, 10);
+
+    if (isNaN(invoiceLineId)) {
+      return NextResponse.json(
+        { error: 'Invalid invoice line ID' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+
+    const url = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/${invoiceLineId}/?user_field_names=true`;
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Token ${BASEROW_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Baserow API error:', response.status, errorText);
+      return NextResponse.json(
+        { error: 'Failed to update invoice line' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Error updating invoice line:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;

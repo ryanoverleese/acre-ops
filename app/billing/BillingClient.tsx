@@ -12,6 +12,7 @@ import {
 
 export interface InvoiceLine {
   id: number;
+  invoiceLineId: number;
   fieldName: string;
   serviceType: string;
   rate: number;
@@ -69,6 +70,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [saving, setSaving] = useState(false);
   const [sortBy, setSortBy] = useState<'operation' | 'amount'>('operation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
 
   // Helper to calculate total for an entity (for sorting)
   const getEntityTotal = (be: ProcessedBillingEntity) => {
@@ -139,6 +141,33 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       };
     }
     return { discount: 0, eligibleCount: 0 };
+  };
+
+  const handleUpdateQuantity = async (line: InvoiceLine, newQty: number) => {
+    if (!line.invoiceLineId || newQty === line.quantity) return;
+    setSavingQty(prev => new Set(prev).add(line.invoiceLineId));
+    try {
+      const response = await fetch(`/api/invoice-lines/${line.invoiceLineId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity: newQty }),
+      });
+      if (response.ok) {
+        setBillingEntities(billingEntities.map((be) => ({
+          ...be,
+          invoices: be.invoices.map((inv) => ({
+            ...inv,
+            lines: inv.lines.map((l) =>
+              l.invoiceLineId === line.invoiceLineId ? { ...l, quantity: newQty } : l
+            ),
+          })),
+        })));
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+    } finally {
+      setSavingQty(prev => { const next = new Set(prev); next.delete(line.invoiceLineId); return next; });
+    }
   };
 
   const handleUpdateInvoiceDate = async (invoiceId: number, field: 'sent_at' | 'deposit_at' | 'paid_at', value: string) => {
@@ -410,7 +439,22 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                               <tr key={line.id}>
                                 <td>{line.fieldName}</td>
                                 <td className="text-secondary">{line.serviceType || '—'}</td>
-                                <td className="align-right">{line.quantity}</td>
+                                <td className="align-right">
+                                  {line.invoiceLineId ? (
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      defaultValue={line.quantity}
+                                      onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1)}
+                                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                      disabled={savingQty.has(line.invoiceLineId)}
+                                      style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
+                                      className="inline-input"
+                                    />
+                                  ) : (
+                                    line.quantity
+                                  )}
+                                </td>
                                 <td className="align-right">{formatCurrency(line.rate)}</td>
                                 <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
                               </tr>
