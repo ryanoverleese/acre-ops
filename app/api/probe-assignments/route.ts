@@ -55,19 +55,6 @@ export async function POST(request: NextRequest) {
     if (body.soil_type !== undefined) createData.soil_type = body.soil_type;
     if (body.placement_notes !== undefined) createData.placement_notes = body.placement_notes;
 
-    // Auto-fetch elevation/soil from external APIs if we have coords but missing data
-    const hasCoords = createData.placement_lat && createData.placement_lng;
-    if (hasCoords) {
-      const lat = Number(createData.placement_lat);
-      const lng = Number(createData.placement_lng);
-      const [elev, soil] = await Promise.all([
-        !createData.elevation ? fetchElevation(lat, lng) : Promise.resolve(null),
-        !createData.soil_type ? fetchSoilType(lat, lng) : Promise.resolve(null),
-      ]);
-      if (elev && !createData.elevation) createData.elevation = elev;
-      if (soil && !createData.soil_type) createData.soil_type = soil;
-    }
-
     // Other optional fields
     if (body.probe) createData.probe = [body.probe];
     if (body.antenna_type) createData.antenna_type = body.antenna_type;
@@ -105,6 +92,38 @@ export async function POST(request: NextRequest) {
 
     const created = await response.json();
     console.log('Created probe assignment:', created.id, 'probe_number:', created.probe_number ?? created['probe number']);
+
+    // Backfill elevation/soil from external APIs in the background (don't block the response)
+    const hasCoords = createData.placement_lat && createData.placement_lng;
+    if (hasCoords) {
+      const lat = Number(createData.placement_lat);
+      const lng = Number(createData.placement_lng);
+      const needsElevation = !createData.elevation;
+      const needsSoil = !createData.soil_type;
+      if (needsElevation || needsSoil) {
+        Promise.all([
+          needsElevation ? fetchElevation(lat, lng) : Promise.resolve(null),
+          needsSoil ? fetchSoilType(lat, lng) : Promise.resolve(null),
+        ]).then(async ([elev, soil]) => {
+          const patchData: Record<string, unknown> = {};
+          if (elev) patchData.elevation = elev;
+          if (soil) patchData.soil_type = soil;
+          if (Object.keys(patchData).length > 0) {
+            const patchUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${created.id}/?user_field_names=true`;
+            await fetch(patchUrl, {
+              method: 'PATCH',
+              headers: {
+                'Authorization': `Token ${BASEROW_TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(addSpaceVariants(patchData)),
+            });
+            console.log('Backfilled geo data for probe assignment:', created.id, patchData);
+          }
+        }).catch(err => console.error('Geo backfill error:', err));
+      }
+    }
+
     revalidatePath('/fields');
     return NextResponse.json(created, { status: 201 });
   } catch (error) {
