@@ -82,10 +82,14 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
 
+  // Helper to get on-order total for a billing entity
+  const getOnOrderTotal = (beId: number) =>
+    onOrderLines.filter((ol) => ol.billingEntityId === beId).reduce((sum, ol) => sum + ol.rate * ol.quantity, 0);
+
   // Helper to calculate total for an entity (for sorting)
   const getEntityTotal = (be: ProcessedBillingEntity) => {
     const invoice = be.invoices[0];
-    if (!invoice) return 0;
+    if (!invoice) return getOnOrderTotal(be.id);
     const subtotal = invoice.lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
     const entityBulkCount = invoice.lines.filter(line =>
       line.serviceType.toLowerCase().includes('bulk')
@@ -93,7 +97,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     const discount = (be.operationBulkFieldCount || 0) >= BULK_DISCOUNT_MIN_FIELDS && entityBulkCount > 0
       ? entityBulkCount * BULK_DISCOUNT_PER_FIELD
       : 0;
-    return subtotal - discount;
+    return subtotal - discount + getOnOrderTotal(be.id);
   };
 
   // Filter and sort entities by selected season
@@ -282,9 +286,10 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   };
 
   // Calculate totals for filtered entities
+  const totalOnOrder = filteredEntities.reduce((sum, be) => sum + getOnOrderTotal(be.id), 0);
   const totalSubtotal = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
-      invSum + inv.lines.reduce((lineSum, line) => lineSum + (line.rate * line.quantity), 0), 0), 0);
+      invSum + inv.lines.reduce((lineSum, line) => lineSum + (line.rate * line.quantity), 0), 0), 0) + totalOnOrder;
 
   const totalDiscount = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
@@ -401,7 +406,8 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               const isExpanded = expandedEntities.has(be.id);
               const invoice = be.invoices[0];
               const lines = invoice?.lines || [];
-              const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
+              const onOrderTotal = getOnOrderTotal(be.id);
+              const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0) + onOrderTotal;
               const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
               const total = subtotal - discount;
 
