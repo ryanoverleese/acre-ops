@@ -603,6 +603,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   };
 
   const handleTradeComplete = async (oldProbeId: number, tradeYear: string) => {
+    // Note: notes are set in handleTradeProbeCreated where we have both probe references
     try {
       const response = await fetch(`/api/probes/${oldProbeId}`, {
         method: 'PATCH',
@@ -617,21 +618,50 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
   };
 
-  const handleTradeProbeCreated = (newProbeId: number, newProbeOption: { id: number; serialNumber: string; brand: string; ownerBillingEntity: string; ownerOperationName: string; status: string }) => {
+  const handleTradeProbeCreated = async (newProbeId: number, newProbeOption: { id: number; serialNumber: string; brand: string; ownerBillingEntity: string; ownerOperationName: string; status: string }) => {
+    const oldProbe = tradingProbe;
+    const newSerial = newProbeOption.serialNumber || `On Order - Trade #${newProbeOption.id}`;
+    const oldSerial = oldProbe?.serialNumber || `#${oldProbe?.id}`;
+
+    // Add new probe to local state
     setProbes(prev => [...prev, {
       id: newProbeOption.id,
-      serialNumber: newProbeOption.serialNumber || `On Order #${newProbeOption.id}`,
+      serialNumber: newProbeOption.serialNumber || (newProbeOption.status === 'On Order - Trade' ? `On Order - Trade #${newProbeOption.id}` : `On Order #${newProbeOption.id}`),
       brand: newProbeOption.brand,
       status: newProbeOption.status,
       rack: '—',
       rackSlot: '—',
       billingEntity: newProbeOption.ownerBillingEntity,
-      billingEntityId: tradingProbe?.billingEntityId,
+      billingEntityId: oldProbe?.billingEntityId,
       contact: '—',
-      operation: tradingProbe?.operation || '',
+      operation: oldProbe?.operation || '',
       tradeYear: '',
+      notes: `Replacing ${oldSerial} on trade`,
       dateCreated: new Date().toISOString(),
     }]);
+
+    // Set trade notes on both probes
+    if (oldProbe) {
+      try {
+        await Promise.all([
+          fetch(`/api/probes/${oldProbe.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: `Traded for ${newSerial}` }),
+          }),
+          fetch(`/api/probes/${newProbeId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ notes: `Replacing ${oldSerial} on trade` }),
+          }),
+        ]);
+        // Update old probe notes in local state
+        setProbes(prev => prev.map(p => p.id === oldProbe.id ? { ...p, notes: `Traded for ${newSerial}` } : p));
+      } catch (error) {
+        console.error('Failed to set trade notes:', error);
+      }
+    }
+
     setShowTradeModal(false);
     setTradingProbe(null);
   };

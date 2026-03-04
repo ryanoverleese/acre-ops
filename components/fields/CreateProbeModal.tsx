@@ -83,7 +83,7 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
 
         // Set trade_year on old probe
         if (isTradeIn && onTradeComplete) {
-          onTradeComplete(tradingProbe.id, form.trade_year);
+          await onTradeComplete(tradingProbe.id, form.trade_year);
         }
 
         onClose();
