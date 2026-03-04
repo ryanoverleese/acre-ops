@@ -2,11 +2,15 @@
 
 import React, { useState } from 'react';
 import SearchableSelect from '@/components/SearchableSelect';
-import type { BillingEntityOption } from '@/app/fields/page';
+export interface CreateProbeModalBillingEntity {
+  id: number;
+  name: string;
+  operationName?: string;
+}
 
 export interface CreateProbeModalProps {
   operationName: string;
-  billingEntities: BillingEntityOption[];
+  billingEntities: CreateProbeModalBillingEntity[];
   onClose: () => void;
   onCreated: (newProbeId: number, newProbeOption: {
     id: number;
@@ -16,15 +20,21 @@ export interface CreateProbeModalProps {
     ownerOperationName: string;
     status: string;
   }) => void;
+  /** When set, this is a trade-in flow — shows trade year picker and calls onTradeComplete after creation */
+  tradingProbe?: { id: number; serialNumber: string; brand: string; billingEntityId?: number };
+  onTradeComplete?: (oldProbeId: number, tradeYear: string) => void;
 }
 
-export default function CreateProbeModal({ operationName, billingEntities, onClose, onCreated }: CreateProbeModalProps) {
+export default function CreateProbeModal({ operationName, billingEntities, onClose, onCreated, tradingProbe, onTradeComplete }: CreateProbeModalProps) {
   const [form, setForm] = useState({
     brand: '',
-    billing_entity: '',
+    billing_entity: tradingProbe?.billingEntityId ? String(tradingProbe.billingEntityId) : '',
     year_new: '',
+    trade_year: '',
   });
   const [saving, setSaving] = useState(false);
+
+  const isTradeIn = !!tradingProbe;
 
   const filteredBillingEntities = operationName
     ? billingEntities.filter((be) => be.operationName === operationName)
@@ -33,6 +43,10 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
   const handleCreate = async () => {
     if (!form.brand) {
       alert('Brand is required');
+      return;
+    }
+    if (isTradeIn && !form.trade_year) {
+      alert('Trade year is required');
       return;
     }
     setSaving(true);
@@ -65,6 +79,12 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
           ownerOperationName: be?.operationName || '',
           status: 'On Order',
         });
+
+        // Set trade_year on old probe
+        if (isTradeIn && onTradeComplete) {
+          onTradeComplete(tradingProbe.id, form.trade_year);
+        }
+
         onClose();
       } else {
         const error = await response.json();
@@ -78,11 +98,14 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
     }
   };
 
+  const currentYear = new Date().getFullYear();
+  const tradeYearOptions = Array.from({ length: 5 }, (_, i) => currentYear + i);
+
   return (
     <div className="detail-panel-overlay" onClick={onClose}>
       <div className="detail-panel" onClick={(e) => e.stopPropagation()} style={{ width: '440px' }}>
         <div className="detail-panel-header">
-          <h3>Create New Probe</h3>
+          <h3>{isTradeIn ? 'Trade-In Replacement' : 'Create New Probe'}</h3>
           <button className="close-btn" onClick={onClose}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -91,9 +114,29 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
         </div>
         <div className="detail-panel-content">
           <div className="edit-form">
-            <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              Create a probe on order. Serial number and rack location will be filled in when the probe arrives.
-            </p>
+            {isTradeIn ? (
+              <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Replacing {tradingProbe.serialNumber ? `#${tradingProbe.serialNumber}` : `probe #${tradingProbe.id}`} ({tradingProbe.brand}). Create the replacement probe and select the trade year.
+              </p>
+            ) : (
+              <p style={{ marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '13px' }}>
+                Create a probe on order. Serial number and rack location will be filled in when the probe arrives.
+              </p>
+            )}
+            {isTradeIn && (
+              <div className="form-group">
+                <label>Trade Year *</label>
+                <select
+                  value={form.trade_year}
+                  onChange={(e) => setForm({ ...form, trade_year: e.target.value })}
+                >
+                  <option value="">Select trade year...</option>
+                  {tradeYearOptions.map((y) => (
+                    <option key={y} value={String(y)}>{y}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label>Brand *</label>
               <select
@@ -119,7 +162,7 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
               />
             </div>
             <div className="form-group">
-              <label>Year New *</label>
+              <label>Year New</label>
               <input
                 type="number"
                 value={form.year_new}
@@ -132,7 +175,7 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
         <div className="detail-panel-footer">
           <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
           <button className="btn btn-primary" onClick={handleCreate} disabled={saving}>
-            {saving ? 'Creating...' : 'Create Probe'}
+            {saving ? 'Creating...' : isTradeIn ? 'Create Replacement' : 'Create Probe'}
           </button>
         </div>
       </div>

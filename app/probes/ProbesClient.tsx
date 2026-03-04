@@ -5,6 +5,7 @@ import EmptyState from '@/components/EmptyState';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
+import CreateProbeModal from '@/components/fields/CreateProbeModal';
 
 export interface ProcessedProbe {
   id: number;
@@ -28,6 +29,7 @@ export interface ProcessedProbe {
 export interface BillingEntityOption {
   id: number;
   name: string;
+  operationName?: string;
 }
 
 export interface ContactOption {
@@ -150,6 +152,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [filterTradeYear, setFilterTradeYear] = useState('');
   const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
   const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [tradingProbe, setTradingProbe] = useState<ProcessedProbe | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -591,6 +595,45 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
   };
 
+  const openTradeModal = (probe: ProcessedProbe) => {
+    setTradingProbe(probe);
+    setShowTradeModal(true);
+  };
+
+  const handleTradeComplete = async (oldProbeId: number, tradeYear: string) => {
+    try {
+      const response = await fetch(`/api/probes/${oldProbeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trade_year: tradeYear }),
+      });
+      if (response.ok) {
+        setProbes(prev => prev.map(p => p.id === oldProbeId ? { ...p, tradeYear } : p));
+      }
+    } catch (error) {
+      console.error('Failed to set trade year:', error);
+    }
+  };
+
+  const handleTradeProbeCreated = (newProbeId: number, newProbeOption: { id: number; serialNumber: string; brand: string; ownerBillingEntity: string; ownerOperationName: string; status: string }) => {
+    setProbes(prev => [...prev, {
+      id: newProbeOption.id,
+      serialNumber: newProbeOption.serialNumber || `On Order #${newProbeOption.id}`,
+      brand: newProbeOption.brand,
+      status: newProbeOption.status,
+      rack: '—',
+      rackSlot: '—',
+      billingEntity: newProbeOption.ownerBillingEntity,
+      billingEntityId: tradingProbe?.billingEntityId,
+      contact: '—',
+      operation: tradingProbe?.operation || '',
+      tradeYear: '',
+      dateCreated: new Date().toISOString(),
+    }]);
+    setShowTradeModal(false);
+    setTradingProbe(null);
+  };
+
   const openEditModal = (probe: ProcessedProbe) => {
     setSelectedProbe(probe);
     setEditForm({
@@ -957,6 +1000,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                           </svg>
                         </button>
+                        <button className="action-btn" title="Trade" onClick={() => openTradeModal(probe)}>
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                          </svg>
+                        </button>
                         <button className="action-btn" title="Delete" onClick={() => handleDelete(probe)}>
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1019,6 +1067,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         >
                           Delete
                         </button>
+                        <button
+                          className="btn btn-secondary btn-compact"
+                          onClick={(e) => { e.stopPropagation(); openTradeModal(item.probe); }}
+                        >
+                          Trade
+                        </button>
                         <span className="mobile-card-edit-link">
                           Edit
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
@@ -1075,6 +1129,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         onClick={(e) => { e.stopPropagation(); handleDelete(probe); }}
                       >
                         Delete
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-compact"
+                        onClick={(e) => { e.stopPropagation(); openTradeModal(probe); }}
+                      >
+                        Trade
                       </button>
                       <span className="mobile-card-edit-link">
                         Edit
@@ -1375,6 +1435,22 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </div>
           </div>
         </div>
+      )}
+
+      {showTradeModal && tradingProbe && (
+        <CreateProbeModal
+          operationName=""
+          billingEntities={billingEntities}
+          onClose={() => { setShowTradeModal(false); setTradingProbe(null); }}
+          onCreated={handleTradeProbeCreated}
+          tradingProbe={{
+            id: tradingProbe.id,
+            serialNumber: tradingProbe.serialNumber,
+            brand: tradingProbe.brand,
+            billingEntityId: tradingProbe.billingEntityId,
+          }}
+          onTradeComplete={handleTradeComplete}
+        />
       )}
     </>
   );
