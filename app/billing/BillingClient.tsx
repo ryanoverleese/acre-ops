@@ -157,22 +157,44 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     return { discount: 0, eligibleCount: 0 };
   };
 
-  const handleUpdateQuantity = async (line: InvoiceLine, newQty: number) => {
-    if (!line.invoiceLineId || newQty === line.quantity) return;
-    setSavingQty(prev => new Set(prev).add(line.invoiceLineId));
+  const handleUpdateQuantity = async (line: InvoiceLine, newQty: number, be: ProcessedBillingEntity) => {
+    if (newQty === line.quantity) return;
+    const trackingId = line.invoiceLineId || line.id;
+    setSavingQty(prev => new Set(prev).add(trackingId));
     try {
-      const response = await fetch(`/api/invoice-lines/${line.invoiceLineId}`, {
+      let invoiceLineId = line.invoiceLineId;
+
+      if (!invoiceLineId) {
+        // Auto-create invoice line via enrollment
+        const enrollRes = await fetch('/api/billing/enroll', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            billing_entity_id: be.id,
+            season: be.season,
+            field_season_id: line.id,
+            service_type: line.serviceType,
+            rate: line.rate,
+          }),
+        });
+        if (!enrollRes.ok) return;
+        const enrollData = await enrollRes.json();
+        invoiceLineId = enrollData.invoiceLine?.id;
+      }
+
+      // Now update quantity
+      const response = await fetch(`/api/invoice-lines/${invoiceLineId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ quantity: newQty }),
       });
       if (response.ok) {
-        setBillingEntities(billingEntities.map((be) => ({
-          ...be,
-          invoices: be.invoices.map((inv) => ({
+        setBillingEntities(billingEntities.map((entity) => ({
+          ...entity,
+          invoices: entity.invoices.map((inv) => ({
             ...inv,
             lines: inv.lines.map((l) =>
-              l.invoiceLineId === line.invoiceLineId ? { ...l, quantity: newQty } : l
+              l.id === line.id ? { ...l, quantity: newQty, invoiceLineId } : l
             ),
           })),
         })));
@@ -180,7 +202,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     } catch (error) {
       console.error('Error updating quantity:', error);
     } finally {
-      setSavingQty(prev => { const next = new Set(prev); next.delete(line.invoiceLineId); return next; });
+      setSavingQty(prev => { const next = new Set(prev); next.delete(trackingId); return next; });
     }
   };
 
@@ -456,20 +478,16 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 <td>{line.fieldName}</td>
                                 <td className="text-secondary">{line.serviceType || '—'}</td>
                                 <td className="align-right">
-                                  {line.invoiceLineId ? (
-                                    <input
-                                      type="number"
-                                      min={1}
-                                      defaultValue={line.quantity}
-                                      onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1)}
-                                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                      disabled={savingQty.has(line.invoiceLineId)}
-                                      style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
-                                      className="inline-input"
-                                    />
-                                  ) : (
-                                    line.quantity
-                                  )}
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    defaultValue={line.quantity}
+                                    onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1, be)}
+                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                    disabled={savingQty.has(line.invoiceLineId || line.id)}
+                                    style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
+                                    className="inline-input"
+                                  />
                                 </td>
                                 <td className="align-right">{formatCurrency(line.rate)}</td>
                                 <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
