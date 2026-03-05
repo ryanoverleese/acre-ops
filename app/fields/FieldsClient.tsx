@@ -1357,6 +1357,22 @@ export default function FieldsClient({
       });
 
       if (response.ok) {
+        // Auto-set battery when selecting a CropX probe (if battery not already set)
+        let autoBattery = false;
+        if (field === 'probeId' && value) {
+          const selectedProbe = probes.find(p => p.id === parseInt(value as string, 10));
+          const brand = (selectedProbe?.brand || '').toLowerCase();
+          const currentPa = probeAssignments.find(pa => pa.id === probeAssignmentId);
+          if (brand.includes('cropx') && !currentPa?.batteryType) {
+            autoBattery = true;
+            fetch(`/api/probe-assignments/${probeAssignmentId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ battery_type: 'CropX' }),
+            });
+          }
+        }
+
         setProbeAssignments(prev => prev.map(pa => {
           if (pa.id === probeAssignmentId) {
             const updated = { ...pa };
@@ -1365,6 +1381,7 @@ export default function FieldsClient({
               updated.probeId = value ? parseInt(value as string, 10) : null;
               updated.probe = probe ? `#${probe.serialNumber}` : null;
               updated.probeStatus = value ? 'Assigned' : 'Unassigned';
+              if (autoBattery) updated.batteryType = 'CropX';
             } else {
               (updated as Record<string, unknown>)[field] = value;
             }
