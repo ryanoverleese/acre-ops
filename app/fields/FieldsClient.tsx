@@ -2118,16 +2118,31 @@ export default function FieldsClient({
                                           && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
                                       );
                                       const probeIsMultiAssigned = pa.probeId ? multiAssignedProbeIds.has(pa.probeId) : false;
+                                      const probeBrand = pa.probeId ? (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase() : '';
+                                      const isCropx = probeBrand.includes('cropx');
+                                      const isSentek = probeBrand.includes('rocket') || (probeBrand.includes('sentek') && !probeBrand.includes('cropx'));
+                                      const antennaLower = (pa.antennaType || '').toLowerCase();
+                                      const batteryLower = (pa.batteryType || '').toLowerCase();
                                       const missingAntenna = pa.probeId && !pa.antennaType;
                                       const missingBattery = pa.probeId && !pa.batteryType;
-                                      const hasMissingEquipment = missingAntenna || missingBattery;
+                                      const mismatchAntenna = pa.probeId && pa.antennaType && (
+                                        (isCropx && !antennaLower.includes('cropx')) ||
+                                        (isSentek && !antennaLower.includes('sentek'))
+                                      );
+                                      const mismatchBattery = pa.probeId && pa.batteryType && (
+                                        (isCropx && !batteryLower.includes('cropx')) ||
+                                        (isSentek && !batteryLower.includes('sentek'))
+                                      );
+                                      const antennaDanger = missingAntenna || mismatchAntenna;
+                                      const batteryDanger = missingBattery || mismatchBattery;
+                                      const hasEquipmentWarning = antennaDanger || batteryDanger;
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row">
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
-                                            {hasMissingEquipment && (
-                                              <span title={`Missing: ${[missingAntenna && 'Antenna', missingBattery && 'Battery'].filter(Boolean).join(', ')}`} className="fields-loc-warning"> &#9888;</span>
+                                            {hasEquipmentWarning && (
+                                              <span title={[missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
                                             )}
                                           </span>
                                           <InlineProbeCell
@@ -2223,7 +2238,7 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()} className={missingAntenna ? 'fields-probe-cell-danger' : ''}>
+                                        <td onClick={(e) => e.stopPropagation()} className={antennaDanger ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="antennaType"
@@ -2242,7 +2257,7 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()} className={missingBattery ? 'fields-probe-cell-danger' : ''}>
+                                        <td onClick={(e) => e.stopPropagation()} className={batteryDanger ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="batteryType"
