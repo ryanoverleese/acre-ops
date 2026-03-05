@@ -1,28 +1,44 @@
 import { NextResponse } from 'next/server';
-import { getProbeAssignments, getProbes, TABLE_IDS } from '@/lib/baserow';
+import { getProbeAssignments, getProbes, getFieldSeasons, TABLE_IDS } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
+const TARGET_SEASON = 2026;
 
-// Backfill: set battery_type to "CropX" on probe assignments where the
+// Backfill: set battery_type to "CropX" on 2026 probe assignments where the
 // linked probe brand contains "cropx" and battery is not yet set.
 // Uses batch PATCH for speed (200 per request).
 // POST /api/probe-assignments/backfill-battery
 export async function POST() {
   try {
-    const [probeAssignments, probes] = await Promise.all([
+    const [probeAssignments, probes, fieldSeasons] = await Promise.all([
       getProbeAssignments(),
       getProbes(),
+      getFieldSeasons(),
     ]);
 
     const probeMap = new Map(probes.map((p) => [p.id, p]));
+
+    // Build set of field_season IDs for the target season
+    const targetFieldSeasonIds = new Set(
+      fieldSeasons
+        .filter((fs) => {
+          const season = typeof fs.season === 'string' ? parseInt(fs.season, 10) : fs.season;
+          return season == TARGET_SEASON;
+        })
+        .map((fs) => fs.id)
+    );
 
     // Collect IDs that need updating
     const toUpdate: number[] = [];
     let skipped = 0;
 
     for (const pa of probeAssignments) {
+      // Only process probe assignments linked to target season
+      const fsId = pa.field_season?.[0]?.id;
+      if (!fsId || !targetFieldSeasonIds.has(fsId)) { skipped++; continue; }
+
       if (pa.battery_type?.value) { skipped++; continue; }
 
       const probeId = pa.probe?.[0]?.id;
