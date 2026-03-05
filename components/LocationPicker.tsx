@@ -65,7 +65,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, in
   const [soilLoading, setSoilLoading] = useState(false);
   const [plss, setPlss] = useState<{ township: number; range: number; section: number } | null>(null);
   const [plssLoading, setPlssLoading] = useState(false);
-  const [showSoilLayer, setShowSoilLayer] = useState(true);
+  const [showSoilLayer, setShowSoilLayer] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
   const [showElevation, setShowElevation] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
