@@ -1993,6 +1993,19 @@ export default function FieldsClient({
                             const hasProbeAssignments = fieldSeasonProbeAssignments.length > 0;
                             const needsSeasonStart = !field.fieldSeasonId && currentSeason !== 'all';
 
+                            const hasEquipmentWarning = fieldSeasonProbeAssignments.some((pa) => {
+                              if (!pa.probeId) return true;
+                              const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
+                              const isCropx = brand.includes('cropx');
+                              const isSentek = brand.includes('rocket');
+                              if (!pa.antennaType || !pa.batteryType) return true;
+                              const aLower = pa.antennaType.toLowerCase();
+                              const bLower = pa.batteryType.toLowerCase();
+                              if (isCropx && (!aLower.includes('cropx') || !bLower.includes('cropx'))) return true;
+                              if (isSentek && (!aLower.includes('sentek') || !bLower.includes('sentek'))) return true;
+                              return false;
+                            });
+
                             const renderCell = (colKey: FieldColumnKey) => (
                               <FieldCell
                                 key={colKey}
@@ -2007,6 +2020,7 @@ export default function FieldsClient({
                                     && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
                                   )
                                 )}
+                                hasEquipmentWarning={hasEquipmentWarning}
                                 isExpanded={isExpanded}
                                 productTypeOptions={productTypeOptions}
                                 fieldOpts={fieldOpts}

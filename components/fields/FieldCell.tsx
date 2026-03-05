@@ -114,6 +114,7 @@ interface RenderCellProps {
   hasProbeAssignments: boolean;
   probeAssignmentCount: number;
   hasDuplicateProbeLocation: boolean;
+  hasEquipmentWarning: boolean;
   isExpanded: boolean;
   productTypeOptions: { value: string; label: string }[];
   fieldOpts: DynamicFieldOptions;
@@ -132,6 +133,7 @@ export function FieldCell({
   hasProbeAssignments,
   probeAssignmentCount,
   hasDuplicateProbeLocation,
+  hasEquipmentWarning,
   isExpanded,
   productTypeOptions,
   fieldOpts,
@@ -200,7 +202,7 @@ export function FieldCell({
             <button onClick={() => onToggleExpand(field.fieldSeasonId!)}
               style={{ background: (!hasProbeAssignments && !field.probe) ? 'var(--accent-red-dim)' : 'none', border: '1px solid var(--border)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '11px',
                 color: (hasProbeAssignments || field.probe) ? 'var(--accent-primary)' : 'var(--accent-red)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {hasDuplicateProbeLocation && <span title="Same location" style={{ color: '#f59e0b', fontSize: '13px', lineHeight: 1 }}>&#9888;</span>}
+                {(hasDuplicateProbeLocation || hasEquipmentWarning) && <span title={hasDuplicateProbeLocation ? 'Duplicate location' : 'Missing or mismatched probe/antenna/battery'} style={{ color: '#f59e0b', fontSize: '13px', lineHeight: 1 }}>&#9888;</span>}
                 {hasProbeAssignments ? <>{probeAssignmentCount} probe{probeAssignmentCount !== 1 ? 's' : ''}</> : field.probe ? <>{field.probe}{field.probe2 ? `, ${field.probe2}` : ''}</> : <>+ Add</>}
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
