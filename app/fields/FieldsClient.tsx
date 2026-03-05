@@ -2133,16 +2133,17 @@ export default function FieldsClient({
                                         (isCropx && !batteryLower.includes('cropx')) ||
                                         (isSentek && !batteryLower.includes('sentek'))
                                       );
+                                      const missingProbe = !pa.probeId;
                                       const antennaDanger = missingAntenna || mismatchAntenna;
                                       const batteryDanger = missingBattery || mismatchBattery;
-                                      const hasEquipmentWarning = antennaDanger || batteryDanger;
+                                      const hasEquipmentWarning = missingProbe || antennaDanger || batteryDanger;
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row">
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
                                             {hasEquipmentWarning && (
-                                              <span title={[missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
+                                              <span title={[missingProbe && 'Missing Probe', missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
                                             )}
                                           </span>
                                           <InlineProbeCell
@@ -2179,7 +2180,7 @@ export default function FieldsClient({
                                             <span className="fields-set-location">Set location</span>
                                           )}
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()} className={probeIsMultiAssigned ? 'fields-probe-cell-danger' : ''}>
+                                        <td onClick={(e) => e.stopPropagation()} className={(probeIsMultiAssigned || missingProbe) ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="probeId"
