@@ -1396,7 +1396,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                       const response = await fetch('/api/probe-assignments/backfill-battery', { method: 'POST' });
                       const data = await response.json();
                       if (response.ok) {
-                        setBatteryBackfillResult(`Updated ${data.updated} probe assignments (${data.skipped} already set)`);
+                        setBatteryBackfillResult(`Updated ${data.updated} probe assignments`);
                       } else {
                         setBatteryBackfillResult(`Error: ${data.error}`);
                       }
