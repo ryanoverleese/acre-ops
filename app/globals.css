@@ -5860,6 +5860,30 @@ input[type="date"]:focus {
   cursor: pointer;
 }
 
+.multi-select-actions {
+  display: flex;
+  gap: 4px;
+  padding: 4px 8px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.multi-select-actions button {
+  flex: 1;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.multi-select-actions button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
 .multi-select-clear {
   display: block;
   width: 100%;

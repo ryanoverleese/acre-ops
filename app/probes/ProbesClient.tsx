@@ -89,15 +89,16 @@ function MultiSelectFilter({ label, options, selected, onChange }: { label: stri
       </button>
       {open && (
         <div className="multi-select-dropdown">
+          <div className="multi-select-actions">
+            <button type="button" onClick={() => onChange(new Set(options))}>Select All</button>
+            <button type="button" onClick={() => onChange(new Set())}>Deselect All</button>
+          </div>
           {options.map(opt => (
             <label key={opt} className="multi-select-option">
               <input type="checkbox" checked={selected.has(opt)} onChange={() => toggle(opt)} />
               <span>{opt}</span>
             </label>
           ))}
-          {selected.size > 0 && (
-            <button className="multi-select-clear" onClick={() => onChange(new Set())}>Clear</button>
-          )}
         </div>
       )}
     </div>
