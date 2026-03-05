@@ -2118,11 +2118,17 @@ export default function FieldsClient({
                                           && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
                                       );
                                       const probeIsMultiAssigned = pa.probeId ? multiAssignedProbeIds.has(pa.probeId) : false;
+                                      const missingAntenna = pa.probeId && !pa.antennaType;
+                                      const missingBattery = pa.probeId && !pa.batteryType;
+                                      const hasMissingEquipment = missingAntenna || missingBattery;
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row">
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
+                                            {hasMissingEquipment && (
+                                              <span title={`Missing: ${[missingAntenna && 'Antenna', missingBattery && 'Battery'].filter(Boolean).join(', ')}`} className="fields-loc-warning"> &#9888;</span>
+                                            )}
                                           </span>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
@@ -2217,7 +2223,7 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()} className={missingAntenna ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="antennaType"
@@ -2236,7 +2242,7 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()} className={missingBattery ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="batteryType"
