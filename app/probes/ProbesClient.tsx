@@ -237,7 +237,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     const billingEntities = new Set<string>();
     const tradeYears = new Set<string>();
     probes.forEach(p => {
-      if (p.status && p.status !== 'Unknown') statuses.add(p.status);
+      if (p.status) statuses.add(p.status);
       if (p.brand && p.brand !== 'Unknown') brands.add(p.brand);
       if (p.operation && p.operation !== '—') operations.add(p.operation);
       if (p.billingEntity && p.billingEntity !== '—') billingEntities.add(p.billingEntity);
