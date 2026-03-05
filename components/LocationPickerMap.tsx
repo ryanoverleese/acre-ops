@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, useMapEvents, WMSTileLayer, useMap } f
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PLSSOverlay from './PLSSOverlay';
+import ElevationOverlay from './ElevationOverlay';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -22,6 +23,7 @@ interface LocationPickerMapProps {
   onPositionChange: (lat: number, lng: number) => void;
   showSoilLayer?: boolean;
   showPLSS?: boolean;
+  showElevation?: boolean;
   brightness?: number;
   initialCenter?: [number, number];
   initialZoom?: number;
@@ -54,7 +56,7 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
   return null;
 }
 
-export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, brightness = 1.2, initialCenter, initialZoom }: LocationPickerMapProps) {
+export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, showElevation = false, brightness = 1.2, initialCenter, initialZoom }: LocationPickerMapProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -102,6 +104,7 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
           />
         </>
       )}
+      <ElevationOverlay show={showElevation} />
       <PLSSOverlay show={showPLSS} />
       <MapClickHandler onPositionChange={onPositionChange} />
       {position && <Marker position={position} icon={defaultIcon} />}

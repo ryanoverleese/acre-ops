@@ -67,6 +67,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, in
   const [plssLoading, setPlssLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(true);
   const [showPLSS, setShowPLSS] = useState(false);
+  const [showElevation, setShowElevation] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
@@ -167,6 +168,14 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, in
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
               <input
                 type="checkbox"
+                checked={showElevation}
+                onChange={(e) => setShowElevation(e.target.checked)}
+              />
+              Elevation
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
                 checked={showPLSS}
                 onChange={(e) => setShowPLSS(e.target.checked)}
               />
@@ -180,6 +189,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, in
             onPositionChange={handlePositionChange}
             showSoilLayer={showSoilLayer}
             showPLSS={showPLSS}
+            showElevation={showElevation}
             brightness={brightness}
             initialCenter={initialCenter}
             initialZoom={initialZoom}
