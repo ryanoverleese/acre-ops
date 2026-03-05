@@ -674,7 +674,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       billing_entity: probe.billingEntityId?.toString() || '',
       contact: probe.contactId?.toString() || '',
       year_new: probe.yearNew?.toString() || '',
-      status: probe.status === 'Unknown' ? '' : probe.status,
+      status: probe.status,
       rack: probe.rack === '—' ? '' : probe.rack,
       rack_slot: probe.rackSlot === '—' ? '' : probe.rackSlot,
       notes: probe.notes || '',
@@ -1403,6 +1403,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                   >
+                    {!STATUS_OPTIONS.includes(editForm.status) && editForm.status && (
+                      <option value={editForm.status}>{editForm.status}</option>
+                    )}
                     {STATUS_OPTIONS.map((status) => (
                       <option key={status} value={status}>{status}</option>
                     ))}
