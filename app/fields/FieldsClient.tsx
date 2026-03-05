@@ -2120,7 +2120,7 @@ export default function FieldsClient({
                                       const probeIsMultiAssigned = pa.probeId ? multiAssignedProbeIds.has(pa.probeId) : false;
                                       const probeBrand = pa.probeId ? (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase() : '';
                                       const isCropx = probeBrand.includes('cropx');
-                                      const isSentek = probeBrand.includes('rocket') || (probeBrand.includes('sentek') && !probeBrand.includes('cropx'));
+                                      const isSentek = probeBrand.includes('rocket');
                                       const antennaLower = (pa.antennaType || '').toLowerCase();
                                       const batteryLower = (pa.batteryType || '').toLowerCase();
                                       const missingAntenna = pa.probeId && !pa.antennaType;
