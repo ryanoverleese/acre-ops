@@ -54,6 +54,56 @@ interface ProbesClientProps {
   probeFieldAssignments: ProbeFieldAssignment[];
 }
 
+function MultiSelectFilter({ label, options, selected, onChange }: { label: string; options: string[]; selected: Set<string>; onChange: (s: Set<string>) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
+
+  const toggle = (value: string) => {
+    const next = new Set(selected);
+    if (next.has(value)) next.delete(value); else next.add(value);
+    onChange(next);
+  };
+
+  const display = selected.size === 0 ? label : selected.size === 1 ? Array.from(selected)[0] : `${selected.size} selected`;
+
+  return (
+    <div ref={ref} className="multi-select-filter" style={{ position: 'relative' }}>
+      <button
+        className={`probes-filter-select multi-select-btn${selected.size > 0 ? ' active' : ''}`}
+        onClick={() => setOpen(!open)}
+        type="button"
+      >
+        {display}
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ marginLeft: '4px', flexShrink: 0 }}>
+          <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </button>
+      {open && (
+        <div className="multi-select-dropdown">
+          {options.map(opt => (
+            <label key={opt} className="multi-select-option">
+              <input type="checkbox" checked={selected.has(opt)} onChange={() => toggle(opt)} />
+              <span>{opt}</span>
+            </label>
+          ))}
+          {selected.size > 0 && (
+            <button className="multi-select-clear" onClick={() => onChange(new Set())}>Clear</button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const STATUS_OPTIONS = [
   'On Order',
   'On Order - Trade',
@@ -147,11 +197,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [customYears, setCustomYears] = useState<string[]>([]);
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
   const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterBrand, setFilterBrand] = useState('');
-  const [filterOperation, setFilterOperation] = useState('');
-  const [filterBillingEntity, setFilterBillingEntity] = useState('');
-  const [filterTradeYear, setFilterTradeYear] = useState('');
+  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
+  const [filterBrand, setFilterBrand] = useState<Set<string>>(new Set());
+  const [filterOperation, setFilterOperation] = useState<Set<string>>(new Set());
+  const [filterBillingEntity, setFilterBillingEntity] = useState<Set<string>>(new Set());
+  const [filterTradeYear, setFilterTradeYear] = useState<Set<string>>(new Set());
   const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
   const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
   const [showTradeModal, setShowTradeModal] = useState(false);
@@ -312,21 +362,22 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     // Apply quick filters
-    if (filterStatus) {
-      filtered = filtered.filter(p => p.status === filterStatus);
+    if (filterStatus.size > 0) {
+      filtered = filtered.filter(p => filterStatus.has(p.status));
     }
-    if (filterBrand) {
-      filtered = filtered.filter(p => p.brand === filterBrand);
+    if (filterBrand.size > 0) {
+      filtered = filtered.filter(p => filterBrand.has(p.brand));
     }
-    const effectiveOperationFilter = focusedOperation ? focusedOperation.name : filterOperation;
-    if (effectiveOperationFilter) {
-      filtered = filtered.filter(p => p.operation === effectiveOperationFilter);
+    if (focusedOperation) {
+      filtered = filtered.filter(p => p.operation === focusedOperation.name);
+    } else if (filterOperation.size > 0) {
+      filtered = filtered.filter(p => filterOperation.has(p.operation));
     }
-    if (filterBillingEntity) {
-      filtered = filtered.filter(p => p.billingEntity === filterBillingEntity);
+    if (filterBillingEntity.size > 0) {
+      filtered = filtered.filter(p => filterBillingEntity.has(p.billingEntity));
     }
-    if (filterTradeYear) {
-      filtered = filtered.filter(p => p.tradeYear === filterTradeYear);
+    if (filterTradeYear.size > 0) {
+      filtered = filtered.filter(p => filterTradeYear.has(p.tradeYear));
     }
 
     // Sort (only if not in rack view, which has its own sort)
@@ -862,32 +913,17 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="probes-filter-select">
-              <option value="">All Statuses</option>
-              {filterOptions.statuses.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select value={filterBrand} onChange={(e) => setFilterBrand(e.target.value)} className="probes-filter-select">
-              <option value="">All Brands</option>
-              {filterOptions.brands.map(b => <option key={b} value={b}>{b}</option>)}
-            </select>
+            <MultiSelectFilter label="All Statuses" options={filterOptions.statuses} selected={filterStatus} onChange={setFilterStatus} />
+            <MultiSelectFilter label="All Brands" options={filterOptions.brands} selected={filterBrand} onChange={setFilterBrand} />
             {!focusedOperation && (
-              <select value={filterOperation} onChange={(e) => setFilterOperation(e.target.value)} className="probes-filter-select">
-                <option value="">All Operations</option>
-                {filterOptions.operations.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
+              <MultiSelectFilter label="All Operations" options={filterOptions.operations} selected={filterOperation} onChange={setFilterOperation} />
             )}
-            <select value={filterBillingEntity} onChange={(e) => setFilterBillingEntity(e.target.value)} className="probes-filter-select">
-              <option value="">All Billing Entities</option>
-              {filterOptions.billingEntities.map(be => <option key={be} value={be}>{be}</option>)}
-            </select>
-            <select value={filterTradeYear} onChange={(e) => setFilterTradeYear(e.target.value)} className="probes-filter-select">
-              <option value="">All Trade Years</option>
-              {filterOptions.tradeYears.map(ty => <option key={ty} value={ty}>{ty}</option>)}
-            </select>
-            {(filterStatus || filterBrand || filterOperation || filterBillingEntity || filterTradeYear) && (
+            <MultiSelectFilter label="All Billing Entities" options={filterOptions.billingEntities} selected={filterBillingEntity} onChange={setFilterBillingEntity} />
+            <MultiSelectFilter label="All Trade Years" options={filterOptions.tradeYears} selected={filterTradeYear} onChange={setFilterTradeYear} />
+            {(filterStatus.size > 0 || filterBrand.size > 0 || filterOperation.size > 0 || filterBillingEntity.size > 0 || filterTradeYear.size > 0) && (
               <button
                 className="btn btn-secondary btn-compact"
-                onClick={() => { setFilterStatus(''); setFilterBrand(''); setFilterOperation(''); setFilterBillingEntity(''); setFilterTradeYear(''); }}
+                onClick={() => { setFilterStatus(new Set()); setFilterBrand(new Set()); setFilterOperation(new Set()); setFilterBillingEntity(new Set()); setFilterTradeYear(new Set()); }}
                 title="Clear all filters"
               >
                 Clear
