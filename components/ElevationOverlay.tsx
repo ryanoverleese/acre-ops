@@ -18,8 +18,8 @@ export default function ElevationOverlay({ show }: { show: boolean }) {
     if (show && !layerRef.current) {
       layerRef.current = esriLeaflet.imageMapLayer({
         url: ELEVATION_URL,
-        renderingRule: { rasterFunction: 'Hillshade Multidirectional' },
-        opacity: 0.35,
+        renderingRule: { rasterFunction: 'Hillshade Elevation Tinted' },
+        opacity: 0.5,
         format: 'png32',
       });
       layerRef.current.addTo(map);
