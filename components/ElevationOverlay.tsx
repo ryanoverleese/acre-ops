@@ -7,8 +7,8 @@ import * as esriLeaflet from 'esri-leaflet';
 const ELEVATION_URL = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer';
 
 /**
- * USGS 3DEP hillshade overlay for react-leaflet MapContainer.
- * Renders multidirectional hillshade to visualize terrain relief.
+ * USGS 3DEP contour overlay for react-leaflet MapContainer.
+ * Renders 2ft contour lines to visualize terrain.
  */
 export default function ElevationOverlay({ show }: { show: boolean }) {
   const map = useMap();
@@ -18,8 +18,8 @@ export default function ElevationOverlay({ show }: { show: boolean }) {
     if (show && !layerRef.current) {
       layerRef.current = esriLeaflet.imageMapLayer({
         url: ELEVATION_URL,
-        renderingRule: { rasterFunction: 'Hillshade Elevation Tinted' },
-        opacity: 0.5,
+        renderingRule: { rasterFunction: 'Preset 2ft Contour Interval' },
+        opacity: 0.8,
         format: 'png32',
       });
       layerRef.current.addTo(map);
