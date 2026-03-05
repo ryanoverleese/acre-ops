@@ -205,6 +205,8 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
   const [addForm, setAddForm] = useState(initialAddForm);
   const [saving, setSaving] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
+  const [batteryBackfillLoading, setBatteryBackfillLoading] = useState(false);
+  const [batteryBackfillResult, setBatteryBackfillResult] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<ProcessedProductService>>({});
   const [savingEdit, setSavingEdit] = useState(false);
@@ -1365,6 +1367,57 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
             </div>
           );
         })}
+            </div>
+          )}
+        </div>
+
+        {/* Data Tools */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('dataTools')}>
+            <h3 className="table-title">Data Tools</h3>
+            <svg
+              fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+              className={`settings-chevron${openSections.has('dataTools') ? ' open' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {openSections.has('dataTools') && (
+            <div className="settings-section-content">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-primary"
+                  disabled={batteryBackfillLoading}
+                  onClick={async () => {
+                    setBatteryBackfillLoading(true);
+                    setBatteryBackfillResult(null);
+                    try {
+                      const response = await fetch('/api/probe-assignments/backfill-battery', { method: 'POST' });
+                      const data = await response.json();
+                      if (response.ok) {
+                        setBatteryBackfillResult(`Updated ${data.updated} probe assignments (${data.skipped} already set)`);
+                      } else {
+                        setBatteryBackfillResult(`Error: ${data.error}`);
+                      }
+                    } catch {
+                      setBatteryBackfillResult('Failed to run backfill');
+                    } finally {
+                      setBatteryBackfillLoading(false);
+                    }
+                  }}
+                >
+                  {batteryBackfillLoading ? 'Running...' : 'Backfill CropX Batteries'}
+                </button>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                  Sets battery to &quot;CropX&quot; on all CropX probe assignments missing a battery type
+                </span>
+              </div>
+              {batteryBackfillResult && (
+                <p style={{ marginTop: '8px', fontSize: '13px', color: batteryBackfillResult.startsWith('Error') ? 'var(--accent-red)' : 'var(--accent-primary)' }}>
+                  {batteryBackfillResult}
+                </p>
+              )}
             </div>
           )}
         </div>
