@@ -126,6 +126,11 @@ const PLSSOverlay = dynamic(
   { ssr: false }
 );
 
+const ElevationOverlay = dynamic(
+  () => import('./ElevationOverlay'),
+  { ssr: false }
+);
+
 const MeasureTool = dynamic(
   () => import('./MeasureTool'),
   { ssr: false }
@@ -136,6 +141,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
+  const [showElevation, setShowElevation] = useState(false);
   const [measureMode, setMeasureMode] = useState<MeasureMode>(null);
   const [showMeasureMenu, setShowMeasureMenu] = useState(false);
   const [clearMeasureCounter, setClearMeasureCounter] = useState(0);
@@ -386,6 +392,17 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           )}
         </div>
 
+        {/* Elevation overlay toggle */}
+        <label style={{ ...controlStyle, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={showElevation}
+            onChange={(e) => setShowElevation(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+          Elevation
+        </label>
+
         {/* PLSS Grid toggle */}
         <label style={{ ...controlStyle, cursor: 'pointer' }}>
           <input
@@ -461,6 +478,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           attribution='&copy; Google'
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
+        <ElevationOverlay show={showElevation} />
         <PLSSOverlay show={showPLSS} />
         <MeasureTool mode={measureMode} onModeChange={setMeasureMode} clearSignal={clearMeasureCounter} />
         {mappableFields.map((field) => {

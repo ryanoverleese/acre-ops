@@ -204,13 +204,41 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
-  const handleUpdateInvoiceDate = async (invoiceId: number, field: 'sent_at' | 'deposit_at' | 'paid_at', value: string) => {
+  // Ensure an invoice row exists in Baserow, creating one if needed (id === 0).
+  // Returns the real invoice ID, or null on failure.
+  const ensureInvoice = async (invoiceId: number, billingEntityId: number, season: number): Promise<number | null> => {
+    if (invoiceId !== 0) return invoiceId;
+
+    const response = await fetch('/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ billing_entity: billingEntityId, season }),
+    });
+
+    if (!response.ok) return null;
+    const created = await response.json();
+    // Update local state with the real ID
+    setBillingEntities((prev) => prev.map((be) => ({
+      ...be,
+      invoices: be.invoices.map((inv) =>
+        inv.id === 0 && be.id === billingEntityId && be.season === season
+          ? { ...inv, id: created.id }
+          : inv
+      ),
+    })));
+    return created.id;
+  };
+
+  const handleUpdateInvoiceDate = async (invoiceId: number, billingEntityId: number, season: number, field: 'sent_at' | 'deposit_at' | 'paid_at', value: string) => {
     try {
+      const realId = await ensureInvoice(invoiceId, billingEntityId, season);
+      if (!realId) { alert('Failed to create invoice'); return; }
+
       const updateData: Record<string, unknown> = { [field]: value || null };
       if (field === 'sent_at' && value) updateData.status = 'Sent';
       if (field === 'paid_at' && value) updateData.status = 'Paid';
 
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
+      const response = await fetch(`/api/invoices/${realId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updateData),
@@ -218,10 +246,10 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
       if (response.ok) {
         const fieldMap: Record<string, string> = { sent_at: 'sentAt', deposit_at: 'depositAt', paid_at: 'paidAt' };
-        setBillingEntities(billingEntities.map((be) => ({
+        setBillingEntities((prev) => prev.map((be) => ({
           ...be,
           invoices: be.invoices.map((inv) => {
-            if (inv.id === invoiceId) {
+            if (inv.id === realId) {
               const updated = { ...inv, [fieldMap[field]]: value || undefined };
               if (field === 'sent_at' && value) updated.status = 'Sent';
               if (field === 'paid_at' && value) updated.status = 'Paid';
@@ -239,20 +267,23 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
-  const handleSaveNotes = async (invoiceId: number) => {
+  const handleSaveNotes = async (invoiceId: number, billingEntityId: number, season: number) => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
+      const realId = await ensureInvoice(invoiceId, billingEntityId, season);
+      if (!realId) { alert('Failed to create invoice'); return; }
+
+      const response = await fetch(`/api/invoices/${realId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ notes: notesValue }),
       });
 
       if (response.ok) {
-        setBillingEntities(billingEntities.map((be) => ({
+        setBillingEntities((prev) => prev.map((be) => ({
           ...be,
           invoices: be.invoices.map((inv) =>
-            inv.id === invoiceId ? { ...inv, notes: notesValue } : inv
+            inv.id === realId ? { ...inv, notes: notesValue } : inv
           ),
         })));
         setEditingNotes(null);
@@ -538,7 +569,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 setEditingNotes(invoice.id);
                                 setNotesValue(invoice.notes || '');
                               }}
-                              onSave={() => handleSaveNotes(invoice.id)}
+                              onSave={() => handleSaveNotes(invoice.id, be.id, be.season || currentSeason)}
                               onCancel={() => setEditingNotes(null)}
                               onChange={setNotesValue}
                             />
@@ -548,17 +579,17 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             <DateInputGroup
                               label="Sent Date"
                               value={invoice.sentAt?.split('T')[0] || ''}
-                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, 'sent_at', value)}
+                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'sent_at', value)}
                             />
                             <DateInputGroup
                               label="Deposit Date"
                               value={invoice.depositAt?.split('T')[0] || ''}
-                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, 'deposit_at', value)}
+                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'deposit_at', value)}
                             />
                             <DateInputGroup
                               label="Paid Date"
                               value={invoice.paidAt?.split('T')[0] || ''}
-                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, 'paid_at', value)}
+                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'paid_at', value)}
                             />
                           </div>
                         </EntityFooter>
