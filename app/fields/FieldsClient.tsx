@@ -198,6 +198,8 @@ export default function FieldsClient({
   const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add' | 'probeAssignment'>('edit');
   const [editingProbeAssignmentLocation, setEditingProbeAssignmentLocation] = useState<ProcessedProbeAssignment | null>(null);
   const [locationPickerTitle, setLocationPickerTitle] = useState<string | undefined>(undefined);
+  const [locationPickerProbeLabel, setLocationPickerProbeLabel] = useState<string>('');
+  const probeLabelSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
   // Removal logging
   const [showRemovalModal, setShowRemovalModal] = useState(false);
@@ -2194,7 +2196,8 @@ export default function FieldsClient({
                                             e.stopPropagation();
                                             setEditingProbeAssignmentLocation(pa);
                                             setLocationPickerTarget('probeAssignment');
-                                            setLocationPickerTitle(`${field.name} — Probe ${pa.probeNumber}${pa.label ? ` (${pa.label})` : ''}`);
+                                            setLocationPickerTitle(`${field.name} — Probe ${pa.probeNumber}`);
+                                            setLocationPickerProbeLabel(pa.label || '');
                                             setShowLocationPicker(true);
                                           }}
                                           title="Click to edit location"
@@ -3147,6 +3150,14 @@ export default function FieldsClient({
         {showLocationPicker && (
           <LocationPicker
             title={locationPickerTitle}
+            probeLabel={locationPickerProbeLabel}
+            onProbeLabelChange={editingProbeAssignmentLocation ? (label: string) => {
+              setLocationPickerProbeLabel(label);
+              if (probeLabelSaveTimer.current) clearTimeout(probeLabelSaveTimer.current);
+              probeLabelSaveTimer.current = setTimeout(() => {
+                handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'label', label);
+              }, 500);
+            } : undefined}
             lat={
               locationPickerTarget === 'edit'
                 ? (editForm.lat ? Number(editForm.lat) : null)
@@ -3188,9 +3199,17 @@ export default function FieldsClient({
               }
             }}
             onClose={() => {
+              if (probeLabelSaveTimer.current) {
+                clearTimeout(probeLabelSaveTimer.current);
+                // Flush pending label save immediately
+                if (editingProbeAssignmentLocation && locationPickerProbeLabel !== undefined) {
+                  handleProbeAssignmentSave(editingProbeAssignmentLocation.id, 'label', locationPickerProbeLabel);
+                }
+              }
               setShowLocationPicker(false);
               setEditingProbeAssignmentLocation(null);
               setLocationPickerTitle(undefined);
+              setLocationPickerProbeLabel('');
               setLocationPickerInitialCenter(undefined);
               setLocationPickerInitialZoom(undefined);
             }}

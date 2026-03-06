@@ -25,6 +25,8 @@ interface LocationPickerProps {
   ) => void | Promise<void>;
   onClose: () => void;
   title?: string;
+  probeLabel?: string;
+  onProbeLabelChange?: (label: string) => void;
   initialCenter?: [number, number];
   initialZoom?: number;
 }
@@ -56,7 +58,7 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
   }
 }
 
-export default function LocationPicker({ lat, lng, onLocationChange, onClose, title, initialCenter, initialZoom }: LocationPickerProps) {
+export default function LocationPicker({ lat, lng, onLocationChange, onClose, title, probeLabel, onProbeLabelChange, initialCenter, initialZoom }: LocationPickerProps) {
   const [isClient, setIsClient] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(null);
   const hasInitialized = useRef(false);
@@ -134,7 +136,26 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
     <div className="location-picker-overlay" onClick={onClose}>
       <div className="location-picker-modal" onClick={(e) => e.stopPropagation()}>
         <div className="location-picker-header">
-          <h3>{title || 'Select Location'}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
+            <h3 style={{ margin: 0, whiteSpace: 'nowrap' }}>{title || 'Select Location'}</h3>
+            {onProbeLabelChange && (
+              <input
+                type="text"
+                value={probeLabel || ''}
+                onChange={(e) => onProbeLabelChange(e.target.value)}
+                placeholder="Label (e.g. NE probe)"
+                style={{
+                  fontSize: '13px',
+                  padding: '4px 8px',
+                  border: '1px solid var(--border)',
+                  borderRadius: '4px',
+                  background: 'var(--bg-secondary)',
+                  color: 'var(--text-primary)',
+                  width: '160px',
+                }}
+              />
+            )}
+          </div>
           <button className="close-btn" onClick={onClose}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
