@@ -199,6 +199,141 @@
   --notification-unread-hover: rgba(13, 148, 136, 0.1);
 }
 
+/* Rose — Soft pink + Rose */
+[data-theme="rose"] {
+  --bg-primary: #f7f3f5;
+  --bg-secondary: #ede6ea;
+  --bg-tertiary: #e3d9df;
+  --bg-card: #ffffff;
+  --bg-hover: #f0eaed;
+  --bg-elevated: #ffffff;
+  --text-primary: #1f1418;
+  --text-secondary: #5c4a52;
+  --text-muted: #7a6870;
+  --accent-primary: #e11d48;
+  --accent-primary-dim: rgba(225, 29, 72, 0.12);
+  --accent-primary-hover: #be123c;
+  --border: #e8dfe3;
+  --border-strong: #d8cdd3;
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-hover: var(--bg-hover);
+  --sidebar-bg-active: var(--accent-primary-dim);
+  --sidebar-text: var(--text-secondary);
+  --sidebar-text-hover: var(--text-primary);
+  --sidebar-text-muted: var(--text-muted);
+  --sidebar-border: var(--border);
+  --notification-unread-bg: rgba(225, 29, 72, 0.06);
+  --notification-unread-hover: rgba(225, 29, 72, 0.1);
+}
+
+/* Forest — Deep green + Forest green */
+[data-theme="forest"] {
+  --bg-primary: #f2f5f3;
+  --bg-secondary: #e2e8e4;
+  --bg-tertiary: #d2dbd5;
+  --bg-card: #ffffff;
+  --bg-hover: #eaf0ec;
+  --bg-elevated: #ffffff;
+  --text-primary: #0f1a12;
+  --text-secondary: #3d5244;
+  --text-muted: #5a7262;
+  --accent-primary: #166534;
+  --accent-primary-dim: rgba(22, 101, 52, 0.12);
+  --accent-primary-hover: #14532d;
+  --border: #dbe3dd;
+  --border-strong: #c5d0c8;
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-hover: var(--bg-hover);
+  --sidebar-bg-active: var(--accent-primary-dim);
+  --sidebar-text: var(--text-secondary);
+  --sidebar-text-hover: var(--text-primary);
+  --sidebar-text-muted: var(--text-muted);
+  --sidebar-border: var(--border);
+  --notification-unread-bg: rgba(22, 101, 52, 0.06);
+  --notification-unread-hover: rgba(22, 101, 52, 0.1);
+}
+
+/* Sunset — Warm peach + Coral */
+[data-theme="sunset"] {
+  --bg-primary: #fdf5f3;
+  --bg-secondary: #f8e8e3;
+  --bg-tertiary: #f0d9d2;
+  --bg-card: #ffffff;
+  --bg-hover: #faf0ec;
+  --bg-elevated: #ffffff;
+  --text-primary: #1c120e;
+  --text-secondary: #5e3f35;
+  --text-muted: #7d5c50;
+  --accent-primary: #e63946;
+  --accent-primary-dim: rgba(230, 57, 70, 0.12);
+  --accent-primary-hover: #c62d3a;
+  --border: #f0ddd7;
+  --border-strong: #e3cbc2;
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-hover: var(--bg-hover);
+  --sidebar-bg-active: var(--accent-primary-dim);
+  --sidebar-text: var(--text-secondary);
+  --sidebar-text-hover: var(--text-primary);
+  --sidebar-text-muted: var(--text-muted);
+  --sidebar-border: var(--border);
+  --notification-unread-bg: rgba(230, 57, 70, 0.06);
+  --notification-unread-hover: rgba(230, 57, 70, 0.1);
+}
+
+/* Arctic — Ice blue + Indigo */
+[data-theme="arctic"] {
+  --bg-primary: #f0f5fa;
+  --bg-secondary: #dce6f2;
+  --bg-tertiary: #c8d7e8;
+  --bg-card: #ffffff;
+  --bg-hover: #e6eef6;
+  --bg-elevated: #ffffff;
+  --text-primary: #0d1b2a;
+  --text-secondary: #3d5577;
+  --text-muted: #5a7599;
+  --accent-primary: #4f46e5;
+  --accent-primary-dim: rgba(79, 70, 229, 0.12);
+  --accent-primary-hover: #4338ca;
+  --border: #d4dfed;
+  --border-strong: #bfccdd;
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-hover: var(--bg-hover);
+  --sidebar-bg-active: var(--accent-primary-dim);
+  --sidebar-text: var(--text-secondary);
+  --sidebar-text-hover: var(--text-primary);
+  --sidebar-text-muted: var(--text-muted);
+  --sidebar-border: var(--border);
+  --notification-unread-bg: rgba(79, 70, 229, 0.06);
+  --notification-unread-hover: rgba(79, 70, 229, 0.1);
+}
+
+/* Dusk — Mauve twilight + Magenta */
+[data-theme="dusk"] {
+  --bg-primary: #f5f2f6;
+  --bg-secondary: #e8e0ed;
+  --bg-tertiary: #dacde3;
+  --bg-card: #ffffff;
+  --bg-hover: #eee9f2;
+  --bg-elevated: #ffffff;
+  --text-primary: #1a1220;
+  --text-secondary: #524060;
+  --text-muted: #705e80;
+  --accent-primary: #c026d3;
+  --accent-primary-dim: rgba(192, 38, 211, 0.12);
+  --accent-primary-hover: #a21caf;
+  --border: #e2d8ea;
+  --border-strong: #d0c4da;
+  --sidebar-bg: #ffffff;
+  --sidebar-bg-hover: var(--bg-hover);
+  --sidebar-bg-active: var(--accent-primary-dim);
+  --sidebar-text: var(--text-secondary);
+  --sidebar-text-hover: var(--text-primary);
+  --sidebar-text-muted: var(--text-muted);
+  --sidebar-border: var(--border);
+  --notification-unread-bg: rgba(192, 38, 211, 0.06);
+  --notification-unread-hover: rgba(192, 38, 211, 0.1);
+}
+
 * {
   margin: 0;
   padding: 0;

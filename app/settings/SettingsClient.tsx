@@ -1431,6 +1431,11 @@ const THEMES = [
   { id: 'lavender', label: 'Lavender', bg: '#f5f3f7', accent: '#7c3aed' },
   { id: 'sand', label: 'Sand', bg: '#f8f5ef', accent: '#c2410c' },
   { id: 'slate', label: 'Slate', bg: '#f1f3f5', accent: '#0d9488' },
+  { id: 'rose', label: 'Rose', bg: '#f7f3f5', accent: '#e11d48' },
+  { id: 'forest', label: 'Forest', bg: '#f2f5f3', accent: '#166534' },
+  { id: 'sunset', label: 'Sunset', bg: '#fdf5f3', accent: '#e63946' },
+  { id: 'arctic', label: 'Arctic', bg: '#f0f5fa', accent: '#4f46e5' },
+  { id: 'dusk', label: 'Dusk', bg: '#f5f2f6', accent: '#c026d3' },
 ];
 
 function ColorThemePicker() {
