@@ -693,6 +693,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       tradeYear: '',
       notes: `Replacing ${oldSerial} on trade`,
       dateCreated: new Date().toISOString(),
+      rawSerialNumber: newProbeOption.serialNumber || '',
     }]);
 
     // Set trade notes on both probes
