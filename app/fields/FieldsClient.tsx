@@ -197,6 +197,7 @@ export default function FieldsClient({
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add' | 'probeAssignment'>('edit');
   const [editingProbeAssignmentLocation, setEditingProbeAssignmentLocation] = useState<ProcessedProbeAssignment | null>(null);
+  const [locationPickerTitle, setLocationPickerTitle] = useState<string | undefined>(undefined);
   const [showAddSeasonModal, setShowAddSeasonModal] = useState(false);
   // Removal logging
   const [showRemovalModal, setShowRemovalModal] = useState(false);
@@ -2193,6 +2194,7 @@ export default function FieldsClient({
                                             e.stopPropagation();
                                             setEditingProbeAssignmentLocation(pa);
                                             setLocationPickerTarget('probeAssignment');
+                                            setLocationPickerTitle(`${field.name} — Probe ${pa.probeNumber}${pa.label ? ` (${pa.label})` : ''}`);
                                             setShowLocationPicker(true);
                                           }}
                                           title="Click to edit location"
@@ -3144,6 +3146,7 @@ export default function FieldsClient({
         {/* Location Picker */}
         {showLocationPicker && (
           <LocationPicker
+            title={locationPickerTitle}
             lat={
               locationPickerTarget === 'edit'
                 ? (editForm.lat ? Number(editForm.lat) : null)
@@ -3187,6 +3190,7 @@ export default function FieldsClient({
             onClose={() => {
               setShowLocationPicker(false);
               setEditingProbeAssignmentLocation(null);
+              setLocationPickerTitle(undefined);
               setLocationPickerInitialCenter(undefined);
               setLocationPickerInitialZoom(undefined);
             }}
