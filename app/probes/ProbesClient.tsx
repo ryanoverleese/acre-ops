@@ -10,6 +10,7 @@ import CreateProbeModal from '@/components/fields/CreateProbeModal';
 export interface ProcessedProbe {
   id: number;
   serialNumber: string;
+  rawSerialNumber: string;
   brand: string;
   status: string;
   rack: string;
@@ -596,14 +597,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
 
   const handleEdit = async () => {
     if (!selectedProbe) return;
-    if (!editForm.serial_number.trim()) {
-      alert('Serial number is required');
-      return;
-    }
+    // Serial number is optional for On Order probes
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        serial_number: editForm.serial_number,
+        serial_number: editForm.serial_number.trim() || null,
         brand: editForm.brand || null,
         billing_entity: editForm.billing_entity ? parseInt(editForm.billing_entity, 10) : null,
         contact: editForm.contact ? parseInt(editForm.contact, 10) : null,
@@ -725,7 +723,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const openEditModal = (probe: ProcessedProbe) => {
     setSelectedProbe(probe);
     setEditForm({
-      serial_number: probe.serialNumber,
+      serial_number: probe.rawSerialNumber,
       brand: probe.brand === 'Unknown' ? '' : probe.brand,
       billing_entity: probe.billingEntityId?.toString() || '',
       contact: probe.contactId?.toString() || '',
