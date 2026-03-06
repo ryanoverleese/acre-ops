@@ -546,7 +546,9 @@ export default function FieldsClient({
     if (sortAlertsToTop) {
       const fieldHasAlert = (f: typeof filtered[0]) => {
         if (!f.fieldSeasonId) return false;
-        return probeAssignments.filter(pa => pa.fieldSeasonId === f.fieldSeasonId).some(pa => {
+        const pas = probeAssignments.filter(pa => pa.fieldSeasonId === f.fieldSeasonId);
+        // Equipment warnings
+        const hasEquipment = pas.some(pa => {
           if (!pa.probeId) return true;
           const brand = (localProbes.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
           if (!pa.antennaType || !pa.batteryType) return true;
@@ -555,6 +557,18 @@ export default function FieldsClient({
           if (brand.includes('rocket') && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
           return false;
         });
+        if (hasEquipment) return true;
+        // Location not set
+        if (pas.some(pa => pa.probeId && (!pa.placementLat || !pa.placementLng))) return true;
+        // Duplicate locations
+        if (pas.length >= 2 && pas.some((pa, i) =>
+          pa.placementLat && pa.placementLng && pas.some((other, j) =>
+            i !== j && other.placementLat && other.placementLng
+            && Number(other.placementLat).toFixed(6) === Number(pa.placementLat).toFixed(6)
+            && Number(other.placementLng).toFixed(6) === Number(pa.placementLng).toFixed(6)
+          )
+        )) return true;
+        return false;
       };
       filtered = [...filtered].sort((a, b) => {
         const aAlert = fieldHasAlert(a) ? 0 : 1;
