@@ -33,31 +33,51 @@ async function getRowHistory(jwt: string, rowId: number): Promise<any> {
   return res.json();
 }
 
-// Extract the status BEFORE the bulk "In Stock" update from history entries
+// Extract the status BEFORE the bulk "In Stock" update from history entries.
+// Baserow history format uses internal field IDs (e.g. "field_7011269") with
+// option IDs as values, and fields_metadata to map IDs to readable values.
+// Example entry:
+//   before: { field_7011269: 5146740 }      (option ID for e.g. "Trade Ordered")
+//   after:  { field_7011269: 5146745 }       (option ID for "In Stock")
+//   fields_metadata: { field_7011269: { type: "single_select", select_options: { "5146740": { value: "Trade Ordered" }, "5146745": { value: "In Stock" } } } }
+// If before was null, the probe had no status set.
 function findPreviousStatus(historyData: any): string | null {
   if (!historyData) return null;
-  const entries = historyData.results || historyData || [];
-  const entryList = Array.isArray(entries) ? entries : [];
+  const entries = historyData.results || [];
+  if (!Array.isArray(entries)) return null;
 
-  // Walk through history entries looking for the bulk update that set status to "In Stock"
-  // The entry before that (or the "before" value in that entry) is what we want
-  for (const entry of entryList) {
-    // Try multiple response format possibilities
-    const before = entry.before || entry.fields_changed?.before || {};
-    const after = entry.after || entry.fields_changed?.after || {};
+  for (const entry of entries) {
+    const before = entry.before || {};
+    const after = entry.after || {};
+    const metadata = entry.fields_metadata || {};
 
-    // Check if this entry changed status TO "In Stock"
-    const afterStatus = after.status || after.Status;
-    const beforeStatus = before.status || before.Status;
+    // Find which field in this entry is a single_select that changed TO "In Stock"
+    for (const fieldId of Object.keys(metadata)) {
+      const fieldMeta = metadata[fieldId];
+      if (fieldMeta?.type !== 'single_select') continue;
 
-    if (afterStatus) {
-      const afterVal = typeof afterStatus === 'object' ? afterStatus.value : afterStatus;
-      if (afterVal === 'In Stock' && beforeStatus) {
-        const beforeVal = typeof beforeStatus === 'object' ? beforeStatus.value : beforeStatus;
-        if (beforeVal && beforeVal !== 'In Stock') {
-          return beforeVal;
-        }
+      const afterOptionId = after[fieldId];
+      if (afterOptionId == null) continue;
+
+      // Check if the after value is "In Stock"
+      const afterOption = fieldMeta.select_options?.[String(afterOptionId)];
+      if (afterOption?.value !== 'In Stock') continue;
+
+      // Found the status change to "In Stock" — get the before value
+      const beforeOptionId = before[fieldId];
+      if (beforeOptionId == null) {
+        // Was null/empty before — this probe was genuinely blank ("Unknown")
+        return null;
       }
+
+      const beforeOption = fieldMeta.select_options?.[String(beforeOptionId)];
+      if (beforeOption?.value && beforeOption.value !== 'In Stock') {
+        return beforeOption.value;
+      }
+
+      // Before option ID exists but isn't in this entry's select_options
+      // This shouldn't happen but handle gracefully
+      return null;
     }
   }
   return null;
@@ -104,26 +124,34 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Process all In Stock probes
+      // Process all In Stock probes (in batches of 10 for speed)
       const recoveryPlan: { id: number; serial: string | null; from: string; to: string }[] = [];
       const noHistory: { id: number; serial: string | null }[] = [];
-      let processed = 0;
+      const concurrency = 10;
 
-      for (const probe of inStockProbes) {
-        const history = await getRowHistory(jwt, probe.id);
-        processed++;
-        const prevStatus = findPreviousStatus(history);
-        if (prevStatus) {
-          recoveryPlan.push({
-            id: probe.id,
-            serial: probe.serial_number,
-            from: 'In Stock',
-            to: prevStatus,
-          });
-        } else {
-          noHistory.push({ id: probe.id, serial: probe.serial_number });
+      for (let i = 0; i < inStockProbes.length; i += concurrency) {
+        const batch = inStockProbes.slice(i, i + concurrency);
+        const results = await Promise.all(
+          batch.map(async (probe) => {
+            const history = await getRowHistory(jwt, probe.id);
+            const prevStatus = findPreviousStatus(history);
+            return { probe, prevStatus };
+          })
+        );
+        for (const { probe, prevStatus } of results) {
+          if (prevStatus) {
+            recoveryPlan.push({
+              id: probe.id,
+              serial: probe.serial_number,
+              from: 'In Stock',
+              to: prevStatus,
+            });
+          } else {
+            noHistory.push({ id: probe.id, serial: probe.serial_number });
+          }
         }
       }
+      const processed = inStockProbes.length;
 
       if (!apply) {
         const summary: Record<string, number> = {};
