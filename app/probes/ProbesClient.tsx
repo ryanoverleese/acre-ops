@@ -114,6 +114,7 @@ const STATUS_OPTIONS = [
   'Assigned',
   'Installed',
   'Trade Ordered',
+  'No Trade',
   'RMA',
   'Retired',
 ];
@@ -767,6 +768,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       className += 'on-order';
     } else if (statusLower === 'trade ordered') {
       className += 'trade-ordered';
+    } else if (statusLower === 'no trade') {
+      className += 'no-trade';
     } else {
       className += 'pending';
     }

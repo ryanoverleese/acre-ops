@@ -1177,6 +1177,11 @@ tr.clickable-row {
   color: var(--accent-pink);
 }
 
+.status-badge.no-trade {
+  background: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
 .status-badge.retired {
   background: var(--bg-hover);
   color: var(--text-muted);
