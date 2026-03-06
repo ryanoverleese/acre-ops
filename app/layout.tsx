@@ -31,6 +31,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="dns-prefetch" href="https://api.baserow.io" />
         <link rel="preconnect" href="https://api.baserow.io" />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('acre-ops-theme');if(t)document.documentElement.dataset.theme=t;})();` }} />
       </head>
       <body>
         <Providers>

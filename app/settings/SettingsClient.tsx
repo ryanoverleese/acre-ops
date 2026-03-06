@@ -1369,6 +1369,9 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           )}
         </div>
 
+        {/* Color Theme */}
+        <ColorThemePicker />
+
         {/* Data Backup */}
         <div className="table-container settings-section">
           <div className="table-header settings-section-toggle" onClick={() => toggleSection('backup')}>
@@ -1419,5 +1422,81 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
         </div>
       </div>
     </>
+  );
+}
+
+const THEMES = [
+  { id: 'prairie', label: 'Prairie', bg: '#f7f5f2', accent: '#4a7a5b' },
+  { id: 'ocean', label: 'Ocean', bg: '#f0f4f8', accent: '#2563eb' },
+  { id: 'lavender', label: 'Lavender', bg: '#f5f3f7', accent: '#7c3aed' },
+  { id: 'sand', label: 'Sand', bg: '#f8f5ef', accent: '#c2410c' },
+  { id: 'slate', label: 'Slate', bg: '#f1f3f5', accent: '#0d9488' },
+];
+
+function ColorThemePicker() {
+  const [activeTheme, setActiveTheme] = useState(() =>
+    typeof window !== 'undefined' ? document.documentElement.dataset.theme || 'prairie' : 'prairie'
+  );
+  const [open, setOpen] = useState(false);
+
+  const applyTheme = (id: string) => {
+    if (id === 'prairie') {
+      delete document.documentElement.dataset.theme;
+      localStorage.removeItem('acre-ops-theme');
+    } else {
+      document.documentElement.dataset.theme = id;
+      localStorage.setItem('acre-ops-theme', id);
+    }
+    setActiveTheme(id);
+  };
+
+  return (
+    <div className="table-container settings-section">
+      <div className="table-header settings-section-toggle" onClick={() => setOpen(!open)}>
+        <h3 className="table-title">Color Theme</h3>
+        <svg
+          fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+          className={`settings-chevron${open ? ' open' : ''}`}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
+      {open && (
+        <div className="settings-section-content">
+          <p className="section-description" style={{ marginBottom: 16 }}>
+            Choose a color palette for the interface.
+          </p>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => applyTheme(t.id)}
+                style={{
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                }}
+              >
+                <div style={{
+                  width: 48, height: 48, borderRadius: '50%', background: t.bg,
+                  border: activeTheme === t.id ? `3px solid ${t.accent}` : '2px solid var(--border)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transform: activeTheme === t.id ? 'scale(1.1)' : 'scale(1)',
+                  transition: 'transform 0.15s ease, border 0.15s ease',
+                  boxShadow: activeTheme === t.id ? 'var(--shadow-md)' : 'none',
+                }}>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', background: t.accent,
+                  }} />
+                </div>
+                <span style={{
+                  fontSize: 12, fontWeight: activeTheme === t.id ? 600 : 400,
+                  color: activeTheme === t.id ? 'var(--text-primary)' : 'var(--text-muted)',
+                }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

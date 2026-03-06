@@ -36,6 +36,7 @@ export interface ContactOption {
   id: number;
   name: string;
   operationName: string;
+  billingEntityIds: number[];
 }
 
 export interface ProbeFieldAssignment {
@@ -1405,7 +1406,17 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   <label>Billing Entity</label>
                   <SearchableSelect
                     value={editForm.billing_entity}
-                    onChange={(v) => setEditForm({ ...editForm, billing_entity: v })}
+                    onChange={(v) => {
+                      const updated = { ...editForm, billing_entity: v };
+                      // Clear contact if it doesn't belong to the new billing entity
+                      if (v && editForm.contact) {
+                        const contactMatch = contacts.find((c) => String(c.id) === editForm.contact);
+                        if (contactMatch && !contactMatch.billingEntityIds.includes(Number(v))) {
+                          updated.contact = '';
+                        }
+                      }
+                      setEditForm(updated);
+                    }}
                     options={billingEntities.map((be) => ({
                       value: String(be.id),
                       label: be.name,
@@ -1418,7 +1429,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   <SearchableSelect
                     value={editForm.contact}
                     onChange={(v) => setEditForm({ ...editForm, contact: v })}
-                    options={contacts.map((c) => ({
+                    options={(editForm.billing_entity
+                      ? contacts.filter((c) => c.billingEntityIds.includes(Number(editForm.billing_entity)))
+                      : contacts
+                    ).map((c) => ({
                       value: String(c.id),
                       label: `${c.name} (${c.operationName})`,
                     }))}

@@ -65,6 +65,7 @@ async function getProbesData(): Promise<{
       id: c.id,
       name: c.name,
       operationName: (contactToOperationNames.get(c.id) || []).join(', ') || '—',
+      billingEntityIds: c.billing_entity?.map((be) => be.id) || [],
     }));
 
     // Extract unique brand options from probes
