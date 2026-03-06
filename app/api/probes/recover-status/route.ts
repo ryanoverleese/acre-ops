@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, getBaserowJwt } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-// Fetch all probes
 async function fetchAllProbes(): Promise<{ id: number; status: { id: number; value: string } | null; serial_number: string | null }[]> {
   const tableId = TABLE_IDS.probes;
   let allProbes: any[] = [];
@@ -23,171 +22,148 @@ async function fetchAllProbes(): Promise<{ id: number; status: { id: number; val
   return allProbes;
 }
 
-// Try Baserow row history API to get previous status
-async function getRowHistory(rowId: number): Promise<{ previousStatus: string | null }> {
+// Fetch row history using JWT auth (required — database tokens don't have access)
+async function getRowHistory(jwt: string, rowId: number): Promise<any> {
   const tableId = TABLE_IDS.probes;
-  try {
-    // Baserow row history endpoint
-    const url = `https://api.baserow.io/api/database/rows/table/${tableId}/${rowId}/history/?limit=10`;
-    const res = await fetch(url, {
-      headers: { 'Authorization': `Token ${BASEROW_TOKEN}` },
-    });
-    if (!res.ok) return { previousStatus: null };
-    const data = await res.json();
-    // Look through history entries for a status change
-    for (const entry of (data.results || [])) {
-      const before = entry.before || {};
-      const after = entry.after || {};
-      // Check if this entry changed the status field
-      if (before.status !== undefined || after.status !== undefined) {
-        const prevStatus = before.status;
-        if (prevStatus && typeof prevStatus === 'object' && prevStatus.value) {
-          return { previousStatus: prevStatus.value };
+  const url = `https://api.baserow.io/api/database/rows/table/${tableId}/${rowId}/history/?limit=50`;
+  const res = await fetch(url, {
+    headers: { 'Authorization': `JWT ${jwt}` },
+  });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+// Extract the status BEFORE the bulk "In Stock" update from history entries
+function findPreviousStatus(historyData: any): string | null {
+  if (!historyData) return null;
+  const entries = historyData.results || historyData || [];
+  const entryList = Array.isArray(entries) ? entries : [];
+
+  // Walk through history entries looking for the bulk update that set status to "In Stock"
+  // The entry before that (or the "before" value in that entry) is what we want
+  for (const entry of entryList) {
+    // Try multiple response format possibilities
+    const before = entry.before || entry.fields_changed?.before || {};
+    const after = entry.after || entry.fields_changed?.after || {};
+
+    // Check if this entry changed status TO "In Stock"
+    const afterStatus = after.status || after.Status;
+    const beforeStatus = before.status || before.Status;
+
+    if (afterStatus) {
+      const afterVal = typeof afterStatus === 'object' ? afterStatus.value : afterStatus;
+      if (afterVal === 'In Stock' && beforeStatus) {
+        const beforeVal = typeof beforeStatus === 'object' ? beforeStatus.value : beforeStatus;
+        if (beforeVal && beforeVal !== 'In Stock') {
+          return beforeVal;
         }
-        if (typeof prevStatus === 'string') {
-          return { previousStatus: prevStatus };
-        }
-        // Status was null/empty before
-        return { previousStatus: null };
       }
     }
-    return { previousStatus: null };
-  } catch {
-    return { previousStatus: null };
   }
+  return null;
 }
 
 export async function GET(request: NextRequest) {
   try {
+    const mode = request.nextUrl.searchParams.get('mode') || 'debug';
     const apply = request.nextUrl.searchParams.get('apply') === 'true';
 
-    // Step 1: Fetch all probes
-    const probes = await fetchAllProbes();
-    const inStockProbes = probes.filter(p => p.status?.value === 'In Stock');
+    // Get JWT token (required for row history API)
+    const jwt = await getBaserowJwt();
+    if (!jwt) {
+      return NextResponse.json({
+        error: 'Could not get JWT token. Ensure BASEROW_EMAIL and BASEROW_PASSWORD are set in environment variables.',
+      }, { status: 401 });
+    }
 
-    // Step 2: Try row history for a sample probe to see if the API works
-    const sampleResult = await getRowHistory(inStockProbes[0]?.id);
-    const historyAvailable = sampleResult.previousStatus !== null;
+    // Debug mode: show raw API response for a sample probe
+    if (mode === 'debug') {
+      const probes = await fetchAllProbes();
+      const sampleProbe = probes.find(p => p.serial_number) || probes[0];
+      const historyData = await getRowHistory(jwt, sampleProbe.id);
 
-    if (!historyAvailable) {
-      // Fall back to inference from data
-      // Fetch probe assignments to identify installed probes
-      const paTableId = TABLE_IDS.probe_assignments;
-      let allAssignments: any[] = [];
-      let page = 1;
-      while (true) {
-        const url = `${BASEROW_API_URL}/${paTableId}/?user_field_names=true&size=200&page=${page}`;
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Token ${BASEROW_TOKEN}` },
+      return NextResponse.json({
+        message: 'Debug: raw Baserow row history API response (using JWT auth)',
+        sampleProbeId: sampleProbe.id,
+        sampleSerial: sampleProbe.serial_number,
+        historyAvailable: historyData !== null,
+        rawResponse: historyData,
+      });
+    }
+
+    // Recover mode: find previous statuses and optionally restore
+    if (mode === 'recover') {
+      const probes = await fetchAllProbes();
+      const inStockProbes = probes.filter(p => p.status?.value === 'In Stock');
+
+      // Test with first probe
+      const sampleHistory = await getRowHistory(jwt, inStockProbes[0]?.id);
+      if (sampleHistory === null) {
+        return NextResponse.json({
+          error: 'Row history API returned error. Try ?mode=debug to see raw response.',
         });
-        if (!res.ok) break;
-        const data = await res.json();
-        allAssignments = allAssignments.concat(data.results);
-        if (!data.next) break;
-        page++;
       }
 
-      // Build set of probe IDs that have assignments (likely Installed)
-      const currentYear = String(new Date().getFullYear());
-      const assignedProbeIds = new Set<number>();
-      const fsTableId = TABLE_IDS.field_seasons;
-      // Get field seasons to check current year
-      let fieldSeasons: any[] = [];
-      page = 1;
-      while (true) {
-        const url = `${BASEROW_API_URL}/${fsTableId}/?user_field_names=true&size=200&page=${page}`;
-        const res = await fetch(url, {
-          headers: { 'Authorization': `Token ${BASEROW_TOKEN}` },
-        });
-        if (!res.ok) break;
-        const data = await res.json();
-        fieldSeasons = fieldSeasons.concat(data.results);
-        if (!data.next) break;
-        page++;
-      }
+      // Process all In Stock probes
+      const recoveryPlan: { id: number; serial: string | null; from: string; to: string }[] = [];
+      const noHistory: { id: number; serial: string | null }[] = [];
+      let processed = 0;
 
-      const currentSeasonFsIds = new Set(
-        fieldSeasons
-          .filter(fs => String(fs.season) === currentYear)
-          .map(fs => fs.id)
-      );
-
-      allAssignments.forEach(pa => {
-        const fsId = pa.field_season?.[0]?.id;
-        const probeId = pa.probe?.[0]?.id;
-        if (probeId && fsId && currentSeasonFsIds.has(fsId)) {
-          assignedProbeIds.add(probeId);
+      for (const probe of inStockProbes) {
+        const history = await getRowHistory(jwt, probe.id);
+        processed++;
+        const prevStatus = findPreviousStatus(history);
+        if (prevStatus) {
+          recoveryPlan.push({
+            id: probe.id,
+            serial: probe.serial_number,
+            from: 'In Stock',
+            to: prevStatus,
+          });
+        } else {
+          noHistory.push({ id: probe.id, serial: probe.serial_number });
         }
-      });
+      }
 
-      return NextResponse.json({
-        historyAvailable: false,
-        message: 'Row history API not available. Cannot automatically recover exact statuses. Showing inference-based suggestions.',
-        totalProbes: probes.length,
-        currentlyInStock: inStockProbes.length,
-        inferredInstalled: inStockProbes.filter(p => assignedProbeIds.has(p.id)).map(p => ({
-          id: p.id,
-          serialNumber: p.serial_number,
-          suggestedStatus: 'Installed',
-        })),
-        note: 'Only probes with current-season field assignments can be inferred as Installed. Other statuses (Assigned, On Order, RMA, Retired) cannot be determined from available data. Check Baserow UI row history manually for those.',
-      });
-    }
-
-    // Step 3: Row history is available! Get previous status for all In Stock probes
-    const recoveryPlan: { id: number; serialNumber: string | null; currentStatus: string; previousStatus: string }[] = [];
-
-    for (const probe of inStockProbes) {
-      const history = await getRowHistory(probe.id);
-      if (history.previousStatus && history.previousStatus !== 'In Stock') {
-        recoveryPlan.push({
-          id: probe.id,
-          serialNumber: probe.serial_number,
-          currentStatus: 'In Stock',
-          previousStatus: history.previousStatus,
+      if (!apply) {
+        const summary: Record<string, number> = {};
+        recoveryPlan.forEach(p => { summary[p.to] = (summary[p.to] || 0) + 1; });
+        return NextResponse.json({
+          message: `Preview: ${recoveryPlan.length} of ${inStockProbes.length} probes can be restored. ${noHistory.length} had no previous status or were already In Stock. Add &apply=true to execute.`,
+          processed,
+          summary,
+          plan: recoveryPlan,
+          noHistory,
         });
       }
-    }
 
-    if (!apply) {
-      return NextResponse.json({
-        historyAvailable: true,
-        message: `Found ${recoveryPlan.length} probes to restore. Add ?apply=true to execute.`,
-        totalProbes: probes.length,
-        currentlyInStock: inStockProbes.length,
-        toRestore: recoveryPlan.length,
-        preview: recoveryPlan.slice(0, 50),
-      });
-    }
-
-    // Step 4: Apply the recovery
-    const tableId = TABLE_IDS.probes;
-    const batchSize = 200;
-    let restored = 0;
-    for (let i = 0; i < recoveryPlan.length; i += batchSize) {
-      const batch = recoveryPlan.slice(i, i + batchSize);
-      const items = batch.map(p => ({ id: p.id, status: p.previousStatus }));
-      const batchUrl = `${BASEROW_API_URL}/${tableId}/batch/?user_field_names=true`;
-      const res = await fetch(batchUrl, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Token ${BASEROW_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ items }),
-      });
-      if (!res.ok) {
-        const errorText = await res.text();
-        return NextResponse.json({ error: 'Batch restore failed', restored, detail: errorText }, { status: 500 });
+      // Apply the recovery using database token (row updates work with database tokens)
+      const tableId = TABLE_IDS.probes;
+      const batchSize = 200;
+      let restored = 0;
+      for (let i = 0; i < recoveryPlan.length; i += batchSize) {
+        const batch = recoveryPlan.slice(i, i + batchSize);
+        const items = batch.map(p => ({ id: p.id, status: p.to }));
+        const batchUrl = `${BASEROW_API_URL}/${tableId}/batch/?user_field_names=true`;
+        const res = await fetch(batchUrl, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ items }),
+        });
+        if (!res.ok) {
+          const errorText = await res.text();
+          return NextResponse.json({ error: 'Batch restore failed', restored, detail: errorText }, { status: 500 });
+        }
+        restored += batch.length;
       }
-      restored += batch.length;
+
+      return NextResponse.json({ success: true, restored, details: recoveryPlan });
     }
 
-    return NextResponse.json({
-      success: true,
-      restored,
-      details: recoveryPlan,
-    });
+    return NextResponse.json({ error: 'Use ?mode=debug or ?mode=recover' });
   } catch (error) {
     console.error('Recovery error:', error);
     return NextResponse.json({ error: 'Recovery failed', detail: String(error) }, { status: 500 });

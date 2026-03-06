@@ -1369,8 +1369,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           )}
         </div>
 
-        {/* Data Cleanup */}
-        <DataCleanup />
+        {/* Data Cleanup - REMOVED: bulk status update was unsafe */}
 
         {/* Color Theme */}
         <ColorThemePicker />
@@ -1508,55 +1507,3 @@ function ColorThemePicker() {
   );
 }
 
-function DataCleanup() {
-  const [open, setOpen] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
-
-  const fixUnknownStatus = async () => {
-    if (!confirm('Set all probes with "Unknown" status to "In Stock"?')) return;
-    setRunning(true);
-    setResult(null);
-    try {
-      const res = await fetch('/api/probes/bulk-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'Unknown', to: 'In Stock' }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed');
-      setResult(`Updated ${data.updated} probe${data.updated === 1 ? '' : 's'} to In Stock.`);
-    } catch (err) {
-      setResult('Failed to update. Please try again.');
-    } finally {
-      setRunning(false);
-    }
-  };
-
-  return (
-    <div className="table-container settings-section">
-      <div className="table-header settings-section-toggle" onClick={() => setOpen(!open)}>
-        <h3 className="table-title">Data Cleanup</h3>
-        <svg
-          fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-          className={`settings-chevron${open ? ' open' : ''}`}
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </div>
-      {open && (
-        <div className="settings-section-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn btn-primary" onClick={fixUnknownStatus} disabled={running}>
-              {running ? 'Updating...' : 'Set Unknown Probes → In Stock'}
-            </button>
-            {result && <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{result}</span>}
-          </div>
-          <p className="section-description" style={{ marginTop: 8 }}>
-            Changes all probes with &quot;Unknown&quot; status to &quot;In Stock&quot;.
-          </p>
-        </div>
-      )}
-    </div>
-  );
-}
