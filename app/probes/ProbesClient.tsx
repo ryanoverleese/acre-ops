@@ -358,8 +358,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           probe.serialNumber.toLowerCase().includes(query) ||
           probe.brand.toLowerCase().includes(query) ||
           probe.operation.toLowerCase().includes(query) ||
+          probe.billingEntity.toLowerCase().includes(query) ||
+          probe.contact.toLowerCase().includes(query) ||
           (probe.rack || '').toLowerCase().includes(query) ||
-          (probe.rackSlot || '').toLowerCase().includes(query)
+          (probe.rackSlot || '').toLowerCase().includes(query) ||
+          (getFieldForProbe(probe.id) || '').toLowerCase().includes(query)
       );
     }
 
