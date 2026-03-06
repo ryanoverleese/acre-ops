@@ -184,6 +184,7 @@ export default function FieldsClient({
   const [locationPickerInitialZoom, setLocationPickerInitialZoom] = useState<number | undefined>();
   const [sortColumn, setSortColumn] = useState<string>('field');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortAlertsToTop, setSortAlertsToTop] = useState(false);
   const [showProbeAssign, setShowProbeAssign] = useState(false);
   const [selectedProbeId, setSelectedProbeId] = useState<string>('');
   const [selectedProbe2Id, setSelectedProbe2Id] = useState<string>('');
@@ -541,8 +542,29 @@ export default function FieldsClient({
       return 0;
     });
 
+    // Sort alert probes to top (stable — preserves existing sort within each group)
+    if (sortAlertsToTop) {
+      const fieldHasAlert = (f: typeof filtered[0]) => {
+        if (!f.fieldSeasonId) return false;
+        return probeAssignments.filter(pa => pa.fieldSeasonId === f.fieldSeasonId).some(pa => {
+          if (!pa.probeId) return true;
+          const brand = (localProbes.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
+          if (!pa.antennaType || !pa.batteryType) return true;
+          const aL = pa.antennaType.toLowerCase(), bL = pa.batteryType.toLowerCase();
+          if (brand.includes('cropx') && (!aL.includes('cropx') || !bL.includes('cropx'))) return true;
+          if (brand.includes('rocket') && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
+          return false;
+        });
+      };
+      filtered = [...filtered].sort((a, b) => {
+        const aAlert = fieldHasAlert(a) ? 0 : 1;
+        const bAlert = fieldHasAlert(b) ? 0 : 1;
+        return aAlert - bAlert;
+      });
+    }
+
     return filtered;
-  }, [seasonFields, searchQuery, effectiveOperation, currentIrrigationType, sortColumn, sortDirection]);
+  }, [seasonFields, searchQuery, effectiveOperation, currentIrrigationType, sortColumn, sortDirection, sortAlertsToTop, probeAssignments, localProbes]);
 
   // Fields eligible for inline enrollment (on All Seasons view, not already in target season)
   const inlineEnrollEligibleIds = useMemo(() => {
@@ -1815,6 +1837,16 @@ export default function FieldsClient({
                       placeholder="All Operations"
                     />
                   )}
+                  <button
+                    className={`btn ${sortAlertsToTop ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => setSortAlertsToTop(!sortAlertsToTop)}
+                    title={sortAlertsToTop ? 'Show default sort' : 'Sort alert probes to top'}
+                  >
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                    </svg>
+                    Alerts
+                  </button>
                   <button
                     className="btn btn-secondary"
                     onClick={() => {
