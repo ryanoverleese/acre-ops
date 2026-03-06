@@ -1427,15 +1427,14 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
 
 const THEMES = [
   { id: 'prairie', label: 'Prairie', bg: '#f7f5f2', accent: '#4a7a5b' },
-  { id: 'ocean', label: 'Ocean', bg: '#f0f4f8', accent: '#2563eb' },
-  { id: 'lavender', label: 'Lavender', bg: '#f5f3f7', accent: '#7c3aed' },
-  { id: 'sand', label: 'Sand', bg: '#f8f5ef', accent: '#c2410c' },
-  { id: 'slate', label: 'Slate', bg: '#f1f3f5', accent: '#0d9488' },
-  { id: 'rose', label: 'Rose', bg: '#f7f3f5', accent: '#e11d48' },
-  { id: 'forest', label: 'Forest', bg: '#f2f5f3', accent: '#166534' },
-  { id: 'sunset', label: 'Sunset', bg: '#fdf5f3', accent: '#e63946' },
-  { id: 'arctic', label: 'Arctic', bg: '#f0f5fa', accent: '#4f46e5' },
-  { id: 'dusk', label: 'Dusk', bg: '#f5f2f6', accent: '#c026d3' },
+  { id: 'river', label: 'River', bg: '#f0f4f7', accent: '#1a6fa0' },
+  { id: 'clay', label: 'Clay', bg: '#f7f3ef', accent: '#a0522d' },
+  { id: 'stone', label: 'Stone', bg: '#f2f3f4', accent: '#546478' },
+  { id: 'harvest', label: 'Harvest', bg: '#f8f5ee', accent: '#b07d10' },
+  { id: 'cedar', label: 'Cedar', bg: '#f6f2f0', accent: '#8b3a2a' },
+  { id: 'moss', label: 'Moss', bg: '#f1f4f2', accent: '#2d5a3a' },
+  { id: 'dusk', label: 'Dusk', bg: '#f4f2f5', accent: '#7a4a8a' },
+  { id: 'iron', label: 'Iron', bg: '#f0f1f2', accent: '#475569' },
 ];
 
 function ColorThemePicker() {
