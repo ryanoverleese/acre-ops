@@ -2312,6 +2312,10 @@ a.notification-item {
   align-items: center;
 }
 
+tr.detail-row {
+  display: table-row;
+}
+
 .detail-label {
   color: var(--text-secondary);
   font-size: 13px;
