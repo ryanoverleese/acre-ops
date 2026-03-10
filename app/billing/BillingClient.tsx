@@ -84,6 +84,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'cards' | 'condensed'>('cards');
 
   // Helper to get on-order total for a billing entity
   const getOnOrderTotal = (beId: number) =>
@@ -310,6 +311,33 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
+  const handleUpdateNotes = async (invoiceId: number, billingEntityId: number, season: number, value: string) => {
+    try {
+      const realId = await ensureInvoice(invoiceId, billingEntityId, season);
+      if (!realId) { alert('Failed to create invoice'); return; }
+
+      const response = await fetch(`/api/invoices/${realId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: value }),
+      });
+
+      if (response.ok) {
+        setBillingEntities((prev) => prev.map((be) => ({
+          ...be,
+          invoices: be.invoices.map((inv) =>
+            inv.id === realId ? { ...inv, notes: value } : inv
+          ),
+        })));
+      } else {
+        alert('Failed to save notes');
+      }
+    } catch (error) {
+      console.error('Error saving notes:', error);
+      alert('Failed to save notes');
+    }
+  };
+
   const handleUpdateInvoiceField = async (invoiceId: number, billingEntityId: number, season: number, field: 'checu_number' | 'actual_billed_amount', value: number | null) => {
     try {
       const realId = await ensureInvoice(invoiceId, billingEntityId, season);
@@ -425,6 +453,21 @@ export default function BillingClient({ billingEntities: initialEntities, availa
         </div>
         <div className="header-right">
           <div className="sort-controls">
+            <span className="sort-label">View:</span>
+            <button
+              className={`btn btn-sm ${viewMode === 'cards' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setViewMode('cards')}
+            >
+              Cards
+            </button>
+            <button
+              className={`btn btn-sm ${viewMode === 'condensed' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setViewMode('condensed')}
+            >
+              Condensed
+            </button>
+          </div>
+          <div className="sort-controls">
             <span className="sort-label">Sort:</span>
             <button
               className={`btn btn-sm ${sortBy === 'operation' ? 'btn-primary' : 'btn-secondary'}`}
@@ -455,18 +498,22 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               Amount {sortBy === 'amount' && (sortDirection === 'asc' ? '▲' : '▼')}
             </button>
           </div>
-          <button className="btn btn-secondary" onClick={collapseAll} title="Collapse all entities">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-            Collapse All
-          </button>
-          <button className="btn btn-secondary" onClick={expandAll} title="Expand all entities">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-            Expand All
-          </button>
+          {viewMode === 'cards' && (
+            <>
+              <button className="btn btn-secondary" onClick={collapseAll} title="Collapse all entities">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                </svg>
+                Collapse All
+              </button>
+              <button className="btn btn-secondary" onClick={expandAll} title="Expand all entities">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                Expand All
+              </button>
+            </>
+          )}
           <button className="btn btn-secondary" onClick={handleExport}>
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -501,6 +548,118 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             <div className="entity-empty">
               No billing entities with {currentSeason} field seasons found.
             </div>
+          </div>
+        ) : viewMode === 'condensed' ? (
+          <div className="table-container">
+            <table className="billing-table condensed-table">
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th>Operation</th>
+                  <th>Sent Date</th>
+                  <th>Deposit Date</th>
+                  <th>Paid Date</th>
+                  <th>Check #</th>
+                  <th className="align-right">Actual Billed</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredEntities.map((be) => {
+                  const invoice = be.invoices[0];
+                  return (
+                    <tr key={`${be.id}-${be.season}`}>
+                      <td>{be.name}</td>
+                      <td>{be.operation}</td>
+                      <td>
+                        <input
+                          type="date"
+                          className="inline-input"
+                          defaultValue={invoice?.sentAt?.split('T')[0] || ''}
+                          onBlur={(e) => {
+                            const prev = invoice?.sentAt?.split('T')[0] || '';
+                            if (e.target.value !== prev) {
+                              handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', e.target.value);
+                            }
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="date"
+                          className="inline-input"
+                          defaultValue={invoice?.depositAt?.split('T')[0] || ''}
+                          onBlur={(e) => {
+                            const prev = invoice?.depositAt?.split('T')[0] || '';
+                            if (e.target.value !== prev) {
+                              handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', e.target.value);
+                            }
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="date"
+                          className="inline-input"
+                          defaultValue={invoice?.paidAt?.split('T')[0] || ''}
+                          onBlur={(e) => {
+                            const prev = invoice?.paidAt?.split('T')[0] || '';
+                            if (e.target.value !== prev) {
+                              handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', e.target.value);
+                            }
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          className="inline-input"
+                          defaultValue={invoice?.checkNumber ?? ''}
+                          onBlur={(e) => {
+                            const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                            if (val !== (invoice?.checkNumber ?? null)) {
+                              handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'checu_number', val);
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          style={{ width: '80px' }}
+                        />
+                      </td>
+                      <td className="align-right">
+                        <input
+                          type="number"
+                          className="inline-input"
+                          step="0.01"
+                          defaultValue={invoice?.actualBilledAmount ?? ''}
+                          onBlur={(e) => {
+                            const val = e.target.value ? parseFloat(e.target.value) : null;
+                            if (val !== (invoice?.actualBilledAmount ?? null)) {
+                              handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'actual_billed_amount', val);
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          style={{ width: '100px', textAlign: 'right' }}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="text"
+                          className="inline-input"
+                          defaultValue={invoice?.notes || ''}
+                          onBlur={(e) => {
+                            if (e.target.value !== (invoice?.notes || '')) {
+                              handleUpdateNotes(invoice?.id || 0, be.id, be.season || currentSeason, e.target.value);
+                            }
+                          }}
+                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                          style={{ width: '100%', minWidth: '150px' }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="entity-list">

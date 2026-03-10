@@ -4708,6 +4708,17 @@ input[type="date"]:focus {
   box-shadow: 0 0 0 2px var(--accent-primary-dim);
 }
 
+/* Condensed Table */
+.condensed-table td {
+  padding: var(--space-2) var(--space-3);
+}
+
+.condensed-table .inline-input {
+  width: 100%;
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
 /* Sort Controls */
 .sort-controls {
   display: flex;
