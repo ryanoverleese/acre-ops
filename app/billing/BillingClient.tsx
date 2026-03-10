@@ -610,7 +610,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <tr className="detail-row">
                           <td colSpan={10} style={{ padding: 0 }}>
                             <div className="detail-row-content">
-                              <table className="billing-table line-items-table">
+                              <table className="line-items-table">
                                 <thead>
                                   <tr>
                                     <th>Field</th>
