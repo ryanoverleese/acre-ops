@@ -489,7 +489,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   <th className="sortable-th" onClick={() => handleSort('checkNumber')}>Check #{sortIndicator('checkNumber')}</th>
                   <th className="sortable-th align-right" onClick={() => handleSort('calculated')}>Calculated{sortIndicator('calculated')}</th>
                   <th className="sortable-th align-right" onClick={() => handleSort('actualBilled')}>Actual Billed{sortIndicator('actualBilled')}</th>
-                  <th className="sortable-th" onClick={() => handleSort('notes')}>Notes{sortIndicator('notes')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('notes')} style={{ minWidth: '250px' }}>Notes{sortIndicator('notes')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -591,10 +591,10 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             style={{ width: '100px', textAlign: 'right' }}
                           />
                         </td>
-                        <td style={{ position: 'relative' }}>
+                        <td>
                           <input
                             type="text"
-                            className="inline-input notes-input"
+                            className="inline-input"
                             title={invoice?.notes || ''}
                             defaultValue={invoice?.notes || ''}
                             onBlur={(e) => {

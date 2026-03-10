@@ -4731,22 +4731,6 @@ input[type="date"]:focus {
   font-size: 13px;
 }
 
-.condensed-table .notes-input {
-  text-overflow: ellipsis;
-  overflow: hidden;
-  white-space: nowrap;
-}
-
-.condensed-table .notes-input:focus {
-  position: absolute;
-  z-index: 10;
-  min-width: 300px;
-  white-space: normal;
-  background: var(--bg-card);
-  box-shadow: var(--shadow-lg);
-  border-radius: var(--radius-sm);
-}
-
 .sortable-th {
   cursor: pointer;
   user-select: none;
