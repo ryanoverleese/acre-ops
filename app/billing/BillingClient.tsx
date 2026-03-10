@@ -591,10 +591,11 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             style={{ width: '100px', textAlign: 'right' }}
                           />
                         </td>
-                        <td>
+                        <td style={{ position: 'relative' }}>
                           <input
                             type="text"
-                            className="inline-input"
+                            className="inline-input notes-input"
+                            title={invoice?.notes || ''}
                             defaultValue={invoice?.notes || ''}
                             onBlur={(e) => {
                               if (e.target.value !== (invoice?.notes || '')) {
