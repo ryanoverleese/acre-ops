@@ -565,6 +565,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   <th>Deposit Date</th>
                   <th>Paid Date</th>
                   <th>Check #</th>
+                  <th className="align-right">Calculated</th>
                   <th className="align-right">Actual Billed</th>
                   <th>Notes</th>
                 </tr>
@@ -630,6 +631,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                           style={{ width: '80px' }}
                         />
                       </td>
+                      <td className="align-right text-secondary">{formatCurrency(getEntityTotal(be))}</td>
                       <td className="align-right">
                         <input
                           type="number"
