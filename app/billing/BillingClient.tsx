@@ -28,6 +28,8 @@ export interface ProcessedInvoice {
   depositAt?: string;
   paidAt?: string;
   notes: string;
+  checkNumber?: number;
+  actualBilledAmount?: number;
   lines: InvoiceLine[];
 }
 
@@ -81,6 +83,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [sortBy, setSortBy] = useState<'operation' | 'amount'>('operation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Helper to get on-order total for a billing entity
   const getOnOrderTotal = (beId: number) =>
@@ -104,6 +107,15 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const filteredEntities = useMemo(() => {
     let filtered = billingEntities.filter(be => be.season === currentSeason);
 
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (be) =>
+          be.name.toLowerCase().includes(query) ||
+          be.operation.toLowerCase().includes(query)
+      );
+    }
+
     // Sort based on sortBy and sortDirection
     filtered = [...filtered].sort((a, b) => {
       let aVal: string | number;
@@ -123,7 +135,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     });
 
     return filtered;
-  }, [billingEntities, currentSeason, sortBy, sortDirection]);
+  }, [billingEntities, currentSeason, searchQuery, sortBy, sortDirection]);
 
   const toggleExpand = (beId: number) => {
     setExpandedEntities(prev => {
@@ -298,6 +310,34 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
+  const handleUpdateInvoiceField = async (invoiceId: number, billingEntityId: number, season: number, field: 'checu_number' | 'actual_billed_amount', value: number | null) => {
+    try {
+      const realId = await ensureInvoice(invoiceId, billingEntityId, season);
+      if (!realId) { alert('Failed to create invoice'); return; }
+
+      const response = await fetch(`/api/invoices/${realId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+
+      if (response.ok) {
+        const fieldMap: Record<string, string> = { checu_number: 'checkNumber', actual_billed_amount: 'actualBilledAmount' };
+        setBillingEntities((prev) => prev.map((be) => ({
+          ...be,
+          invoices: be.invoices.map((inv) =>
+            inv.id === realId ? { ...inv, [fieldMap[field]]: value ?? undefined } : inv
+          ),
+        })));
+      } else {
+        alert('Failed to update');
+      }
+    } catch (error) {
+      console.error('Error updating invoice field:', error);
+      alert('Failed to update');
+    }
+  };
+
   const handleExport = () => {
     const headers = ['Billing Entity', 'Operation', 'Field', 'Service Type', 'Qty', 'Rate', 'Discount', 'Total'];
     const rows: (string | number)[][] = [];
@@ -371,6 +411,17 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               <option key={s} value={s}>{s} Season</option>
             ))}
           </select>
+        </div>
+        <div className="search-box be-search-narrow">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search entities..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
         <div className="header-right">
           <div className="sort-controls">
@@ -591,6 +642,39 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                               value={invoice.paidAt?.split('T')[0] || ''}
                               onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'paid_at', value)}
                             />
+                            <div className="form-group">
+                              <label className="form-group-label">Check #</label>
+                              <input
+                                type="number"
+                                className="inline-input"
+                                defaultValue={invoice.checkNumber ?? ''}
+                                onBlur={(e) => {
+                                  const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                                  if (val !== (invoice.checkNumber ?? null)) {
+                                    handleUpdateInvoiceField(invoice.id, be.id, be.season || currentSeason, 'checu_number', val);
+                                  }
+                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                style={{ width: '100px' }}
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-group-label">Actual Billed</label>
+                              <input
+                                type="number"
+                                className="inline-input"
+                                step="0.01"
+                                defaultValue={invoice.actualBilledAmount ?? ''}
+                                onBlur={(e) => {
+                                  const val = e.target.value ? parseFloat(e.target.value) : null;
+                                  if (val !== (invoice.actualBilledAmount ?? null)) {
+                                    handleUpdateInvoiceField(invoice.id, be.id, be.season || currentSeason, 'actual_billed_amount', val);
+                                  }
+                                }}
+                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                style={{ width: '120px' }}
+                              />
+                            </div>
                           </div>
                         </EntityFooter>
                       )}
