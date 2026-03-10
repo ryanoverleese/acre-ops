@@ -509,6 +509,8 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               Condensed
             </button>
           </div>
+          {viewMode === 'cards' && (
+            <>
           <div className="seg-control">
             <button
               className={`seg-control-btn ${sortBy === 'operation' ? 'active' : ''}`}
@@ -540,8 +542,6 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             </button>
           </div>
           <span className="header-divider" />
-          {viewMode === 'cards' && (
-            <>
               <button className="btn-toolbar" onClick={collapseAll} title="Collapse all">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
