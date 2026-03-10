@@ -440,37 +440,44 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             ))}
           </select>
         </div>
-        <div className="search-box be-search-narrow">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search entities..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
         <div className="header-right">
-          <div className="sort-controls">
-            <span className="sort-label">View:</span>
+          <div className="billing-search">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <span className="header-divider" />
+          <div className="seg-control">
             <button
-              className={`btn btn-sm ${viewMode === 'cards' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`seg-control-btn ${viewMode === 'cards' ? 'active' : ''}`}
               onClick={() => setViewMode('cards')}
+              title="Card view"
             >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
               Cards
             </button>
             <button
-              className={`btn btn-sm ${viewMode === 'condensed' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`seg-control-btn ${viewMode === 'condensed' ? 'active' : ''}`}
               onClick={() => setViewMode('condensed')}
+              title="Condensed table view"
             >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18" />
+              </svg>
               Condensed
             </button>
           </div>
-          <div className="sort-controls">
-            <span className="sort-label">Sort:</span>
+          <div className="seg-control">
             <button
-              className={`btn btn-sm ${sortBy === 'operation' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`seg-control-btn ${sortBy === 'operation' ? 'active' : ''}`}
               onClick={() => {
                 if (sortBy === 'operation') {
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -484,7 +491,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               Operation {sortBy === 'operation' && (sortDirection === 'asc' ? '▲' : '▼')}
             </button>
             <button
-              className={`btn btn-sm ${sortBy === 'amount' ? 'btn-primary' : 'btn-secondary'}`}
+              className={`seg-control-btn ${sortBy === 'amount' ? 'active' : ''}`}
               onClick={() => {
                 if (sortBy === 'amount') {
                   setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
@@ -498,27 +505,25 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               Amount {sortBy === 'amount' && (sortDirection === 'asc' ? '▲' : '▼')}
             </button>
           </div>
+          <span className="header-divider" />
           {viewMode === 'cards' && (
             <>
-              <button className="btn btn-secondary" onClick={collapseAll} title="Collapse all entities">
+              <button className="btn-toolbar" onClick={collapseAll} title="Collapse all">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
-                Collapse All
               </button>
-              <button className="btn btn-secondary" onClick={expandAll} title="Expand all entities">
+              <button className="btn-toolbar" onClick={expandAll} title="Expand all">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
-                Expand All
               </button>
             </>
           )}
-          <button className="btn btn-secondary" onClick={handleExport}>
+          <button className="btn-toolbar" onClick={handleExport} title="Export CSV">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Export
           </button>
         </div>
       </header>
