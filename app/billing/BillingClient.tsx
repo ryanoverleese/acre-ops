@@ -1,14 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import {
-  EntityCard,
-  EntityHeader,
-  EntityContent,
-  EntityFooter,
-  NotesField,
-  DateInputGroup,
-} from '@/components/ui';
+import { useState, useMemo, Fragment } from 'react';
 
 export interface InvoiceLine {
   id: number;
@@ -77,14 +69,10 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [billingEntities, setBillingEntities] = useState(initialEntities);
   const [currentSeason, setCurrentSeason] = useState<number>(availableSeasons[0] || new Date().getFullYear());
   const [expandedEntities, setExpandedEntities] = useState<Set<number>>(new Set());
-  const [editingNotes, setEditingNotes] = useState<number | null>(null);
-  const [notesValue, setNotesValue] = useState('');
-  const [saving, setSaving] = useState(false);
   const [sortBy, setSortBy] = useState('operation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'cards' | 'condensed'>('cards');
 
   // Helper to get on-order total for a billing entity
   const getOnOrderTotal = (beId: number) =>
@@ -183,9 +171,6 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   };
 
   const sortIndicator = (col: string) => sortBy === col ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : '';
-
-  const collapseAll = () => setExpandedEntities(new Set());
-  const expandAll = () => setExpandedEntities(new Set(filteredEntities.map(be => be.id)));
 
   // Calculate bulk discount for an entity based on operation-level bulk field count
   const calculateBulkDiscount = (lines: InvoiceLine[], operationBulkFieldCount: number): { discount: number; eligibleCount: number } => {
@@ -311,37 +296,6 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     } catch (error) {
       console.error('Error updating date:', error);
       alert('Failed to update date');
-    }
-  };
-
-  const handleSaveNotes = async (invoiceId: number, billingEntityId: number, season: number) => {
-    setSaving(true);
-    try {
-      const realId = await ensureInvoice(invoiceId, billingEntityId, season);
-      if (!realId) { alert('Failed to create invoice'); return; }
-
-      const response = await fetch(`/api/invoices/${realId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: notesValue }),
-      });
-
-      if (response.ok) {
-        setBillingEntities((prev) => prev.map((be) => ({
-          ...be,
-          invoices: be.invoices.map((inv) =>
-            inv.id === realId ? { ...inv, notes: notesValue } : inv
-          ),
-        })));
-        setEditingNotes(null);
-      } else {
-        alert('Failed to save notes');
-      }
-    } catch (error) {
-      console.error('Error saving notes:', error);
-      alert('Failed to save notes');
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -487,73 +441,6 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             />
           </div>
           <span className="header-divider" />
-          <div className="seg-control">
-            <button
-              className={`seg-control-btn ${viewMode === 'cards' ? 'active' : ''}`}
-              onClick={() => setViewMode('cards')}
-              title="Card view"
-            >
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              Cards
-            </button>
-            <button
-              className={`seg-control-btn ${viewMode === 'condensed' ? 'active' : ''}`}
-              onClick={() => setViewMode('condensed')}
-              title="Condensed table view"
-            >
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18M3 6h18M3 18h18" />
-              </svg>
-              Condensed
-            </button>
-          </div>
-          {viewMode === 'cards' && (
-            <>
-          <div className="seg-control">
-            <button
-              className={`seg-control-btn ${sortBy === 'operation' ? 'active' : ''}`}
-              onClick={() => {
-                if (sortBy === 'operation') {
-                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                } else {
-                  setSortBy('operation');
-                  setSortDirection('asc');
-                }
-              }}
-              title={sortBy === 'operation' ? `Sorted by Operation ${sortDirection === 'asc' ? 'A-Z' : 'Z-A'}` : 'Sort by Operation'}
-            >
-              Operation {sortBy === 'operation' && (sortDirection === 'asc' ? '▲' : '▼')}
-            </button>
-            <button
-              className={`seg-control-btn ${sortBy === 'amount' ? 'active' : ''}`}
-              onClick={() => {
-                if (sortBy === 'amount') {
-                  setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-                } else {
-                  setSortBy('amount');
-                  setSortDirection('asc');
-                }
-              }}
-              title={sortBy === 'amount' ? `Sorted by Amount ${sortDirection === 'asc' ? 'Low to High' : 'High to Low'}` : 'Sort by Amount'}
-            >
-              Amount {sortBy === 'amount' && (sortDirection === 'asc' ? '▲' : '▼')}
-            </button>
-          </div>
-          <span className="header-divider" />
-              <button className="btn-toolbar" onClick={collapseAll} title="Collapse all">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                </svg>
-              </button>
-              <button className="btn-toolbar" onClick={expandAll} title="Expand all">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-            </>
-          )}
           <button className="btn-toolbar" onClick={handleExport} title="Export CSV">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -588,11 +475,12 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               No billing entities with {currentSeason} field seasons found.
             </div>
           </div>
-        ) : viewMode === 'condensed' ? (
+        ) : (
           <div className="table-container">
             <table className="billing-table condensed-table">
               <thead>
                 <tr>
+                  <th style={{ width: '32px' }}></th>
                   <th className="sortable-th" onClick={() => handleSort('entity')}>Entity{sortIndicator('entity')}</th>
                   <th className="sortable-th" onClick={() => handleSort('operation')}>Operation{sortIndicator('operation')}</th>
                   <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>
@@ -607,288 +495,190 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               <tbody>
                 {filteredEntities.map((be) => {
                   const invoice = be.invoices[0];
+                  const isExpanded = expandedEntities.has(be.id);
+                  const lines = invoice?.lines || [];
+                  const onOrderTotal = getOnOrderTotal(be.id);
+                  const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0) + onOrderTotal;
+                  const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
+                  const total = subtotal - discount;
+
                   return (
-                    <tr key={`${be.id}-${be.season}`}>
-                      <td>{be.name}</td>
-                      <td>{be.operation}</td>
-                      <td>
-                        <input
-                          type={invoice?.sentAt ? 'date' : 'text'}
-                          className="inline-input"
-                          defaultValue={invoice?.sentAt?.split('T')[0] || ''}
-                          onFocus={(e) => { e.target.type = 'date'; }}
-                          onBlur={(e) => {
-                            const prev = invoice?.sentAt?.split('T')[0] || '';
-                            if (e.target.value !== prev) {
-                              handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', e.target.value);
-                            }
-                            if (!e.target.value) e.target.type = 'text';
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type={invoice?.depositAt ? 'date' : 'text'}
-                          className="inline-input"
-                          defaultValue={invoice?.depositAt?.split('T')[0] || ''}
-                          onFocus={(e) => { e.target.type = 'date'; }}
-                          onBlur={(e) => {
-                            const prev = invoice?.depositAt?.split('T')[0] || '';
-                            if (e.target.value !== prev) {
-                              handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', e.target.value);
-                            }
-                            if (!e.target.value) e.target.type = 'text';
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type={invoice?.paidAt ? 'date' : 'text'}
-                          className="inline-input"
-                          defaultValue={invoice?.paidAt?.split('T')[0] || ''}
-                          onFocus={(e) => { e.target.type = 'date'; }}
-                          onBlur={(e) => {
-                            const prev = invoice?.paidAt?.split('T')[0] || '';
-                            if (e.target.value !== prev) {
-                              handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', e.target.value);
-                            }
-                            if (!e.target.value) e.target.type = 'text';
-                          }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="number"
-                          className="inline-input"
-                          defaultValue={invoice?.checkNumber ?? ''}
-                          onBlur={(e) => {
-                            const val = e.target.value ? parseInt(e.target.value, 10) : null;
-                            if (val !== (invoice?.checkNumber ?? null)) {
-                              handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'checu_number', val);
-                            }
-                          }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                          style={{ width: '80px' }}
-                        />
-                      </td>
-                      <td className="align-right text-secondary">{formatCurrency(getEntityTotal(be))}</td>
-                      <td className="align-right">
-                        <input
-                          type="number"
-                          className="inline-input"
-                          step="0.01"
-                          defaultValue={invoice?.actualBilledAmount ?? ''}
-                          onBlur={(e) => {
-                            const val = e.target.value ? parseFloat(e.target.value) : null;
-                            if (val !== (invoice?.actualBilledAmount ?? null)) {
-                              handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'actual_billed_amount', val);
-                            }
-                          }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                          style={{ width: '100px', textAlign: 'right' }}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          className="inline-input"
-                          defaultValue={invoice?.notes || ''}
-                          onBlur={(e) => {
-                            if (e.target.value !== (invoice?.notes || '')) {
-                              handleUpdateNotes(invoice?.id || 0, be.id, be.season || currentSeason, e.target.value);
-                            }
-                          }}
-                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                          style={{ width: '100%', minWidth: '150px' }}
-                        />
-                      </td>
-                    </tr>
+                    <Fragment key={`${be.id}-${be.season}`}>
+                      <tr className={isExpanded ? 'expanded-row' : ''}>
+                        <td
+                          className="expand-chevron"
+                          onClick={() => toggleExpand(be.id)}
+                          style={{ cursor: 'pointer', textAlign: 'center', userSelect: 'none' }}
+                        >
+                          {isExpanded ? '▼' : '▶'}
+                        </td>
+                        <td>{be.name}</td>
+                        <td>{be.operation}</td>
+                        <td>
+                          <input
+                            type={invoice?.sentAt ? 'date' : 'text'}
+                            className="inline-input"
+                            defaultValue={invoice?.sentAt?.split('T')[0] || ''}
+                            onFocus={(e) => { e.target.type = 'date'; }}
+                            onBlur={(e) => {
+                              const prev = invoice?.sentAt?.split('T')[0] || '';
+                              if (e.target.value !== prev) {
+                                handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', e.target.value);
+                              }
+                              if (!e.target.value) e.target.type = 'text';
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type={invoice?.depositAt ? 'date' : 'text'}
+                            className="inline-input"
+                            defaultValue={invoice?.depositAt?.split('T')[0] || ''}
+                            onFocus={(e) => { e.target.type = 'date'; }}
+                            onBlur={(e) => {
+                              const prev = invoice?.depositAt?.split('T')[0] || '';
+                              if (e.target.value !== prev) {
+                                handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', e.target.value);
+                              }
+                              if (!e.target.value) e.target.type = 'text';
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type={invoice?.paidAt ? 'date' : 'text'}
+                            className="inline-input"
+                            defaultValue={invoice?.paidAt?.split('T')[0] || ''}
+                            onFocus={(e) => { e.target.type = 'date'; }}
+                            onBlur={(e) => {
+                              const prev = invoice?.paidAt?.split('T')[0] || '';
+                              if (e.target.value !== prev) {
+                                handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', e.target.value);
+                              }
+                              if (!e.target.value) e.target.type = 'text';
+                            }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            className="inline-input"
+                            defaultValue={invoice?.checkNumber ?? ''}
+                            onBlur={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                              if (val !== (invoice?.checkNumber ?? null)) {
+                                handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'checu_number', val);
+                              }
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            style={{ width: '80px' }}
+                          />
+                        </td>
+                        <td className="align-right text-secondary">{formatCurrency(total)}</td>
+                        <td className="align-right">
+                          <input
+                            type="number"
+                            className="inline-input"
+                            step="0.01"
+                            defaultValue={invoice?.actualBilledAmount ?? ''}
+                            onBlur={(e) => {
+                              const val = e.target.value ? parseFloat(e.target.value) : null;
+                              if (val !== (invoice?.actualBilledAmount ?? null)) {
+                                handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'actual_billed_amount', val);
+                              }
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            style={{ width: '100px', textAlign: 'right' }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="text"
+                            className="inline-input"
+                            defaultValue={invoice?.notes || ''}
+                            onBlur={(e) => {
+                              if (e.target.value !== (invoice?.notes || '')) {
+                                handleUpdateNotes(invoice?.id || 0, be.id, be.season || currentSeason, e.target.value);
+                              }
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            style={{ width: '100%', minWidth: '150px' }}
+                          />
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr className="detail-row">
+                          <td colSpan={10} style={{ padding: 0 }}>
+                            <div className="detail-row-content">
+                              <table className="billing-table line-items-table">
+                                <thead>
+                                  <tr>
+                                    <th>Field</th>
+                                    <th>Service Type</th>
+                                    <th className="align-right">Qty</th>
+                                    <th className="align-right">Rate</th>
+                                    <th className="align-right">Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {lines.map((line) => (
+                                    <tr key={line.id}>
+                                      <td>{line.fieldName}</td>
+                                      <td className="text-secondary">{line.serviceType || '—'}</td>
+                                      <td className="align-right">
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          defaultValue={line.quantity}
+                                          onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1, be)}
+                                          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                          disabled={savingQty.has(line.invoiceLineId || line.id)}
+                                          style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
+                                          className="inline-input"
+                                        />
+                                      </td>
+                                      <td className="align-right">{formatCurrency(line.rate)}</td>
+                                      <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
+                                    </tr>
+                                  ))}
+                                  {onOrderLines
+                                    .filter((ol) => ol.billingEntityId === be.id)
+                                    .map((ol) => (
+                                      <tr key={`on-order-${ol.brand}`} style={{ opacity: 0.55, fontStyle: 'italic' }}>
+                                        <td>On Order</td>
+                                        <td className="text-secondary">{ol.serviceType}</td>
+                                        <td className="align-right">{ol.quantity}</td>
+                                        <td className="align-right">{formatCurrency(ol.rate)}</td>
+                                        <td className="align-right">{formatCurrency(ol.rate * ol.quantity)}</td>
+                                      </tr>
+                                    ))}
+                                  <tr className="subtotal-row">
+                                    <td colSpan={4} className="align-right">Subtotal</td>
+                                    <td className="align-right">{formatCurrency(subtotal)}</td>
+                                  </tr>
+                                  {discount > 0 && (
+                                    <tr className="discount-row">
+                                      <td colSpan={4} className="align-right discount-text">
+                                        Bulk Discount ({eligibleCount} fields × ${BULK_DISCOUNT_PER_FIELD})
+                                      </td>
+                                      <td className="align-right discount-text">-{formatCurrency(discount)}</td>
+                                    </tr>
+                                  )}
+                                  <tr className="total-row">
+                                    <td colSpan={4} className="align-right">Total</td>
+                                    <td className="align-right">{formatCurrency(total)}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   );
                 })}
               </tbody>
             </table>
-          </div>
-        ) : (
-          <div className="entity-list">
-            {filteredEntities.map((be) => {
-              const isExpanded = expandedEntities.has(be.id);
-              const invoice = be.invoices[0];
-              const lines = invoice?.lines || [];
-              const onOrderTotal = getOnOrderTotal(be.id);
-              const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0) + onOrderTotal;
-              const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
-              const total = subtotal - discount;
-
-              return (
-                <EntityCard key={`${be.id}-${be.season}`}>
-                  <EntityHeader
-                    title={be.name}
-                    subtitle={be.operation}
-                    isExpanded={isExpanded}
-                    onToggle={() => toggleExpand(be.id)}
-                    rightContent={
-                      <>
-                        <div className="entity-amount">
-                          <div className="entity-amount-value">{formatCurrency(total)}</div>
-                          <div className="entity-amount-detail">
-                            {lines.length} {lines.length === 1 ? 'field' : 'fields'}
-                            {discount > 0 && ` • -${formatCurrency(discount)} bulk`}
-                          </div>
-                        </div>
-                        {invoice && (
-                          <span className={`status-badge ${invoice.status.toLowerCase() === 'paid' ? 'installed' : invoice.status.toLowerCase() === 'sent' ? 'pending' : 'needs-probe'}`}>
-                            <span className="status-dot"></span>
-                            {invoice.status}
-                          </span>
-                        )}
-                      </>
-                    }
-                  />
-
-                  {isExpanded && (
-                    <EntityContent>
-                      {lines.length > 0 ? (
-                        <table className="billing-table">
-                          <thead>
-                            <tr>
-                              <th>Field</th>
-                              <th>Service Type</th>
-                              <th className="align-right">Qty</th>
-                              <th className="align-right">Rate</th>
-                              <th className="align-right">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {lines.map((line) => (
-                              <tr key={line.id}>
-                                <td>{line.fieldName}</td>
-                                <td className="text-secondary">{line.serviceType || '—'}</td>
-                                <td className="align-right">
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    defaultValue={line.quantity}
-                                    onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1, be)}
-                                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                    disabled={savingQty.has(line.invoiceLineId || line.id)}
-                                    style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
-                                    className="inline-input"
-                                  />
-                                </td>
-                                <td className="align-right">{formatCurrency(line.rate)}</td>
-                                <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
-                              </tr>
-                            ))}
-                            {onOrderLines
-                              .filter((ol) => ol.billingEntityId === be.id)
-                              .map((ol) => (
-                                <tr key={`on-order-${ol.brand}`} style={{ opacity: 0.55, fontStyle: 'italic' }}>
-                                  <td>On Order</td>
-                                  <td className="text-secondary">{ol.serviceType}</td>
-                                  <td className="align-right">{ol.quantity}</td>
-                                  <td className="align-right">{formatCurrency(ol.rate)}</td>
-                                  <td className="align-right">{formatCurrency(ol.rate * ol.quantity)}</td>
-                                </tr>
-                              ))}
-                            <tr className="subtotal-row">
-                              <td colSpan={4} className="align-right">Subtotal</td>
-                              <td className="align-right">{formatCurrency(subtotal)}</td>
-                            </tr>
-                            {discount > 0 && (
-                              <tr className="discount-row">
-                                <td colSpan={4} className="align-right discount-text">
-                                  Bulk Discount ({eligibleCount} fields × ${BULK_DISCOUNT_PER_FIELD})
-                                </td>
-                                <td className="align-right discount-text">-{formatCurrency(discount)}</td>
-                              </tr>
-                            )}
-                            <tr className="total-row">
-                              <td colSpan={4} className="align-right">Total</td>
-                              <td className="align-right">{formatCurrency(total)}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      ) : (
-                        <div className="entity-empty">
-                          No line items yet. Enroll fields to add billing items.
-                        </div>
-                      )}
-
-                      {invoice && (
-                        <EntityFooter>
-                          <div className="entity-notes">
-                            <label className="form-group-label">Notes</label>
-                            <NotesField
-                              value={editingNotes === invoice.id ? notesValue : invoice.notes}
-                              isEditing={editingNotes === invoice.id}
-                              isSaving={saving}
-                              onStartEdit={() => {
-                                setEditingNotes(invoice.id);
-                                setNotesValue(invoice.notes || '');
-                              }}
-                              onSave={() => handleSaveNotes(invoice.id, be.id, be.season || currentSeason)}
-                              onCancel={() => setEditingNotes(null)}
-                              onChange={setNotesValue}
-                            />
-                          </div>
-
-                          <div className="entity-dates">
-                            <DateInputGroup
-                              label="Sent Date"
-                              value={invoice.sentAt?.split('T')[0] || ''}
-                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'sent_at', value)}
-                            />
-                            <DateInputGroup
-                              label="Deposit Date"
-                              value={invoice.depositAt?.split('T')[0] || ''}
-                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'deposit_at', value)}
-                            />
-                            <DateInputGroup
-                              label="Paid Date"
-                              value={invoice.paidAt?.split('T')[0] || ''}
-                              onChange={(value) => handleUpdateInvoiceDate(invoice.id, be.id, be.season || currentSeason, 'paid_at', value)}
-                            />
-                            <div className="form-group">
-                              <label className="form-group-label">Check #</label>
-                              <input
-                                type="number"
-                                className="inline-input"
-                                defaultValue={invoice.checkNumber ?? ''}
-                                onBlur={(e) => {
-                                  const val = e.target.value ? parseInt(e.target.value, 10) : null;
-                                  if (val !== (invoice.checkNumber ?? null)) {
-                                    handleUpdateInvoiceField(invoice.id, be.id, be.season || currentSeason, 'checu_number', val);
-                                  }
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                style={{ width: '100px' }}
-                              />
-                            </div>
-                            <div className="form-group">
-                              <label className="form-group-label">Actual Billed</label>
-                              <input
-                                type="number"
-                                className="inline-input"
-                                step="0.01"
-                                defaultValue={invoice.actualBilledAmount ?? ''}
-                                onBlur={(e) => {
-                                  const val = e.target.value ? parseFloat(e.target.value) : null;
-                                  if (val !== (invoice.actualBilledAmount ?? null)) {
-                                    handleUpdateInvoiceField(invoice.id, be.id, be.season || currentSeason, 'actual_billed_amount', val);
-                                  }
-                                }}
-                                onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                style={{ width: '120px' }}
-                              />
-                            </div>
-                          </div>
-                        </EntityFooter>
-                      )}
-                    </EntityContent>
-                  )}
-                </EntityCard>
-              );
-            })}
           </div>
         )}
       </div>

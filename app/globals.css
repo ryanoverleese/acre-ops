@@ -4738,6 +4738,54 @@ input[type="date"]:focus {
   color: var(--accent-primary);
 }
 
+/* Expandable row styles */
+.expand-chevron {
+  color: var(--text-muted);
+  font-size: 10px;
+  width: 32px;
+  transition: color var(--ease-default);
+}
+
+.expand-chevron:hover {
+  color: var(--accent-primary);
+}
+
+.condensed-table tbody tr:hover:not(.detail-row) {
+  background: var(--bg-hover);
+}
+
+tr.expanded-row {
+  background: var(--accent-primary-dim);
+}
+
+tr.expanded-row:hover {
+  background: var(--accent-primary-dim) !important;
+}
+
+.detail-row-content {
+  padding: var(--space-3) var(--space-4) var(--space-3) 40px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.line-items-table {
+  width: auto;
+  min-width: 500px;
+  font-size: 13px;
+}
+
+.line-items-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: var(--space-1) var(--space-3);
+}
+
+.line-items-table td {
+  padding: var(--space-1) var(--space-3);
+}
+
 /* Sort Controls */
 .sort-controls {
   display: flex;
