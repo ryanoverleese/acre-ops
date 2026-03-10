@@ -4741,9 +4741,13 @@ input[type="date"]:focus {
 /* Expandable row styles */
 .expand-chevron {
   color: var(--text-muted);
-  font-size: 10px;
-  width: 32px;
+  font-size: 8px;
+  width: 24px;
   transition: color var(--ease-default);
+}
+
+.expanded-row .expand-chevron {
+  color: var(--accent-primary);
 }
 
 .expand-chevron:hover {
@@ -4763,14 +4767,14 @@ tr.expanded-row:hover {
 }
 
 .detail-row-content {
-  padding: var(--space-3) var(--space-4) var(--space-3) 40px;
+  padding: var(--space-3) var(--space-4) var(--space-3) 32px;
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
 }
 
 .line-items-table {
-  width: auto;
-  min-width: 500px;
+  width: 100%;
+  max-width: 700px;
   font-size: 13px;
 }
 

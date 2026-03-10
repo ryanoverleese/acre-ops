@@ -480,7 +480,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             <table className="billing-table condensed-table">
               <thead>
                 <tr>
-                  <th style={{ width: '32px' }}></th>
+                  <th style={{ width: '24px' }}></th>
                   <th className="sortable-th" onClick={() => handleSort('entity')}>Entity{sortIndicator('entity')}</th>
                   <th className="sortable-th" onClick={() => handleSort('operation')}>Operation{sortIndicator('operation')}</th>
                   <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>
@@ -510,7 +510,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                           onClick={() => toggleExpand(be.id)}
                           style={{ cursor: 'pointer', textAlign: 'center', userSelect: 'none' }}
                         >
-                          {isExpanded ? '▼' : '▶'}
+                          •
                         </td>
                         <td>{be.name}</td>
                         <td>{be.operation}</td>
