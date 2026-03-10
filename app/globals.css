@@ -4717,8 +4717,14 @@ input[type="date"]:focus {
 }
 
 /* Condensed Table */
+.condensed-table {
+  table-layout: fixed;
+}
+
 .condensed-table td {
   padding: var(--space-2) var(--space-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .condensed-table .inline-input {
@@ -4764,6 +4770,10 @@ tr.expanded-row {
 
 tr.expanded-row:hover {
   background: var(--accent-primary-dim) !important;
+}
+
+.condensed-table tr.detail-row td {
+  overflow: visible;
 }
 
 .detail-row-content {
