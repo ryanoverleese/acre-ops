@@ -4727,6 +4727,17 @@ input[type="date"]:focus {
   font-size: 13px;
 }
 
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: color var(--ease-default);
+}
+
+.sortable-th:hover {
+  color: var(--accent-primary);
+}
+
 /* Sort Controls */
 .sort-controls {
   display: flex;

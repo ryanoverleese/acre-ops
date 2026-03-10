@@ -80,7 +80,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
   const [saving, setSaving] = useState(false);
-  const [sortBy, setSortBy] = useState<'operation' | 'amount'>('operation');
+  const [sortBy, setSortBy] = useState<string>('operation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,12 +122,49 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       let aVal: string | number;
       let bVal: string | number;
 
-      if (sortBy === 'operation') {
-        aVal = a.operation.toLowerCase();
-        bVal = b.operation.toLowerCase();
-      } else {
-        aVal = getEntityTotal(a);
-        bVal = getEntityTotal(b);
+      const aInv = a.invoices[0];
+      const bInv = b.invoices[0];
+
+      switch (sortBy) {
+        case 'entity':
+          aVal = a.name.toLowerCase();
+          bVal = b.name.toLowerCase();
+          break;
+        case 'operation':
+          aVal = a.operation.toLowerCase();
+          bVal = b.operation.toLowerCase();
+          break;
+        case 'sentDate':
+          aVal = aInv?.sentAt || '';
+          bVal = bInv?.sentAt || '';
+          break;
+        case 'depositDate':
+          aVal = aInv?.depositAt || '';
+          bVal = bInv?.depositAt || '';
+          break;
+        case 'paidDate':
+          aVal = aInv?.paidAt || '';
+          bVal = bInv?.paidAt || '';
+          break;
+        case 'checkNumber':
+          aVal = aInv?.checkNumber || 0;
+          bVal = bInv?.checkNumber || 0;
+          break;
+        case 'calculated':
+          aVal = getEntityTotal(a);
+          bVal = getEntityTotal(b);
+          break;
+        case 'actualBilled':
+          aVal = aInv?.actualBilledAmount || 0;
+          bVal = bInv?.actualBilledAmount || 0;
+          break;
+        case 'notes':
+          aVal = (aInv?.notes || '').toLowerCase();
+          bVal = (bInv?.notes || '').toLowerCase();
+          break;
+        default:
+          aVal = getEntityTotal(a);
+          bVal = getEntityTotal(b);
       }
 
       if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -559,15 +596,32 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             <table className="billing-table condensed-table">
               <thead>
                 <tr>
-                  <th>Entity</th>
-                  <th>Operation</th>
-                  <th>Sent Date</th>
-                  <th>Deposit Date</th>
-                  <th>Paid Date</th>
-                  <th>Check #</th>
-                  <th className="align-right">Calculated</th>
-                  <th className="align-right">Actual Billed</th>
-                  <th>Notes</th>
+                  {[
+                    { key: 'entity', label: 'Entity' },
+                    { key: 'operation', label: 'Operation' },
+                    { key: 'sentDate', label: 'Sent Date' },
+                    { key: 'depositDate', label: 'Deposit Date' },
+                    { key: 'paidDate', label: 'Paid Date' },
+                    { key: 'checkNumber', label: 'Check #' },
+                    { key: 'calculated', label: 'Calculated', align: 'right' },
+                    { key: 'actualBilled', label: 'Actual Billed', align: 'right' },
+                    { key: 'notes', label: 'Notes' },
+                  ].map((col) => (
+                    <th
+                      key={col.key}
+                      className={`sortable-th${col.align === 'right' ? ' align-right' : ''}`}
+                      onClick={() => {
+                        if (sortBy === col.key) {
+                          setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                        } else {
+                          setSortBy(col.key);
+                          setSortDirection('asc');
+                        }
+                      }}
+                    >
+                      {col.label} {sortBy === col.key && (sortDirection === 'asc' ? '▲' : '▼')}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
