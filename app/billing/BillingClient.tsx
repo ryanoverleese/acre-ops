@@ -80,7 +80,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [notesValue, setNotesValue] = useState('');
   const [saving, setSaving] = useState(false);
-  const [sortBy, setSortBy] = useState<'operation' | 'amount'>('operation');
+  const [sortBy, setSortBy] = useState('operation');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,12 +119,35 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
     // Sort based on sortBy and sortDirection
     filtered = [...filtered].sort((a, b) => {
-      let aVal: string | number;
-      let bVal: string | number;
+      const aInv = a.invoices[0];
+      const bInv = b.invoices[0];
+      let aVal: string | number = '';
+      let bVal: string | number = '';
 
-      if (sortBy === 'operation') {
+      if (sortBy === 'entity') {
+        aVal = a.name.toLowerCase();
+        bVal = b.name.toLowerCase();
+      } else if (sortBy === 'operation') {
         aVal = a.operation.toLowerCase();
         bVal = b.operation.toLowerCase();
+      } else if (sortBy === 'sentDate') {
+        aVal = aInv?.sentAt || '';
+        bVal = bInv?.sentAt || '';
+      } else if (sortBy === 'depositDate') {
+        aVal = aInv?.depositAt || '';
+        bVal = bInv?.depositAt || '';
+      } else if (sortBy === 'paidDate') {
+        aVal = aInv?.paidAt || '';
+        bVal = bInv?.paidAt || '';
+      } else if (sortBy === 'checkNumber') {
+        aVal = aInv?.checkNumber || 0;
+        bVal = bInv?.checkNumber || 0;
+      } else if (sortBy === 'actualBilled') {
+        aVal = aInv?.actualBilledAmount || 0;
+        bVal = bInv?.actualBilledAmount || 0;
+      } else if (sortBy === 'notes') {
+        aVal = (aInv?.notes || '').toLowerCase();
+        bVal = (bInv?.notes || '').toLowerCase();
       } else {
         aVal = getEntityTotal(a);
         bVal = getEntityTotal(b);
@@ -149,6 +172,17 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       return next;
     });
   };
+
+  const handleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortIndicator = (col: string) => sortBy === col ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : '';
 
   const collapseAll = () => setExpandedEntities(new Set());
   const expandAll = () => setExpandedEntities(new Set(filteredEntities.map(be => be.id)));
@@ -559,15 +593,15 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             <table className="billing-table condensed-table">
               <thead>
                 <tr>
-                  <th>Entity</th>
-                  <th>Operation</th>
-                  <th>Sent Date</th>
-                  <th>Deposit Date</th>
-                  <th>Paid Date</th>
-                  <th>Check #</th>
-                  <th className="align-right">Calculated</th>
-                  <th className="align-right">Actual Billed</th>
-                  <th>Notes</th>
+                  <th className="sortable-th" onClick={() => handleSort('entity')}>Entity{sortIndicator('entity')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('operation')}>Operation{sortIndicator('operation')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('depositDate')}>Deposit Date{sortIndicator('depositDate')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('paidDate')}>Paid Date{sortIndicator('paidDate')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('checkNumber')}>Check #{sortIndicator('checkNumber')}</th>
+                  <th className="sortable-th align-right" onClick={() => handleSort('calculated')}>Calculated{sortIndicator('calculated')}</th>
+                  <th className="sortable-th align-right" onClick={() => handleSort('actualBilled')}>Actual Billed{sortIndicator('actualBilled')}</th>
+                  <th className="sortable-th" onClick={() => handleSort('notes')}>Notes{sortIndicator('notes')}</th>
                 </tr>
               </thead>
               <tbody>
