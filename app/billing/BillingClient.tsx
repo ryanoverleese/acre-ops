@@ -577,15 +577,20 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td className="align-right text-secondary">{formatCurrency(total)}</td>
                         <td className="align-right">
                           <input
-                            type="number"
+                            type="text"
                             className="inline-input"
-                            step="0.01"
-                            defaultValue={invoice?.actualBilledAmount ?? ''}
+                            defaultValue={invoice?.actualBilledAmount != null ? formatCurrency(invoice.actualBilledAmount) : ''}
+                            onFocus={(e) => {
+                              const raw = invoice?.actualBilledAmount;
+                              e.target.value = raw != null ? String(raw) : '';
+                            }}
                             onBlur={(e) => {
-                              const val = e.target.value ? parseFloat(e.target.value) : null;
+                              const raw = e.target.value.replace(/[^0-9.\-]/g, '');
+                              const val = raw ? parseFloat(raw) : null;
                               if (val !== (invoice?.actualBilledAmount ?? null)) {
                                 handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'actual_billed_amount', val);
                               }
+                              e.target.value = val != null ? formatCurrency(val) : '';
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '100px', textAlign: 'right' }}
