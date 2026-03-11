@@ -516,46 +516,40 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td>{be.operation}</td>
                         <td>
                           <input
-                            type={invoice?.sentAt ? 'date' : 'text'}
-                            className="inline-input"
+                            type="date"
+                            className="inline-input date-input"
                             defaultValue={invoice?.sentAt?.split('T')[0] || ''}
-                            onFocus={(e) => { e.target.type = 'date'; }}
                             onBlur={(e) => {
                               const prev = invoice?.sentAt?.split('T')[0] || '';
                               if (e.target.value !== prev) {
                                 handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', e.target.value);
                               }
-                              if (!e.target.value) e.target.type = 'text';
                             }}
                           />
                         </td>
                         <td>
                           <input
-                            type={invoice?.depositAt ? 'date' : 'text'}
-                            className="inline-input"
+                            type="date"
+                            className="inline-input date-input"
                             defaultValue={invoice?.depositAt?.split('T')[0] || ''}
-                            onFocus={(e) => { e.target.type = 'date'; }}
                             onBlur={(e) => {
                               const prev = invoice?.depositAt?.split('T')[0] || '';
                               if (e.target.value !== prev) {
                                 handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', e.target.value);
                               }
-                              if (!e.target.value) e.target.type = 'text';
                             }}
                           />
                         </td>
                         <td>
                           <input
-                            type={invoice?.paidAt ? 'date' : 'text'}
-                            className="inline-input"
+                            type="date"
+                            className="inline-input date-input"
                             defaultValue={invoice?.paidAt?.split('T')[0] || ''}
-                            onFocus={(e) => { e.target.type = 'date'; }}
                             onBlur={(e) => {
                               const prev = invoice?.paidAt?.split('T')[0] || '';
                               if (e.target.value !== prev) {
                                 handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', e.target.value);
                               }
-                              if (!e.target.value) e.target.type = 'text';
                             }}
                           />
                         </td>
