@@ -41,7 +41,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.row_direction !== undefined) updateData.row_direction = body.row_direction;
     if (body.nrcs_field !== undefined) updateData.nrcs_field = body.nrcs_field;
     if (body.billing_entity !== undefined) {
-      updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
+      updateData.billing_entity = body.billing_entity ? [Number(body.billing_entity)] : [];
     }
     // Drip irrigation fields
     if (body.drip_tubing_direction !== undefined) updateData.drip_tubing_direction = body.drip_tubing_direction;
