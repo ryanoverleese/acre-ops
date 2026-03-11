@@ -426,6 +426,16 @@ export default function BillingClient({ billingEntities: initialEntities, availa
         return invSum + subtotal - discount;
       }, 0), 0);
 
+  const totalSentAmount = filteredEntities.reduce((sum, be) =>
+    sum + be.invoices
+      .filter(inv => inv.sentAt)
+      .reduce((invSum, inv) => {
+        if (inv.actualBilledAmount != null) return invSum + inv.actualBilledAmount;
+        const subtotal = inv.lines.reduce((s, l) => s + (l.rate * l.quantity), 0);
+        const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
+        return invSum + subtotal - discount;
+      }, 0), 0);
+
   return (
     <>
       <header className="header">
@@ -475,6 +485,10 @@ export default function BillingClient({ billingEntities: initialEntities, availa
           <div className="stat-card">
             <div className="stat-label">Bulk Discounts</div>
             <div className="stat-value amber">-{formatCurrency(totalDiscount)}</div>
+          </div>
+          <div className="stat-card">
+            <div className="stat-label">Sent Amount</div>
+            <div className="stat-value">{formatCurrency(totalSentAmount)}</div>
           </div>
           <div className="stat-card">
             <div className="stat-label">Total / Paid</div>
