@@ -2,6 +2,19 @@
 
 import { useState, useMemo, Fragment } from 'react';
 
+function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
+  const [local, setLocal] = useState(value);
+  return (
+    <input
+      type="date"
+      className={`inline-input${local ? '' : ' date-empty'}`}
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => { if (local !== value) onSave(local); }}
+    />
+  );
+}
+
 export interface InvoiceLine {
   id: number;
   invoiceLineId: number;
@@ -515,45 +528,21 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td>{be.name}</td>
                         <td>{be.operation}</td>
                         <td>
-                          <input
-                            type="date"
-                            className={`inline-input${invoice?.sentAt ? '' : ' date-empty'}`}
-                            defaultValue={invoice?.sentAt?.split('T')[0] || ''}
-                            onChange={(e) => { e.target.classList.toggle('date-empty', !e.target.value); }}
-                            onBlur={(e) => {
-                              const prev = invoice?.sentAt?.split('T')[0] || '';
-                              if (e.target.value !== prev) {
-                                handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', e.target.value);
-                              }
-                            }}
+                          <DateCell
+                            value={invoice?.sentAt?.split('T')[0] || ''}
+                            onSave={(v) => handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', v)}
                           />
                         </td>
                         <td>
-                          <input
-                            type="date"
-                            className={`inline-input${invoice?.depositAt ? '' : ' date-empty'}`}
-                            defaultValue={invoice?.depositAt?.split('T')[0] || ''}
-                            onChange={(e) => { e.target.classList.toggle('date-empty', !e.target.value); }}
-                            onBlur={(e) => {
-                              const prev = invoice?.depositAt?.split('T')[0] || '';
-                              if (e.target.value !== prev) {
-                                handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', e.target.value);
-                              }
-                            }}
+                          <DateCell
+                            value={invoice?.depositAt?.split('T')[0] || ''}
+                            onSave={(v) => handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', v)}
                           />
                         </td>
                         <td>
-                          <input
-                            type="date"
-                            className={`inline-input${invoice?.paidAt ? '' : ' date-empty'}`}
-                            defaultValue={invoice?.paidAt?.split('T')[0] || ''}
-                            onChange={(e) => { e.target.classList.toggle('date-empty', !e.target.value); }}
-                            onBlur={(e) => {
-                              const prev = invoice?.paidAt?.split('T')[0] || '';
-                              if (e.target.value !== prev) {
-                                handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', e.target.value);
-                              }
-                            }}
+                          <DateCell
+                            value={invoice?.paidAt?.split('T')[0] || ''}
+                            onSave={(v) => handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', v)}
                           />
                         </td>
                         <td>
