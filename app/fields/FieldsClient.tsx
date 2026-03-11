@@ -876,8 +876,13 @@ export default function FieldsClient({
             row_direction: 'rowDirection',
             water_source: 'waterSource',
             fuel_source: 'fuelSource',
+            billing_entity: 'billingEntityId',
           };
           const camelKey = snakeToCamel[fieldName] || fieldName;
+          if (fieldName === 'billing_entity') {
+            const be = billingEntities.find(b => b.id.toString() === String(value));
+            return { ...f, billingEntityId: value ? Number(value) : null, billingEntityName: be?.name || '' };
+          }
           return { ...f, [camelKey]: value };
         }));
         setSavedFields(prev => new Set(prev).add(cellKey));
@@ -2091,6 +2096,7 @@ export default function FieldsClient({
                                 productTypeOptions={productTypeOptions}
                                 fieldOpts={fieldOpts}
                                 seasonOpts={seasonOpts}
+                                billingEntityOptions={billingEntities.map(be => ({ value: be.id.toString(), label: be.name })).sort((a, b) => a.label.localeCompare(b.label))}
                                 savingFields={savingFields}
                                 savedFields={savedFields}
                                 onRowClick={handleRowClick}

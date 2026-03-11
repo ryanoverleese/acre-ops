@@ -208,6 +208,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [filterTradeYear, setFilterTradeYear] = useState<Set<string>>(new Set());
   const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
   const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
+  const [savingBE, setSavingBE] = useState<Set<number>>(new Set());
+  const [savedBE, setSavedBE] = useState<Set<number>>(new Set());
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradingProbe, setTradingProbe] = useState<ProcessedProbe | null>(null);
   const mobileCardsRef = useRef<HTMLDivElement>(null);
@@ -596,6 +598,27 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
   };
 
+  const handleBillingEntityChange = async (probeId: number, value: string) => {
+    setSavingBE(prev => new Set(prev).add(probeId));
+    try {
+      const response = await fetch(`/api/probes/${probeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billing_entity: value ? Number(value) : null }),
+      });
+      if (response.ok) {
+        const be = billingEntities.find(b => b.id.toString() === value);
+        setProbes(prev => prev.map(p => p.id === probeId ? { ...p, billingEntity: be?.name || '—', billingEntityId: value ? Number(value) : undefined } : p));
+        setSavedBE(prev => new Set(prev).add(probeId));
+        setTimeout(() => setSavedBE(prev => { const next = new Set(prev); next.delete(probeId); return next; }), 1500);
+      }
+    } catch (error) {
+      console.error('Failed to update billing entity:', error);
+    } finally {
+      setSavingBE(prev => { const next = new Set(prev); next.delete(probeId); return next; });
+    }
+  };
+
   const handleEdit = async () => {
     if (!selectedProbe) return;
     // Serial number is optional for On Order probes
@@ -799,7 +822,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       case 'yearNew':
         return <td key={colKey} className="field-count">{probe.yearNew || '—'}</td>;
       case 'billingEntity':
-        return <td key={colKey} className="cell-sm">{probe.billingEntity || '—'}</td>;
+        return (
+          <td key={colKey} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <SearchableSelect
+                value={probe.billingEntityId?.toString() || ''}
+                onChange={(v) => handleBillingEntityChange(probe.id, v)}
+                options={billingEntities.map(be => ({ value: be.id.toString(), label: be.name })).sort((a, b) => a.label.localeCompare(b.label))}
+                disabled={savingBE.has(probe.id)}
+                style={{ fontSize: '12px', minWidth: '120px' }}
+              />
+              {savingBE.has(probe.id) && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+              {savedBE.has(probe.id) && <span style={{ fontSize: '10px', color: 'var(--accent-primary)' }}>✓</span>}
+            </div>
+          </td>
+        );
       case 'tradeYear':
         return (
           <td key={colKey} onClick={(e) => e.stopPropagation()}>

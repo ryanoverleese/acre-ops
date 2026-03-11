@@ -119,6 +119,7 @@ interface RenderCellProps {
   productTypeOptions: { value: string; label: string }[];
   fieldOpts: DynamicFieldOptions;
   seasonOpts: DynamicSeasonOptions;
+  billingEntityOptions: OptionList;
   savingFields: Set<string>;
   savedFields: Set<string>;
   onRowClick: (field: ProcessedField) => void;
@@ -138,6 +139,7 @@ export function FieldCell({
   productTypeOptions,
   fieldOpts,
   seasonOpts,
+  billingEntityOptions,
   savingFields,
   savedFields,
   onRowClick,
@@ -155,7 +157,12 @@ export function FieldCell({
     case 'operation':
       return <td key={colKey} style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>;
     case 'billingEntity':
-      return <td key={colKey} style={{ color: 'var(--text-secondary)' }}>{field.billingEntityName || '—'}</td>;
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineFieldSelect fieldId={field.id} apiField="billing_entity" value={field.billingEntityId ? String(field.billingEntityId) : ''} options={billingEntityOptions}
+            onSave={onInlineFieldSave} savingFields={savingFields} savedFields={savedFields} />
+        </td>
+      );
     case 'crop':
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
