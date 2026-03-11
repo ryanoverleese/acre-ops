@@ -140,7 +140,7 @@ async function getBillingData(): Promise<BillingData> {
           depositAt: invoice?.deposit_at,
           paidAt: invoice?.paid_at,
           notes: invoice?.notes || '',
-          checkNumber: invoice?.checu_number ? Number(invoice.checu_number) : undefined,
+          checkNumber: invoice?.check_number ? Number(invoice.check_number) : undefined,
           actualBilledAmount: invoice?.actual_billed_amount ? Number(invoice.actual_billed_amount) : undefined,
           lines: lines.map((line) => ({
             id: line.fieldSeasonId,

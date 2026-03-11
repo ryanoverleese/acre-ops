@@ -463,7 +463,7 @@ export interface Invoice {
   deposit_at?: string;
   paid_at?: string;
   notes?: string;
-  checu_number?: number;
+  check_number?: number;
   actual_billed_amount?: number;
 }
 

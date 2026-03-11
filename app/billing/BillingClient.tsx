@@ -326,7 +326,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
-  const handleUpdateInvoiceField = async (invoiceId: number, billingEntityId: number, season: number, field: 'checu_number' | 'actual_billed_amount', value: number | null) => {
+  const handleUpdateInvoiceField = async (invoiceId: number, billingEntityId: number, season: number, field: 'check_number' | 'actual_billed_amount', value: number | null) => {
     try {
       const realId = await ensureInvoice(invoiceId, billingEntityId, season);
       if (!realId) { alert('Failed to create invoice'); return; }
@@ -338,7 +338,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       });
 
       if (response.ok) {
-        const fieldMap: Record<string, string> = { checu_number: 'checkNumber', actual_billed_amount: 'actualBilledAmount' };
+        const fieldMap: Record<string, string> = { check_number: 'checkNumber', actual_billed_amount: 'actualBilledAmount' };
         setBillingEntities((prev) => prev.map((be) => ({
           ...be,
           invoices: be.invoices.map((inv) =>
@@ -567,7 +567,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             onBlur={(e) => {
                               const val = e.target.value ? parseInt(e.target.value, 10) : null;
                               if (val !== (invoice?.checkNumber ?? null)) {
-                                handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'checu_number', val);
+                                handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'check_number', val);
                               }
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
