@@ -517,7 +517,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td>
                           <input
                             type="date"
-                            className="inline-input date-input"
+                            className={`inline-input${invoice?.sentAt ? '' : ' date-empty'}`}
                             defaultValue={invoice?.sentAt?.split('T')[0] || ''}
                             onBlur={(e) => {
                               const prev = invoice?.sentAt?.split('T')[0] || '';
@@ -530,7 +530,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td>
                           <input
                             type="date"
-                            className="inline-input date-input"
+                            className={`inline-input${invoice?.depositAt ? '' : ' date-empty'}`}
                             defaultValue={invoice?.depositAt?.split('T')[0] || ''}
                             onBlur={(e) => {
                               const prev = invoice?.depositAt?.split('T')[0] || '';
@@ -543,7 +543,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td>
                           <input
                             type="date"
-                            className="inline-input date-input"
+                            className={`inline-input${invoice?.paidAt ? '' : ' date-empty'}`}
                             defaultValue={invoice?.paidAt?.split('T')[0] || ''}
                             onBlur={(e) => {
                               const prev = invoice?.paidAt?.split('T')[0] || '';
