@@ -688,15 +688,15 @@ export default function FieldsClient({
   // Filter probes for a specific field's operation: show probes owned by the same
   // operation + Acre Insights inventory probes, plus any probe already assigned to this field
   const getProbesForField = useCallback((fieldOperation: string, currentProbeId?: number | null) => {
-    const COMPANY_NAME = 'Acre Insights';
+    const isAcreInsights = (s: string) => s.toLowerCase().includes('acre insights');
     return allProbesWithStatus.filter(p => {
       // Always include the currently assigned probe so it stays visible
       if (currentProbeId && p.id === currentProbeId) return true;
       // Include probes owned by the same operation
       if (p.ownerOperationName && p.ownerOperationName === fieldOperation) return true;
       // Include Acre Insights company inventory
-      if (p.ownerOperationName === COMPANY_NAME) return true;
-      if (p.ownerBillingEntity === COMPANY_NAME) return true;
+      if (p.ownerOperationName && isAcreInsights(p.ownerOperationName)) return true;
+      if (p.ownerBillingEntity && isAcreInsights(p.ownerBillingEntity)) return true;
       // Include unassigned/no-owner probes (On Order with no operation set yet)
       if (!p.ownerOperationName && !p.ownerBillingEntity) return true;
       if (p.ownerBillingEntity === 'Unassigned') return true;
