@@ -115,6 +115,7 @@ interface RenderCellProps {
   probeAssignmentCount: number;
   hasDuplicateProbeLocation: boolean;
   hasEquipmentWarning: boolean;
+  hasNoLocation: boolean;
   isExpanded: boolean;
   productTypeOptions: { value: string; label: string }[];
   fieldOpts: DynamicFieldOptions;
@@ -135,6 +136,7 @@ export function FieldCell({
   probeAssignmentCount,
   hasDuplicateProbeLocation,
   hasEquipmentWarning,
+  hasNoLocation,
   isExpanded,
   productTypeOptions,
   fieldOpts,
@@ -151,6 +153,7 @@ export function FieldCell({
     case 'field':
       return (
         <td key={colKey} style={{ fontWeight: 500, cursor: 'pointer' }} title="Click to view details" onClick={() => onRowClick(field)}>
+          {hasNoLocation && <span title="Field location not set" style={{ color: '#f59e0b', fontSize: '13px', lineHeight: 1, marginRight: '4px' }}>&#9888;</span>}
           {field.name}
         </td>
       );

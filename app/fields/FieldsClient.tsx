@@ -558,7 +558,9 @@ export default function FieldsClient({
           return false;
         });
         if (hasEquipment) return true;
-        // Location not set
+        // Field location not set
+        if (!f.lat || !f.lng) return true;
+        // Probe placement location not set
         if (pas.some(pa => pa.probeId && (!pa.placementLat || !pa.placementLng))) return true;
         // Duplicate locations
         if (pas.length >= 2 && pas.some((pa, i) =>
@@ -2092,6 +2094,7 @@ export default function FieldsClient({
                                   )
                                 )}
                                 hasEquipmentWarning={hasEquipmentWarning}
+                                hasNoLocation={!field.lat || !field.lng}
                                 isExpanded={isExpanded}
                                 productTypeOptions={productTypeOptions}
                                 fieldOpts={fieldOpts}
