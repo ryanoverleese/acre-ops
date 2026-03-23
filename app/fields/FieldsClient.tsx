@@ -2184,6 +2184,11 @@ export default function FieldsClient({
                                 {isExpanded && field.fieldSeasonId && (
                                   <tr>
                                     <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)} className="fields-probe-expand-cell">
+                                      {(!field.lat || !field.lng) && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', marginBottom: '8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '4px', fontSize: '12px', color: '#f59e0b' }}>
+                                          <span style={{ fontSize: '14px' }}>&#9888;</span> Field location not set
+                                        </div>
+                                      )}
                                       <table className="fields-probe-table">
                                         <thead>
                                           <tr className="fields-probe-row">
