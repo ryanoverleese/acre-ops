@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes, getContacts } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ApprovalClient from './ApprovalClient';
@@ -7,6 +8,16 @@ interface PageProps {
     token: string;
     season: string;
   }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { token } = await params;
+  const operations = await getOperations();
+  const operation = operations.find((op) => op.approval_token === token);
+  const title = operation
+    ? `Probe Approvals — ${operation.name}`
+    : 'Probe Approvals';
+  return { title };
 }
 
 export interface ApprovalProbeAssignment {

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getOperations, getFields, getFieldSeasons, getContacts, getAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
 import FieldInfoClient from './FieldInfoClient';
@@ -8,6 +9,16 @@ interface PageProps {
     season: string;
   }>;
   searchParams: Promise<{ q?: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { token } = await params;
+  const operations = await getOperations();
+  const operation = operations.find((op) => op.approval_token === token);
+  const title = operation
+    ? `Field Info — ${operation.name}`
+    : 'Field Info';
+  return { title };
 }
 
 export interface BillingEntityOption {

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes, getContacts, getAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
@@ -9,6 +10,16 @@ interface PageProps {
     season: string;
   }>;
   searchParams: Promise<{ q?: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { token, season } = await params;
+  const operations = await getOperations();
+  const operation = operations.find((op) => op.approval_token === token);
+  const title = operation
+    ? `Field Info & Approvals — ${operation.name}`
+    : 'Field Info & Approvals';
+  return { title };
 }
 
 export interface ReviewFieldInfoItem {
