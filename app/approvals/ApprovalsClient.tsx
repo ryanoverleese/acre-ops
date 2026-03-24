@@ -133,6 +133,34 @@ export default function ApprovalsClient({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [enrolledOperations, items, selectedSeason, searchQuery, effectiveOperation]);
 
+  // Approved operations: ops with probes that don't appear in groupedItems due to status filter
+  const approvedOps = useMemo(() => {
+    if (statusFilter !== 'pending') return [];
+    const opsInGroups = new Set(groupedItems.map((g) => g.operationId));
+    const opsEnrolledOnly = new Set(enrolledOnlyOps.map((o) => o.id));
+    const seasonItems = selectedSeason === 'all' ? items : items.filter((i) => i.season === selectedSeason);
+
+    const opMap: Record<number, { name: string; items: ApprovalItem[] }> = {};
+    seasonItems.forEach((item) => {
+      if (opsInGroups.has(item.operationId) || opsEnrolledOnly.has(item.operationId)) return;
+      if (effectiveOperation !== 'all' && item.operationId !== effectiveOperation) return;
+      if (searchQuery.trim() && !item.fieldName.toLowerCase().includes(searchQuery.toLowerCase()) && !item.operationName.toLowerCase().includes(searchQuery.toLowerCase())) return;
+      if (!opMap[item.operationId]) {
+        opMap[item.operationId] = { name: item.operationName, items: [] };
+      }
+      opMap[item.operationId].items.push(item);
+    });
+
+    return Object.entries(opMap)
+      .filter(([, data]) => data.items.every((i) => i.approvalStatus === 'Approved'))
+      .map(([opId, data]) => ({
+        operationId: parseInt(opId),
+        operationName: data.name,
+        count: data.items.length,
+      }))
+      .sort((a, b) => a.operationName.localeCompare(b.operationName));
+  }, [groupedItems, enrolledOnlyOps, items, selectedSeason, statusFilter, effectiveOperation, searchQuery]);
+
   // Stats
   const stats = useMemo(() => {
     const seasonItems = selectedSeason === 'all'
@@ -549,7 +577,7 @@ export default function ApprovalsClient({
         </div>
 
         <div className="approvals-content">
-          {groupedItems.length === 0 && enrolledOnlyOps.length === 0 ? (
+          {groupedItems.length === 0 && enrolledOnlyOps.length === 0 && approvedOps.length === 0 ? (
             <div className="approvals-empty">
               {statusFilter === 'pending' ? 'No pending approvals.' : 'No items match your filters.'}
             </div>
@@ -879,7 +907,43 @@ export default function ApprovalsClient({
                 {/* Link Section */}
                 {linkOperationId === op.id && approvalToken && renderLinkSection(op.id)}
               </div>
-            ))]
+            )),
+            // Approved operations section
+            ...(approvedOps.length > 0 ? [
+              <div key="approved-section" style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', fontSize: '13px', fontWeight: 600, color: '#16a34a', borderBottom: '1px solid var(--border-color)' }}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Approved
+                </div>
+                {approvedOps.map((op) => (
+                  <div key={`approved-${op.operationId}`} className="approvals-op-group">
+                    <div className="approvals-op-header" style={{ opacity: 0.7 }}>
+                      <svg className="approvals-op-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+
+                      <Link
+                        className="approvals-op-name"
+                        href="/operations"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {op.operationName}
+                      </Link>
+
+                      <span className="approvals-op-count">
+                        {op.count} probe{op.count !== 1 ? 's' : ''}
+                      </span>
+
+                      <span className="status-badge approved" style={{ fontSize: '11px' }}>
+                        All approved
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ] : [])]
           )}
         </div>
       </div>
