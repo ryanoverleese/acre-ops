@@ -373,6 +373,15 @@ export default function ApprovalsClient({
     if ((linkType === 'field-info' || linkType === 'combined') && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
       url += `?q=${Array.from(selectedQuestions).join(',')}`;
     }
+    // Append operation name as hash fragment for easy identification (ignored by router)
+    if (linkOperationId) {
+      const opName = items.find((i) => i.operationId === linkOperationId)?.operationName
+        || enrolledOperations.find((o) => o.id === linkOperationId)?.name;
+      if (opName) {
+        const slug = opName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        url += `#${slug}`;
+      }
+    }
     return url;
   };
 
