@@ -480,7 +480,7 @@ export default function ReviewClient({
                         <div key={pa.id} style={{ marginBottom: '16px' }}>
                           <div className="card-header" style={{ marginBottom: '8px' }}>
                             <div className="card-title">
-                              <h3 style={{ fontSize: '15px' }}>Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
+                              <h3 style={{ fontSize: '15px' }}>{field.name} — Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
                               <span className={`status-badge ${pa.approvalStatus === 'Approved' ? 'status-approved' : pa.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
                                 {pa.approvalStatus}
                               </span>
