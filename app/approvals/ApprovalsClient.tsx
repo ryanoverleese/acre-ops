@@ -116,7 +116,9 @@ export default function ApprovalsClient({
 
   // Enrolled-only operations: have field_seasons for selected season but no probe items
   const enrolledOnlyOps = useMemo(() => {
-    const opsWithProbes = new Set(groupedItems.map((g) => g.operationId));
+    // Check against all items (ignoring status filter) to avoid showing ops with approved probes as "No Probes"
+    const seasonItems = selectedSeason === 'all' ? items : items.filter((i) => i.season === selectedSeason);
+    const opsWithProbes = new Set(seasonItems.map((i) => i.operationId));
     const seasonFilter = selectedSeason === 'all' ? null : selectedSeason;
     return enrolledOperations
       .filter((op) => {
@@ -129,7 +131,7 @@ export default function ApprovalsClient({
         return true;
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [enrolledOperations, groupedItems, selectedSeason, searchQuery, effectiveOperation]);
+  }, [enrolledOperations, items, selectedSeason, searchQuery, effectiveOperation]);
 
   // Stats
   const stats = useMemo(() => {
