@@ -43,7 +43,7 @@ export default function ApprovalsClient({
 
   // Approval link state (per operation)
   const [linkOperationId, setLinkOperationId] = useState<number | null>(null);
-  const [linkType, setLinkType] = useState<'approval' | 'field-info'>('approval');
+  const [linkType, setLinkType] = useState<'approval' | 'field-info' | 'combined'>('approval');
   const [approvalToken, setApprovalToken] = useState<string | null>(null);
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -308,7 +308,7 @@ export default function ApprovalsClient({
     }
   };
 
-  const handleGenerateApprovalLink = async (operationId: number, type: 'approval' | 'field-info' = 'approval', regenerate: boolean = false) => {
+  const handleGenerateApprovalLink = async (operationId: number, type: 'approval' | 'field-info' | 'combined' = 'approval', regenerate: boolean = false) => {
     setApprovalLoading(true);
     setLinkOperationId(operationId);
     setLinkType(type);
@@ -337,10 +337,10 @@ export default function ApprovalsClient({
   const getApprovalUrl = () => {
     if (!approvalToken) return '';
     const year = selectedSeason !== 'all' ? selectedSeason : new Date().getFullYear();
-    const path = linkType === 'field-info' ? 'field-info' : 'approve';
+    const path = linkType === 'field-info' ? 'field-info' : linkType === 'combined' ? 'review' : 'approve';
     let url = `${window.location.origin}/${path}/${approvalToken}/${year}`;
-    // For field-info links, append selected questions (omit param if all selected)
-    if (linkType === 'field-info' && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
+    // For field-info and combined links, append selected questions (omit param if all selected)
+    if ((linkType === 'field-info' || linkType === 'combined') && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
       url += `?q=${Array.from(selectedQuestions).join(',')}`;
     }
     return url;
@@ -403,13 +403,15 @@ export default function ApprovalsClient({
       onClick={(e) => e.stopPropagation()}
     >
       <p className="approvals-link-description">
-        {linkType === 'field-info'
+        {linkType === 'combined'
+          ? 'Share this link with your customer to fill in field details and approve probe placements:'
+          : linkType === 'field-info'
           ? 'Share this link with your customer to fill in field details:'
           : 'Share this link with your customer to approve probe placements:'}
       </p>
 
-      {/* Question selector for field-info links */}
-      {linkType === 'field-info' && renderQuestionChips()}
+      {/* Question selector for field-info and combined links */}
+      {(linkType === 'field-info' || linkType === 'combined') && renderQuestionChips()}
 
       <div className="approvals-link-row">
         <input
@@ -633,10 +635,29 @@ export default function ApprovalsClient({
                         </svg>
                         Field Info Link
                       </button>
+                      <button
+                        className="approvals-link-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (linkOperationId === group.operationId && approvalToken && linkType === 'combined') {
+                            setLinkOperationId(null);
+                            setApprovalToken(null);
+                          } else {
+                            handleGenerateApprovalLink(group.operationId, 'combined');
+                          }
+                        }}
+                        disabled={approvalLoading && linkOperationId === group.operationId}
+                        title="Generate combined approval and field info link"
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                        </svg>
+                        Combined Link
+                      </button>
                     </div>
                   </div>
 
-                  {/* Approval Link */}
+                  {/* Link Section */}
                   {linkOperationId === group.operationId && approvalToken && renderLinkSection(group.operationId)}
 
                   {/* Items - Desktop Table */}
@@ -831,10 +852,29 @@ export default function ApprovalsClient({
                       </svg>
                       Field Info Link
                     </button>
+                    <button
+                      className="approvals-link-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (linkOperationId === op.id && approvalToken && linkType === 'combined') {
+                          setLinkOperationId(null);
+                          setApprovalToken(null);
+                        } else {
+                          handleGenerateApprovalLink(op.id, 'combined');
+                        }
+                      }}
+                      disabled={approvalLoading && linkOperationId === op.id}
+                      title="Generate combined approval and field info link"
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      </svg>
+                      Combined Link
+                    </button>
                   </div>
                 </div>
 
-                {/* Field Info Link */}
+                {/* Link Section */}
                 {linkOperationId === op.id && approvalToken && renderLinkSection(op.id)}
               </div>
             ))]
