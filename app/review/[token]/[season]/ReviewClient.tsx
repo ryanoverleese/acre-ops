@@ -420,7 +420,7 @@ export default function ReviewClient({
                       onChange={(v) => saveFieldChange(field, 'irrigationType', v)} />
                   )}
                   {showQuestion('row_direction') && (
-                    <ButtonGroup label="Row Direction" options={selectOptions.row_direction} value={form.rowDirection}
+                    <ButtonGroup label="Row Direction @ Probe Location" options={selectOptions.row_direction} value={form.rowDirection}
                       onChange={(v) => saveFieldChange(field, 'rowDirection', v)} />
                   )}
                   {showQuestion('side_dress') && (

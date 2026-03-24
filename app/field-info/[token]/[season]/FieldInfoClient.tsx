@@ -265,7 +265,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
 
                   {showQuestion('row_direction') && (
                     <ButtonGroup
-                      label="Row Direction"
+                      label="Row Direction @ Probe Location"
                       options={selectOptions.row_direction}
                       value={form.rowDirection}
                       onChange={(v) => saveFieldChange(field, 'rowDirection', v)}
