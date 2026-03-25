@@ -338,7 +338,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                               title="Undo — move back to Still to Go"
                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', marginLeft: '4px', color: 'var(--text-secondary)', fontSize: '11px', opacity: 0.6 }}
                             >
-                              {dismissLoading[b.operationId] ? '...' : 'undo'}
+                              {dismissLoading[b.operationId] ? '...' : 'Undo'}
                             </button>
                           )}
                         </td>
@@ -372,7 +372,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                               title="Undo — move back to Still to Go"
                               style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--text-secondary)', fontSize: '11px', opacity: 0.6 }}
                             >
-                              {dismissLoading[b.operationId] ? '...' : 'undo'}
+                              {dismissLoading[b.operationId] ? '...' : 'Undo'}
                             </button>
                           )}
                         </span>
