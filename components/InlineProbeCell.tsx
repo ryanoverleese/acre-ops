@@ -1,14 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import SearchableSelect from './SearchableSelect';
+import SearchableSelect, { type SelectOption } from './SearchableSelect';
 
 export interface InlineProbeCellProps {
   probeAssignmentId: number;
   field: string;
   value: string | number | boolean | null | undefined;
   type: 'text' | 'select' | 'number' | 'checkbox';
-  options?: { value: string; label: string; className?: string }[];
+  options?: SelectOption[];
   onSave: (probeAssignmentId: number, field: string, value: unknown) => Promise<void>;
   onAction?: (actionValue: string) => void;
   savingFields: Set<string>;
@@ -46,14 +46,9 @@ export default function InlineProbeCell({ probeAssignmentId, field, value, type,
   }
 
   if (type === 'select') {
-    const sorted = options?.slice().sort((a, b) => {
-      const aSpecial = a.value.startsWith('__');
-      const bSpecial = b.value.startsWith('__');
-      if (aSpecial && !bSpecial) return 1;
-      if (!aSpecial && bSpecial) return -1;
-      return 0;
-    }) || [];
-    const regularOptions = sorted.filter(o => !o.value.startsWith('__'));
+    // Don't re-sort — options are already in the correct order with group headers
+    const sorted = options || [];
+    const regularOptions = sorted.filter(o => !o.value.startsWith('__') && !o.isGroupHeader);
     const useSearchable = regularOptions.length >= 15;
     return (
       <div style={{ position: 'relative' }}>
