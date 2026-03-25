@@ -490,6 +490,7 @@ export default function FieldsClient({
       filtered = filtered.filter((f) =>
         (f.name || '').toLowerCase().includes(query) ||
         (f.operation || '').toLowerCase().includes(query) ||
+        (f.billingEntityName || '').toLowerCase().includes(query) ||
         (f.crop || '').toLowerCase().includes(query) ||
         f.probe?.toLowerCase().includes(query)
       );
