@@ -35,11 +35,13 @@ export interface DashboardInstalledProbe {
 }
 
 export interface DashboardBooking {
+  operationId: number;
   operationName: string;
-  fields2025: number;
-  fields2026: number;
-  probes2026: number;
-  status: 'returning' | 'new' | 'still-to-go';
+  operationNotes: string;
+  fieldsPrev: number;
+  fieldsCurr: number;
+  probesCurr: number;
+  status: 'returning' | 'new' | 'still-to-go' | 'not-returning';
 }
 
 interface DashboardClientProps {
@@ -60,27 +62,74 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type BookingSortColumn = 'operation' | 'change' | 'fields2026' | 'probes2026' | 'status';
+type BookingSortColumn = 'operation' | 'change' | 'fieldsCurr' | 'probesCurr' | 'status';
 
 export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
   const [bookings, setBookings] = useState<DashboardBooking[]>([]);
   const [remainingFields, setRemainingFields] = useState(0);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [previousYear, setPreviousYear] = useState(new Date().getFullYear() - 1);
   const [bookingSortCol, setBookingSortCol] = useState<BookingSortColumn>('status');
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc');
+  const [dismissLoading, setDismissLoading] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
     fetch('/api/bookings')
       .then(res => res.json())
-      .then((data: { bookings: DashboardBooking[]; remainingFields: number } | DashboardBooking[]) => {
-        // Handle both old (array) and new (object) response shapes during cache transition
+      .then((data) => {
         const list = Array.isArray(data) ? data : data.bookings;
         const remaining = Array.isArray(data) ? 0 : data.remainingFields || 0;
+        if (data.currentYear) setCurrentYear(data.currentYear);
+        if (data.previousYear) setPreviousYear(data.previousYear);
         if (list?.length) setBookings(list);
         setRemainingFields(remaining);
       })
-      .catch(() => {}); // Silently fail — section just won't appear
+      .catch(() => {});
   }, []);
+
+  const handleDismiss = async (booking: DashboardBooking) => {
+    const tag = `[NOT_RETURNING_${currentYear}]`;
+    const newNotes = booking.operationNotes ? `${booking.operationNotes} ${tag}` : tag;
+    setDismissLoading(prev => ({ ...prev, [booking.operationId]: true }));
+    try {
+      const res = await fetch(`/api/operations/${booking.operationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: newNotes }),
+      });
+      if (res.ok) {
+        setBookings(prev => prev.map(b =>
+          b.operationId === booking.operationId
+            ? { ...b, status: 'not-returning' as const, operationNotes: newNotes }
+            : b
+        ));
+      }
+    } catch { /* silent */ }
+    setDismissLoading(prev => ({ ...prev, [booking.operationId]: false }));
+  };
+
+  const handleUndoDismiss = async (booking: DashboardBooking) => {
+    const tag = `[NOT_RETURNING_${currentYear}]`;
+    const newNotes = booking.operationNotes.replace(tag, '').replace(/\s{2,}/g, ' ').trim();
+    setDismissLoading(prev => ({ ...prev, [booking.operationId]: true }));
+    try {
+      const res = await fetch(`/api/operations/${booking.operationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: newNotes }),
+      });
+      if (res.ok) {
+        setBookings(prev => prev.map(b =>
+          b.operationId === booking.operationId
+            ? { ...b, status: 'still-to-go' as const, operationNotes: newNotes }
+            : b
+        ));
+      }
+    } catch { /* silent */ }
+    setDismissLoading(prev => ({ ...prev, [booking.operationId]: false }));
+  };
+
   const pct = stats.totalAssignments > 0
     ? Math.round((stats.installedCount / stats.totalAssignments) * 100)
     : 0;
@@ -90,7 +139,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
       <header className="header">
         <div className="header-left">
           <h2>Dashboard</h2>
-          <span className="season-badge">2026 Season</span>
+          <span className="season-badge">{currentYear} Season</span>
         </div>
       </header>
 
@@ -162,20 +211,21 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
         {/* Booking Tracker */}
         {bookings.length > 0 && (() => {
           const stillToGo = bookings.filter(b => b.status === 'still-to-go').length;
+          const notReturning = bookings.filter(b => b.status === 'not-returning').length;
           const newOps = bookings.filter(b => b.status === 'new').length;
-          const activeOps = bookings.filter(b => b.status !== 'still-to-go');
-          const totalProbesAssigned = activeOps.reduce((sum, b) => sum + b.probes2026, 0);
-          const totalEnrolledFields = activeOps.reduce((sum, b) => sum + b.fields2026, 0);
+          const activeOps = bookings.filter(b => b.status !== 'still-to-go' && b.status !== 'not-returning');
+          const totalProbesAssigned = activeOps.reduce((sum, b) => sum + b.probesCurr, 0);
+          const totalEnrolledFields = activeOps.reduce((sum, b) => sum + b.fieldsCurr, 0);
 
-          const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
+          const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2, 'not-returning': 3 };
           const sorted = [...bookings].sort((a, b) => {
             let cmp = 0;
             switch (bookingSortCol) {
               case 'operation': cmp = a.operationName.localeCompare(b.operationName); break;
-              case 'change': cmp = (a.fields2026 - a.fields2025) - (b.fields2026 - b.fields2025); break;
-              case 'fields2026': cmp = a.fields2026 - b.fields2026; break;
-              case 'probes2026': cmp = a.probes2026 - b.probes2026; break;
-              case 'status': cmp = statusOrder[a.status] - statusOrder[b.status]; break;
+              case 'change': cmp = (a.fieldsCurr - a.fieldsPrev) - (b.fieldsCurr - b.fieldsPrev); break;
+              case 'fieldsCurr': cmp = a.fieldsCurr - b.fieldsCurr; break;
+              case 'probesCurr': cmp = a.probesCurr - b.probesCurr; break;
+              case 'status': cmp = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99); break;
             }
             return bookingSortDir === 'asc' ? cmp : -cmp;
           });
@@ -192,29 +242,36 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           const sortArrow = (col: BookingSortColumn) =>
             bookingSortCol === col ? <span className="sort-indicator">{bookingSortDir === 'asc' ? ' ▲' : ' ▼'}</span> : null;
 
+          const statusLabel = (status: string) => {
+            if (status === 'returning') return 'Returning';
+            if (status === 'still-to-go') return 'Still to Go';
+            if (status === 'not-returning') return 'Not Returning';
+            return 'New';
+          };
+
           return (
             <div className="dashboard-section">
-              <h3 className="section-label">2026 Booking Tracker</h3>
+              <h3 className="section-label">{currentYear} Booking Tracker</h3>
               <div className="stats-grid stats-grid-6">
                 <div className="stat-card">
                   <div className="stat-label">Enrolled Fields</div>
                   <div className="stat-value">{totalEnrolledFields}</div>
-                  <div className="stat-change">2026 season</div>
+                  <div className="stat-change">{currentYear} season</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">Remaining Fields</div>
                   <div className="stat-value">{remainingFields > 0 ? <span className="amber">{remainingFields}</span> : <span className="green">0</span>}</div>
-                  <div className="stat-change">Were in 2025, not yet 2026</div>
+                  <div className="stat-change">Were in {previousYear}, not yet {currentYear}</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">New Operations</div>
                   <div className="stat-value blue">{newOps}</div>
-                  <div className="stat-change">First time in 2026</div>
+                  <div className="stat-change">First time in {currentYear}</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">Ops Still to Go</div>
                   <div className="stat-value amber">{stillToGo}</div>
-                  <div className="stat-change">Had 2025, not yet 2026</div>
+                  <div className="stat-change">Had {previousYear}, not yet {currentYear}{notReturning > 0 ? ` (+${notReturning} dismissed)` : ''}</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">Probes Assigned</div>
@@ -232,38 +289,58 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <thead>
                     <tr>
                       <th className="sortable" onClick={() => handleBookingSort('operation')}>Operation{sortArrow('operation')}</th>
-                      <th className="sortable" onClick={() => handleBookingSort('fields2026')}>Fields{sortArrow('fields2026')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('fieldsCurr')}>Fields{sortArrow('fieldsCurr')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('change')}>Change{sortArrow('change')}</th>
-                      <th className="sortable" onClick={() => handleBookingSort('probes2026')}>Probes{sortArrow('probes2026')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('probesCurr')}>Probes{sortArrow('probesCurr')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('status')}>Status{sortArrow('status')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sorted.map((b) => (
-                      <tr key={b.operationName} className={b.status === 'still-to-go' ? 'row-highlight' : undefined}>
-                        <td>{b.operationName}</td>
-                        <td>{b.fields2026 || '—'}</td>
+                      <tr key={b.operationName} className={b.status === 'still-to-go' ? 'row-highlight' : b.status === 'not-returning' ? 'row-muted' : undefined}>
+                        <td style={b.status === 'not-returning' ? { textDecoration: 'line-through', opacity: 0.5 } : undefined}>{b.operationName}</td>
+                        <td>{b.fieldsCurr || '—'}</td>
                         <td>
                           {(() => {
-                            const delta = b.fields2026 - b.fields2025;
-                            if (b.status === 'new') return <span className="status-badge in-stock">+{b.fields2026}</span>;
-                            if (b.status === 'still-to-go') return <span className="status-badge assigned">-{b.fields2025}</span>;
+                            const delta = b.fieldsCurr - b.fieldsPrev;
+                            if (b.status === 'new') return <span className="status-badge in-stock">+{b.fieldsCurr}</span>;
+                            if (b.status === 'still-to-go' || b.status === 'not-returning') return <span className="status-badge assigned">-{b.fieldsPrev}</span>;
                             if (delta > 0) return <span className="status-badge installed">+{delta}</span>;
                             if (delta < 0) return <span className="status-badge assigned">{delta}</span>;
                             return <span className="status-badge unassigned">=</span>;
                           })()}
                         </td>
                         <td>
-                          {b.status !== 'still-to-go' ? (
-                            b.probes2026 >= b.fields2026 && b.fields2026 > 0
-                              ? <span className="status-badge installed">{b.probes2026}</span>
-                              : <span className="status-badge assigned">{b.probes2026}/{b.fields2026}</span>
+                          {b.status !== 'still-to-go' && b.status !== 'not-returning' ? (
+                            b.probesCurr >= b.fieldsCurr && b.fieldsCurr > 0
+                              ? <span className="status-badge installed">{b.probesCurr}</span>
+                              : <span className="status-badge assigned">{b.probesCurr}/{b.fieldsCurr}</span>
                           ) : <span className="text-muted">—</span>}
                         </td>
-                        <td>
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           <span className={`status-badge ${b.status}`}>
-                            {b.status === 'returning' ? 'Returning' : b.status === 'still-to-go' ? 'Still to Go' : 'New'}
+                            {statusLabel(b.status)}
                           </span>
+                          {b.status === 'still-to-go' && (
+                            <button
+                              onClick={() => handleDismiss(b)}
+                              disabled={dismissLoading[b.operationId]}
+                              title="Mark as not returning"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', marginLeft: '4px', color: 'var(--text-secondary)', fontSize: '12px', opacity: 0.6 }}
+                            >
+                              {dismissLoading[b.operationId] ? '...' : '✕'}
+                            </button>
+                          )}
+                          {b.status === 'not-returning' && (
+                            <button
+                              onClick={() => handleUndoDismiss(b)}
+                              disabled={dismissLoading[b.operationId]}
+                              title="Undo — move back to Still to Go"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', marginLeft: '4px', color: 'var(--text-secondary)', fontSize: '11px', opacity: 0.6 }}
+                            >
+                              {dismissLoading[b.operationId] ? '...' : 'undo'}
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -271,21 +348,43 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                 </table>
                 <div className="mobile-cards">
                   {sorted.map((b) => (
-                    <div key={b.operationName} className={`mobile-card${b.status === 'still-to-go' ? ' row-highlight' : ''}`}>
+                    <div key={b.operationName} className={`mobile-card${b.status === 'still-to-go' ? ' row-highlight' : b.status === 'not-returning' ? ' row-muted' : ''}`}>
                       <div className="mobile-card-header">
-                        <strong>{b.operationName}</strong>
-                        <span className={`status-badge ${b.status}`}>
-                          {b.status === 'returning' ? 'Returning' : b.status === 'still-to-go' ? 'Still to Go' : 'New'}
+                        <strong style={b.status === 'not-returning' ? { textDecoration: 'line-through', opacity: 0.5 } : undefined}>{b.operationName}</strong>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span className={`status-badge ${b.status}`}>
+                            {statusLabel(b.status)}
+                          </span>
+                          {b.status === 'still-to-go' && (
+                            <button
+                              onClick={() => handleDismiss(b)}
+                              disabled={dismissLoading[b.operationId]}
+                              title="Mark as not returning"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--text-secondary)', fontSize: '12px', opacity: 0.6 }}
+                            >
+                              {dismissLoading[b.operationId] ? '...' : '✕'}
+                            </button>
+                          )}
+                          {b.status === 'not-returning' && (
+                            <button
+                              onClick={() => handleUndoDismiss(b)}
+                              disabled={dismissLoading[b.operationId]}
+                              title="Undo — move back to Still to Go"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--text-secondary)', fontSize: '11px', opacity: 0.6 }}
+                            >
+                              {dismissLoading[b.operationId] ? '...' : 'undo'}
+                            </button>
+                          )}
                         </span>
                       </div>
                       <div className="mobile-card-fields">
-                        <span>{b.fields2026 || '—'} fields</span>
-                        <span>{b.status !== 'still-to-go' ? `${b.probes2026} probes` : ''}</span>
+                        <span>{b.fieldsCurr || '—'} fields</span>
+                        <span>{b.status !== 'still-to-go' && b.status !== 'not-returning' ? `${b.probesCurr} probes` : ''}</span>
                         <span>
                           {(() => {
-                            const delta = b.fields2026 - b.fields2025;
-                            if (b.status === 'new') return <span className="status-badge in-stock">+{b.fields2026}</span>;
-                            if (b.status === 'still-to-go') return <span className="status-badge assigned">-{b.fields2025}</span>;
+                            const delta = b.fieldsCurr - b.fieldsPrev;
+                            if (b.status === 'new') return <span className="status-badge in-stock">+{b.fieldsCurr}</span>;
+                            if (b.status === 'still-to-go' || b.status === 'not-returning') return <span className="status-badge assigned">-{b.fieldsPrev}</span>;
                             if (delta > 0) return <span className="status-badge installed">+{delta}</span>;
                             if (delta < 0) return <span className="status-badge assigned">{delta}</span>;
                             return <span className="status-badge unassigned">=</span>;

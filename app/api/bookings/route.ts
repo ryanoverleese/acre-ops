@@ -6,6 +6,9 @@ export const revalidate = 600; // Cache for 10 minutes
 
 export async function GET() {
   try {
+    const currentYear = new Date().getFullYear();
+    const previousYear = currentYear - 1;
+
     const fieldSeasons = await getCachedRows<FieldSeason>('field_seasons', undefined, 600);
     const fields = await getCachedRows<Field>('fields', undefined, 600);
     const contacts = await getCachedRows<Contact>('contacts', undefined, 600);
@@ -13,16 +16,19 @@ export async function GET() {
     const probeAssignments = await getCachedRows<ProbeAssignment>('probe_assignments', undefined, 600);
 
     const operationMap = buildOperationMap(operations);
+    const fullOpMap = new Map(operations.map(op => [op.id, op]));
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
     const fieldMap = new Map(fields.map(f => [f.id, f]));
 
-    // Map field_season ID → operation ID for 2026 seasons
+    const notReturningTag = `[NOT_RETURNING_${currentYear}]`;
+
+    // Map field_season ID → operation ID for current season
     const fsToOp = new Map<number, number>();
-    const opFields2025 = new Map<number, Set<number>>();
-    const opFields2026 = new Map<number, Set<number>>();
+    const opFieldsPrev = new Map<number, Set<number>>();
+    const opFieldsCurr = new Map<number, Set<number>>();
 
     for (const fs of fieldSeasons) {
-      if (fs.season != 2025 && fs.season != 2026) continue;
+      if (fs.season != previousYear && fs.season != currentYear) continue;
       const fieldId = fs.field?.[0]?.id;
       if (!fieldId) continue;
       const field = fieldMap.get(fieldId);
@@ -31,61 +37,67 @@ export async function GET() {
       const opId = billingToOperationMap.get(beId);
       if (!opId) continue;
 
-      if (fs.season == 2026) fsToOp.set(fs.id, opId);
+      if (fs.season == currentYear) fsToOp.set(fs.id, opId);
 
-      const bucket = fs.season == 2025 ? opFields2025 : opFields2026;
+      const bucket = fs.season == previousYear ? opFieldsPrev : opFieldsCurr;
       if (!bucket.has(opId)) bucket.set(opId, new Set());
       bucket.get(opId)!.add(fieldId);
     }
 
-    // Count 2026 probe assignments per operation
-    const opProbes2026 = new Map<number, number>();
+    // Count current season probe assignments per operation
+    const opProbesCurr = new Map<number, number>();
     for (const pa of probeAssignments) {
       const fsId = pa.field_season?.[0]?.id;
       if (!fsId) continue;
       const opId = fsToOp.get(fsId);
       if (!opId) continue;
-      opProbes2026.set(opId, (opProbes2026.get(opId) || 0) + 1);
+      opProbesCurr.set(opId, (opProbesCurr.get(opId) || 0) + 1);
     }
 
-    const allOpIds = new Set([...opFields2025.keys(), ...opFields2026.keys()]);
-    const bookings: { operationName: string; fields2025: number; fields2026: number; probes2026: number; status: string }[] = [];
+    const allOpIds = new Set([...opFieldsPrev.keys(), ...opFieldsCurr.keys()]);
+    const bookings: { operationId: number; operationName: string; operationNotes: string; fieldsPrev: number; fieldsCurr: number; probesCurr: number; status: string }[] = [];
 
-    // Count 2025 fields not yet enrolled in 2026 (across all operations)
+    // Count previous-year fields not yet enrolled in current year
     let totalRemainingFields = 0;
     for (const opId of allOpIds) {
-      const fields25 = opFields2025.get(opId);
-      const fields26 = opFields2026.get(opId);
-      if (fields25) {
-        for (const fieldId of fields25) {
-          if (!fields26 || !fields26.has(fieldId)) totalRemainingFields++;
+      const fieldsPrev = opFieldsPrev.get(opId);
+      const fieldsCurr = opFieldsCurr.get(opId);
+      if (fieldsPrev) {
+        for (const fieldId of fieldsPrev) {
+          if (!fieldsCurr || !fieldsCurr.has(fieldId)) totalRemainingFields++;
         }
       }
     }
 
     for (const opId of allOpIds) {
-      const count2025 = opFields2025.get(opId)?.size || 0;
-      const count2026 = opFields2026.get(opId)?.size || 0;
+      const countPrev = opFieldsPrev.get(opId)?.size || 0;
+      const countCurr = opFieldsCurr.get(opId)?.size || 0;
+      const op = fullOpMap.get(opId);
+      const notes = op?.notes || '';
+
       let status: string;
-      if (count2025 > 0 && count2026 > 0) status = 'returning';
-      else if (count2025 > 0) status = 'still-to-go';
-      else status = 'new';
+      if (countPrev > 0 && countCurr > 0) status = 'returning';
+      else if (countPrev > 0) {
+        status = notes.includes(notReturningTag) ? 'not-returning' : 'still-to-go';
+      } else status = 'new';
 
       bookings.push({
+        operationId: opId,
         operationName: operationMap.get(opId) || 'Unknown',
-        fields2025: count2025,
-        fields2026: count2026,
-        probes2026: opProbes2026.get(opId) || 0,
+        operationNotes: notes,
+        fieldsPrev: countPrev,
+        fieldsCurr: countCurr,
+        probesCurr: opProbesCurr.get(opId) || 0,
         status,
       });
     }
 
-    const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2 };
-    bookings.sort((a, b) => statusOrder[a.status] - statusOrder[b.status] || a.operationName.localeCompare(b.operationName));
+    const statusOrder: Record<string, number> = { 'still-to-go': 0, 'new': 1, 'returning': 2, 'not-returning': 3 };
+    bookings.sort((a, b) => (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99) || a.operationName.localeCompare(b.operationName));
 
-    return NextResponse.json({ bookings, remainingFields: totalRemainingFields });
+    return NextResponse.json({ bookings, remainingFields: totalRemainingFields, currentYear, previousYear });
   } catch (error) {
     console.error('Bookings API error:', (error as Error).message);
-    return NextResponse.json({ bookings: [], remainingFields: 0 }, { status: 200 });
+    return NextResponse.json({ bookings: [], remainingFields: 0, currentYear: new Date().getFullYear(), previousYear: new Date().getFullYear() - 1 }, { status: 200 });
   }
 }

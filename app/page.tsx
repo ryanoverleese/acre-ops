@@ -17,7 +17,7 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
 
     // Calculate install stats from probe_assignments for current season
     const currentSeasonFsIds = new Set(
-      fieldSeasons.filter(fs => fs.season == 2026).map(fs => fs.id)
+      fieldSeasons.filter(fs => fs.season == new Date().getFullYear()).map(fs => fs.id)
     );
     const currentSeasonAssignments = probeAssignments.filter(pa => {
       const fsId = pa.field_season?.[0]?.id;
