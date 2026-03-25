@@ -688,31 +688,36 @@ export default function FieldsClient({
 
   // Filter probes for a specific field's operation: show probes owned by the same
   // operation + Acre Insights inventory probes, plus any probe already assigned to this field
+  const isAcreInsightsProbe = useCallback((p: { ownerOperationName?: string; ownerBillingEntity?: string }) => {
+    const check = (s: string) => s.toLowerCase().includes('acre insights');
+    return (p.ownerOperationName && check(p.ownerOperationName)) || (p.ownerBillingEntity && check(p.ownerBillingEntity));
+  }, []);
+
   const getProbesForField = useCallback((fieldOperation: string, currentProbeId?: number | null) => {
-    const isAcreInsights = (s: string) => s.toLowerCase().includes('acre insights');
-    return allProbesWithStatus.filter(p => {
-      // Always include the currently assigned probe so it stays visible
-      if (currentProbeId && p.id === currentProbeId) return true;
-      // Include probes owned by the same operation
-      if (p.ownerOperationName && p.ownerOperationName === fieldOperation) return true;
-      // Include Acre Insights company inventory
-      if (p.ownerOperationName && isAcreInsights(p.ownerOperationName)) return true;
-      if (p.ownerBillingEntity && isAcreInsights(p.ownerBillingEntity)) return true;
-      // Include unassigned/no-owner probes (On Order with no operation set yet)
-      if (!p.ownerOperationName && !p.ownerBillingEntity) return true;
-      if (p.ownerBillingEntity === 'Unassigned') return true;
-      return false;
-    }).sort((a, b) => {
-      // Push assigned probes (not the current field's probe) to the bottom
+    const sortProbes = (list: typeof allProbesWithStatus) => list.sort((a, b) => {
       const aAssigned = a.isAssigned && a.id !== currentProbeId;
       const bAssigned = b.isAssigned && b.id !== currentProbeId;
       if (aAssigned !== bAssigned) return aAssigned ? 1 : -1;
-      // Within each group, sort by billing entity then serial number
       const opCompare = (a.ownerBillingEntity || '').localeCompare(b.ownerBillingEntity || '');
       if (opCompare !== 0) return opCompare;
       return (a.serialNumber || '').localeCompare(b.serialNumber || '');
     });
-  }, [allProbesWithStatus]);
+
+    const operationProbes = allProbesWithStatus.filter(p => {
+      if (currentProbeId && p.id === currentProbeId && !isAcreInsightsProbe(p)) return true;
+      if (p.ownerOperationName && p.ownerOperationName === fieldOperation) return true;
+      if (!p.ownerOperationName && !p.ownerBillingEntity) return true;
+      if (p.ownerBillingEntity === 'Unassigned') return true;
+      return false;
+    });
+
+    const acreInsightsProbes = allProbesWithStatus.filter(p => {
+      if (currentProbeId && p.id === currentProbeId && isAcreInsightsProbe(p)) return true;
+      return isAcreInsightsProbe(p);
+    });
+
+    return { operationProbes: sortProbes(operationProbes), acreInsightsProbes: sortProbes(acreInsightsProbes) };
+  }, [allProbesWithStatus, isAcreInsightsProbe]);
 
   // Legacy alias - sortedProbes now defaults to all probes (used only as fallback)
   const sortedProbes = allProbesWithStatus;
@@ -2283,14 +2288,22 @@ export default function FieldsClient({
                                             field="probeId"
                                             value={pa.probeId?.toString() || ''}
                                             type="select"
-                                            options={[
-                                              ...getProbesForField(field.operation, pa.probeId).map(p => ({
+                                            options={(() => {
+                                              const { operationProbes, acreInsightsProbes } = getProbesForField(field.operation, pa.probeId);
+                                              const mapProbe = (p: typeof operationProbes[0]) => ({
                                                 value: p.id.toString(),
                                                 label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id !== pa.probeId ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                                                 ...(p.isMultiAssigned ? { className: 'searchable-select-option-danger' } : {}),
-                                              })),
-                                              { value: '__create_new__', label: '+ Add New Probe' },
-                                            ]}
+                                              });
+                                              return [
+                                                ...operationProbes.map(mapProbe),
+                                                ...(acreInsightsProbes.length > 0 ? [
+                                                  { value: '__acre_insights_group__', label: `Acre Insights Inventory (${acreInsightsProbes.length})`, isGroupHeader: true },
+                                                  ...acreInsightsProbes.map(mapProbe),
+                                                ] : []),
+                                                { value: '__create_new__', label: '+ Add New Probe' },
+                                              ];
+                                            })()}
                                             onSave={handleProbeAssignmentSave}
                                             onAction={(action) => {
                                               if (action === '__create_new__') {

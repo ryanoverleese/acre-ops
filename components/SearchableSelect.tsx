@@ -3,10 +3,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
+export interface SelectOption {
+  value: string;
+  label: string;
+  className?: string;
+  isGroupHeader?: boolean;
+}
+
 export interface SearchableSelectProps {
   value: string;
   onChange: (value: string) => void;
-  options: { value: string; label: string; className?: string }[];
+  options: SelectOption[];
   placeholder?: string;
   disabled?: boolean;
   style?: React.CSSProperties;
@@ -24,6 +31,9 @@ export default function SearchableSelect({
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(options.filter(o => o.isGroupHeader).map(o => o.value))
+  );
   const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -155,15 +165,46 @@ export default function SearchableSelect({
             >
               {placeholder}
             </div>
-            {filtered.map(o => (
-              <div
-                key={o.value}
-                className={`searchable-select-option ${o.value === value ? 'selected' : ''} ${o.className || ''}`}
-                onClick={() => handleSelect(o.value)}
-              >
-                {o.label}
-              </div>
-            ))}
+            {(() => {
+              let currentGroup: string | null = null;
+              const isSearching = !!search;
+              return filtered.map(o => {
+                if (o.isGroupHeader) {
+                  currentGroup = o.value;
+                  const isCollapsed = collapsedGroups.has(o.value);
+                  // When searching, skip group headers (show all matching options flat)
+                  if (isSearching) { currentGroup = null; return null; }
+                  return (
+                    <div
+                      key={`group-${o.value}`}
+                      className="searchable-select-group-header"
+                      onClick={() => setCollapsedGroups(prev => {
+                        const next = new Set(prev);
+                        if (next.has(o.value)) next.delete(o.value);
+                        else next.add(o.value);
+                        return next;
+                      })}
+                    >
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform 0.15s' }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                      {o.label}
+                    </div>
+                  );
+                }
+                // If in a collapsed group and not searching, hide this option
+                if (!isSearching && currentGroup && collapsedGroups.has(currentGroup)) return null;
+                return (
+                  <div
+                    key={o.value}
+                    className={`searchable-select-option ${o.value === value ? 'selected' : ''} ${o.className || ''}`}
+                    onClick={() => handleSelect(o.value)}
+                  >
+                    {o.label}
+                  </div>
+                );
+              });
+            })()}
             {filtered.length === 0 && search && (
               <div className="searchable-select-empty">No matches</div>
             )}

@@ -29,7 +29,7 @@ export interface EditSeasonModalProps {
   productTypeOptions: { value: string; label: string }[];
   seasonOpts: DynamicSeasonOptions;
   getRateForServiceType: (serviceType: string) => string;
-  getProbesForField: (fieldOperation: string, currentProbeId?: number | null) => ProbeWithStatus[];
+  getProbesForField: (fieldOperation: string, currentProbeId?: number | null) => { operationProbes: ProbeWithStatus[]; acreInsightsProbes: ProbeWithStatus[] };
   onClose: () => void;
   onSaved: () => void;
   onFieldsUpdate: (updater: (prev: ProcessedField[]) => ProcessedField[]) => void;
@@ -317,14 +317,22 @@ export default function EditSeasonModal({
                       onProbeIdChange(v);
                     }
                   }}
-                  options={[
-                    ...getProbesForField(field.operation, field.probeId).map((p) => ({
+                  options={(() => {
+                    const { operationProbes, acreInsightsProbes } = getProbesForField(field.operation, field.probeId);
+                    const mapProbe = (p: ProbeWithStatus) => ({
                       value: String(p.id),
                       label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbeId ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                       ...(p.isMultiAssigned ? { className: 'searchable-select-option-danger' } : {}),
-                    })),
-                    { value: '__create_new__', label: '+ Add New Probe' },
-                  ]}
+                    });
+                    return [
+                      ...operationProbes.map(mapProbe),
+                      ...(acreInsightsProbes.length > 0 ? [
+                        { value: '__acre_insights_group__', label: `Acre Insights Inventory (${acreInsightsProbes.length})`, isGroupHeader: true },
+                        ...acreInsightsProbes.map(mapProbe),
+                      ] : []),
+                      { value: '__create_new__', label: '+ Add New Probe' },
+                    ];
+                  })()}
                   placeholder="— No Probe —"
                 />
               </div>
@@ -339,14 +347,22 @@ export default function EditSeasonModal({
                       onProbe2IdChange(v);
                     }
                   }}
-                  options={[
-                    ...getProbesForField(field.operation, field.probe2Id).map((p) => ({
+                  options={(() => {
+                    const { operationProbes, acreInsightsProbes } = getProbesForField(field.operation, field.probe2Id);
+                    const mapProbe = (p: ProbeWithStatus) => ({
                       value: String(p.id),
                       label: `${p.serialNumber ? `#${p.serialNumber}` : `(On Order #${p.id})`} - ${p.isAssigned && p.id.toString() !== selectedProbe2Id ? '⚠ Already placed' : p.ownerBillingEntity}${p.brand ? ` - ${p.brand}` : ''}`,
                       ...(p.isMultiAssigned ? { className: 'searchable-select-option-danger' } : {}),
-                    })),
-                    { value: '__create_new__', label: '+ Add New Probe' },
-                  ]}
+                    });
+                    return [
+                      ...operationProbes.map(mapProbe),
+                      ...(acreInsightsProbes.length > 0 ? [
+                        { value: '__acre_insights_group__', label: `Acre Insights Inventory (${acreInsightsProbes.length})`, isGroupHeader: true },
+                        ...acreInsightsProbes.map(mapProbe),
+                      ] : []),
+                      { value: '__create_new__', label: '+ Add New Probe' },
+                    ];
+                  })()}
                   placeholder="— No Probe —"
                 />
               </div>
