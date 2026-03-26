@@ -31,6 +31,14 @@ interface NewLineItem {
   unitPrice: number;
 }
 
+interface EditLineItem {
+  id?: number; // existing item id, undefined if new
+  productId: number | null;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
 }
@@ -73,6 +81,13 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
   const [newItems, setNewItems] = useState<NewLineItem[]>([
     { productId: null, productName: '', quantity: 1, unitPrice: 0 },
   ]);
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editBillingEntity, setEditBillingEntity] = useState<number | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editItems, setEditItems] = useState<EditLineItem[]>([]);
 
   // Add item to order state
   const [showAddItem, setShowAddItem] = useState(false);
@@ -271,6 +286,89 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       setSaving(false);
     }
   }, [selectedOrder, router, showToast]);
+
+  // Open edit modal pre-filled with current order data
+  const openEditModal = useCallback((order: ProcessedOrder) => {
+    setEditBillingEntity(order.billingEntityId);
+    setEditDate(order.orderDate);
+    setEditNotes(order.notes);
+    setEditItems(order.items.map(item => ({
+      id: item.id,
+      productId: item.productId,
+      productName: item.productName,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    })));
+    setShowEditModal(true);
+  }, []);
+
+  // Save edited quote
+  const handleSaveEdit = useCallback(async () => {
+    if (!selectedOrder) return;
+    const validItems = editItems.filter(i => i.productId && i.quantity > 0);
+    if (validItems.length === 0) {
+      showToast('Please add at least one item');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Update the order header
+      const orderResp = await fetch(`/api/orders/${selectedOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billing_entity: editBillingEntity,
+          order_date: editDate,
+          notes: editNotes,
+        }),
+      });
+      if (!orderResp.ok) throw new Error('Failed to update order');
+
+      // Delete all existing items, then re-create from editItems
+      for (const item of selectedOrder.items) {
+        await fetch(`/api/order-items/${item.id}`, { method: 'DELETE' });
+      }
+      for (const item of validItems) {
+        await fetch('/api/order-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order: selectedOrder.id,
+            product: item.productId,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+          }),
+        });
+      }
+
+      showToast('Quote updated');
+      setShowEditModal(false);
+      router.refresh();
+    } catch {
+      showToast('Failed to save changes');
+    } finally {
+      setSaving(false);
+    }
+  }, [selectedOrder, editBillingEntity, editDate, editNotes, editItems, router, showToast]);
+
+  const updateEditItem = useCallback((index: number, field: keyof EditLineItem, value: unknown) => {
+    setEditItems(prev => {
+      const updated = [...prev];
+      if (field === 'productId') {
+        const product = catalog.find(p => p.id === value);
+        updated[index] = {
+          ...updated[index],
+          productId: value as number,
+          productName: product?.name || '',
+          unitPrice: product?.rate || 0,
+        };
+      } else {
+        updated[index] = { ...updated[index], [field]: value };
+      }
+      return updated;
+    });
+  }, [catalog]);
 
   // Duplicate order as a new Quote
   const duplicateOrder = useCallback(async (order: ProcessedOrder) => {
@@ -658,6 +756,14 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                     Copy Quote
                   </button>
                 )}
+                {(selectedOrder.status === 'Quote' || selectedOrder.status === 'Ordered') && (
+                  <button
+                    onClick={() => openEditModal(selectedOrder)}
+                    className="order-btn-outline"
+                  >
+                    Edit Quote
+                  </button>
+                )}
                 <button
                   onClick={() => duplicateOrder(selectedOrder)}
                   disabled={saving}
@@ -803,6 +909,90 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Quote Modal */}
+      {showEditModal && selectedOrder && (
+        <div className="detail-panel-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="detail-panel" onClick={e => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Edit Quote</h3>
+              <button className="close-btn" onClick={() => setShowEditModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>Customer</label>
+                  <SearchableSelect
+                    value={editBillingEntity ? String(editBillingEntity) : ''}
+                    onChange={(v) => setEditBillingEntity(parseInt(v) || null)}
+                    options={billingEntities.map(be => ({ value: String(be.id), label: be.name }))}
+                    placeholder="Select customer..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" value={editDate} onChange={e => setEditDate(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Items</label>
+                  {editItems.map((item, idx) => (
+                    <div key={idx} className="order-new-item-card">
+                      <SearchableSelect
+                        value={item.productId ? String(item.productId) : ''}
+                        onChange={(v) => updateEditItem(idx, 'productId', parseInt(v) || null)}
+                        options={catalog.map(p => ({ value: String(p.id), label: `${p.name} (${formatCurrency(p.rate)})` }))}
+                        placeholder="Select product..."
+                        className="order-new-item-select"
+                      />
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Qty</label>
+                          <input type="number" min="1" value={item.quantity} onChange={e => updateEditItem(idx, 'quantity', parseInt(e.target.value) || 1)} />
+                        </div>
+                        <div className="form-group">
+                          <label>Price</label>
+                          <input type="number" step="0.01" value={item.unitPrice} onChange={e => updateEditItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)} />
+                        </div>
+                        <div className="order-new-item-total-col">
+                          <span className="order-new-item-total">{formatCurrency(item.quantity * item.unitPrice)}</span>
+                          {editItems.length > 1 && (
+                            <button onClick={() => setEditItems(prev => prev.filter((_, i) => i !== idx))} className="order-new-item-remove">&times;</button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setEditItems(prev => [...prev, { productId: null, productName: '', quantity: 1, unitPrice: 0 }])}
+                    className="btn btn-secondary order-add-line-btn"
+                  >
+                    + Add Line
+                  </button>
+                </div>
+                <div className="order-modal-total-row">
+                  <span className="order-modal-total">
+                    Total: {formatCurrency(editItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0))}
+                  </span>
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} />
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowEditModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleSaveEdit} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       )}
