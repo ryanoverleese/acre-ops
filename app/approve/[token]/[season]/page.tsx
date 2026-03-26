@@ -8,7 +8,7 @@ interface PageProps {
     token: string;
     season: string;
   }>;
-  searchParams: Promise<{ pin?: string }>;
+  searchParams: Promise<{ pin?: string; rename?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -24,6 +24,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export interface ApprovalProbeAssignment {
   id: number;
   fieldSeasonId: number;
+  fieldId: number;
   fieldName: string;
   probeNumber: number;
   label: string;
@@ -42,8 +43,9 @@ export interface ApprovalProbeAssignment {
 
 export default async function ApprovePage({ params, searchParams }: PageProps) {
   const { token, season } = await params;
-  const { pin } = await searchParams;
+  const { pin, rename } = await searchParams;
   const allowClientPin = pin === 'true';
+  const allowRename = rename === 'true';
   const seasonYear = parseInt(season, 10);
 
   // Fetch all data in parallel
@@ -119,6 +121,7 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
       return {
         id: pa.id,
         fieldSeasonId: pa.field_season?.[0]?.id || 0,
+        fieldId: field?.id || 0,
         fieldName: field?.name || 'Unknown Field',
         probeNumber: pa.probe_number || 1,
         label: pa.label || '',
@@ -161,6 +164,7 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
       season={seasonYear}
       probeAssignments={approvalProbeAssignments}
       allowClientPin={allowClientPin}
+      allowRename={allowRename}
     />
   );
 }

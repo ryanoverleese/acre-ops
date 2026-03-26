@@ -50,6 +50,8 @@ export default function ApprovalsClient({
 
   // Allow client to suggest probe locations
   const [allowClientPin, setAllowClientPin] = useState(false);
+  // Allow client to rename fields
+  const [allowRename, setAllowRename] = useState(false);
 
   // Field-info question selection
   const FIELD_INFO_QUESTIONS = [
@@ -372,14 +374,17 @@ export default function ApprovalsClient({
     const year = selectedSeason !== 'all' ? selectedSeason : new Date().getFullYear();
     const path = linkType === 'field-info' ? 'field-info' : linkType === 'combined' ? 'review' : 'approve';
     let url = `${window.location.origin}/${path}/${approvalToken}/${year}`;
-    // For field-info and combined links, append selected questions (omit param if all selected)
+
+    const params = new URLSearchParams();
     if ((linkType === 'field-info' || linkType === 'combined') && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
-      url += `?q=${Array.from(selectedQuestions).join(',')}`;
+      params.set('q', Array.from(selectedQuestions).join(','));
     }
-    // Append pin flag if enabled
-    if (allowClientPin && linkType === 'approval') {
-      url += (url.includes('?') ? '&' : '?') + 'pin=true';
+    if (linkType === 'approval') {
+      if (allowClientPin) params.set('pin', 'true');
+      if (allowRename) params.set('rename', 'true');
     }
+    if (params.toString()) url += `?${params.toString()}`;
+
     // Append operation name as hash fragment for easy identification (ignored by router)
     if (linkOperationId) {
       const opName = items.find((i) => i.operationId === linkOperationId)?.operationName
@@ -459,16 +464,18 @@ export default function ApprovalsClient({
       {/* Question selector for field-info and combined links */}
       {(linkType === 'field-info' || linkType === 'combined') && renderQuestionChips()}
 
-      {/* Pin drop option — approval links only */}
+      {/* Client options — approval links only */}
       {linkType === 'approval' && (
-        <label className="approvals-pin-toggle">
-          <input
-            type="checkbox"
-            checked={allowClientPin}
-            onChange={(e) => setAllowClientPin(e.target.checked)}
-          />
-          Allow client to suggest probe locations
-        </label>
+        <div className="approvals-client-options">
+          <label className="approvals-pin-toggle">
+            <input type="checkbox" checked={allowClientPin} onChange={(e) => setAllowClientPin(e.target.checked)} />
+            Allow client to suggest probe locations
+          </label>
+          <label className="approvals-pin-toggle">
+            <input type="checkbox" checked={allowRename} onChange={(e) => setAllowRename(e.target.checked)} />
+            Ask client to rename fields
+          </label>
+        </div>
       )}
 
       <div className="approvals-link-row">

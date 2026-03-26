@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -16,11 +16,15 @@ const defaultIcon = L.icon({
 });
 
 function ClickHandler({ onPin }: { onPin: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onPin(e.latlng.lat, e.latlng.lng);
-    },
-  });
+  useMapEvents({ click(e) { onPin(e.latlng.lat, e.latlng.lng); } });
+  return null;
+}
+
+function FlyToHandler({ target }: { target: [number, number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (target) map.flyTo([target[0], target[1]], target[2], { duration: 1.5 });
+  }, [map, target]);
   return null;
 }
 
@@ -33,22 +37,128 @@ interface ApprovalPinMapProps {
 export default function ApprovalPinMap({ fieldName, onSave, saving }: ApprovalPinMapProps) {
   const [isClient, setIsClient] = useState(false);
   const [pin, setPin] = useState<[number, number] | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [flyTarget, setFlyTarget] = useState<[number, number, number] | null>(null);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  useEffect(() => { setIsClient(true); }, []);
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearching(true);
+    setSearchError('');
+
+    // Try parsing as "lat, lon" or "lat lon"
+    const coordMatch = q.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+    if (coordMatch) {
+      const lat = parseFloat(coordMatch[1]);
+      const lng = parseFloat(coordMatch[2]);
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+        setFlyTarget([lat, lng, 15]);
+        setSearching(false);
+        return;
+      }
+    }
+
+    // Geocode via Nominatim
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`
+      );
+      const data = await res.json();
+      if (data.length > 0) {
+        setFlyTarget([parseFloat(data[0].lat), parseFloat(data[0].lon), 13]);
+      } else {
+        setSearchError('Location not found — try a different search');
+      }
+    } catch {
+      setSearchError('Search failed');
+    } finally {
+      setSearching(false);
+    }
+  };
 
   if (!isClient) {
-    return (
-      <div className="approval-map-loading">
-        <div className="loading">Loading map...</div>
-      </div>
-    );
+    return <div className="approval-map-loading"><div className="loading">Loading map...</div></div>;
   }
+
+  const overlayBase: React.CSSProperties = {
+    background: 'white',
+    borderRadius: '6px',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+    fontSize: '13px',
+  };
 
   return (
     <div style={{ height: '100%', position: 'relative' }}>
-      {/* Instruction / action bar */}
+
+      {/* Search bar */}
+      <form
+        onSubmit={handleSearch}
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          display: 'flex',
+          gap: '6px',
+          width: 'min(480px, 90%)',
+        }}
+      >
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => { setSearchQuery(e.target.value); setSearchError(''); }}
+          placeholder="Search address, city, state, zip, or lat, lon…"
+          style={{
+            ...overlayBase,
+            flex: 1,
+            padding: '8px 12px',
+            border: searchError ? '1.5px solid #dc2626' : '1px solid #e7e5e4',
+            outline: 'none',
+            fontSize: '13px',
+          }}
+        />
+        <button
+          type="submit"
+          disabled={searching}
+          style={{
+            ...overlayBase,
+            padding: '8px 14px',
+            border: '1px solid #e7e5e4',
+            cursor: searching ? 'not-allowed' : 'pointer',
+            fontWeight: 500,
+            color: '#1a1815',
+            whiteSpace: 'nowrap',
+            opacity: searching ? 0.7 : 1,
+          }}
+        >
+          {searching ? '…' : 'Go'}
+        </button>
+      </form>
+
+      {/* Search error */}
+      {searchError && (
+        <div style={{
+          position: 'absolute',
+          top: '52px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1000,
+          ...overlayBase,
+          padding: '6px 14px',
+          fontSize: '12px',
+          color: '#dc2626',
+        }}>
+          {searchError}
+        </div>
+      )}
+
+      {/* Pin instruction / confirm bar */}
       <div style={{
         position: 'absolute',
         bottom: '16px',
@@ -60,42 +170,17 @@ export default function ApprovalPinMap({ fieldName, onSave, saving }: ApprovalPi
         alignItems: 'center',
       }}>
         {!pin ? (
-          <div style={{
-            background: 'white',
-            padding: '8px 16px',
-            borderRadius: '6px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: '#1a1815',
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-          }}>
+          <div style={{ ...overlayBase, padding: '8px 16px', fontWeight: 500, color: '#1a1815', pointerEvents: 'none', whiteSpace: 'nowrap' }}>
             Click on the map to place a pin
           </div>
         ) : (
           <>
-            <span style={{
-              background: 'white',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
-              whiteSpace: 'nowrap',
-            }}>
+            <span style={{ ...overlayBase, padding: '6px 12px', fontSize: '12px', whiteSpace: 'nowrap' }}>
               {pin[0].toFixed(6)}, {pin[1].toFixed(6)}
             </span>
             <button
               onClick={() => setPin(null)}
-              style={{
-                background: 'white',
-                border: '1px solid #e7e5e4',
-                padding: '6px 12px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                whiteSpace: 'nowrap',
-              }}
+              style={{ ...overlayBase, border: '1px solid #e7e5e4', padding: '6px 12px', cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
               Clear
             </button>
@@ -103,16 +188,11 @@ export default function ApprovalPinMap({ fieldName, onSave, saving }: ApprovalPi
               onClick={() => onSave(pin[0], pin[1])}
               disabled={saving}
               style={{
-                background: '#4a7a5b',
-                color: 'white',
-                border: 'none',
-                padding: '6px 16px',
-                borderRadius: '4px',
+                background: '#4a7a5b', color: 'white', border: 'none',
+                padding: '6px 16px', borderRadius: '6px',
                 cursor: saving ? 'not-allowed' : 'pointer',
-                fontSize: '13px',
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                opacity: saving ? 0.7 : 1,
+                fontSize: '13px', fontWeight: 600,
+                whiteSpace: 'nowrap', opacity: saving ? 0.7 : 1,
               }}
             >
               {saving ? 'Saving...' : 'Save Location'}
@@ -128,21 +208,14 @@ export default function ApprovalPinMap({ fieldName, onSave, saving }: ApprovalPi
         scrollWheelZoom={true}
       >
         <ClickHandler onPin={(lat, lng) => setPin([lat, lng])} />
-        <TileLayer
-          attribution="&copy; Google"
-          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
-        />
+        <FlyToHandler target={flyTarget} />
+        <TileLayer attribution="&copy; Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" />
         {pin && (
           <Marker
             position={pin}
             icon={defaultIcon}
             draggable={true}
-            eventHandlers={{
-              dragend(e) {
-                const { lat, lng } = (e.target as L.Marker).getLatLng();
-                setPin([lat, lng]);
-              },
-            }}
+            eventHandlers={{ dragend(e) { const { lat, lng } = (e.target as L.Marker).getLatLng(); setPin([lat, lng]); } }}
           >
             <Popup>{fieldName}</Popup>
           </Marker>

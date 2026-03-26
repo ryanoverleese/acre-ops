@@ -28,23 +28,34 @@ interface ApprovalClientProps {
   season: number;
   probeAssignments?: ApprovalProbeAssignment[];
   allowClientPin?: boolean;
+  allowRename?: boolean;
 }
 
-export default function ApprovalClient({ operationName, season, probeAssignments: initialProbeAssignments = [], allowClientPin = false }: ApprovalClientProps) {
+export default function ApprovalClient({ operationName, season, probeAssignments: initialProbeAssignments = [], allowClientPin = false, allowRename = false }: ApprovalClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [changeNotes, setChangeNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
   const [bulkLoading, setBulkLoading] = useState(false);
 
-  // Group probe assignments by field
+  // Track field display names (fieldId → name), seeded from initial data
+  const [fieldNames, setFieldNames] = useState<Record<number, string>>(() => {
+    const map: Record<number, string> = {};
+    initialProbeAssignments.forEach((pa) => {
+      if (pa.fieldId) map[pa.fieldId] = pa.fieldName;
+    });
+    return map;
+  });
+  const [renameDraft, setRenameDraft] = useState<Record<number, string>>({});
+  const [renameSaving, setRenameSaving] = useState<Record<number, boolean>>({});
+
+  // Group probe assignments by fieldId (stable key even after rename)
   const groupedProbeAssignments = useMemo(() => {
-    const groups: Record<string, ApprovalProbeAssignment[]> = {};
+    const groups: Record<number, ApprovalProbeAssignment[]> = {};
     probeAssignments.forEach((pa) => {
-      if (!groups[pa.fieldName]) {
-        groups[pa.fieldName] = [];
-      }
-      groups[pa.fieldName].push(pa);
+      const key = pa.fieldId || 0;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(pa);
     });
     return groups;
   }, [probeAssignments]);
@@ -207,6 +218,31 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     }
   };
 
+  // Rename a field
+  const handleRenameField = async (fieldId: number) => {
+    const newName = renameDraft[fieldId]?.trim();
+    if (!newName || newName === fieldNames[fieldId]) {
+      setRenameDraft((prev) => ({ ...prev, [fieldId]: '' }));
+      return;
+    }
+    setRenameSaving((prev) => ({ ...prev, [fieldId]: true }));
+    try {
+      const response = await fetch(`/api/fields/${fieldId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (response.ok) {
+        setFieldNames((prev) => ({ ...prev, [fieldId]: newName }));
+        setRenameDraft((prev) => ({ ...prev, [fieldId]: '' }));
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setRenameSaving((prev) => ({ ...prev, [fieldId]: false }));
+    }
+  };
+
   // Render status area for a card (approve button, approved badge, or change requested)
   const renderStatusActions = (
     status: string,
@@ -325,8 +361,30 @@ export default function ApprovalClient({ operationName, season, probeAssignments
 
             {/* Probe Assignments grouped by Field */}
             <div className="approval-fields">
-              {Object.entries(groupedProbeAssignments).map(([fieldName, probes]) => (
-                <div key={fieldName} className="approval-field-group">
+              {Object.entries(groupedProbeAssignments).map(([fieldIdStr, probes]) => {
+                const fieldId = Number(fieldIdStr);
+                const displayName = fieldNames[fieldId] || probes[0].fieldName;
+                return (
+                <div key={fieldId} className="approval-field-group">
+                  {/* Field rename header */}
+                  {allowRename && (
+                    <div className="approval-field-rename">
+                      <span className="approval-field-rename-label">Field name</span>
+                      <input
+                        className="approval-field-rename-input"
+                        type="text"
+                        placeholder={displayName}
+                        value={renameDraft[fieldId] ?? ''}
+                        onChange={(e) => setRenameDraft((prev) => ({ ...prev, [fieldId]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameField(fieldId); }}
+                        onBlur={() => handleRenameField(fieldId)}
+                      />
+                      {renameSaving[fieldId] && <span className="approval-field-rename-saving">Saving…</span>}
+                      {!renameSaving[fieldId] && fieldNames[fieldId] && (
+                        <span className="approval-field-rename-saved">✓ {displayName}</span>
+                      )}
+                    </div>
+                  )}
                   {probes.map((pa) => {
                     const key = `pa-${pa.id}`;
 
@@ -335,7 +393,7 @@ export default function ApprovalClient({ operationName, season, probeAssignments
                         {/* Card Header */}
                         <div className="card-header">
                           <div className="card-title">
-                            <h3>{fieldName} - Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
+                            <h3>{displayName} - Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}</h3>
                             <span className={`status-badge ${pa.approvalStatus === 'Approved' ? 'status-approved' : pa.approvalStatus === 'Change Requested' ? 'status-change-requested' : 'status-pending'}`}>
                               {pa.approvalStatus}
                             </span>
@@ -350,11 +408,11 @@ export default function ApprovalClient({ operationName, season, probeAssignments
                               <ApprovalMap
                                 lat={Number(pa.placementLat)}
                                 lng={Number(pa.placementLng)}
-                                fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`}
+                                fieldName={`${displayName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`}
                               />
                             ) : allowClientPin ? (
                               <ApprovalPinMap
-                                fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`}
+                                fieldName={`${displayName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`}
                                 onSave={(lat, lng) => handleSaveLocation(pa.id, lat, lng)}
                                 saving={saving[`loc-${pa.id}`]}
                               />
@@ -418,7 +476,8 @@ export default function ApprovalClient({ operationName, season, probeAssignments
                     );
                   })}
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Bottom Bulk Actions */}

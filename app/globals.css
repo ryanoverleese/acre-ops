@@ -4568,6 +4568,13 @@ input[type="date"]:focus {
   color: var(--accent-purple);
 }
 
+.approvals-client-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) 0;
+}
+
 .approvals-pin-toggle {
   display: flex;
   align-items: center;
@@ -4575,12 +4582,58 @@ input[type="date"]:focus {
   font-size: 13px;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: var(--space-2) 0;
+  padding: var(--space-1) 0;
   user-select: none;
 }
 
 .approvals-pin-toggle input[type="checkbox"] {
   cursor: pointer;
+}
+
+.approval-field-rename {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-amber-dim);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.approval-field-rename-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-amber);
+  white-space: nowrap;
+}
+
+.approval-field-rename-input {
+  flex: 1;
+  min-width: 200px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid rgba(217, 119, 6, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: white;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.approval-field-rename-input:focus {
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+}
+
+.approval-field-rename-saving {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.approval-field-rename-saved {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-primary);
 }
 
 /* ============================================
