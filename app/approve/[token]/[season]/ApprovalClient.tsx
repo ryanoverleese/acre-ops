@@ -4,8 +4,17 @@ import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { ApprovalProbeAssignment } from './page';
 
-// Dynamically import map component
+// Dynamically import map components
 const ApprovalMap = dynamic(() => import('./ApprovalMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="approval-map-loading">
+      <div className="loading">Loading map...</div>
+    </div>
+  ),
+});
+
+const ApprovalPinMap = dynamic(() => import('./ApprovalPinMap'), {
   ssr: false,
   loading: () => (
     <div className="approval-map-loading">
@@ -18,9 +27,10 @@ interface ApprovalClientProps {
   operationName: string;
   season: number;
   probeAssignments?: ApprovalProbeAssignment[];
+  allowClientPin?: boolean;
 }
 
-export default function ApprovalClient({ operationName, season, probeAssignments: initialProbeAssignments = [] }: ApprovalClientProps) {
+export default function ApprovalClient({ operationName, season, probeAssignments: initialProbeAssignments = [], allowClientPin = false }: ApprovalClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [changeNotes, setChangeNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -173,6 +183,30 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     }
   };
 
+  // Save a client-suggested probe location
+  const handleSaveLocation = async (probeAssignmentId: number, lat: number, lng: number) => {
+    const key = `loc-${probeAssignmentId}`;
+    setSaving((prev) => ({ ...prev, [key]: true }));
+    try {
+      const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ placement_lat: lat, placement_lng: lng }),
+      });
+      if (response.ok) {
+        setProbeAssignments((prev) =>
+          prev.map((pa) =>
+            pa.id === probeAssignmentId ? { ...pa, placementLat: lat, placementLng: lng } : pa
+          )
+        );
+      }
+    } catch {
+      // silent fail
+    } finally {
+      setSaving((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
   // Render status area for a card (approve button, approved badge, or change requested)
   const renderStatusActions = (
     status: string,
@@ -311,11 +345,21 @@ export default function ApprovalClient({ operationName, season, probeAssignments
                         {/* Content */}
                         <div className="card-content">
                           {/* Map */}
-                          {pa.placementLat && pa.placementLng && (
-                            <div className="card-map">
-                              <ApprovalMap lat={Number(pa.placementLat)} lng={Number(pa.placementLng)} fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`} />
-                            </div>
-                          )}
+                          <div className="card-map">
+                            {pa.placementLat && pa.placementLng ? (
+                              <ApprovalMap
+                                lat={Number(pa.placementLat)}
+                                lng={Number(pa.placementLng)}
+                                fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`}
+                              />
+                            ) : allowClientPin ? (
+                              <ApprovalPinMap
+                                fieldName={`${fieldName} - Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}`}
+                                onSave={(lat, lng) => handleSaveLocation(pa.id, lat, lng)}
+                                saving={saving[`loc-${pa.id}`]}
+                              />
+                            ) : null}
+                          </div>
 
                           {/* Details */}
                           <div className="card-details">

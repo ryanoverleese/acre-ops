@@ -48,6 +48,9 @@ export default function ApprovalsClient({
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  // Allow client to suggest probe locations
+  const [allowClientPin, setAllowClientPin] = useState(false);
+
   // Field-info question selection
   const FIELD_INFO_QUESTIONS = [
     { key: 'crop', label: 'Crop' },
@@ -373,6 +376,10 @@ export default function ApprovalsClient({
     if ((linkType === 'field-info' || linkType === 'combined') && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
       url += `?q=${Array.from(selectedQuestions).join(',')}`;
     }
+    // Append pin flag if enabled
+    if (allowClientPin && linkType === 'approval') {
+      url += (url.includes('?') ? '&' : '?') + 'pin=true';
+    }
     // Append operation name as hash fragment for easy identification (ignored by router)
     if (linkOperationId) {
       const opName = items.find((i) => i.operationId === linkOperationId)?.operationName
@@ -451,6 +458,18 @@ export default function ApprovalsClient({
 
       {/* Question selector for field-info and combined links */}
       {(linkType === 'field-info' || linkType === 'combined') && renderQuestionChips()}
+
+      {/* Pin drop option — approval links only */}
+      {linkType === 'approval' && (
+        <label className="approvals-pin-toggle">
+          <input
+            type="checkbox"
+            checked={allowClientPin}
+            onChange={(e) => setAllowClientPin(e.target.checked)}
+          />
+          Allow client to suggest probe locations
+        </label>
+      )}
 
       <div className="approvals-link-row">
         <input

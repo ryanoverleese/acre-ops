@@ -8,6 +8,7 @@ interface PageProps {
     token: string;
     season: string;
   }>;
+  searchParams: Promise<{ pin?: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -39,8 +40,10 @@ export interface ApprovalProbeAssignment {
   fuelSource?: string;
 }
 
-export default async function ApprovePage({ params }: PageProps) {
+export default async function ApprovePage({ params, searchParams }: PageProps) {
   const { token, season } = await params;
+  const { pin } = await searchParams;
+  const allowClientPin = pin === 'true';
   const seasonYear = parseInt(season, 10);
 
   // Fetch all data in parallel
@@ -157,6 +160,7 @@ export default async function ApprovePage({ params }: PageProps) {
       operationName={operation.name}
       season={seasonYear}
       probeAssignments={approvalProbeAssignments}
+      allowClientPin={allowClientPin}
     />
   );
 }
