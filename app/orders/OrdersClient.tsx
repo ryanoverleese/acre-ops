@@ -1110,6 +1110,11 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                     'Please charge my card on file ending in 6175.',
                     '',
                     'Thank you!',
+                    '',
+                    'Ryan Overleese',
+                    'Acre Insights, LLC',
+                    '308-830-1451',
+                    'ryan@acreinsights.com',
                   ].join('\n');
                   navigator.clipboard.writeText(email);
                   showToast('Email copied to clipboard');
