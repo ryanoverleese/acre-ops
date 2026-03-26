@@ -4475,13 +4475,14 @@ input[type="date"]:focus {
 }
 
 .crm-ov-card.selected {
-  border-color: var(--accent-primary);
+  border-color: #4a7a5b;
   background: var(--accent-primary-dim);
-  box-shadow: 0 0 0 1px var(--accent-primary);
+  box-shadow: 0 0 0 1px #4a7a5b;
 }
 
 .crm-ov-card.related {
-  border-color: var(--border-strong);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
   background: var(--bg-card);
 }
 

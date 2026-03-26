@@ -94,13 +94,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
   return (
     <div className="crm-ov">
       {selected ? (
-        <p className="crm-ov-hint">
-          Click same item to clear — click another to switch
-          {' · '}
-          <span style={{ fontFamily: 'monospace', fontSize: 11 }}>
-            ops:{related?.ops.size ?? 0} bes:{related?.bes.size ?? 0} contacts:{related?.contacts.size ?? 0}
-          </span>
-        </p>
+        <p className="crm-ov-hint">Click same item to clear — click another to switch</p>
       ) : (
         <p className="crm-ov-hint crm-ov-hint-idle">Click any item to surface its connections</p>
       )}
