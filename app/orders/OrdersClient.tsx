@@ -1105,6 +1105,8 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                     '',
                     itemLines,
                     '',
+                    'Please ship as soon as possible.',
+                    '',
                     'Please charge my card on file ending in 6175.',
                     '',
                     'Thank you!',
