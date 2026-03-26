@@ -32,15 +32,18 @@ interface ApprovalPinMapProps {
   fieldName: string;
   onSave: (lat: number, lng: number) => void;
   saving?: boolean;
+  initialPin?: [number, number];
 }
 
-export default function ApprovalPinMap({ fieldName, onSave, saving }: ApprovalPinMapProps) {
+export default function ApprovalPinMap({ fieldName, onSave, saving, initialPin }: ApprovalPinMapProps) {
   const [isClient, setIsClient] = useState(false);
-  const [pin, setPin] = useState<[number, number] | null>(null);
+  const [pin, setPin] = useState<[number, number] | null>(initialPin ?? null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState('');
-  const [flyTarget, setFlyTarget] = useState<[number, number, number] | null>(null);
+  const [flyTarget, setFlyTarget] = useState<[number, number, number] | null>(
+    initialPin ? [initialPin[0], initialPin[1], 14] : null
+  );
 
   useEffect(() => { setIsClient(true); }, []);
 

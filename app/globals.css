@@ -4590,6 +4590,23 @@ input[type="date"]:focus {
   cursor: pointer;
 }
 
+.fi-location-section {
+  margin-bottom: var(--space-4);
+}
+
+.fi-location-coords {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: var(--space-1) 0 var(--space-2);
+}
+
+.fi-location-map {
+  height: 320px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
 .approval-field-rename {
   display: flex;
   align-items: center;

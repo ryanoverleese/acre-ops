@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import type { FieldInfoItem, FieldInfoSelectOptions, BillingEntityOption } from './page';
+
+const ApprovalPinMap = dynamic(
+  () => import('@/app/approve/[token]/[season]/ApprovalPinMap'),
+  { ssr: false, loading: () => <div className="approval-map-loading"><div className="loading">Loading map...</div></div> }
+);
 
 interface FieldInfoClientProps {
   operationName: string;
@@ -89,6 +95,25 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
   const [saving, setSaving] = useState<Record<number, boolean>>({});
   const [saved, setSaved] = useState<Record<number, boolean>>({});
 
+  // Field name rename
+  const [fieldNames, setFieldNames] = useState<Record<number, string>>(() => {
+    const m: Record<number, string> = {};
+    initialFields.forEach((f) => { m[f.fieldId] = f.name; });
+    return m;
+  });
+  const [renameDraft, setRenameDraft] = useState<Record<number, string>>({});
+  const [renameSaving, setRenameSaving] = useState<Record<number, boolean>>({});
+
+  // Field location (lat/lng)
+  const [fieldCoords, setFieldCoords] = useState<Record<number, [number, number] | null>>(() => {
+    const m: Record<number, [number, number] | null> = {};
+    initialFields.forEach((f) => {
+      m[f.fieldId] = f.fieldLat != null && f.fieldLng != null ? [f.fieldLat, f.fieldLng] : null;
+    });
+    return m;
+  });
+  const [locationSaving, setLocationSaving] = useState<Record<number, boolean>>({});
+
   const API_FIELD_MAP: Record<string, string> = {
     irrigationType: 'irrigation_type',
     rowDirection: 'row_direction',
@@ -162,6 +187,42 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
     }
   };
 
+  const handleRenameField = async (fieldId: number) => {
+    const newName = renameDraft[fieldId]?.trim();
+    if (!newName || newName === fieldNames[fieldId]) {
+      setRenameDraft((prev) => ({ ...prev, [fieldId]: '' }));
+      return;
+    }
+    setRenameSaving((prev) => ({ ...prev, [fieldId]: true }));
+    try {
+      const res = await fetch(`/api/fields/${fieldId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (res.ok) {
+        setFieldNames((prev) => ({ ...prev, [fieldId]: newName }));
+        setRenameDraft((prev) => ({ ...prev, [fieldId]: '' }));
+      }
+    } catch { /* silent */ } finally {
+      setRenameSaving((prev) => ({ ...prev, [fieldId]: false }));
+    }
+  };
+
+  const handleSaveLocation = async (fieldId: number, lat: number, lng: number) => {
+    setLocationSaving((prev) => ({ ...prev, [fieldId]: true }));
+    try {
+      const res = await fetch(`/api/fields/${fieldId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng }),
+      });
+      if (res.ok) setFieldCoords((prev) => ({ ...prev, [fieldId]: [lat, lng] }));
+    } catch { /* silent */ } finally {
+      setLocationSaving((prev) => ({ ...prev, [fieldId]: false }));
+    }
+  };
+
   const filledCount = fields.filter((f) => {
     const form = forms[f.fieldSeasonId];
     return form && (form.irrigationType || form.crop);
@@ -211,6 +272,44 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                 </div>
 
                 <div className="card-content">
+                  {showQuestion('name') && (
+                    <div className="approval-field-rename">
+                      <span className="approval-field-rename-label">Field name</span>
+                      <input
+                        className="approval-field-rename-input"
+                        type="text"
+                        placeholder={fieldNames[field.fieldId] ?? field.name}
+                        value={renameDraft[field.fieldId] ?? ''}
+                        onChange={(e) => setRenameDraft((prev) => ({ ...prev, [field.fieldId]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameField(field.fieldId); }}
+                        onBlur={() => handleRenameField(field.fieldId)}
+                      />
+                      {renameSaving[field.fieldId] && <span className="approval-field-rename-saving">Saving…</span>}
+                      {!renameSaving[field.fieldId] && fieldNames[field.fieldId] && renameDraft[field.fieldId] === '' && (
+                        <span className="approval-field-rename-saved">✓ {fieldNames[field.fieldId]}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {showQuestion('location') && (
+                    <div className="fi-location-section">
+                      <div className="fi-field-label">Field Location</div>
+                      {fieldCoords[field.fieldId] && (
+                        <p className="fi-location-coords">
+                          Current: {fieldCoords[field.fieldId]![0].toFixed(6)}, {fieldCoords[field.fieldId]![1].toFixed(6)}
+                        </p>
+                      )}
+                      <div className="fi-location-map">
+                        <ApprovalPinMap
+                          fieldName={fieldNames[field.fieldId] ?? field.name}
+                          initialPin={fieldCoords[field.fieldId] ?? undefined}
+                          onSave={(lat, lng) => handleSaveLocation(field.fieldId, lat, lng)}
+                          saving={locationSaving[field.fieldId]}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {showQuestion('billing_entity') && billingEntityOptions.length > 1 && (
                     <div className="fi-billing-section">
                       <div className="fi-field-label">

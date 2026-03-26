@@ -32,6 +32,8 @@ export interface FieldInfoItem {
   name: string;
   acres: number;
   billingEntityId: number | null;
+  fieldLat: number | null;
+  fieldLng: number | null;
   // Current values (may be empty for new customers)
   irrigationType: string;
   rowDirection: string;
@@ -57,7 +59,7 @@ function toOptions(opts: { id: number; value: string; color: string }[]): { valu
 }
 
 // All possible question keys
-const ALL_QUESTION_KEYS = ['crop', 'irrigation_type', 'row_direction', 'side_dress', 'water_source', 'fuel_source', 'hybrid_variety', 'planting_date', 'billing_entity'];
+const ALL_QUESTION_KEYS = ['name', 'location', 'crop', 'irrigation_type', 'row_direction', 'side_dress', 'water_source', 'fuel_source', 'hybrid_variety', 'planting_date', 'billing_entity'];
 
 export default async function FieldInfoPage({ params, searchParams }: PageProps) {
   const { token, season } = await params;
@@ -146,6 +148,8 @@ export default async function FieldInfoPage({ params, searchParams }: PageProps)
       name: field?.name || 'Unknown Field',
       acres: field?.acres || 0,
       billingEntityId: field?.billing_entity?.[0]?.id || null,
+      fieldLat: field?.lat ?? null,
+      fieldLng: field?.lng ?? null,
       irrigationType: field?.irrigation_type?.value || '',
       rowDirection: field?.row_direction?.value || '',
       waterSource: field?.water_source?.value || '',

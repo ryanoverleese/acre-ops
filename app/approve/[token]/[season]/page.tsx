@@ -8,7 +8,7 @@ interface PageProps {
     token: string;
     season: string;
   }>;
-  searchParams: Promise<{ pin?: string; rename?: string }>;
+  searchParams: Promise<Record<string, never>>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -43,9 +43,7 @@ export interface ApprovalProbeAssignment {
 
 export default async function ApprovePage({ params, searchParams }: PageProps) {
   const { token, season } = await params;
-  const { pin, rename } = await searchParams;
-  const allowClientPin = pin === 'true';
-  const allowRename = rename === 'true';
+  await searchParams;
   const seasonYear = parseInt(season, 10);
 
   // Fetch all data in parallel
@@ -163,8 +161,6 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
       operationName={operation.name}
       season={seasonYear}
       probeAssignments={approvalProbeAssignments}
-      allowClientPin={allowClientPin}
-      allowRename={allowRename}
     />
   );
 }

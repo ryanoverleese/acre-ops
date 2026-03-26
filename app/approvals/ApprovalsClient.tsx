@@ -48,13 +48,11 @@ export default function ApprovalsClient({
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  // Allow client to suggest probe locations
-  const [allowClientPin, setAllowClientPin] = useState(false);
-  // Allow client to rename fields
-  const [allowRename, setAllowRename] = useState(false);
 
   // Field-info question selection
   const FIELD_INFO_QUESTIONS = [
+    { key: 'name', label: 'Field Name' },
+    { key: 'location', label: 'Field Location' },
     { key: 'crop', label: 'Crop' },
     { key: 'irrigation_type', label: 'Irrigation Type' },
     { key: 'row_direction', label: 'Row Direction' },
@@ -379,10 +377,6 @@ export default function ApprovalsClient({
     if ((linkType === 'field-info' || linkType === 'combined') && selectedQuestions.size < ALL_QUESTION_KEYS.length) {
       params.set('q', Array.from(selectedQuestions).join(','));
     }
-    if (linkType === 'approval') {
-      if (allowClientPin) params.set('pin', 'true');
-      if (allowRename) params.set('rename', 'true');
-    }
     if (params.toString()) url += `?${params.toString()}`;
 
     // Append operation name as hash fragment for easy identification (ignored by router)
@@ -464,19 +458,6 @@ export default function ApprovalsClient({
       {/* Question selector for field-info and combined links */}
       {(linkType === 'field-info' || linkType === 'combined') && renderQuestionChips()}
 
-      {/* Client options — approval links only */}
-      {linkType === 'approval' && (
-        <div className="approvals-client-options">
-          <label className="approvals-pin-toggle">
-            <input type="checkbox" checked={allowClientPin} onChange={(e) => setAllowClientPin(e.target.checked)} />
-            Allow client to suggest probe locations
-          </label>
-          <label className="approvals-pin-toggle">
-            <input type="checkbox" checked={allowRename} onChange={(e) => setAllowRename(e.target.checked)} />
-            Ask client to rename fields
-          </label>
-        </div>
-      )}
 
       <div className="approvals-link-row">
         <input
