@@ -82,6 +82,13 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
     { productId: null, productName: '', quantity: 1, unitPrice: 0 },
   ]);
 
+  // Merge selection state
+  const [mergeSelectedIds, setMergeSelectedIds] = useState<Set<number>>(new Set());
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeBillingEntity, setMergeBillingEntity] = useState<number | null>(null);
+  const [mergeDate, setMergeDate] = useState(new Date().toISOString().split('T')[0]);
+  const [mergeNotes, setMergeNotes] = useState('');
+
   // Edit modal state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editBillingEntity, setEditBillingEntity] = useState<number | null>(null);
@@ -286,6 +293,69 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       setSaving(false);
     }
   }, [selectedOrder, router, showToast]);
+
+  // Compute merged line items from selected orders (combine same product, sum qty)
+  const mergedItems = useMemo(() => {
+    const selected = orders.filter(o => mergeSelectedIds.has(o.id));
+    const map = new Map<number, { productId: number; productName: string; quantity: number; unitPrice: number }>();
+    for (const order of selected) {
+      for (const item of order.items) {
+        if (!item.productId) continue;
+        if (map.has(item.productId)) {
+          map.get(item.productId)!.quantity += item.quantity;
+        } else {
+          map.set(item.productId, { productId: item.productId, productName: item.productName, quantity: item.quantity, unitPrice: item.unitPrice });
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.productName.localeCompare(b.productName));
+  }, [orders, mergeSelectedIds]);
+
+  const openMergeModal = useCallback(() => {
+    const selected = orders.filter(o => mergeSelectedIds.has(o.id));
+    // Default billing entity to the first selected order's BE
+    setMergeBillingEntity(selected[0]?.billingEntityId ?? null);
+    setMergeDate(new Date().toISOString().split('T')[0]);
+    setMergeNotes(selected.map(o => o.billingEntityName).filter(Boolean).join(', '));
+    setShowMergeModal(true);
+  }, [orders, mergeSelectedIds]);
+
+  const handleCreateMasterOrder = useCallback(async () => {
+    if (mergedItems.length === 0) { showToast('No items to merge'); return; }
+    setSaving(true);
+    try {
+      const orderResp = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billing_entity: mergeBillingEntity,
+          order_date: mergeDate,
+          status: 'Quote',
+          notes: mergeNotes,
+          quote_valid_days: 30,
+        }),
+      });
+      if (!orderResp.ok) throw new Error('Failed to create master order');
+      const newOrder = await orderResp.json();
+
+      for (const item of mergedItems) {
+        await fetch('/api/order-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: newOrder.id, product: item.productId, quantity: item.quantity, unit_price: item.unitPrice }),
+        });
+      }
+
+      showToast('Master order created');
+      setShowMergeModal(false);
+      setMergeSelectedIds(new Set());
+      router.refresh();
+    } catch {
+      showToast('Failed to create master order');
+    } finally {
+      setSaving(false);
+    }
+  }, [mergeBillingEntity, mergeDate, mergeNotes, mergedItems, router, showToast]);
 
   // Open edit modal pre-filled with current order data
   const openEditModal = useCallback((order: ProcessedOrder) => {
@@ -586,12 +656,26 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
         className="order-search"
       />
 
+      {/* Merge toolbar — appears when orders are checked */}
+      {mergeSelectedIds.size > 0 && (
+        <div className="order-merge-toolbar">
+          <span className="order-merge-count">{mergeSelectedIds.size} order{mergeSelectedIds.size !== 1 ? 's' : ''} selected</span>
+          <button className="btn btn-primary" onClick={openMergeModal}>
+            Merge to Master Order
+          </button>
+          <button className="order-merge-clear" onClick={() => setMergeSelectedIds(new Set())}>
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* List view */}
       {viewMode === 'list' && (
         <div className="table-container">
           {/* Desktop table view */}
           <table className="desktop-table order-list-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
             <colgroup>
+              <col style={{ width: 36 }} />
               <col style={{ width: columnWidths.customer }} />
               <col style={{ width: columnWidths.status }} />
               <col style={{ width: columnWidths.date }} />
@@ -600,6 +684,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             </colgroup>
             <thead>
               <tr>
+                <th className="order-th" style={{ width: 36 }} />
                 <th className="order-th th-resizable">
                   <span className="th-content">Customer</span>
                   <div
@@ -650,7 +735,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="order-empty-state">
+                  <td colSpan={6} className="order-empty-state">
                     No orders found. Create a new quote to get started.
                   </td>
                 </tr>
@@ -658,9 +743,22 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 filteredOrders.map(order => (
                   <tr
                     key={order.id}
-                    className="order-list-row"
+                    className={`order-list-row${mergeSelectedIds.has(order.id) ? ' order-row-selected' : ''}`}
                     onClick={() => { setSelectedOrder(order); setViewMode('detail'); }}
                   >
+                    <td className="order-td order-td-checkbox" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={mergeSelectedIds.has(order.id)}
+                        onChange={e => {
+                          setMergeSelectedIds(prev => {
+                            const next = new Set(prev);
+                            e.target.checked ? next.add(order.id) : next.delete(order.id);
+                            return next;
+                          });
+                        }}
+                      />
+                    </td>
                     <td className="order-td">
                       <span className="order-customer-name">
                         {order.billingEntityName || 'No Customer'}
@@ -909,6 +1007,78 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Merge Master Order Modal */}
+      {showMergeModal && (
+        <div className="detail-panel-overlay" onClick={() => setShowMergeModal(false)}>
+          <div className="detail-panel" onClick={e => e.stopPropagation()}>
+            <div className="detail-panel-header">
+              <h3>Create Master Order</h3>
+              <button className="close-btn" onClick={() => setShowMergeModal(false)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="detail-panel-content">
+              <div className="edit-form">
+                <div className="form-group">
+                  <label>Send To (Billing Entity)</label>
+                  <SearchableSelect
+                    value={mergeBillingEntity ? String(mergeBillingEntity) : ''}
+                    onChange={(v) => setMergeBillingEntity(parseInt(v) || null)}
+                    options={billingEntities.map(be => ({ value: String(be.id), label: be.name }))}
+                    placeholder="Select..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Date</label>
+                  <input type="date" value={mergeDate} onChange={e => setMergeDate(e.target.value)} />
+                </div>
+                <div className="form-group">
+                  <label>Notes</label>
+                  <textarea value={mergeNotes} onChange={e => setMergeNotes(e.target.value)} rows={2} />
+                </div>
+                <div className="form-group">
+                  <label>Merged Line Items ({mergedItems.length})</label>
+                  <table className="order-items-table">
+                    <thead>
+                      <tr className="order-items-thead-row">
+                        <th className="order-items-th">Product</th>
+                        <th className="order-items-th order-items-th-right">Qty</th>
+                        <th className="order-items-th order-items-th-right">Unit Price</th>
+                        <th className="order-items-th order-items-th-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mergedItems.map(item => (
+                        <tr key={item.productId} className="order-items-row">
+                          <td className="order-items-td">{item.productName}</td>
+                          <td className="order-items-td order-items-td-right order-items-td-secondary">{item.quantity}</td>
+                          <td className="order-items-td order-items-td-right order-items-td-secondary">{formatCurrency(item.unitPrice)}</td>
+                          <td className="order-items-td order-items-td-right order-items-td-bold">{formatCurrency(item.quantity * item.unitPrice)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={3} className="order-items-total-label">Total:</td>
+                        <td className="order-items-total-value">{formatCurrency(mergedItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0))}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div className="detail-panel-footer">
+              <button className="btn btn-secondary" onClick={() => setShowMergeModal(false)}>Cancel</button>
+              <button className="btn btn-primary" onClick={handleCreateMasterOrder} disabled={saving}>
+                {saving ? 'Creating...' : 'Create Master Order'}
+              </button>
+            </div>
           </div>
         </div>
       )}

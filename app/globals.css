@@ -5298,6 +5298,49 @@ tr.expanded-row:hover {
 /* Orders header uses standard .header pattern */
 
 /* Toast notification */
+.order-merge-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent-primary-dim);
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-3);
+}
+
+.order-merge-count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.order-merge-clear {
+  font-size: 12px;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.order-merge-clear:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.order-td-checkbox {
+  width: 36px;
+  text-align: center;
+  padding: 0 var(--space-2) !important;
+}
+
+.order-row-selected {
+  background: var(--accent-primary-dim) !important;
+}
+
 .order-toast {
   position: fixed;
   top: var(--space-5);
