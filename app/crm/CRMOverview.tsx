@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import type { ProcessedOperation } from '@/app/operations/OperationsClient';
 import type { ProcessedContact } from '@/app/contacts/page';
 import type { ProcessedBillingEntity } from '@/app/billing-entities/page';
@@ -18,6 +18,10 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
   const [opSearch, setOpSearch] = useState('');
   const [beSearch, setBeSearch] = useState('');
   const [contactSearch, setContactSearch] = useState('');
+
+  const opListRef = useRef<HTMLDivElement>(null);
+  const beListRef = useRef<HTMLDivElement>(null);
+  const contactListRef = useRef<HTMLDivElement>(null);
 
   const maps = useMemo(() => {
     const opToBEs = new Map<number, Set<number>>();
@@ -60,8 +64,12 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
     };
   }, [selected, maps, contacts]);
 
-  const toggle = (type: SelType, id: number) =>
+  const toggle = useCallback((type: SelType, id: number) => {
     setSelected((prev) => (prev?.type === type && prev.id === id ? null : { type, id }));
+    opListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    beListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    contactListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   const cardClass = (type: SelType, id: number) => {
     if (!related) return 'crm-ov-card';
@@ -108,7 +116,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
             <span className="crm-ov-col-count">{operations.length}</span>
           </div>
           <input className="crm-ov-search" placeholder="Search…" value={opSearch} onChange={(e) => setOpSearch(e.target.value)} />
-          <div className="crm-ov-list">
+          <div className="crm-ov-list" ref={opListRef}>
             {sortedOps.map((op, idx) => (
               <div key={op.id}>
                 {idx === opDivider + 1 && <div className="crm-ov-divider" />}
@@ -133,7 +141,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
             <span className="crm-ov-col-count">{billingEntities.length}</span>
           </div>
           <input className="crm-ov-search" placeholder="Search…" value={beSearch} onChange={(e) => setBeSearch(e.target.value)} />
-          <div className="crm-ov-list">
+          <div className="crm-ov-list" ref={beListRef}>
             {sortedBEs.map((be, idx) => (
               <div key={be.id}>
                 {idx === beDivider + 1 && <div className="crm-ov-divider" />}
@@ -160,7 +168,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
             <span className="crm-ov-col-count">{contacts.length}</span>
           </div>
           <input className="crm-ov-search" placeholder="Search name or email…" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} />
-          <div className="crm-ov-list">
+          <div className="crm-ov-list" ref={contactListRef}>
             {sortedContacts.map((contact, idx) => (
               <div key={contact.id}>
                 {idx === contactDivider + 1 && <div className="crm-ov-divider" />}
