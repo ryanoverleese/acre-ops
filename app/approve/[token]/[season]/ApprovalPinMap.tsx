@@ -205,8 +205,8 @@ export default function ApprovalPinMap({ fieldName, onSave, saving, initialPin }
       </div>
 
       <MapContainer
-        center={[39.5, -98.35]}
-        zoom={4}
+        center={[40.499, -98.952]}
+        zoom={9}
         style={{ height: '100%', width: '100%', cursor: 'crosshair' }}
         scrollWheelZoom={true}
       >
