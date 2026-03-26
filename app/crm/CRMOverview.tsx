@@ -81,11 +81,11 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
 
   const q = (s: string) => s.toLowerCase();
 
-  const filteredOps = operations.filter((op) => q(op.name).includes(q(opSearch)));
-  const filteredBEs = billingEntities.filter((be) => q(be.name).includes(q(beSearch)));
-  const filteredContacts = contacts.filter(
-    (c) => q(c.name).includes(q(contactSearch)) || q(c.email).includes(q(contactSearch))
-  );
+  const filteredOps = operations.filter((op) => q(op.name).includes(q(opSearch))).sort((a, b) => a.name.localeCompare(b.name));
+  const filteredBEs = billingEntities.filter((be) => q(be.name).includes(q(beSearch))).sort((a, b) => a.name.localeCompare(b.name));
+  const filteredContacts = contacts
+    .filter((c) => q(c.name).includes(q(contactSearch)) || q(c.email).includes(q(contactSearch)))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const { items: sortedOps, dividerAfter: opDivider } = sortedWithDivider(filteredOps, (op) => !!related?.ops.has(op.id));
   const { items: sortedBEs, dividerAfter: beDivider } = sortedWithDivider(filteredBEs, (be) => !!related?.bes.has(be.id));
