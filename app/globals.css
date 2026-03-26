@@ -4384,12 +4384,6 @@ input[type="date"]:focus {
   height: calc(100vh - 180px);
 }
 
-.crm-ov-divider {
-  height: 1px;
-  background: var(--border);
-  margin: var(--space-2) 0;
-  opacity: 0.6;
-}
 
 .crm-ov-col {
   display: flex;

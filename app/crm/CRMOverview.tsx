@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef, useCallback } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import type { ProcessedOperation } from '@/app/operations/OperationsClient';
 import type { ProcessedContact } from '@/app/contacts/page';
 import type { ProcessedBillingEntity } from '@/app/billing-entities/page';
@@ -64,12 +64,17 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
     };
   }, [selected, maps, contacts]);
 
-  const toggle = useCallback((type: SelType, id: number) => {
+  // After re-render, scroll each column to its first related card
+  useEffect(() => {
+    if (!related) return;
+    [opListRef, beListRef, contactListRef].forEach((ref) => {
+      const first = ref.current?.querySelector<HTMLElement>('.crm-ov-card.related');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }, [related]);
+
+  const toggle = (type: SelType, id: number) =>
     setSelected((prev) => (prev?.type === type && prev.id === id ? null : { type, id }));
-    opListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    beListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    contactListRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
 
   const cardClass = (type: SelType, id: number) => {
     if (!related) return 'crm-ov-card';
@@ -79,14 +84,6 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
     return 'crm-ov-card dimmed';
   };
 
-  // Sort a list so related items float to top, return items with a divider index
-  function sortedWithDivider<T>(items: T[], isRelated: (item: T) => boolean) {
-    if (!related) return { items, dividerAfter: -1 };
-    const rel = items.filter(isRelated);
-    const rest = items.filter((i) => !isRelated(i));
-    return { items: [...rel, ...rest], dividerAfter: rel.length - 1 };
-  }
-
   const q = (s: string) => s.toLowerCase();
 
   const filteredOps = operations.filter((op) => q(op.name).includes(q(opSearch))).sort((a, b) => a.name.localeCompare(b.name));
@@ -94,10 +91,6 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
   const filteredContacts = contacts
     .filter((c) => q(c.name).includes(q(contactSearch)) || q(c.email).includes(q(contactSearch)))
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  const { items: sortedOps, dividerAfter: opDivider } = sortedWithDivider(filteredOps, (op) => !!related?.ops.has(op.id));
-  const { items: sortedBEs, dividerAfter: beDivider } = sortedWithDivider(filteredBEs, (be) => !!related?.bes.has(be.id));
-  const { items: sortedContacts, dividerAfter: contactDivider } = sortedWithDivider(filteredContacts, (c) => !!related?.contacts.has(c.id));
 
   return (
     <div className="crm-ov">
@@ -117,20 +110,17 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           </div>
           <input className="crm-ov-search" placeholder="Search…" value={opSearch} onChange={(e) => setOpSearch(e.target.value)} />
           <div className="crm-ov-list" ref={opListRef}>
-            {sortedOps.map((op, idx) => (
-              <div key={op.id}>
-                {idx === opDivider + 1 && <div className="crm-ov-divider" />}
-                <div className={cardClass('op', op.id)} onClick={() => toggle('op', op.id)}>
-                  <div className="crm-ov-card-name">{op.name}</div>
-                  <div className="crm-ov-card-meta">
-                    {op.billingEntities.length > 0 && <span>{op.billingEntities.length} billing</span>}
-                    {op.linkedContacts.length > 0 && <span>{op.linkedContacts.length} contact{op.linkedContacts.length !== 1 ? 's' : ''}</span>}
-                    {op.fieldCount > 0 && <span>{op.fieldCount} field{op.fieldCount !== 1 ? 's' : ''}</span>}
-                  </div>
+            {filteredOps.map((op) => (
+              <div key={op.id} className={cardClass('op', op.id)} onClick={() => toggle('op', op.id)}>
+                <div className="crm-ov-card-name">{op.name}</div>
+                <div className="crm-ov-card-meta">
+                  {op.billingEntities.length > 0 && <span>{op.billingEntities.length} billing</span>}
+                  {op.linkedContacts.length > 0 && <span>{op.linkedContacts.length} contact{op.linkedContacts.length !== 1 ? 's' : ''}</span>}
+                  {op.fieldCount > 0 && <span>{op.fieldCount} field{op.fieldCount !== 1 ? 's' : ''}</span>}
                 </div>
               </div>
             ))}
-            {sortedOps.length === 0 && <p className="crm-ov-empty">No results</p>}
+            {filteredOps.length === 0 && <p className="crm-ov-empty">No results</p>}
           </div>
         </div>
 
@@ -142,22 +132,19 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           </div>
           <input className="crm-ov-search" placeholder="Search…" value={beSearch} onChange={(e) => setBeSearch(e.target.value)} />
           <div className="crm-ov-list" ref={beListRef}>
-            {sortedBEs.map((be, idx) => (
-              <div key={be.id}>
-                {idx === beDivider + 1 && <div className="crm-ov-divider" />}
-                <div className={cardClass('be', be.id)} onClick={() => toggle('be', be.id)}>
-                  <div className="crm-ov-card-name">
-                    {be.name}
-                    {be.selfInstall && <span className="crm-ov-badge teal">Self-install</span>}
-                  </div>
-                  <div className="crm-ov-card-meta">
-                    {be.operationNames.length > 0 && <span>{be.operationNames.length} op{be.operationNames.length !== 1 ? 's' : ''}</span>}
-                    {be.contactIds.length > 0 && <span>{be.contactIds.length} contact{be.contactIds.length !== 1 ? 's' : ''}</span>}
-                  </div>
+            {filteredBEs.map((be) => (
+              <div key={be.id} className={cardClass('be', be.id)} onClick={() => toggle('be', be.id)}>
+                <div className="crm-ov-card-name">
+                  {be.name}
+                  {be.selfInstall && <span className="crm-ov-badge teal">Self-install</span>}
+                </div>
+                <div className="crm-ov-card-meta">
+                  {be.operationNames.length > 0 && <span>{be.operationNames.length} op{be.operationNames.length !== 1 ? 's' : ''}</span>}
+                  {be.contactIds.length > 0 && <span>{be.contactIds.length} contact{be.contactIds.length !== 1 ? 's' : ''}</span>}
                 </div>
               </div>
             ))}
-            {sortedBEs.length === 0 && <p className="crm-ov-empty">No results</p>}
+            {filteredBEs.length === 0 && <p className="crm-ov-empty">No results</p>}
           </div>
         </div>
 
@@ -169,31 +156,28 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           </div>
           <input className="crm-ov-search" placeholder="Search name or email…" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} />
           <div className="crm-ov-list" ref={contactListRef}>
-            {sortedContacts.map((contact, idx) => (
-              <div key={contact.id}>
-                {idx === contactDivider + 1 && <div className="crm-ov-divider" />}
-                <div className={cardClass('contact', contact.id)} onClick={() => toggle('contact', contact.id)}>
-                  <div className="crm-ov-card-name">
-                    {contact.name}
-                    {contact.isMainContact && <span className="crm-ov-badge amber">Main</span>}
+            {filteredContacts.map((contact) => (
+              <div key={contact.id} className={cardClass('contact', contact.id)} onClick={() => toggle('contact', contact.id)}>
+                <div className="crm-ov-card-name">
+                  {contact.name}
+                  {contact.isMainContact && <span className="crm-ov-badge amber">Main</span>}
+                </div>
+                {(contact.email || contact.phone) && (
+                  <div className="crm-ov-card-sub">
+                    {contact.email && <span>{contact.email}</span>}
+                    {contact.phone && <span>{contact.phone}</span>}
                   </div>
-                  {(contact.email || contact.phone) && (
-                    <div className="crm-ov-card-sub">
-                      {contact.email && <span>{contact.email}</span>}
-                      {contact.phone && <span>{contact.phone}</span>}
-                    </div>
-                  )}
-                  <div className="crm-ov-card-meta">
-                    {contact.operationIds.length > 0 && <span>{contact.operationIds.length} op{contact.operationIds.length !== 1 ? 's' : ''}</span>}
-                    {contact.billingEntityIds.length > 0 && <span>{contact.billingEntityIds.length} billing</span>}
-                    {contact.customerType.map((t) => (
-                      <span key={t} className="crm-ov-tag purple">{t}</span>
-                    ))}
-                  </div>
+                )}
+                <div className="crm-ov-card-meta">
+                  {contact.operationIds.length > 0 && <span>{contact.operationIds.length} op{contact.operationIds.length !== 1 ? 's' : ''}</span>}
+                  {contact.billingEntityIds.length > 0 && <span>{contact.billingEntityIds.length} billing</span>}
+                  {contact.customerType.map((t) => (
+                    <span key={t} className="crm-ov-tag purple">{t}</span>
+                  ))}
                 </div>
               </div>
             ))}
-            {sortedContacts.length === 0 && <p className="crm-ov-empty">No results</p>}
+            {filteredContacts.length === 0 && <p className="crm-ov-empty">No results</p>}
           </div>
         </div>
 
