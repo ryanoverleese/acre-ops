@@ -1074,8 +1074,16 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={4} className="order-items-total-label">Total:</td>
+                        <td colSpan={4} className="order-items-total-label">I Pay (Dealer):</td>
+                        <td className="order-items-total-value">{formatCurrency(mergedItems.reduce((s, i) => s + i.quantity * i.dealerFee, 0))}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="order-items-total-label">I Charge (Customer):</td>
                         <td className="order-items-total-value">{formatCurrency(mergedItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0))}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} className="order-items-total-label" style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>My Margin:</td>
+                        <td className="order-items-total-value" style={{ color: 'var(--accent-primary)' }}>{formatCurrency(mergedItems.reduce((s, i) => s + i.quantity * (i.unitPrice - i.dealerFee), 0))}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -1084,6 +1092,16 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             </div>
             <div className="detail-panel-footer">
               <button className="btn btn-secondary" onClick={() => setShowMergeModal(false)}>Cancel</button>
+              <button
+                className="order-btn-outline"
+                onClick={() => {
+                  const lines = mergedItems.map(i => `${i.quantity}x ${i.productName}`);
+                  navigator.clipboard.writeText(lines.join('\n'));
+                  showToast('Order copied to clipboard');
+                }}
+              >
+                Copy to Email Order
+              </button>
               <button className="btn btn-primary" onClick={handleCreateMasterOrder} disabled={saving}>
                 {saving ? 'Creating...' : 'Create Master Order'}
               </button>
