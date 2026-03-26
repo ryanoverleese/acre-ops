@@ -302,9 +302,9 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       for (const item of order.items) {
         if (!item.productId) continue;
         if (map.has(item.productId)) {
-          map.get(item.productId)!.quantity += item.quantity;
+          map.get(item.productId)!.quantity += Number(item.quantity);
         } else {
-          map.set(item.productId, { productId: item.productId, productName: item.productName, quantity: item.quantity, unitPrice: item.unitPrice });
+          map.set(item.productId, { productId: item.productId, productName: item.productName, quantity: Number(item.quantity), unitPrice: item.unitPrice });
         }
       }
     }
