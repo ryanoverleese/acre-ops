@@ -297,19 +297,26 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
   // Compute merged line items from selected orders (combine same product, sum qty)
   const mergedItems = useMemo(() => {
     const selected = orders.filter(o => mergeSelectedIds.has(o.id));
-    const map = new Map<number, { productId: number; productName: string; quantity: number; unitPrice: number }>();
+    const map = new Map<number, { productId: number; productName: string; quantity: number; unitPrice: number; dealerFee: number }>();
     for (const order of selected) {
       for (const item of order.items) {
         if (!item.productId) continue;
         if (map.has(item.productId)) {
           map.get(item.productId)!.quantity += Number(item.quantity);
         } else {
-          map.set(item.productId, { productId: item.productId, productName: item.productName, quantity: Number(item.quantity), unitPrice: item.unitPrice });
+          const catalogEntry = catalog.find(p => p.id === item.productId);
+          map.set(item.productId, {
+            productId: item.productId,
+            productName: item.productName,
+            quantity: Number(item.quantity),
+            unitPrice: item.unitPrice,
+            dealerFee: catalogEntry?.dealerFee ?? 0,
+          });
         }
       }
     }
     return Array.from(map.values()).sort((a, b) => a.productName.localeCompare(b.productName));
-  }, [orders, mergeSelectedIds]);
+  }, [orders, mergeSelectedIds, catalog]);
 
   const openMergeModal = useCallback(() => {
     const selected = orders.filter(o => mergeSelectedIds.has(o.id));
@@ -1049,7 +1056,8 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                       <tr className="order-items-thead-row">
                         <th className="order-items-th">Product</th>
                         <th className="order-items-th order-items-th-right">Qty</th>
-                        <th className="order-items-th order-items-th-right">Unit Price</th>
+                        <th className="order-items-th order-items-th-right">Dealer Fee</th>
+                        <th className="order-items-th order-items-th-right">Customer Rate</th>
                         <th className="order-items-th order-items-th-right">Total</th>
                       </tr>
                     </thead>
@@ -1058,6 +1066,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                         <tr key={item.productId} className="order-items-row">
                           <td className="order-items-td">{item.productName}</td>
                           <td className="order-items-td order-items-td-right order-items-td-secondary">{item.quantity}</td>
+                          <td className="order-items-td order-items-td-right order-items-td-secondary">{formatCurrency(item.dealerFee)}</td>
                           <td className="order-items-td order-items-td-right order-items-td-secondary">{formatCurrency(item.unitPrice)}</td>
                           <td className="order-items-td order-items-td-right order-items-td-bold">{formatCurrency(item.quantity * item.unitPrice)}</td>
                         </tr>
@@ -1065,7 +1074,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                     </tbody>
                     <tfoot>
                       <tr>
-                        <td colSpan={3} className="order-items-total-label">Total:</td>
+                        <td colSpan={4} className="order-items-total-label">Total:</td>
                         <td className="order-items-total-value">{formatCurrency(mergedItems.reduce((s, i) => s + i.quantity * i.unitPrice, 0))}</td>
                       </tr>
                     </tfoot>
