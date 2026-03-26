@@ -4,13 +4,15 @@ import { useState } from 'react';
 import OperationsClient from '@/app/operations/OperationsClient';
 import ContactsClient from '@/app/contacts/ContactsClient';
 import BillingEntitiesClient from '@/app/billing-entities/BillingEntitiesClient';
+import CRMOverview from './CRMOverview';
 import type { ProcessedOperation, ContactOption as OpContactOption } from '@/app/operations/OperationsClient';
 import type { ProcessedContact, OperationOption, BillingEntityOption } from '@/app/contacts/page';
 import type { ProcessedBillingEntity, ContactOption as BEContactOption } from '@/app/billing-entities/page';
 
-type CRMTab = 'operations' | 'contacts' | 'billing';
+type CRMTab = 'overview' | 'operations' | 'contacts' | 'billing';
 
 const TABS: { key: CRMTab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
   { key: 'operations', label: 'Operations' },
   { key: 'contacts', label: 'Contacts' },
   { key: 'billing', label: 'Billing Entities' },
@@ -35,7 +37,7 @@ interface CRMClientProps {
 }
 
 export default function CRMClient({ operationsData, contactsData, billingEntitiesData }: CRMClientProps) {
-  const [activeTab, setActiveTab] = useState<CRMTab>('operations');
+  const [activeTab, setActiveTab] = useState<CRMTab>('overview');
 
   return (
     <>
@@ -57,6 +59,14 @@ export default function CRMClient({ operationsData, contactsData, billingEntitie
       </header>
 
       <div className="content">
+        {activeTab === 'overview' && (
+          <CRMOverview
+            operations={operationsData.operations}
+            contacts={contactsData.contacts}
+            billingEntities={billingEntitiesData.billingEntities}
+          />
+        )}
+
         {activeTab === 'operations' && (
           <OperationsClient
             operations={operationsData.operations}
