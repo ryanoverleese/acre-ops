@@ -1095,9 +1095,22 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
               <button
                 className="order-btn-outline"
                 onClick={() => {
-                  const lines = mergedItems.map(i => `${i.quantity}x ${i.productName}`);
-                  navigator.clipboard.writeText(lines.join('\n'));
-                  showToast('Order copied to clipboard');
+                  const itemLines = mergedItems.map(i => `  ${i.quantity}x ${i.productName}`).join('\n');
+                  const email = [
+                    'Subject: Order Request - Account #10733',
+                    '',
+                    'Hi,',
+                    '',
+                    'Please process the following order for account #10733:',
+                    '',
+                    itemLines,
+                    '',
+                    'Please charge my card on file ending in 6175.',
+                    '',
+                    'Thank you!',
+                  ].join('\n');
+                  navigator.clipboard.writeText(email);
+                  showToast('Email copied to clipboard');
                 }}
               >
                 Copy to Email Order
