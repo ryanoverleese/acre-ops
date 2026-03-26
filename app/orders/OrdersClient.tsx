@@ -1095,7 +1095,7 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
               <button
                 className="order-btn-outline"
                 onClick={() => {
-                  const itemLines = mergedItems.map(i => `  ${i.quantity}x ${i.productName}`).join('\n');
+                  const itemLines = mergedItems.map(i => `  ${i.quantity} - ${i.productName}`).join('\n');
                   const email = [
                     'Subject: Order Request - Account #10733',
                     '',
