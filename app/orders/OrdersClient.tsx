@@ -272,6 +272,47 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
     }
   }, [selectedOrder, router, showToast]);
 
+  // Duplicate order as a new Quote
+  const duplicateOrder = useCallback(async (order: ProcessedOrder) => {
+    setSaving(true);
+    try {
+      const orderResp = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          billing_entity: order.billingEntityId,
+          order_date: new Date().toISOString().split('T')[0],
+          status: 'Quote',
+          notes: order.notes,
+          quote_valid_days: order.quoteValidDays,
+        }),
+      });
+
+      if (!orderResp.ok) throw new Error('Failed to duplicate order');
+      const newOrder = await orderResp.json();
+
+      for (const item of order.items) {
+        await fetch('/api/order-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            order: newOrder.id,
+            product: item.productId,
+            quantity: item.quantity,
+            unit_price: item.unitPrice,
+          }),
+        });
+      }
+
+      showToast('Quote duplicated');
+      router.refresh();
+    } catch {
+      showToast('Failed to duplicate');
+    } finally {
+      setSaving(false);
+    }
+  }, [router, showToast]);
+
   // Delete order
   const deleteOrder = useCallback(async (order: ProcessedOrder) => {
     if (!confirm(`Delete this ${order.status.toLowerCase()}? This cannot be undone.`)) return;
@@ -617,6 +658,13 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                     Copy Quote
                   </button>
                 )}
+                <button
+                  onClick={() => duplicateOrder(selectedOrder)}
+                  disabled={saving}
+                  className="order-btn-outline"
+                >
+                  Duplicate
+                </button>
                 {getNextStatus(selectedOrder.status) && (
                   <button
                     onClick={() => updateStatus(selectedOrder, getNextStatus(selectedOrder.status)!)}
