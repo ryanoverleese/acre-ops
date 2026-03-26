@@ -22,6 +22,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
   const opListRef = useRef<HTMLDivElement>(null);
   const beListRef = useRef<HTMLDivElement>(null);
   const contactListRef = useRef<HTMLDivElement>(null);
+  const clickedYRef = useRef<number | null>(null);
 
   const maps = useMemo(() => {
     const opToBEs = new Map<number, Set<number>>();
@@ -64,17 +65,33 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
     };
   }, [selected, maps, contacts]);
 
-  // After re-render, scroll each column to its first related card
+  // After selection changes, scroll the OTHER columns so their first related card
+  // lands at the same Y position as the item that was clicked.
   useEffect(() => {
-    if (!related) return;
-    [opListRef, beListRef, contactListRef].forEach((ref) => {
-      const first = ref.current?.querySelector<HTMLElement>('.crm-ov-card.related');
-      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const targetY = clickedYRef.current;
+    if (!related || targetY === null) return;
+
+    [opListRef, beListRef, contactListRef].forEach((listRef) => {
+      const list = listRef.current;
+      if (!list) return;
+      const firstRelated = list.querySelector<HTMLElement>('.crm-ov-card.related');
+      if (!firstRelated) return;
+      const cardTop = firstRelated.getBoundingClientRect().top;
+      const newScrollTop = list.scrollTop + (cardTop - targetY);
+      list.scrollTo({ top: Math.max(0, newScrollTop), behavior: 'smooth' });
     });
   }, [related]);
 
-  const toggle = (type: SelType, id: number) =>
-    setSelected((prev) => (prev?.type === type && prev.id === id ? null : { type, id }));
+  const toggle = (type: SelType, id: number, e: React.MouseEvent<HTMLElement>) => {
+    const isDeselecting = selected?.type === type && selected.id === id;
+    if (isDeselecting) {
+      clickedYRef.current = null;
+      setSelected(null);
+    } else {
+      clickedYRef.current = e.currentTarget.getBoundingClientRect().top;
+      setSelected({ type, id });
+    }
+  };
 
   const cardClass = (type: SelType, id: number) => {
     if (!related) return 'crm-ov-card';
@@ -111,7 +128,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           <input className="crm-ov-search" placeholder="Search…" value={opSearch} onChange={(e) => setOpSearch(e.target.value)} />
           <div className="crm-ov-list" ref={opListRef}>
             {filteredOps.map((op) => (
-              <div key={op.id} className={cardClass('op', op.id)} onClick={() => toggle('op', op.id)}>
+              <div key={op.id} className={cardClass('op', op.id)} onClick={(e) => toggle('op', op.id, e)}>
                 <div className="crm-ov-card-name">{op.name}</div>
                 <div className="crm-ov-card-meta">
                   {op.billingEntities.length > 0 && <span>{op.billingEntities.length} billing</span>}
@@ -133,7 +150,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           <input className="crm-ov-search" placeholder="Search…" value={beSearch} onChange={(e) => setBeSearch(e.target.value)} />
           <div className="crm-ov-list" ref={beListRef}>
             {filteredBEs.map((be) => (
-              <div key={be.id} className={cardClass('be', be.id)} onClick={() => toggle('be', be.id)}>
+              <div key={be.id} className={cardClass('be', be.id)} onClick={(e) => toggle('be', be.id, e)}>
                 <div className="crm-ov-card-name">
                   {be.name}
                   {be.selfInstall && <span className="crm-ov-badge teal">Self-install</span>}
@@ -157,7 +174,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           <input className="crm-ov-search" placeholder="Search name or email…" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} />
           <div className="crm-ov-list" ref={contactListRef}>
             {filteredContacts.map((contact) => (
-              <div key={contact.id} className={cardClass('contact', contact.id)} onClick={() => toggle('contact', contact.id)}>
+              <div key={contact.id} className={cardClass('contact', contact.id)} onClick={(e) => toggle('contact', contact.id, e)}>
                 <div className="crm-ov-card-name">
                   {contact.name}
                   {contact.isMainContact && <span className="crm-ov-badge amber">Main</span>}
