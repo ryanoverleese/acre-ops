@@ -1033,6 +1033,15 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             <div className="detail-panel-content">
               <div className="edit-form">
                 <div className="form-group">
+                  <label>Customer</label>
+                  <SearchableSelect
+                    value={mergeBillingEntity ? String(mergeBillingEntity) : ''}
+                    onChange={(v) => setMergeBillingEntity(parseInt(v) || null)}
+                    options={billingEntities.map(be => ({ value: String(be.id), label: be.name }))}
+                    placeholder="Select..."
+                  />
+                </div>
+                <div className="form-group">
                   <label>Date</label>
                   <input type="date" value={mergeDate} onChange={e => setMergeDate(e.target.value)} />
                 </div>
