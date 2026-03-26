@@ -22,7 +22,8 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
   const opListRef = useRef<HTMLDivElement>(null);
   const beListRef = useRef<HTMLDivElement>(null);
   const contactListRef = useRef<HTMLDivElement>(null);
-  const clickedYRef = useRef<number | null>(null);
+  // Y position of the clicked card on screen, so we can align floated items to it
+  const targetYRef = useRef<number | null>(null);
 
   const maps = useMemo(() => {
     const opToBEs = new Map<number, Set<number>>();
@@ -65,32 +66,32 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
     };
   }, [selected, maps, contacts]);
 
-  // After selection changes, scroll the OTHER columns so their first related card
-  // lands at the same Y position as the item that was clicked.
+  // After re-render (items have floated to top of each list), scroll each OTHER column
+  // so its first floated item appears at the same Y position as the card that was clicked.
   useEffect(() => {
-    const targetY = clickedYRef.current;
+    const targetY = targetYRef.current;
     if (!related || targetY === null) return;
 
     [opListRef, beListRef, contactListRef].forEach((listRef) => {
       const list = listRef.current;
       if (!list) return;
-      const firstRelated = list.querySelector<HTMLElement>('.crm-ov-card.related');
-      if (!firstRelated) return;
-      const cardTop = firstRelated.getBoundingClientRect().top;
-      const newScrollTop = list.scrollTop + (cardTop - targetY);
-      list.scrollTo({ top: Math.max(0, newScrollTop), behavior: 'smooth' });
+      // The first child of the list is the first item after float-to-top.
+      // If it has the 'related' class it's a floated item; scroll to position it at targetY.
+      const firstCard = list.querySelector<HTMLElement>('.crm-ov-card.related');
+      if (!firstCard) return; // skip the clicked column (its card has 'selected' not 'related')
+      const containerRect = list.getBoundingClientRect();
+      // offsetTop of card within the scroll container
+      const cardOffset = firstCard.offsetTop;
+      // We want: containerRect.top + cardOffset - newScrollTop = targetY
+      const newScrollTop = containerRect.top + cardOffset - targetY;
+      list.scrollTop = Math.max(0, newScrollTop);
     });
   }, [related]);
 
   const toggle = (type: SelType, id: number, e: React.MouseEvent<HTMLElement>) => {
     const isDeselecting = selected?.type === type && selected.id === id;
-    if (isDeselecting) {
-      clickedYRef.current = null;
-      setSelected(null);
-    } else {
-      clickedYRef.current = e.currentTarget.getBoundingClientRect().top;
-      setSelected({ type, id });
-    }
+    targetYRef.current = isDeselecting ? null : e.currentTarget.getBoundingClientRect().top;
+    setSelected(isDeselecting ? null : { type, id });
   };
 
   const cardClass = (type: SelType, id: number) => {
@@ -101,13 +102,28 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
     return 'crm-ov-card dimmed';
   };
 
+  // Sort related items to the top; return [sortedItems, indexOfLastRelatedItem]
+  function floatRelated<T>(items: T[], isRelated: (item: T) => boolean): T[] {
+    if (!related) return items;
+    return [...items.filter(isRelated), ...items.filter((i) => !isRelated(i))];
+  }
+
   const q = (s: string) => s.toLowerCase();
 
-  const filteredOps = operations.filter((op) => q(op.name).includes(q(opSearch))).sort((a, b) => a.name.localeCompare(b.name));
-  const filteredBEs = billingEntities.filter((be) => q(be.name).includes(q(beSearch))).sort((a, b) => a.name.localeCompare(b.name));
-  const filteredContacts = contacts
-    .filter((c) => q(c.name).includes(q(contactSearch)) || q(c.email).includes(q(contactSearch)))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const sortedOps = floatRelated(
+    operations.filter((op) => q(op.name).includes(q(opSearch))).sort((a, b) => a.name.localeCompare(b.name)),
+    (op) => !!related?.ops.has(op.id)
+  );
+  const sortedBEs = floatRelated(
+    billingEntities.filter((be) => q(be.name).includes(q(beSearch))).sort((a, b) => a.name.localeCompare(b.name)),
+    (be) => !!related?.bes.has(be.id)
+  );
+  const sortedContacts = floatRelated(
+    contacts
+      .filter((c) => q(c.name).includes(q(contactSearch)) || q(c.email).includes(q(contactSearch)))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+    (c) => !!related?.contacts.has(c.id)
+  );
 
   return (
     <div className="crm-ov">
@@ -127,7 +143,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           </div>
           <input className="crm-ov-search" placeholder="Search…" value={opSearch} onChange={(e) => setOpSearch(e.target.value)} />
           <div className="crm-ov-list" ref={opListRef}>
-            {filteredOps.map((op) => (
+            {sortedOps.map((op) => (
               <div key={op.id} className={cardClass('op', op.id)} onClick={(e) => toggle('op', op.id, e)}>
                 <div className="crm-ov-card-name">{op.name}</div>
                 <div className="crm-ov-card-meta">
@@ -137,7 +153,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
                 </div>
               </div>
             ))}
-            {filteredOps.length === 0 && <p className="crm-ov-empty">No results</p>}
+            {sortedOps.length === 0 && <p className="crm-ov-empty">No results</p>}
           </div>
         </div>
 
@@ -149,7 +165,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           </div>
           <input className="crm-ov-search" placeholder="Search…" value={beSearch} onChange={(e) => setBeSearch(e.target.value)} />
           <div className="crm-ov-list" ref={beListRef}>
-            {filteredBEs.map((be) => (
+            {sortedBEs.map((be) => (
               <div key={be.id} className={cardClass('be', be.id)} onClick={(e) => toggle('be', be.id, e)}>
                 <div className="crm-ov-card-name">
                   {be.name}
@@ -161,7 +177,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
                 </div>
               </div>
             ))}
-            {filteredBEs.length === 0 && <p className="crm-ov-empty">No results</p>}
+            {sortedBEs.length === 0 && <p className="crm-ov-empty">No results</p>}
           </div>
         </div>
 
@@ -173,7 +189,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
           </div>
           <input className="crm-ov-search" placeholder="Search name or email…" value={contactSearch} onChange={(e) => setContactSearch(e.target.value)} />
           <div className="crm-ov-list" ref={contactListRef}>
-            {filteredContacts.map((contact) => (
+            {sortedContacts.map((contact) => (
               <div key={contact.id} className={cardClass('contact', contact.id)} onClick={(e) => toggle('contact', contact.id, e)}>
                 <div className="crm-ov-card-name">
                   {contact.name}
@@ -194,7 +210,7 @@ export default function CRMOverview({ operations, contacts, billingEntities }: P
                 </div>
               </div>
             ))}
-            {filteredContacts.length === 0 && <p className="crm-ov-empty">No results</p>}
+            {sortedContacts.length === 0 && <p className="crm-ov-empty">No results</p>}
           </div>
         </div>
 
