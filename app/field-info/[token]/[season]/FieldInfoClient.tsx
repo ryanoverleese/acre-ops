@@ -108,7 +108,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
   const [fieldCoords, setFieldCoords] = useState<Record<number, [number, number] | null>>(() => {
     const m: Record<number, [number, number] | null> = {};
     initialFields.forEach((f) => {
-      m[f.fieldId] = f.fieldLat != null && f.fieldLng != null ? [f.fieldLat, f.fieldLng] : null;
+      m[f.fieldId] = f.fieldLat != null && f.fieldLng != null ? [Number(f.fieldLat), Number(f.fieldLng)] : null;
     });
     return m;
   });
