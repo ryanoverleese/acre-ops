@@ -8,6 +8,7 @@ export interface SelectOption {
   label: string;
   className?: string;
   isGroupHeader?: boolean;
+  topLevel?: boolean;
 }
 
 export interface SearchableSelectProps {
@@ -192,6 +193,8 @@ export default function SearchableSelect({
                     </div>
                   );
                 }
+                // topLevel options always show outside any group
+                if (o.topLevel) currentGroup = null;
                 // If in a collapsed group and not searching, hide this option
                 if (!isSearching && currentGroup && collapsedGroups.has(currentGroup)) return null;
                 return (

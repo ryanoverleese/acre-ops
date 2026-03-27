@@ -2301,7 +2301,7 @@ export default function FieldsClient({
                                                   { value: '__acre_insights_group__', label: `Acre Insights Inventory (${acreInsightsProbes.length})`, isGroupHeader: true },
                                                   ...acreInsightsProbes.map(mapProbe),
                                                 ] : []),
-                                                { value: '__create_new__', label: '+ Add New Probe' },
+                                                { value: '__create_new__', label: '+ Add New Probe', topLevel: true },
                                               ];
                                             })()}
                                             onSave={handleProbeAssignmentSave}
