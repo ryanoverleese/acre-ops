@@ -59,12 +59,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // Auto-fetch soil type and elevation when lat/lng are provided and not explicitly set
     if (body.lat !== undefined && body.lng !== undefined) {
-      const [soilType, elevation] = await Promise.all([
-        body.soil_type === undefined ? fetchSoilType(body.lat, body.lng) : Promise.resolve(null),
-        body.elevation === undefined ? fetchElevation(body.lat, body.lng) : Promise.resolve(null),
-      ]);
-      if (soilType) updateData.soil_type = soilType;
-      if (elevation) updateData.elevation = elevation;
+      try {
+        const [soilType, elevation] = await Promise.all([
+          body.soil_type === undefined ? fetchSoilType(body.lat, body.lng) : Promise.resolve(null),
+          body.elevation === undefined ? fetchElevation(body.lat, body.lng) : Promise.resolve(null),
+        ]);
+        if (soilType) updateData.soil_type = soilType;
+        if (elevation) updateData.elevation = elevation;
+      } catch {
+        // Don't fail the save if soil/elevation lookup fails
+      }
     }
 
     // Add space variants for Baserow field name compatibility

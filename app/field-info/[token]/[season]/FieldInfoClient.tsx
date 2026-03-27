@@ -113,6 +113,7 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
     return m;
   });
   const [locationSaving, setLocationSaving] = useState<Record<number, boolean>>({});
+  const [locationSaved, setLocationSaved] = useState<Record<number, boolean>>({});
 
   const API_FIELD_MAP: Record<string, string> = {
     irrigationType: 'irrigation_type',
@@ -217,7 +218,11 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ lat, lng }),
       });
-      if (res.ok) setFieldCoords((prev) => ({ ...prev, [fieldId]: [lat, lng] }));
+      if (res.ok) {
+        setFieldCoords((prev) => ({ ...prev, [fieldId]: [lat, lng] }));
+        setLocationSaved((prev) => ({ ...prev, [fieldId]: true }));
+        setTimeout(() => setLocationSaved((prev) => ({ ...prev, [fieldId]: false })), 3000);
+      }
     } catch { /* silent */ } finally {
       setLocationSaving((prev) => ({ ...prev, [fieldId]: false }));
     }
@@ -315,6 +320,14 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                           saving={locationSaving[field.fieldId]}
                         />
                       </div>
+                      {locationSaved[field.fieldId] && (
+                        <div className="fi-saved-indicator" style={{ marginTop: '8px' }}>
+                          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Location saved
+                        </div>
+                      )}
                     </div>
                   )}
 
