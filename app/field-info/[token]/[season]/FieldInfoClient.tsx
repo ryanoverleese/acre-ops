@@ -275,16 +275,24 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                   {showQuestion('name') && (
                     <div className="approval-field-rename">
                       <span className="approval-field-rename-label">Field name</span>
-                      <input
-                        className="approval-field-rename-input"
-                        type="text"
-                        placeholder={fieldNames[field.fieldId] ?? field.name}
-                        value={renameDraft[field.fieldId] ?? ''}
-                        onChange={(e) => setRenameDraft((prev) => ({ ...prev, [field.fieldId]: e.target.value }))}
-                        onKeyDown={(e) => { if (e.key === 'Enter') handleRenameField(field.fieldId); }}
-                        onBlur={() => handleRenameField(field.fieldId)}
-                      />
-                      {renameSaving[field.fieldId] && <span className="approval-field-rename-saving">Saving…</span>}
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          className="approval-field-rename-input"
+                          type="text"
+                          placeholder={fieldNames[field.fieldId] ?? field.name}
+                          value={renameDraft[field.fieldId] ?? ''}
+                          onChange={(e) => setRenameDraft((prev) => ({ ...prev, [field.fieldId]: e.target.value }))}
+                          onKeyDown={(e) => { if (e.key === 'Enter') handleRenameField(field.fieldId); }}
+                        />
+                        <button
+                          className="fi-button-option selected"
+                          style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                          disabled={renameSaving[field.fieldId] || !renameDraft[field.fieldId]?.trim()}
+                          onClick={() => handleRenameField(field.fieldId)}
+                        >
+                          {renameSaving[field.fieldId] ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
                       {!renameSaving[field.fieldId] && fieldNames[field.fieldId] && renameDraft[field.fieldId] === '' && (
                         <span className="approval-field-rename-saved">✓ {fieldNames[field.fieldId]}</span>
                       )}
