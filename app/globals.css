@@ -9469,6 +9469,117 @@ tr.expanded-row:hover {
 }
 
 /* ====================================================================
+   CROPX ORDER PAGE
+   ==================================================================== */
+
+.cropx-table-wrap {
+  overflow-x: auto;
+}
+
+.cropx-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cropx-table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  border-bottom: 2px solid var(--border);
+  background: var(--surface);
+}
+
+.cropx-th-num {
+  text-align: right !important;
+}
+
+.cropx-td-num {
+  text-align: right;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+
+.cropx-op-row td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cropx-op-row:hover td {
+  background: var(--surface-hover, rgba(0,0,0,0.03));
+}
+
+.cropx-expand-icon {
+  display: inline-block;
+  width: 16px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.cropx-field-row td {
+  padding: 6px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.cropx-field-num {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cropx-total-row td {
+  padding: 10px 12px;
+  border-top: 2px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.cropx-badge {
+  display: inline-block;
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.cropx-badge.green {
+  background: rgba(74, 122, 91, 0.15);
+  color: #2d6a45;
+}
+
+.cropx-badge.blue {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+}
+
+.cropx-badge.amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+}
+
+.cropx-zero {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.cropx-service-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+/* ====================================================================
    PRINT STYLES
    ==================================================================== */
 
