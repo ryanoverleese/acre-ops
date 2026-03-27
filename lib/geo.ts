@@ -29,25 +29,33 @@ export async function fetchElevation(lat: number, lng: number): Promise<number |
 
 export async function fetchSoilData(lat: number, lng: number): Promise<{ muname: string | null; musym: string | null }> {
   try {
-    const query = `
-      SELECT TOP 1 mu.muname, mu.musym
-      FROM mapunit mu
-      INNER JOIN SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lng} ${lat})') AS res ON mu.mukey = res.mukey
-    `;
+    const query = `SELECT TOP 1 mu.muname, mu.musym FROM mapunit mu INNER JOIN SDA_Get_Mukey_from_intersection_with_WktWgs84('POINT(${lng} ${lat})') AS res ON mu.mukey = res.mukey`;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
     const response = await fetch('https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `query=${encodeURIComponent(query)}&format=JSON`,
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.error('USDA SDA API error:', response.status, response.statusText);
+      return { muname: null, musym: null };
+    }
 
     const data = await response.json();
 
     if (data?.Table && data.Table.length > 0) {
       const row = data.Table[0];
-      return { muname: row[0], musym: row[1] };
+      return { muname: row[0] ?? null, musym: row[1] ?? null };
     }
 
+    console.error('USDA SDA returned no Table data:', JSON.stringify(data));
     return { muname: null, musym: null };
   } catch (error) {
     console.error('Error fetching soil data:', error);
