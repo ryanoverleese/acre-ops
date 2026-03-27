@@ -74,7 +74,12 @@ export async function POST(request: NextRequest) {
       // Link fields need array format: [id] or []
       updateBody = { [fieldName]: value ? [value] : [] };
     } else {
-      updateBody = { [fieldName]: typeof value === 'number' ? value : (value || '') };
+      let fieldValue: unknown = typeof value === 'number' ? value : (value || '');
+      // Baserow lat/lng fields allow max 6 decimal places
+      if ((fieldName === 'lat' || fieldName === 'lng') && typeof fieldValue === 'number') {
+        fieldValue = Math.round(fieldValue * 1000000) / 1000000;
+      }
+      updateBody = { [fieldName]: fieldValue };
     }
     updateBody = addSpaceVariants(updateBody);
 
