@@ -8,7 +8,7 @@ const FIELD_SEASONS_TABLE_ID = TABLE_IDS.field_seasons; // 817300
 const OPERATIONS_TABLE_ID = TABLE_IDS.operations;    // 817295
 
 // Fields that are on the fields table vs field_seasons table
-const FIELD_LEVEL_KEYS = ['irrigation_type', 'row_direction', 'water_source', 'fuel_source'];
+const FIELD_LEVEL_KEYS = ['irrigation_type', 'row_direction', 'water_source', 'fuel_source', 'name', 'lat', 'lng'];
 const SEASON_LEVEL_KEYS = ['crop', 'side_dress', 'hybrid_variety', 'planting_date'];
 const LINK_FIELD_KEYS = ['billing_entity'];
 const ALLOWED_KEYS = [...FIELD_LEVEL_KEYS, ...SEASON_LEVEL_KEYS, ...LINK_FIELD_KEYS];
@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
       // Link fields need array format: [id] or []
       updateBody = { [fieldName]: value ? [value] : [] };
     } else {
-      updateBody = { [fieldName]: value || '' };
+      updateBody = { [fieldName]: typeof value === 'number' ? value : (value || '') };
     }
     updateBody = addSpaceVariants(updateBody);
 

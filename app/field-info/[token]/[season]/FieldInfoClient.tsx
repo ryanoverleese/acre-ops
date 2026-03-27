@@ -196,10 +196,10 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
     }
     setRenameSaving((prev) => ({ ...prev, [fieldId]: true }));
     try {
-      const res = await fetch(`/api/fields/${fieldId}`, {
-        method: 'PATCH',
+      const res = await fetch('/api/field-info', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({ token, fieldId, field: 'name', value: newName }),
       });
       if (res.ok) {
         setFieldNames((prev) => ({ ...prev, [fieldId]: newName }));
@@ -213,12 +213,19 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
   const handleSaveLocation = async (fieldId: number, lat: number, lng: number) => {
     setLocationSaving((prev) => ({ ...prev, [fieldId]: true }));
     try {
-      const res = await fetch(`/api/fields/${fieldId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lat, lng }),
-      });
-      if (res.ok) {
+      const [resLat, resLng] = await Promise.all([
+        fetch('/api/field-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, fieldId, field: 'lat', value: lat }),
+        }),
+        fetch('/api/field-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, fieldId, field: 'lng', value: lng }),
+        }),
+      ]);
+      if (resLat.ok && resLng.ok) {
         setFieldCoords((prev) => ({ ...prev, [fieldId]: [lat, lng] }));
         setLocationSaved((prev) => ({ ...prev, [fieldId]: true }));
         setTimeout(() => setLocationSaved((prev) => ({ ...prev, [fieldId]: false })), 3000);
