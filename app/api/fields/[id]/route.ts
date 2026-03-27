@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { TABLE_IDS, addSpaceVariants } from '@/lib/baserow';
+import { fetchSoilType, fetchElevation } from '@/lib/geo';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -55,6 +56,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.plss_range !== undefined) updateData.plss_range = body.plss_range;
     if (body.plss_section !== undefined) updateData.plss_section = body.plss_section;
     if (body.plss_description !== undefined) updateData.plss_description = body.plss_description;
+
+    // Auto-fetch soil type and elevation when lat/lng are provided and not explicitly set
+    if (body.lat !== undefined && body.lng !== undefined) {
+      const [soilType, elevation] = await Promise.all([
+        body.soil_type === undefined ? fetchSoilType(body.lat, body.lng) : Promise.resolve(null),
+        body.elevation === undefined ? fetchElevation(body.lat, body.lng) : Promise.resolve(null),
+      ]);
+      if (soilType) updateData.soil_type = soilType;
+      if (elevation) updateData.elevation = elevation;
+    }
 
     // Add space variants for Baserow field name compatibility
     const patchData = addSpaceVariants(updateData);
