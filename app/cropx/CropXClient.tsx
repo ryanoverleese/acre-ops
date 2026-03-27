@@ -33,12 +33,14 @@ export default function CropXClient({ operations, allSeasons }: Props) {
   const totals = rows.reduce(
     (acc, op) => {
       const s = op.seasonData!;
+      acc.fields += s.fields.length;
+      acc.probes += s.fields.reduce((sum, f) => sum + f.probeCount, 0);
       acc.cropXService += s.cropXService;
       acc.onOrder += s.onOrder;
       acc.onOrderTrade += s.onOrderTrade;
       return acc;
     },
-    { cropXService: 0, onOrder: 0, onOrderTrade: 0 }
+    { fields: 0, probes: 0, cropXService: 0, onOrder: 0, onOrderTrade: 0 }
   );
 
   return (
@@ -66,7 +68,9 @@ export default function CropXClient({ operations, allSeasons }: Props) {
           <table className="cropx-table">
             <thead>
               <tr>
-                <th style={{ width: '40%' }}>Operation</th>
+                <th style={{ width: '30%' }}>Operation</th>
+                <th className="cropx-th-num">Fields</th>
+                <th className="cropx-th-num">Probes</th>
                 <th className="cropx-th-num">CropX Annual Service</th>
                 <th className="cropx-th-num">On Order</th>
                 <th className="cropx-th-num">On Order - Trade</th>
@@ -76,6 +80,8 @@ export default function CropXClient({ operations, allSeasons }: Props) {
               {rows.map(({ id, name, seasonData }) => {
                 const s = seasonData!;
                 const isExpanded = expanded.has(id);
+                const fieldCount = s.fields.length;
+                const probeCount = s.fields.reduce((sum, f) => sum + f.probeCount, 0);
                 return (
                   <>
                     <tr
@@ -87,6 +93,12 @@ export default function CropXClient({ operations, allSeasons }: Props) {
                       <td>
                         <span className="cropx-expand-icon">{isExpanded ? '▾' : '▸'}</span>
                         {name}
+                      </td>
+                      <td className="cropx-td-num">
+                        <span className="cropx-zero">{fieldCount}</span>
+                      </td>
+                      <td className="cropx-td-num">
+                        <span className="cropx-zero">{probeCount}</span>
                       </td>
                       <td className="cropx-td-num">
                         {s.cropXService > 0 ? <span className="cropx-badge green">{s.cropXService}</span> : <span className="cropx-zero">—</span>}
@@ -106,6 +118,8 @@ export default function CropXClient({ operations, allSeasons }: Props) {
                             <span className="cropx-service-tag">{f.serviceType}</span>
                           )}
                         </td>
+                        <td className="cropx-td-num cropx-field-num">1</td>
+                        <td className="cropx-td-num cropx-field-num">{f.probeCount}</td>
                         <td className="cropx-td-num cropx-field-num">
                           {f.cropXService > 0 ? f.cropXService : <span className="cropx-zero">—</span>}
                         </td>
@@ -124,6 +138,8 @@ export default function CropXClient({ operations, allSeasons }: Props) {
             <tfoot>
               <tr className="cropx-total-row">
                 <td><strong>Total — {season}</strong></td>
+                <td className="cropx-td-num"><strong>{totals.fields || '—'}</strong></td>
+                <td className="cropx-td-num"><strong>{totals.probes || '—'}</strong></td>
                 <td className="cropx-td-num"><strong>{totals.cropXService || '—'}</strong></td>
                 <td className="cropx-td-num"><strong>{totals.onOrder || '—'}</strong></td>
                 <td className="cropx-td-num"><strong>{totals.onOrderTrade || '—'}</strong></td>
