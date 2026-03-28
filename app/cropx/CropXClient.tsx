@@ -64,98 +64,117 @@ export default function CropXClient({ operations, allSeasons }: Props) {
       {rows.length === 0 ? (
         <p style={{ color: 'var(--text-secondary)', padding: '24px 0' }}>No data for {season}.</p>
       ) : (
-        <div className="cropx-table-wrap">
-          <table className="cropx-table">
-            <thead>
-              <tr>
-                <th style={{ width: '30%' }}>Operation</th>
-                <th className="cropx-th-num">Fields</th>
-                <th className="cropx-th-num">Probes</th>
-                <th className="cropx-th-num">
-                  Renewals
-                  <div className="cropx-th-sub">existing probes</div>
-                </th>
-                <th className="cropx-th-num">
-                  New + Sub
-                  <div className="cropx-th-sub blue">new probe + subscription</div>
-                </th>
-                <th className="cropx-th-num">
-                  Trade-In + Sub
-                  <div className="cropx-th-sub amber">trade-in + subscription</div>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(({ id, name, seasonData }) => {
-                const s = seasonData!;
-                const isExpanded = expanded.has(id);
-                const fieldCount = s.fields.length;
-                const probeCount = s.fields.reduce((sum, f) => sum + f.probeCount, 0);
-                return (
-                  <>
-                    <tr
-                      key={id}
-                      className="cropx-op-row"
-                      onClick={() => toggleExpand(id)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <td>
-                        <span className="cropx-expand-icon">{isExpanded ? '▾' : '▸'}</span>
-                        {name}
-                      </td>
-                      <td className="cropx-td-num">
-                        <span className="cropx-zero">{fieldCount}</span>
-                      </td>
-                      <td className="cropx-td-num">
-                        <span className="cropx-zero">{probeCount}</span>
-                      </td>
-                      <td className="cropx-td-num">
-                        {s.cropXService > 0 ? <span className="cropx-badge green">{s.cropXService}</span> : <span className="cropx-zero">—</span>}
-                      </td>
-                      <td className="cropx-td-num">
-                        {s.onOrder > 0 ? <span className="cropx-badge blue">{s.onOrder}</span> : <span className="cropx-zero">—</span>}
-                      </td>
-                      <td className="cropx-td-num">
-                        {s.onOrderTrade > 0 ? <span className="cropx-badge amber">{s.onOrderTrade}</span> : <span className="cropx-zero">—</span>}
-                      </td>
-                    </tr>
-                    {isExpanded && s.fields.map((f) => (
-                      <tr key={f.fieldId} className="cropx-field-row">
-                        <td style={{ paddingLeft: '36px' }}>
-                          <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{f.fieldName}</span>
-                          {f.serviceType && (
-                            <span className="cropx-service-tag">{f.serviceType}</span>
-                          )}
+        <>
+          {/* Summary cards */}
+          <div className="cropx-summary-cards">
+            <div className="cropx-card">
+              <div className="cropx-card-value">{totals.fields}</div>
+              <div className="cropx-card-label">Fields</div>
+            </div>
+            <div className="cropx-card">
+              <div className="cropx-card-value">{totals.probes}</div>
+              <div className="cropx-card-label">Total Probes</div>
+            </div>
+            <div className="cropx-card green">
+              <div className="cropx-card-value">{totals.cropXService}</div>
+              <div className="cropx-card-label">Renewals</div>
+              <div className="cropx-card-sub">existing probes</div>
+            </div>
+            <div className="cropx-card blue">
+              <div className="cropx-card-value">{totals.onOrder}</div>
+              <div className="cropx-card-label">New + Sub</div>
+              <div className="cropx-card-sub">new probe + subscription</div>
+            </div>
+            <div className="cropx-card amber">
+              <div className="cropx-card-value">{totals.onOrderTrade}</div>
+              <div className="cropx-card-label">Trade-In + Sub</div>
+              <div className="cropx-card-sub">trade-in + subscription</div>
+            </div>
+          </div>
+
+          <div className="cropx-table-wrap">
+            <table className="cropx-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '30%' }}>Operation</th>
+                  <th className="cropx-th-num">Fields</th>
+                  <th className="cropx-th-num">Probes</th>
+                  <th className="cropx-th-num">
+                    Renewals
+                    <div className="cropx-th-sub">existing probes</div>
+                  </th>
+                  <th className="cropx-th-num">
+                    New + Sub
+                    <div className="cropx-th-sub blue">new probe + subscription</div>
+                  </th>
+                  <th className="cropx-th-num">
+                    Trade-In + Sub
+                    <div className="cropx-th-sub amber">trade-in + subscription</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map(({ id, name, seasonData }) => {
+                  const s = seasonData!;
+                  const isExpanded = expanded.has(id);
+                  const fieldCount = s.fields.length;
+                  const probeCount = s.fields.reduce((sum, f) => sum + f.probeCount, 0);
+                  return (
+                    <>
+                      <tr
+                        key={id}
+                        className="cropx-op-row"
+                        onClick={() => toggleExpand(id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <td>
+                          <span className="cropx-expand-icon">{isExpanded ? '▾' : '▸'}</span>
+                          {name}
                         </td>
-                        <td className="cropx-td-num cropx-field-num">1</td>
-                        <td className="cropx-td-num cropx-field-num">{f.probeCount}</td>
-                        <td className="cropx-td-num cropx-field-num">
-                          {f.cropXService > 0 ? f.cropXService : <span className="cropx-zero">—</span>}
+                        <td className="cropx-td-num">
+                          <span className="cropx-zero">{fieldCount}</span>
                         </td>
-                        <td className="cropx-td-num cropx-field-num">
-                          {f.onOrder > 0 ? f.onOrder : <span className="cropx-zero">—</span>}
+                        <td className="cropx-td-num">
+                          <span className="cropx-zero">{probeCount}</span>
                         </td>
-                        <td className="cropx-td-num cropx-field-num">
-                          {f.onOrderTrade > 0 ? f.onOrderTrade : <span className="cropx-zero">—</span>}
+                        <td className="cropx-td-num">
+                          {s.cropXService > 0 ? <span className="cropx-badge green">{s.cropXService}</span> : <span className="cropx-zero">—</span>}
+                        </td>
+                        <td className="cropx-td-num">
+                          {s.onOrder > 0 ? <span className="cropx-badge blue">{s.onOrder}</span> : <span className="cropx-zero">—</span>}
+                        </td>
+                        <td className="cropx-td-num">
+                          {s.onOrderTrade > 0 ? <span className="cropx-badge amber">{s.onOrderTrade}</span> : <span className="cropx-zero">—</span>}
                         </td>
                       </tr>
-                    ))}
-                  </>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="cropx-total-row">
-                <td><strong>Total — {season}</strong></td>
-                <td className="cropx-td-num"><strong>{totals.fields || '—'}</strong></td>
-                <td className="cropx-td-num"><strong>{totals.probes || '—'}</strong></td>
-                <td className="cropx-td-num"><strong>{totals.cropXService || '—'}</strong></td>
-                <td className="cropx-td-num"><strong>{totals.onOrder || '—'}</strong></td>
-                <td className="cropx-td-num"><strong>{totals.onOrderTrade || '—'}</strong></td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+                      {isExpanded && s.fields.map((f) => (
+                        <tr key={f.fieldId} className="cropx-field-row">
+                          <td style={{ paddingLeft: '36px' }}>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{f.fieldName}</span>
+                            {f.serviceType && (
+                              <span className="cropx-service-tag">{f.serviceType}</span>
+                            )}
+                          </td>
+                          <td className="cropx-td-num cropx-field-num">1</td>
+                          <td className="cropx-td-num cropx-field-num">{f.probeCount}</td>
+                          <td className="cropx-td-num cropx-field-num">
+                            {f.cropXService > 0 ? f.cropXService : <span className="cropx-zero">—</span>}
+                          </td>
+                          <td className="cropx-td-num cropx-field-num">
+                            {f.onOrder > 0 ? f.onOrder : <span className="cropx-zero">—</span>}
+                          </td>
+                          <td className="cropx-td-num cropx-field-num">
+                            {f.onOrderTrade > 0 ? f.onOrderTrade : <span className="cropx-zero">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </div>
   );

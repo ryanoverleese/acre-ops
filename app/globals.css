@@ -9472,6 +9472,61 @@ tr.expanded-row:hover {
    CROPX ORDER PAGE
    ==================================================================== */
 
+.cropx-summary-cards {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.cropx-card {
+  flex: 1;
+  min-width: 120px;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.cropx-card.green {
+  background: rgba(74, 122, 91, 0.08);
+  border-color: rgba(74, 122, 91, 0.25);
+}
+
+.cropx-card.blue {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.25);
+}
+
+.cropx-card.amber {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+}
+
+.cropx-card-value {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.cropx-card.green .cropx-card-value { color: #2d6a45; }
+.cropx-card.blue .cropx-card-value { color: #1d4ed8; }
+.cropx-card.amber .cropx-card-value { color: #b45309; }
+
+.cropx-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 6px;
+  color: var(--text-primary);
+}
+
+.cropx-card-sub {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
 .cropx-table-wrap {
   overflow-x: auto;
 }
