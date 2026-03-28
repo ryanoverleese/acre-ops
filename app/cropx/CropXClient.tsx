@@ -43,6 +43,20 @@ export default function CropXClient({ operations, allSeasons }: Props) {
     { fields: 0, probes: 0, cropXService: 0, onOrder: 0, onOrderTrade: 0 }
   );
 
+  const RENEWAL_PRICE = 300;
+  const NEW_PROBE_PRICE = 595;
+  const SUB_PRICE = 300;
+  const TRADE_HW_PRICE = 300;
+
+  const costs = {
+    renewals: totals.cropXService * RENEWAL_PRICE,
+    newSub: totals.onOrder * (NEW_PROBE_PRICE + SUB_PRICE),
+    tradeSub: totals.onOrderTrade * (TRADE_HW_PRICE + SUB_PRICE),
+  };
+  const totalCost = costs.renewals + costs.newSub + costs.tradeSub;
+
+  const fmt = (n: number) => '$' + n.toLocaleString();
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -79,16 +93,27 @@ export default function CropXClient({ operations, allSeasons }: Props) {
               <div className="cropx-card-value">{totals.cropXService}</div>
               <div className="cropx-card-label">Renewals</div>
               <div className="cropx-card-sub">existing probes</div>
+              <div className="cropx-card-cost">{fmt(costs.renewals)}</div>
+              <div className="cropx-card-cost-sub">$300/sub</div>
             </div>
             <div className="cropx-card blue">
               <div className="cropx-card-value">{totals.onOrder}</div>
               <div className="cropx-card-label">New + Sub</div>
               <div className="cropx-card-sub">new probe + subscription</div>
+              <div className="cropx-card-cost">{fmt(costs.newSub)}</div>
+              <div className="cropx-card-cost-sub">$595 probe + $300 sub</div>
             </div>
             <div className="cropx-card amber">
               <div className="cropx-card-value">{totals.onOrderTrade}</div>
               <div className="cropx-card-label">Trade-In + Sub</div>
               <div className="cropx-card-sub">trade-in + subscription</div>
+              <div className="cropx-card-cost">{fmt(costs.tradeSub)}</div>
+              <div className="cropx-card-cost-sub">$300 hw + $300 sub</div>
+            </div>
+            <div className="cropx-card total">
+              <div className="cropx-card-value">{fmt(totalCost)}</div>
+              <div className="cropx-card-label">Total Order</div>
+              <div className="cropx-card-sub">{season}</div>
             </div>
           </div>
 

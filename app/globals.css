@@ -9527,6 +9527,30 @@ tr.expanded-row:hover {
   margin-top: 2px;
 }
 
+.cropx-card-cost {
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 10px;
+  color: var(--text-primary);
+}
+
+.cropx-card-cost-sub {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 1px;
+}
+
+.cropx-card.total {
+  background: var(--surface);
+  border-color: var(--border);
+  border-width: 2px;
+}
+
+.cropx-card.total .cropx-card-value {
+  font-size: 28px;
+  color: var(--text-primary);
+}
+
 .cropx-table-wrap {
   overflow-x: auto;
 }
