@@ -71,9 +71,18 @@ export default function CropXClient({ operations, allSeasons }: Props) {
                 <th style={{ width: '30%' }}>Operation</th>
                 <th className="cropx-th-num">Fields</th>
                 <th className="cropx-th-num">Probes</th>
-                <th className="cropx-th-num">CropX Annual Service</th>
-                <th className="cropx-th-num">On Order</th>
-                <th className="cropx-th-num">On Order - Trade</th>
+                <th className="cropx-th-num">
+                  Renewals
+                  <div className="cropx-th-sub">existing probes</div>
+                </th>
+                <th className="cropx-th-num">
+                  New + Sub
+                  <div className="cropx-th-sub blue">new probe + subscription</div>
+                </th>
+                <th className="cropx-th-num">
+                  Trade-In + Sub
+                  <div className="cropx-th-sub amber">trade-in + subscription</div>
+                </th>
               </tr>
             </thead>
             <tbody>

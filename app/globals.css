@@ -9568,6 +9568,23 @@ tr.expanded-row:hover {
   font-size: 12px;
 }
 
+.cropx-th-sub {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.cropx-th-sub.blue {
+  color: #1d4ed8;
+}
+
+.cropx-th-sub.amber {
+  color: #b45309;
+}
+
 .cropx-service-tag {
   display: inline-block;
   margin-left: 6px;
