@@ -40,6 +40,7 @@ export interface DashboardBooking {
   operationNotes: string;
   fieldsPrev: number;
   fieldsCurr: number;
+  probesPrev: number;
   probesCurr: number;
   status: 'returning' | 'new' | 'still-to-go' | 'not-returning';
 }
@@ -62,7 +63,7 @@ function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-type BookingSortColumn = 'operation' | 'change' | 'fieldsCurr' | 'probesCurr' | 'status';
+type BookingSortColumn = 'operation' | 'change' | 'fieldsCurr' | 'probesCurr' | 'probeChange' | 'status';
 
 export default function DashboardClient({ stats, openRepairs, recentOrders, installedProbes }: DashboardClientProps) {
   const [showInstalled, setShowInstalled] = useState(false);
@@ -225,6 +226,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
               case 'change': cmp = (a.fieldsCurr - a.fieldsPrev) - (b.fieldsCurr - b.fieldsPrev); break;
               case 'fieldsCurr': cmp = a.fieldsCurr - b.fieldsCurr; break;
               case 'probesCurr': cmp = a.probesCurr - b.probesCurr; break;
+              case 'probeChange': cmp = (a.probesCurr - a.probesPrev) - (b.probesCurr - b.probesPrev); break;
               case 'status': cmp = (statusOrder[a.status] ?? 99) - (statusOrder[b.status] ?? 99); break;
             }
             return bookingSortDir === 'asc' ? cmp : -cmp;
@@ -292,6 +294,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                       <th className="sortable" onClick={() => handleBookingSort('fieldsCurr')}>Fields{sortArrow('fieldsCurr')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('change')}>Change{sortArrow('change')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('probesCurr')}>Probes{sortArrow('probesCurr')}</th>
+                      <th className="sortable" onClick={() => handleBookingSort('probeChange')}>Change{sortArrow('probeChange')}</th>
                       <th className="sortable" onClick={() => handleBookingSort('status')}>Status{sortArrow('status')}</th>
                     </tr>
                   </thead>
@@ -316,6 +319,16 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                               ? <span className="status-badge installed">{b.probesCurr}</span>
                               : <span className="status-badge assigned">{b.probesCurr}/{b.fieldsCurr}</span>
                           ) : <span className="text-muted">—</span>}
+                        </td>
+                        <td>
+                          {(() => {
+                            if (b.status === 'still-to-go' || b.status === 'not-returning') return <span className="text-muted">—</span>;
+                            if (b.status === 'new') return b.probesCurr > 0 ? <span className="status-badge in-stock">+{b.probesCurr}</span> : <span className="text-muted">—</span>;
+                            const delta = b.probesCurr - b.probesPrev;
+                            if (delta > 0) return <span className="status-badge installed">+{delta}</span>;
+                            if (delta < 0) return <span className="status-badge assigned">{delta}</span>;
+                            return <span className="status-badge unassigned">=</span>;
+                          })()}
                         </td>
                         <td style={{ whiteSpace: 'nowrap' }}>
                           <span className={`status-badge ${b.status}`}>

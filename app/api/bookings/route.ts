@@ -22,8 +22,9 @@ export async function GET() {
 
     const notReturningTag = `[NOT_RETURNING_${currentYear}]`;
 
-    // Map field_season ID → operation ID for current season
+    // Map field_season ID → operation ID for current and previous season
     const fsToOp = new Map<number, number>();
+    const fsToOpPrev = new Map<number, number>();
     const opFieldsPrev = new Map<number, Set<number>>();
     const opFieldsCurr = new Map<number, Set<number>>();
 
@@ -38,24 +39,27 @@ export async function GET() {
       if (!opId) continue;
 
       if (fs.season == currentYear) fsToOp.set(fs.id, opId);
+      if (fs.season == previousYear) fsToOpPrev.set(fs.id, opId);
 
       const bucket = fs.season == previousYear ? opFieldsPrev : opFieldsCurr;
       if (!bucket.has(opId)) bucket.set(opId, new Set());
       bucket.get(opId)!.add(fieldId);
     }
 
-    // Count current season probe assignments per operation
+    // Count probe assignments per operation for current and previous season
     const opProbesCurr = new Map<number, number>();
+    const opProbesPrev = new Map<number, number>();
     for (const pa of probeAssignments) {
       const fsId = pa.field_season?.[0]?.id;
       if (!fsId) continue;
-      const opId = fsToOp.get(fsId);
-      if (!opId) continue;
-      opProbesCurr.set(opId, (opProbesCurr.get(opId) || 0) + 1);
+      const opIdCurr = fsToOp.get(fsId);
+      if (opIdCurr) opProbesCurr.set(opIdCurr, (opProbesCurr.get(opIdCurr) || 0) + 1);
+      const opIdPrev = fsToOpPrev.get(fsId);
+      if (opIdPrev) opProbesPrev.set(opIdPrev, (opProbesPrev.get(opIdPrev) || 0) + 1);
     }
 
     const allOpIds = new Set([...opFieldsPrev.keys(), ...opFieldsCurr.keys()]);
-    const bookings: { operationId: number; operationName: string; operationNotes: string; fieldsPrev: number; fieldsCurr: number; probesCurr: number; status: string }[] = [];
+    const bookings: { operationId: number; operationName: string; operationNotes: string; fieldsPrev: number; fieldsCurr: number; probesPrev: number; probesCurr: number; status: string }[] = [];
 
     // Count previous-year fields not yet enrolled in current year
     let totalRemainingFields = 0;
@@ -87,6 +91,7 @@ export async function GET() {
         operationNotes: notes,
         fieldsPrev: countPrev,
         fieldsCurr: countCurr,
+        probesPrev: opProbesPrev.get(opId) || 0,
         probesCurr: opProbesCurr.get(opId) || 0,
         status,
       });
