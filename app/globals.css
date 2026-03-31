@@ -4925,7 +4925,8 @@ input[type="date"]:focus {
 
 /* Billing Table Styles */
 .billing-table-container {
-  overflow: clip;
+  overflow-y: auto;
+  max-height: calc(100vh - 220px);
 }
 
 .billing-table {
