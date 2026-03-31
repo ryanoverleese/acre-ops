@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
 import type { ApprovalItem, EnrolledOperation } from './page';
@@ -961,6 +962,9 @@ export default function ApprovalsClient({
             ] : [])]
           )}
         </div>
+      </div>
+      <div className="approvals-page-footer">
+        <Image src="/acre-insights-logo.png" alt="Acre Insights" height={36} width={180} style={{ objectFit: 'contain', opacity: 0.7 }} />
       </div>
     </>
   );

@@ -3516,6 +3516,14 @@ input[type="date"]:focus {
   padding: 6px 12px;
 }
 
+.approvals-page-footer {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0 16px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
 /* Link footer row (generated indicator + regenerate) */
 .approvals-link-footer {
   display: flex;
