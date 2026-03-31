@@ -1182,24 +1182,20 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 )}
 
                 {/* Dropdown to select existing */}
-                <select
+                <SearchableSelect
                   value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      const be = billingEntitiesList.find((b) => b.id === parseInt(e.target.value));
+                  onChange={(v) => {
+                    if (v) {
+                      const be = billingEntitiesList.find((b) => b.id === parseInt(v));
                       if (be && !selectedBillingEntities.some((s) => s.id === be.id)) {
                         setSelectedBillingEntities([...selectedBillingEntities, { id: be.id, name: be.name }]);
                       }
                     }
                   }}
-                >
-                  <option value="">
-                    {selectedBillingEntities.length === 0 ? 'Select billing entity...' : '+ Add another...'}
-                  </option>
-                  {availableBillingEntities.map((be) => (
-                    <option key={be.id} value={be.id}>{be.name}</option>
-                  ))}
-                </select>
+                  options={availableBillingEntities.map((be) => ({ value: String(be.id), label: be.name }))}
+                  placeholder={selectedBillingEntities.length === 0 ? 'Select billing entity...' : '+ Add another...'}
+                  autoSort
+                />
               </div>
             )}
           </>
@@ -1225,12 +1221,15 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-              <option value="all">All Types</option>
-              {CUSTOMER_TYPE_OPTIONS.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={filterType}
+              onChange={setFilterType}
+              options={[
+                { value: 'all', label: 'All Types' },
+                ...CUSTOMER_TYPE_OPTIONS.map((type) => ({ value: type, label: type })),
+              ]}
+              style={{ minWidth: 120 }}
+            />
             {(() => {
               const emailCount = filteredContacts.filter((c) => c.email.trim()).length;
               return emailCount > 0 ? (
@@ -1249,11 +1248,16 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
               ) : null;
             })()}
             {showMap && (
-              <select value={mapColorBy} onChange={(e) => setMapColorBy(e.target.value as 'none' | 'type' | 'operation')}>
-                <option value="none">Default Markers</option>
-                <option value="type">Color by Type</option>
-                <option value="operation">Color by Operation</option>
-              </select>
+              <SearchableSelect
+                value={mapColorBy}
+                onChange={(v) => setMapColorBy(v as 'none' | 'type' | 'operation')}
+                options={[
+                  { value: 'none', label: 'Default Markers' },
+                  { value: 'type', label: 'Color by Type' },
+                  { value: 'operation', label: 'Color by Operation' },
+                ]}
+                style={{ minWidth: 140 }}
+              />
             )}
             {/* Column Picker Dropdown */}
             {!showMap && (
@@ -1671,10 +1675,14 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 {renderBillingEntitiesField()}
                 <div className="form-group">
                   <label>Main Contact?</label>
-                  <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
+                  <SearchableSelect
+                    value={form.is_main_contact}
+                    onChange={(v) => setForm({ ...form, is_main_contact: v })}
+                    options={[
+                      { value: 'No', label: 'No' },
+                      { value: 'Yes', label: 'Yes' },
+                    ]}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Email</label>
@@ -1787,10 +1795,14 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 {renderBillingEntitiesField()}
                 <div className="form-group">
                   <label>Main Contact?</label>
-                  <select value={form.is_main_contact} onChange={(e) => setForm({ ...form, is_main_contact: e.target.value })}>
-                    <option value="No">No</option>
-                    <option value="Yes">Yes</option>
-                  </select>
+                  <SearchableSelect
+                    value={form.is_main_contact}
+                    onChange={(v) => setForm({ ...form, is_main_contact: v })}
+                    options={[
+                      { value: 'No', label: 'No' },
+                      { value: 'Yes', label: 'Yes' },
+                    ]}
+                  />
                 </div>
                 <div className="form-group">
                   <label>Email</label>
@@ -1956,7 +1968,7 @@ export default function ContactsClient({ initialContacts, operations, billingEnt
                 <div className="form-group">
                   <label>Mailing Address</label>
                   <div>
-                    <label className="contacts-billing-checkbox-label">
+                    <label className="checkbox-label">
                       <input
                         type="checkbox"
                         checked={newBillingEntityForm.sameAddressAsContact}

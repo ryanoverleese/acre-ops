@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { ProcessedInventoryItem, EquipmentCount } from './page';
 
 interface InventoryClientProps {
@@ -306,12 +307,16 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}>
-              <option value="all">All Categories</option>
-              {allCategories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={filterCategory}
+              onChange={setFilterCategory}
+              options={[
+                { value: 'all', label: 'All Categories' },
+                ...allCategories.map((cat) => ({ value: cat, label: cat })),
+              ]}
+              autoSort
+              style={{ minWidth: 130 }}
+            />
             <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -458,12 +463,13 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                 </div>
                 <div className="form-group">
                   <label>Category</label>
-                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                    <option value="">Select category...</option>
-                    {allCategories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={form.category}
+                    onChange={(v) => setForm({ ...form, category: v })}
+                    options={allCategories.map((cat) => ({ value: cat, label: cat }))}
+                    placeholder="Select category..."
+                    autoSort
+                  />
                 </div>
                 <div className="form-group">
                   <label>Quantity</label>
@@ -501,12 +507,13 @@ export default function InventoryClient({ initialItems, categoryOptions, antenna
                 </div>
                 <div className="form-group">
                   <label>Category</label>
-                  <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                    <option value="">Select category...</option>
-                    {allCategories.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    value={form.category}
+                    onChange={(v) => setForm({ ...form, category: v })}
+                    options={allCategories.map((cat) => ({ value: cat, label: cat }))}
+                    placeholder="Select category..."
+                    autoSort
+                  />
                 </div>
                 <div className="form-group">
                   <label>Quantity</label>

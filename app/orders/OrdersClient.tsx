@@ -974,7 +974,6 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                           label: `${p.name} (${formatCurrency(p.rate)})`,
                         }))}
                         placeholder="Select product..."
-                        className="order-add-item-select"
                       />
                     </div>
                     <div className="order-add-item-field order-add-item-field-qty">
@@ -1166,7 +1165,6 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                         onChange={(v) => updateEditItem(idx, 'productId', parseInt(v) || null)}
                         options={catalog.map(p => ({ value: String(p.id), label: `${p.name} (${formatCurrency(p.rate)})` }))}
                         placeholder="Select product..."
-                        className="order-new-item-select"
                       />
                       <div className="form-row">
                         <div className="form-group">
@@ -1261,7 +1259,6 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
                           label: `${p.name} (${formatCurrency(p.rate)})`,
                         }))}
                         placeholder="Select product..."
-                        className="order-new-item-select"
                       />
                       <div className="form-row">
                         <div className="form-group">

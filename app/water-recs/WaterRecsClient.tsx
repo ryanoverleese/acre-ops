@@ -428,7 +428,6 @@ export default function WaterRecsClient({
       {/* Controls */}
       <div className="wr-controls">
         <SearchableSelect
-          className="wr-select"
           value={selectedOperationId ? String(selectedOperationId) : ''}
           onChange={(v) => setSelectedOperationId(parseInt(v) || null)}
           options={operations.length === 0
@@ -564,14 +563,13 @@ export default function WaterRecsClient({
                   </div>
 
                   {/* Water day dropdown */}
-                  <select
-                    className="wr-field-select"
+                  <SearchableSelect
                     value={form.waterDay}
-                    onChange={(e) => updateField(field.fieldSeasonId, { waterDay: e.target.value })}
-                  >
-                    <option value="">Water day...</option>
-                    {waterDayOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                  </select>
+                    onChange={(v) => updateField(field.fieldSeasonId, { waterDay: v })}
+                    options={waterDayOptions}
+                    placeholder="Water day..."
+                    style={{ minWidth: 120 }}
+                  />
 
                   {/* Expand chevron */}
                   <button
@@ -700,14 +698,13 @@ export default function WaterRecsClient({
                 </div>
 
                 {isUpdated && (
-                  <select
-                    className="wr-update-select"
+                  <SearchableSelect
                     value={form.waterDay}
-                    onChange={(e) => updateField(field.fieldSeasonId, { waterDay: e.target.value })}
-                  >
-                    <option value="">New day...</option>
-                    {waterDayOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                  </select>
+                    onChange={(v) => updateField(field.fieldSeasonId, { waterDay: v })}
+                    options={waterDayOptions}
+                    placeholder="New day..."
+                    style={{ minWidth: 120 }}
+                  />
                 )}
               </div>
             );

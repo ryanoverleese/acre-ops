@@ -328,14 +328,15 @@ export default function WeatherStationsClient({
             onChange={(e) => setSearchQuery(e.target.value)}
             className="ws-filter-input"
           />
-          <select
+          <SearchableSelect
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="ws-filter-select"
-          >
-            <option value="all">All Statuses</option>
-            {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
+            onChange={setFilterStatus}
+            options={[
+              { value: 'all', label: 'All Statuses' },
+              ...statusOptions.map(s => ({ value: s, label: s })),
+            ]}
+            style={{ minWidth: 120 }}
+          />
           <SearchableSelect
             value={filterBE}
             onChange={(v) => setFilterBE(v)}
@@ -344,16 +345,18 @@ export default function WeatherStationsClient({
               ...beWithStations.map(be => ({ value: String(be.id), label: be.name })),
             ]}
             placeholder="All Billing Entities"
-            className="ws-filter-select"
+            autoSort
+            style={{ minWidth: 160 }}
           />
-          <select
+          <SearchableSelect
             value={filterConnectivity}
-            onChange={(e) => setFilterConnectivity(e.target.value)}
-            className="ws-filter-select"
-          >
-            <option value="all">All Connectivity</option>
-            {connectivityOptions.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+            onChange={setFilterConnectivity}
+            options={[
+              { value: 'all', label: 'All Connectivity' },
+              ...connectivityOptions.map(c => ({ value: c, label: c })),
+            ]}
+            style={{ minWidth: 130 }}
+          />
         </div>
 
         {/* Table View */}
@@ -562,10 +565,13 @@ export default function WeatherStationsClient({
                 </div>
                 <div className="form-group">
                   <label>Model *</label>
-                  <select value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })}>
-                    <option value="">Select model...</option>
-                    {modelOptions.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  <SearchableSelect
+                    value={form.model}
+                    onChange={(v) => setForm({ ...form, model: v })}
+                    options={modelOptions.map(m => ({ value: m, label: m }))}
+                    placeholder="Select model..."
+                    autoSort
+                  />
                 </div>
                 <div className="form-group">
                   <label>Billing Entity</label>
@@ -579,17 +585,21 @@ export default function WeatherStationsClient({
                 <div className="form-row">
                   <div className="form-group">
                     <label>Status</label>
-                    <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                      <option value="">Select status...</option>
-                      {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <SearchableSelect
+                      value={form.status}
+                      onChange={(v) => setForm({ ...form, status: v })}
+                      options={statusOptions.map(s => ({ value: s, label: s }))}
+                      placeholder="Select status..."
+                    />
                   </div>
                   <div className="form-group">
                     <label>Connectivity</label>
-                    <select value={form.connectivityType} onChange={(e) => setForm({ ...form, connectivityType: e.target.value })}>
-                      <option value="">Select type...</option>
-                      {connectivityOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <SearchableSelect
+                      value={form.connectivityType}
+                      onChange={(v) => setForm({ ...form, connectivityType: v })}
+                      options={connectivityOptions.map(c => ({ value: c, label: c }))}
+                      placeholder="Select type..."
+                    />
                   </div>
                 </div>
                 <div className="form-row">

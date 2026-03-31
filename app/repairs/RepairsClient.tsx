@@ -668,17 +668,15 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                 {availableProbeAssignments.length > 1 && (
                   <div className="form-group">
                     <label>Which Probe? *</label>
-                    <select
+                    <SearchableSelect
                       value={addForm.probe_assignment}
-                      onChange={(e) => setAddForm({ ...addForm, probe_assignment: e.target.value })}
-                    >
-                      <option value="">Select probe...</option>
-                      {availableProbeAssignments.map((pa) => (
-                        <option key={pa.id} value={pa.id}>
-                          Probe {pa.probeNumber}{pa.label ? ` — ${pa.label}` : ''}{pa.probeSerial ? ` - #${pa.probeSerial}` : ''}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(v) => setAddForm({ ...addForm, probe_assignment: v })}
+                      options={availableProbeAssignments.map((pa) => ({
+                        value: String(pa.id),
+                        label: `Probe ${pa.probeNumber}${pa.label ? ` — ${pa.label}` : ''}${pa.probeSerial ? ` - #${pa.probeSerial}` : ''}`,
+                      }))}
+                      placeholder="Select probe..."
+                    />
                   </div>
                 )}
                 {availableProbeAssignments.length === 1 && (
@@ -858,7 +856,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                   />
                 </div>
                 <div className="form-group">
-                  <label className="checkbox-label-pointer">
+                  <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={completeForm.probe_replaced}
@@ -879,7 +877,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                   </div>
                 )}
                 <div className="form-group">
-                  <label className="checkbox-label-pointer">
+                  <label className="checkbox-label">
                     <input
                       type="checkbox"
                       checked={completeForm.notified_customer}

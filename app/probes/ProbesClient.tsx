@@ -56,56 +56,6 @@ interface ProbesClientProps {
   probeFieldAssignments: ProbeFieldAssignment[];
 }
 
-function MultiSelectFilter({ label, options, selected, onChange }: { label: string; options: string[]; selected: Set<string>; onChange: (s: Set<string>) => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [open]);
-
-  const toggle = (value: string) => {
-    const next = new Set(selected);
-    if (next.has(value)) next.delete(value); else next.add(value);
-    onChange(next);
-  };
-
-  const display = selected.size === 0 ? label : selected.size === 1 ? Array.from(selected)[0] : `${selected.size} selected`;
-
-  return (
-    <div ref={ref} className="multi-select-filter" style={{ position: 'relative' }}>
-      <button
-        className={`probes-filter-select multi-select-btn${selected.size > 0 ? ' active' : ''}`}
-        onClick={() => setOpen(!open)}
-        type="button"
-      >
-        {display}
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ marginLeft: '4px', flexShrink: 0 }}>
-          <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-      {open && (
-        <div className="multi-select-dropdown">
-          <div className="multi-select-actions">
-            <button type="button" onClick={() => onChange(new Set(options))}>Select All</button>
-            <button type="button" onClick={() => onChange(new Set())}>Deselect All</button>
-          </div>
-          {options.map(opt => (
-            <label key={opt} className="multi-select-option">
-              <input type="checkbox" checked={selected.has(opt)} onChange={() => toggle(opt)} />
-              <span>{opt}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 const STATUS_OPTIONS = [
   'On Order',
@@ -201,11 +151,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [customYears, setCustomYears] = useState<string[]>([]);
   const [rackSortBy, setRackSortBy] = useState<'rack' | 'slot' | 'serial'>('rack');
   const [rackFilter, setRackFilter] = useState<'all' | 'empty'>('all');
-  const [filterStatus, setFilterStatus] = useState<Set<string>>(new Set());
-  const [filterBrand, setFilterBrand] = useState<Set<string>>(new Set());
-  const [filterOperation, setFilterOperation] = useState<Set<string>>(new Set());
-  const [filterBillingEntity, setFilterBillingEntity] = useState<Set<string>>(new Set());
-  const [filterTradeYear, setFilterTradeYear] = useState<Set<string>>(new Set());
+  const [filterStatus, setFilterStatus] = useState<string[]>([]);
+  const [filterBrand, setFilterBrand] = useState<string[]>([]);
+  const [filterOperation, setFilterOperation] = useState<string[]>([]);
+  const [filterBillingEntity, setFilterBillingEntity] = useState<string[]>([]);
+  const [filterTradeYear, setFilterTradeYear] = useState<string[]>([]);
   const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
   const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
   const [savingBE, setSavingBE] = useState<Set<number>>(new Set());
@@ -371,22 +321,22 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     // Apply quick filters
-    if (filterStatus.size > 0) {
-      filtered = filtered.filter(p => filterStatus.has(p.status));
+    if (filterStatus.length > 0) {
+      filtered = filtered.filter(p => filterStatus.includes(p.status));
     }
-    if (filterBrand.size > 0) {
-      filtered = filtered.filter(p => filterBrand.has(p.brand));
+    if (filterBrand.length > 0) {
+      filtered = filtered.filter(p => filterBrand.includes(p.brand));
     }
     if (focusedOperation) {
       filtered = filtered.filter(p => p.operation === focusedOperation.name);
-    } else if (filterOperation.size > 0) {
-      filtered = filtered.filter(p => filterOperation.has(p.operation));
+    } else if (filterOperation.length > 0) {
+      filtered = filtered.filter(p => filterOperation.includes(p.operation));
     }
-    if (filterBillingEntity.size > 0) {
-      filtered = filtered.filter(p => filterBillingEntity.has(p.billingEntity));
+    if (filterBillingEntity.length > 0) {
+      filtered = filtered.filter(p => filterBillingEntity.includes(p.billingEntity));
     }
-    if (filterTradeYear.size > 0) {
-      filtered = filtered.filter(p => filterTradeYear.has(p.tradeYear));
+    if (filterTradeYear.length > 0) {
+      filtered = filtered.filter(p => filterTradeYear.includes(p.tradeYear));
     }
 
     // Sort (only if not in rack view, which has its own sort)
@@ -841,17 +791,17 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         return (
           <td key={colKey} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <select
+              <SearchableSelect
                 value={probe.tradeYear}
-                onChange={(e) => handleTradeYearChange(probe.id, e.target.value)}
+                onChange={(v) => handleTradeYearChange(probe.id, v)}
                 disabled={savingTradeYear.has(probe.id)}
-                className="inline-select"
-                style={{ fontSize: '12px', padding: '2px 4px', minWidth: '70px' }}
-              >
-                <option value="">—</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-              </select>
+                options={[
+                  { value: '2026', label: '2026' },
+                  { value: '2027', label: '2027' },
+                ]}
+                placeholder="—"
+                style={{ fontSize: '12px', minWidth: '70px' }}
+              />
               {savingTradeYear.has(probe.id) && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
               {savedTradeYear.has(probe.id) && <span style={{ fontSize: '10px', color: 'var(--accent-primary)' }}>✓</span>}
             </div>
@@ -957,17 +907,52 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <MultiSelectFilter label="All Statuses" options={filterOptions.statuses} selected={filterStatus} onChange={setFilterStatus} />
-            <MultiSelectFilter label="All Brands" options={filterOptions.brands} selected={filterBrand} onChange={setFilterBrand} />
+            <SearchableSelect
+              multi
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={filterOptions.statuses.map(s => ({ value: s, label: s }))}
+              placeholder="All Statuses"
+              style={{ minWidth: 120 }}
+            />
+            <SearchableSelect
+              multi
+              value={filterBrand}
+              onChange={setFilterBrand}
+              options={filterOptions.brands.map(s => ({ value: s, label: s }))}
+              placeholder="All Brands"
+              style={{ minWidth: 110 }}
+            />
             {!focusedOperation && (
-              <MultiSelectFilter label="All Operations" options={filterOptions.operations} selected={filterOperation} onChange={setFilterOperation} />
+              <SearchableSelect
+                multi
+                value={filterOperation}
+                onChange={setFilterOperation}
+                options={filterOptions.operations.map(s => ({ value: s, label: s }))}
+                placeholder="All Operations"
+                style={{ minWidth: 130 }}
+              />
             )}
-            <MultiSelectFilter label="All Billing Entities" options={filterOptions.billingEntities} selected={filterBillingEntity} onChange={setFilterBillingEntity} />
-            <MultiSelectFilter label="All Trade Years" options={filterOptions.tradeYears} selected={filterTradeYear} onChange={setFilterTradeYear} />
-            {(filterStatus.size > 0 || filterBrand.size > 0 || filterOperation.size > 0 || filterBillingEntity.size > 0 || filterTradeYear.size > 0) && (
+            <SearchableSelect
+              multi
+              value={filterBillingEntity}
+              onChange={setFilterBillingEntity}
+              options={filterOptions.billingEntities.map(s => ({ value: s, label: s }))}
+              placeholder="All Billing Entities"
+              style={{ minWidth: 140 }}
+            />
+            <SearchableSelect
+              multi
+              value={filterTradeYear}
+              onChange={setFilterTradeYear}
+              options={filterOptions.tradeYears.map(s => ({ value: s, label: s }))}
+              placeholder="All Trade Years"
+              style={{ minWidth: 110 }}
+            />
+            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0) && (
               <button
                 className="btn btn-secondary btn-compact"
-                onClick={() => { setFilterStatus(new Set()); setFilterBrand(new Set()); setFilterOperation(new Set()); setFilterBillingEntity(new Set()); setFilterTradeYear(new Set()); }}
+                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); }}
                 title="Clear all filters"
               >
                 Clear
@@ -977,23 +962,25 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           <div className="probes-filter-right">
             {viewMode === 'rack' && (
               <>
-                <select
+                <SearchableSelect
                   value={rackFilter}
-                  onChange={(e) => setRackFilter(e.target.value as 'all' | 'empty')}
-                  className={`probes-rack-select${rackFilter === 'empty' ? ' active' : ''}`}
-                >
-                  <option value="all">All Slots</option>
-                  <option value="empty">Empty Only ({emptySlotCount})</option>
-                </select>
-                <select
+                  onChange={(v) => setRackFilter(v as 'all' | 'empty')}
+                  options={[
+                    { value: 'all', label: 'All Slots' },
+                    { value: 'empty', label: `Empty Only (${emptySlotCount})` },
+                  ]}
+                  style={{ minWidth: 110 }}
+                />
+                <SearchableSelect
                   value={rackSortBy}
-                  onChange={(e) => setRackSortBy(e.target.value as 'rack' | 'slot' | 'serial')}
-                  className="probes-rack-select"
-                >
-                  <option value="rack">Sort: Rack</option>
-                  <option value="slot">Sort: Slot</option>
-                  <option value="serial">Sort: Serial</option>
-                </select>
+                  onChange={(v) => setRackSortBy(v as 'rack' | 'slot' | 'serial')}
+                  options={[
+                    { value: 'rack', label: 'Sort: Rack' },
+                    { value: 'slot', label: 'Sort: Slot' },
+                    { value: 'serial', label: 'Sort: Serial' },
+                  ]}
+                  style={{ minWidth: 110 }}
+                />
               </>
             )}
             <div ref={columnPickerRef} className="fields-col-picker">
@@ -1310,15 +1297,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Brand</label>
-                  <select
+                  <SearchableSelect
                     value={addForm.brand}
-                    onChange={(e) => setAddForm({ ...addForm, brand: e.target.value })}
-                  >
-                    <option value="">Select brand...</option>
-                    {brandOptions.map((brand) => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setAddForm({ ...addForm, brand: v })}
+                    options={brandOptions.map((brand) => ({ value: brand, label: brand }))}
+                    placeholder="Select brand..."
+                    autoSort
+                  />
                 </div>
                 <div className="form-group">
                   <label>Billing Entity</label>
@@ -1330,6 +1315,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       label: be.name,
                     }))}
                     placeholder="Select billing entity..."
+                    autoSort
                   />
                 </div>
                 <div className="form-group">
@@ -1355,26 +1341,21 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Status</label>
-                  <select
+                  <SearchableSelect
                     value={addForm.status}
-                    onChange={(e) => setAddForm({ ...addForm, status: e.target.value })}
-                  >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setAddForm({ ...addForm, status: v })}
+                    options={STATUS_OPTIONS.map((s) => ({ value: s, label: s }))}
+                    placeholder="Select status..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Rack</label>
-                  <select
+                  <SearchableSelect
                     value={addForm.rack}
-                    onChange={(e) => setAddForm({ ...addForm, rack: e.target.value })}
-                  >
-                    <option value="">Select rack...</option>
-                    {RACK_OPTIONS.map((rack) => (
-                      <option key={rack} value={rack}>{rack}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setAddForm({ ...addForm, rack: v })}
+                    options={RACK_OPTIONS.map((r) => ({ value: r, label: r }))}
+                    placeholder="Select rack..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Rack Slot</label>
@@ -1440,15 +1421,13 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Brand</label>
-                  <select
+                  <SearchableSelect
                     value={editForm.brand}
-                    onChange={(e) => setEditForm({ ...editForm, brand: e.target.value })}
-                  >
-                    <option value="">Select brand...</option>
-                    {brandOptions.map((brand) => (
-                      <option key={brand} value={brand}>{brand}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditForm({ ...editForm, brand: v })}
+                    options={brandOptions.map((brand) => ({ value: brand, label: brand }))}
+                    placeholder="Select brand..."
+                    autoSort
+                  />
                 </div>
                 <div className="form-group">
                   <label>Billing Entity</label>
@@ -1498,29 +1477,24 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 </div>
                 <div className="form-group">
                   <label>Status</label>
-                  <select
+                  <SearchableSelect
                     value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                  >
-                    {!STATUS_OPTIONS.includes(editForm.status) && editForm.status && (
-                      <option value={editForm.status}>{editForm.status}</option>
-                    )}
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditForm({ ...editForm, status: v })}
+                    options={[
+                      ...(!STATUS_OPTIONS.includes(editForm.status) && editForm.status ? [{ value: editForm.status, label: editForm.status }] : []),
+                      ...STATUS_OPTIONS.map((s) => ({ value: s, label: s })),
+                    ]}
+                    placeholder="Select status..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Rack</label>
-                  <select
+                  <SearchableSelect
                     value={editForm.rack}
-                    onChange={(e) => setEditForm({ ...editForm, rack: e.target.value })}
-                  >
-                    <option value="">Select rack...</option>
-                    {RACK_OPTIONS.map((rack) => (
-                      <option key={rack} value={rack}>{rack}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setEditForm({ ...editForm, rack: v })}
+                    options={RACK_OPTIONS.map((r) => ({ value: r, label: r }))}
+                    placeholder="Select rack..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Rack Slot</label>

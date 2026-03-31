@@ -1796,15 +1796,12 @@ export default function FieldsClient({
               ))}
             </div>
             {/* Mobile: Dropdown */}
-            <select
+            <SearchableSelect
               className="fields-tabs-mobile"
               value={currentTab}
-              onChange={(e) => setCurrentTab(e.target.value as TabView)}
-            >
-              {TAB_INFO.map((tab) => (
-                <option key={tab.key} value={tab.key}>{tab.label}</option>
-              ))}
-            </select>
+              onChange={(v) => setCurrentTab(v as TabView)}
+              options={TAB_INFO.map((tab) => ({ value: tab.key, label: tab.label }))}
+            />
           </div>
         )}
 
@@ -1901,17 +1898,18 @@ export default function FieldsClient({
                     Map View
                   </button>
                   {mapVisible && (
-                    <select
+                    <SearchableSelect
                       value={colorBy}
-                      onChange={(e) => setColorBy(e.target.value as ColorByMode)}
-                      className="color-by-select"
-                    >
-                      <option value="none">Color by...</option>
-                      <option value="crop">Crop</option>
-                      <option value="status">Status</option>
-                      <option value="operation">Operation</option>
-                      <option value="probeBrand">Probe Brand</option>
-                    </select>
+                      onChange={(v) => setColorBy(v as ColorByMode)}
+                      options={[
+                        { value: 'none', label: 'Color by...' },
+                        { value: 'crop', label: 'Crop' },
+                        { value: 'status', label: 'Status' },
+                        { value: 'operation', label: 'Operation' },
+                        { value: 'probeBrand', label: 'Probe Brand' },
+                      ]}
+                      style={{ minWidth: 130 }}
+                    />
                   )}
                   {/* Enroll button - visible on All Seasons view */}
                   {currentSeason === 'all' && !inlineEnrollMode && (
@@ -1930,26 +1928,23 @@ export default function FieldsClient({
                       <span className="fields-enroll-bar-label">
                         Enrolling in:
                       </span>
-                      <select
+                      <SearchableSelect
                         value={inlineEnrollSeason}
-                        onChange={(e) => {
-                          setInlineEnrollSeason(e.target.value);
+                        onChange={(v) => {
+                          setInlineEnrollSeason(v);
                           setInlineEnrollSelected(new Set());
                         }}
-                      >
-                        {allSeasons.map((s) => (
-                          <option key={s} value={s}>{s}</option>
-                        ))}
-                      </select>
-                      <select
+                        options={allSeasons.map((s) => ({ value: s, label: s }))}
+                        style={{ minWidth: 90 }}
+                      />
+                      <SearchableSelect
                         value={inlineEnrollServiceType}
-                        onChange={(e) => setInlineEnrollServiceType(e.target.value)}
-                      >
-                        <option value="">Service Type (optional)</option>
-                        {productTypeOptions.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+                        onChange={(v) => setInlineEnrollServiceType(v)}
+                        options={productTypeOptions}
+                        placeholder="Service Type (optional)"
+                        autoSort
+                        style={{ minWidth: 160 }}
+                      />
                       <button
                         className="btn btn-secondary fields-enroll-btn"
                         onClick={() => {
@@ -2604,21 +2599,23 @@ export default function FieldsClient({
                     <div className="form-row">
                       <div className="form-group">
                         <label>Water Source</label>
-                        <select value={editForm.waterSource || ''} onChange={(e) => setEditForm({ ...editForm, waterSource: e.target.value })}>
-                          <option value="">Select...</option>
-                          {fieldOpts.water_source.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          value={editForm.waterSource || ''}
+                          onChange={(v) => setEditForm({ ...editForm, waterSource: v })}
+                          options={fieldOpts.water_source}
+                          placeholder="Select..."
+                          autoSort
+                        />
                       </div>
                       <div className="form-group">
                         <label>Fuel Source</label>
-                        <select value={editForm.fuelSource || ''} onChange={(e) => setEditForm({ ...editForm, fuelSource: e.target.value })}>
-                          <option value="">Select...</option>
-                          {fieldOpts.fuel_source.map((opt) => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
-                        </select>
+                        <SearchableSelect
+                          value={editForm.fuelSource || ''}
+                          onChange={(v) => setEditForm({ ...editForm, fuelSource: v })}
+                          options={fieldOpts.fuel_source}
+                          placeholder="Select..."
+                          autoSort
+                        />
                       </div>
                     </div>
                     <div className="form-group">
@@ -2632,21 +2629,23 @@ export default function FieldsClient({
                       <div className="form-row">
                         <div className="form-group">
                           <label>Irrigation Type</label>
-                          <select value={editForm.irrigationType || ''} onChange={(e) => setEditForm({ ...editForm, irrigationType: e.target.value })}>
-                            <option value="">Select...</option>
-                            {fieldOpts.irrigation_type.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+                            value={editForm.irrigationType || ''}
+                            onChange={(v) => setEditForm({ ...editForm, irrigationType: v })}
+                            options={fieldOpts.irrigation_type}
+                            placeholder="Select..."
+                            autoSort
+                          />
                         </div>
                         <div className="form-group">
                           <label>Row Direction</label>
-                          <select value={editForm.rowDirection || ''} onChange={(e) => setEditForm({ ...editForm, rowDirection: e.target.value })}>
-                            <option value="">Select...</option>
-                            {fieldOpts.row_direction.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+                            value={editForm.rowDirection || ''}
+                            onChange={(v) => setEditForm({ ...editForm, rowDirection: v })}
+                            options={fieldOpts.row_direction}
+                            placeholder="Select..."
+                            autoSort
+                          />
                         </div>
                       </div>
 
@@ -2656,12 +2655,13 @@ export default function FieldsClient({
                           <div className="form-row">
                             <div className="form-group">
                               <label>Tubing Direction</label>
-                              <select value={editForm.dripTubingDirection || ''} onChange={(e) => setEditForm({ ...editForm, dripTubingDirection: e.target.value })}>
-                                <option value="">Select...</option>
-                                {fieldOpts.drip_tubing_direction.map((opt) => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
+                              <SearchableSelect
+                                value={editForm.dripTubingDirection || ''}
+                                onChange={(v) => setEditForm({ ...editForm, dripTubingDirection: v })}
+                                options={fieldOpts.drip_tubing_direction}
+                                placeholder="Select..."
+                                autoSort
+                              />
                             </div>
                             <div className="form-group">
                               <label>Tubing Spacing (in)</label>
@@ -2696,30 +2696,30 @@ export default function FieldsClient({
                       <div className="form-row">
                         <div className="form-group">
                           <label>Township</label>
-                          <select value={editForm.plssTownship || ''} onChange={(e) => setEditForm({ ...editForm, plssTownship: e.target.value ? parseInt(e.target.value) : null })}>
-                            <option value="">—</option>
-                            {Array.from({ length: 14 }, (_, i) => i + 1).map((n) => (
-                              <option key={n} value={n}>{n}N</option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+                            value={editForm.plssTownship ? String(editForm.plssTownship) : ''}
+                            onChange={(v) => setEditForm({ ...editForm, plssTownship: v ? parseInt(v) : null })}
+                            options={Array.from({ length: 14 }, (_, i) => i + 1).map((n) => ({ value: String(n), label: `${n}N` }))}
+                            placeholder="—"
+                          />
                         </div>
                         <div className="form-group">
                           <label>Range</label>
-                          <select value={editForm.plssRange || ''} onChange={(e) => setEditForm({ ...editForm, plssRange: e.target.value ? parseInt(e.target.value) : null })}>
-                            <option value="">—</option>
-                            {Array.from({ length: 16 }, (_, i) => i + 7).map((n) => (
-                              <option key={n} value={n}>{n}W</option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+                            value={editForm.plssRange ? String(editForm.plssRange) : ''}
+                            onChange={(v) => setEditForm({ ...editForm, plssRange: v ? parseInt(v) : null })}
+                            options={Array.from({ length: 16 }, (_, i) => i + 7).map((n) => ({ value: String(n), label: `${n}W` }))}
+                            placeholder="—"
+                          />
                         </div>
                         <div className="form-group">
                           <label>Section</label>
-                          <select value={editForm.plssSection || ''} onChange={(e) => setEditForm({ ...editForm, plssSection: e.target.value ? parseInt(e.target.value) : null })}>
-                            <option value="">—</option>
-                            {Array.from({ length: 36 }, (_, i) => i + 1).map((n) => (
-                              <option key={n} value={n}>{n}</option>
-                            ))}
-                          </select>
+                          <SearchableSelect
+                            value={editForm.plssSection ? String(editForm.plssSection) : ''}
+                            onChange={(v) => setEditForm({ ...editForm, plssSection: v ? parseInt(v) : null })}
+                            options={Array.from({ length: 36 }, (_, i) => i + 1).map((n) => ({ value: String(n), label: String(n) }))}
+                            placeholder="—"
+                          />
                         </div>
                       </div>
                       <div className="form-group">

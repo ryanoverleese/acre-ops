@@ -702,16 +702,15 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
           <span className="season-badge">{filteredAssignments.length} Ready</span>
         </div>
         <div className="header-right">
-          <select
+          <SearchableSelect
             value={installerFilter}
-            onChange={(e) => setInstallerFilter(e.target.value)}
-            className="install-filter-select"
-          >
-            <option value="all">All Installers</option>
-            {INSTALLERS.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
+            onChange={setInstallerFilter}
+            options={[
+              { value: 'all', label: 'All Installers' },
+              ...INSTALLERS.map((name) => ({ value: name, label: name })),
+            ]}
+            style={{ minWidth: 130 }}
+          />
           <button className="btn btn-primary" onClick={() => setShowPicker(true)}>
             Perform Install
           </button>
@@ -841,7 +840,6 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     ...installedOperations.map(op => ({ value: op, label: op })),
                   ]}
                   placeholder="All Operations"
-                  className="install-filter-select"
                   style={{ minWidth: 140 }}
                 />
                 <button
@@ -1110,10 +1108,12 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 </div>
                 <div className="form-group">
                   <label>Installer</label>
-                  <select value={editForm.installer} onChange={(e) => setEditForm({ ...editForm, installer: e.target.value })} className="install-form-input">
-                    <option value="">Select installer...</option>
-                    {INSTALLERS.map((name) => <option key={name} value={name}>{name}</option>)}
-                  </select>
+                  <SearchableSelect
+                    value={editForm.installer}
+                    onChange={(v) => setEditForm({ ...editForm, installer: v })}
+                    options={INSTALLERS.map((name) => ({ value: name, label: name }))}
+                    placeholder="Select installer..."
+                  />
                 </div>
                 <div className="form-group">
                   <label>Install Date</label>
@@ -1551,16 +1551,12 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 {/* Installer */}
                 <div className="form-group">
                   <label>Installer *</label>
-                  <select
+                  <SearchableSelect
                     value={formData.installer}
-                    onChange={(e) => setFormData({ ...formData, installer: e.target.value })}
-                    className="install-form-input"
-                  >
-                    <option value="">Select installer...</option>
-                    {INSTALLERS.map((name) => (
-                      <option key={name} value={name}>{name}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => setFormData({ ...formData, installer: v })}
+                    options={INSTALLERS.map((name) => ({ value: name, label: name }))}
+                    placeholder="Select installer..."
+                  />
                 </div>
 
                 {/* GPS */}

@@ -605,7 +605,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
                         }))}
                         placeholder="Select contact..."
                       />
-                      <label className="ops-checkbox-label">
+                      <label className="checkbox-label">
                         <input
                           type="checkbox"
                           checked={newContactIsMain}

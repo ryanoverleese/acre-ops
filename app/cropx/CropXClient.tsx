@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import SearchableSelect from '@/components/SearchableSelect';
 import type { CropXOperationRow, CropXSeasonData } from './page';
 
 interface Props {
@@ -63,15 +64,12 @@ export default function CropXClient({ operations, allSeasons }: Props) {
         <h1 className="page-title">CropX Order Summary</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <label style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Season</label>
-          <select
+          <SearchableSelect
             value={season}
-            onChange={(e) => setSeason(e.target.value)}
-            className="filter-select"
-          >
-            {allSeasons.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+            onChange={setSeason}
+            options={allSeasons.map((s) => ({ value: s, label: s }))}
+            style={{ minWidth: 100 }}
+          />
         </div>
       </div>
 

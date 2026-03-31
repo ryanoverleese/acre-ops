@@ -532,20 +532,18 @@ export default function ApprovalsClient({
         <div className="table-header">
           <h3 className="table-title">Approval Queue</h3>
           <div className="table-actions approvals-toolbar">
-            <select
-              className="approvals-filter-select"
-              value={selectedSeason}
-              onChange={(e) => setSelectedSeason(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-            >
-              <option value="all">All Seasons</option>
-              {availableSeasons.map((season) => (
-                <option key={season} value={season}>{season}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={selectedSeason === 'all' ? 'all' : String(selectedSeason)}
+              onChange={(v) => setSelectedSeason(v === 'all' ? 'all' : parseInt(v))}
+              options={[
+                { value: 'all', label: 'All Seasons' },
+                ...availableSeasons.map((season) => ({ value: String(season), label: String(season) })),
+              ]}
+              style={{ minWidth: 120 }}
+            />
 
             {!focusedOperation && (
               <SearchableSelect
-                className="approvals-filter-select-op"
                 value={typeof selectedOperation === 'number' ? String(selectedOperation) : 'all'}
                 onChange={(v) => setSelectedOperation(v === 'all' ? 'all' : parseInt(v))}
                 options={[
@@ -562,6 +560,7 @@ export default function ApprovalsClient({
                     })),
                 ]}
                 placeholder="All Operations"
+                style={{ minWidth: 160 }}
               />
             )}
 

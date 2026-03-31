@@ -683,22 +683,6 @@ body::before {
   color: var(--text-muted);
 }
 
-/* Standardized filter select — used across pages for header/toolbar filters */
-.filter-select {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color var(--ease-default);
-}
-
-.filter-select:hover {
-  border-color: var(--border-strong);
-}
 
 /* Standalone filter input (search fields in toolbars) */
 .filter-input {
@@ -2337,23 +2321,6 @@ tr.selected {
   background: var(--bg-hover) !important;
 }
 
-/* Color-by select for map */
-.color-by-select {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  color: var(--text-primary);
-  font-size: 14px;
-  font-family: inherit;
-  cursor: pointer;
-  min-width: 120px;
-}
-
-.color-by-select:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-}
 
 /* Edit form styles */
 .edit-form {
@@ -3379,16 +3346,6 @@ input[type="date"]:focus {
   gap: var(--space-2);
 }
 
-.approvals-filter-select {
-  padding: 6px 10px;
-  font-size: 13px;
-}
-
-.approvals-filter-select-op {
-  padding: 6px 10px;
-  font-size: 13px;
-  max-width: 200px;
-}
 
 .approvals-search {
   width: 180px;
@@ -3759,9 +3716,6 @@ input[type="date"]:focus {
     width: 100%;
   }
 
-  .approvals-filter-select-op {
-    max-width: 100%;
-  }
 }
 
 
@@ -4265,7 +4219,8 @@ input[type="date"]:focus {
   color: var(--accent-red);
 }
 
-/* Inline Select - Consistent inline select styling */
+
+/* Inline Select - kept for SettingsClient and grower-facing pages */
 .inline-select {
   padding: var(--space-2) var(--space-3);
   font-size: 14px;
@@ -4707,14 +4662,9 @@ input[type="date"]:focus {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.checkbox-label-pointer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   cursor: pointer;
 }
+
 
 .repair-summary-box {
   background: var(--bg-tertiary);
@@ -5761,7 +5711,6 @@ tr.expanded-row:hover {
   margin-bottom: var(--space-1);
 }
 
-.order-add-item-select,
 .order-add-item-input {
   width: 100%;
   padding: var(--space-2);
@@ -5805,9 +5754,6 @@ tr.expanded-row:hover {
   margin-top: 8px;
 }
 
-.order-new-item-select {
-  margin-bottom: var(--space-2);
-}
 
 .order-new-item-total-col {
   display: flex;
@@ -5912,15 +5858,6 @@ tr.expanded-row:hover {
    INSTALL PAGE
    ============================================ */
 
-/* Header filter select */
-.install-filter-select {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 14px;
-}
 
 /* Empty state overrides for install page */
 .install-empty-icon {
@@ -6602,117 +6539,10 @@ tr.expanded-row:hover {
   flex-wrap: wrap;
 }
 
-.probes-filter-select {
-  padding: 6px 10px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 13px;
-  height: 34px;
-  cursor: pointer;
-}
-
 .probes-row-count {
   font-size: 13px;
   color: var(--text-secondary);
   padding: 4px 0 0 2px;
-}
-
-.multi-select-filter {
-  position: relative;
-}
-
-.multi-select-btn {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  gap: 2px;
-}
-
-.multi-select-btn.active {
-  border-color: var(--accent-primary);
-  background: var(--accent-primary-dim);
-  color: var(--accent-primary);
-}
-
-.multi-select-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  z-index: 100;
-  margin-top: 4px;
-  min-width: 180px;
-  max-height: 280px;
-  overflow-y: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  padding: 4px 0;
-}
-
-.multi-select-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--text-primary);
-}
-
-.multi-select-option:hover {
-  background: var(--bg-hover);
-}
-
-.multi-select-option input[type="checkbox"] {
-  accent-color: var(--accent-primary);
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
-.multi-select-actions {
-  display: flex;
-  gap: 4px;
-  padding: 4px 8px 4px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 4px;
-}
-
-.multi-select-actions button {
-  flex: 1;
-  padding: 4px 8px;
-  font-size: 11px;
-  color: var(--text-secondary);
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.multi-select-actions button:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.multi-select-clear {
-  display: block;
-  width: 100%;
-  padding: 6px 12px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  background: none;
-  border: none;
-  border-top: 1px solid var(--border);
-  margin-top: 4px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.multi-select-clear:hover {
-  color: var(--accent-red);
 }
 
 .probes-filter-right {
@@ -6727,23 +6557,6 @@ tr.expanded-row:hover {
   min-width: 220px;
 }
 
-/* Rack view select controls */
-.probes-rack-select {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.probes-rack-select.active {
-  background: var(--accent-primary-dim);
-  color: var(--accent-primary);
-  font-weight: 600;
-}
 
 /* Table cell utilities */
 .cell-semibold {
@@ -6908,16 +6721,6 @@ tr.expanded-row:hover {
   width: 100%;
 }
 
-.ws-filter-select {
-  padding: 8px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 13px;
-  max-width: 200px;
-  cursor: pointer;
-}
 
 /* Status badges for weather stations */
 .ws-status-active {
@@ -7002,8 +6805,7 @@ tr.expanded-row:hover {
     flex-direction: column;
   }
 
-  .ws-filter-input,
-  .ws-filter-select {
+  .ws-filter-input {
     max-width: 100%;
   }
 }
@@ -7442,22 +7244,6 @@ tr.expanded-row:hover {
   font-style: italic;
 }
 
-/* Checkbox label in billing entity modal */
-.contacts-billing-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: normal;
-  margin-bottom: 8px;
-}
-
-.contacts-billing-checkbox-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
 
 /* Geocode bulk button text size */
 /* Full-width input */
@@ -7780,6 +7566,8 @@ tr.expanded-row:hover {
   margin-bottom: 20px;
 }
 
+
+/* fi-select - kept for grower-facing field-info and review pages */
 .fi-select-row {
   display: flex;
   align-items: center;
@@ -8055,10 +7843,6 @@ tr.expanded-row:hover {
   color: var(--text-secondary);
 }
 
-.fields-enroll-bar select {
-  font-size: 12px;
-  padding: 4px 8px;
-}
 
 .fields-table-wrap {
   overflow-x: auto;
@@ -8561,12 +8345,6 @@ tr.expanded-row:hover {
   border: 1px solid var(--border);
 }
 
-.ops-checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-}
 
 .ops-form-actions {
   display: flex;
@@ -8775,15 +8553,6 @@ tr.expanded-row:hover {
   align-items: center;
 }
 
-.wr-select {
-  padding: 8px 12px;
-  font-size: 14px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  min-width: 200px;
-}
 
 .wr-date-input {
   padding: 8px 12px;
@@ -8940,15 +8709,6 @@ tr.expanded-row:hover {
   margin-left: 8px;
 }
 
-.wr-field-select {
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  min-width: 120px;
-}
 
 .wr-chevron-btn {
   background: none;
@@ -9120,14 +8880,6 @@ tr.expanded-row:hover {
   border-left: 1px solid var(--border);
 }
 
-.wr-update-select {
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: var(--radius);
-  border: 1px solid var(--accent-primary);
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-}
 
 .wr-actions {
   display: flex;
@@ -9468,6 +9220,61 @@ tr.expanded-row:hover {
   text-align: center;
 }
 
+.searchable-select-trigger.has-selection {
+  border-color: var(--accent-primary);
+}
+
+.searchable-select-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 9999px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  margin-right: 2px;
+}
+
+.searchable-select-multi-actions {
+  display: flex;
+  gap: 6px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.searchable-select-multi-actions button {
+  flex: 1;
+  padding: 3px 6px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.searchable-select-multi-actions button:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.searchable-select-option-multi {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.searchable-select-checkbox {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+}
+
 /* ====================================================================
    CROPX ORDER PAGE
    ==================================================================== */
@@ -9708,7 +9515,6 @@ tr.expanded-row:hover {
   .fields-tabs,
   .fields-tabs-mobile,
   .fields-filter-row,
-  .color-by-select,
   .detail-panel-close,
   .popup-actions,
   .leaflet-container,
