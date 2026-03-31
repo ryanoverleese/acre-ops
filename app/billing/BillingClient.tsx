@@ -28,7 +28,7 @@ export interface ProcessedInvoice {
   id: number;
   season: number;
   amount: number;
-  invoiceNumber?: string;
+  invoiceNumber?: number;
   status: string;
   sentAt?: string;
   depositAt?: string;
@@ -340,7 +340,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
-  const handleUpdateInvoiceField = async (invoiceId: number, billingEntityId: number, season: number, field: 'check_number' | 'actual_billed_amount', value: number | null) => {
+  const handleUpdateInvoiceField = async (invoiceId: number, billingEntityId: number, season: number, field: 'check_number' | 'actual_billed_amount' | 'invoice_number', value: number | null) => {
     try {
       const realId = await ensureInvoice(invoiceId, billingEntityId, season);
       if (!realId) { alert('Failed to create invoice'); return; }
@@ -352,7 +352,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       });
 
       if (response.ok) {
-        const fieldMap: Record<string, string> = { check_number: 'checkNumber', actual_billed_amount: 'actualBilledAmount' };
+        const fieldMap: Record<string, string> = { check_number: 'checkNumber', actual_billed_amount: 'actualBilledAmount', invoice_number: 'invoiceNumber' };
         setBillingEntities((prev) => prev.map((be) => ({
           ...be,
           invoices: be.invoices.map((inv) =>
@@ -543,7 +543,21 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         </td>
                         <td>{be.name}</td>
                         <td>{be.operation}</td>
-                        <td style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{invoice?.invoiceNumber || '—'}</td>
+                        <td>
+                          <input
+                            type="number"
+                            className="inline-input"
+                            defaultValue={invoice?.invoiceNumber ?? ''}
+                            onBlur={(e) => {
+                              const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                              if (val !== (invoice?.invoiceNumber ?? null)) {
+                                handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'invoice_number', val);
+                              }
+                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                            style={{ width: '80px' }}
+                          />
+                        </td>
                         <td>
                           <DateCell
                             value={invoice?.sentAt?.split('T')[0] || ''}
