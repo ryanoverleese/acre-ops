@@ -28,6 +28,7 @@ export interface ProcessedInvoice {
   id: number;
   season: number;
   amount: number;
+  invoiceNumber?: string;
   status: string;
   sentAt?: string;
   depositAt?: string;
@@ -510,6 +511,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   <th style={{ width: '24px' }}></th>
                   <th className="sortable-th" onClick={() => handleSort('entity')}>Entity{sortIndicator('entity')}</th>
                   <th className="sortable-th" onClick={() => handleSort('operation')}>Operation{sortIndicator('operation')}</th>
+                  <th>Invoice #</th>
                   <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>
                   <th className="sortable-th" onClick={() => handleSort('depositDate')}>Deposit Date{sortIndicator('depositDate')}</th>
                   <th className="sortable-th" onClick={() => handleSort('paidDate')}>Paid Date{sortIndicator('paidDate')}</th>
@@ -541,6 +543,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         </td>
                         <td>{be.name}</td>
                         <td>{be.operation}</td>
+                        <td style={{ fontSize: '12px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{invoice?.invoiceNumber || '—'}</td>
                         <td>
                           <DateCell
                             value={invoice?.sentAt?.split('T')[0] || ''}

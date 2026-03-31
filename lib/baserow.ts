@@ -465,6 +465,7 @@ export interface Invoice {
   notes?: string;
   check_number?: number;
   actual_billed_amount?: number;
+  invoice_number?: string;
 }
 
 export interface InvoiceLine {
