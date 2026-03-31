@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import SearchableSelect from '@/components/SearchableSelect';
-import type { CropXOperationRow, CropXSeasonData } from './page';
+import type { CropXOperationRow } from './page';
 
 interface Props {
   operations: CropXOperationRow[];
@@ -22,7 +22,6 @@ export default function CropXClient({ operations, allSeasons }: Props) {
     });
   };
 
-  // Filter operations to selected season
   const rows = operations
     .map((op) => ({
       ...op,
@@ -30,33 +29,19 @@ export default function CropXClient({ operations, allSeasons }: Props) {
     }))
     .filter((op) => op.seasonData);
 
-  // Totals
   const totals = rows.reduce(
     (acc, op) => {
       const s = op.seasonData!;
       acc.fields += s.fields.length;
       acc.probes += s.fields.reduce((sum, f) => sum + f.probeCount, 0);
       acc.cropXService += s.cropXService;
-      acc.onOrder += s.onOrder;
-      acc.onOrderTrade += s.onOrderTrade;
+      acc.onOrderV4 += s.onOrderV4;
+      acc.onOrderTradeV4 += s.onOrderTradeV4;
+      acc.onOrderApex += s.onOrderApex;
       return acc;
     },
-    { fields: 0, probes: 0, cropXService: 0, onOrder: 0, onOrderTrade: 0 }
+    { fields: 0, probes: 0, cropXService: 0, onOrderV4: 0, onOrderTradeV4: 0, onOrderApex: 0 }
   );
-
-  const RENEWAL_PRICE = 300;
-  const NEW_PROBE_PRICE = 595;
-  const SUB_PRICE = 300;
-  const TRADE_HW_PRICE = 300;
-
-  const costs = {
-    renewals: totals.cropXService * RENEWAL_PRICE,
-    newSub: totals.onOrder * (NEW_PROBE_PRICE + SUB_PRICE),
-    tradeSub: totals.onOrderTrade * (TRADE_HW_PRICE + SUB_PRICE),
-  };
-  const totalCost = costs.renewals + costs.newSub + costs.tradeSub;
-
-  const fmt = (n: number) => '$' + n.toLocaleString();
 
   return (
     <div className="page-container">
@@ -91,27 +76,21 @@ export default function CropXClient({ operations, allSeasons }: Props) {
               <div className="cropx-card-value">{totals.cropXService}</div>
               <div className="cropx-card-label">Renewals</div>
               <div className="cropx-card-sub">existing probes</div>
-              <div className="cropx-card-cost">{fmt(costs.renewals)}</div>
-              <div className="cropx-card-cost-sub">$300/sub</div>
             </div>
             <div className="cropx-card blue">
-              <div className="cropx-card-value">{totals.onOrder}</div>
-              <div className="cropx-card-label">New + Sub</div>
+              <div className="cropx-card-value">{totals.onOrderV4}</div>
+              <div className="cropx-card-label">V4 New + Sub</div>
               <div className="cropx-card-sub">new probe + subscription</div>
-              <div className="cropx-card-cost">{fmt(costs.newSub)}</div>
-              <div className="cropx-card-cost-sub">$595 probe + $300 sub</div>
+            </div>
+            <div className="cropx-card blue">
+              <div className="cropx-card-value">{totals.onOrderTradeV4}</div>
+              <div className="cropx-card-label">V4 Trade-In + Sub</div>
+              <div className="cropx-card-sub">trade-in + subscription</div>
             </div>
             <div className="cropx-card amber">
-              <div className="cropx-card-value">{totals.onOrderTrade}</div>
-              <div className="cropx-card-label">Trade-In + Sub</div>
-              <div className="cropx-card-sub">trade-in + subscription</div>
-              <div className="cropx-card-cost">{fmt(costs.tradeSub)}</div>
-              <div className="cropx-card-cost-sub">$300 hw + $300 sub</div>
-            </div>
-            <div className="cropx-card total">
-              <div className="cropx-card-value">{fmt(totalCost)}</div>
-              <div className="cropx-card-label">Total Order</div>
-              <div className="cropx-card-sub">{season}</div>
+              <div className="cropx-card-value">{totals.onOrderApex}</div>
+              <div className="cropx-card-label">Apex Hardware Only</div>
+              <div className="cropx-card-sub">sensor only</div>
             </div>
           </div>
 
@@ -127,12 +106,16 @@ export default function CropXClient({ operations, allSeasons }: Props) {
                     <div className="cropx-th-sub">existing probes</div>
                   </th>
                   <th className="cropx-th-num">
-                    New + Sub
+                    V4 New + Sub
                     <div className="cropx-th-sub blue">new probe + subscription</div>
                   </th>
                   <th className="cropx-th-num">
-                    Trade-In + Sub
-                    <div className="cropx-th-sub amber">trade-in + subscription</div>
+                    V4 Trade-In + Sub
+                    <div className="cropx-th-sub blue">trade-in + subscription</div>
+                  </th>
+                  <th className="cropx-th-num">
+                    Apex Hardware Only
+                    <div className="cropx-th-sub amber">sensor only</div>
                   </th>
                 </tr>
               </thead>
@@ -154,29 +137,26 @@ export default function CropXClient({ operations, allSeasons }: Props) {
                           <span className="cropx-expand-icon">{isExpanded ? '▾' : '▸'}</span>
                           {name}
                         </td>
-                        <td className="cropx-td-num">
-                          <span className="cropx-zero">{fieldCount}</span>
-                        </td>
-                        <td className="cropx-td-num">
-                          <span className="cropx-zero">{probeCount}</span>
-                        </td>
+                        <td className="cropx-td-num"><span className="cropx-zero">{fieldCount}</span></td>
+                        <td className="cropx-td-num"><span className="cropx-zero">{probeCount}</span></td>
                         <td className="cropx-td-num">
                           {s.cropXService > 0 ? <span className="cropx-badge green">{s.cropXService}</span> : <span className="cropx-zero">—</span>}
                         </td>
                         <td className="cropx-td-num">
-                          {s.onOrder > 0 ? <span className="cropx-badge blue">{s.onOrder}</span> : <span className="cropx-zero">—</span>}
+                          {s.onOrderV4 > 0 ? <span className="cropx-badge blue">{s.onOrderV4}</span> : <span className="cropx-zero">—</span>}
                         </td>
                         <td className="cropx-td-num">
-                          {s.onOrderTrade > 0 ? <span className="cropx-badge amber">{s.onOrderTrade}</span> : <span className="cropx-zero">—</span>}
+                          {s.onOrderTradeV4 > 0 ? <span className="cropx-badge blue">{s.onOrderTradeV4}</span> : <span className="cropx-zero">—</span>}
+                        </td>
+                        <td className="cropx-td-num">
+                          {s.onOrderApex > 0 ? <span className="cropx-badge amber">{s.onOrderApex}</span> : <span className="cropx-zero">—</span>}
                         </td>
                       </tr>
                       {isExpanded && s.fields.map((f) => (
                         <tr key={f.fieldId} className="cropx-field-row">
                           <td style={{ paddingLeft: '36px' }}>
                             <span style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>{f.fieldName}</span>
-                            {f.serviceType && (
-                              <span className="cropx-service-tag">{f.serviceType}</span>
-                            )}
+                            {f.serviceType && <span className="cropx-service-tag">{f.serviceType}</span>}
                           </td>
                           <td className="cropx-td-num cropx-field-num">1</td>
                           <td className="cropx-td-num cropx-field-num">{f.probeCount}</td>
@@ -184,10 +164,13 @@ export default function CropXClient({ operations, allSeasons }: Props) {
                             {f.cropXService > 0 ? f.cropXService : <span className="cropx-zero">—</span>}
                           </td>
                           <td className="cropx-td-num cropx-field-num">
-                            {f.onOrder > 0 ? f.onOrder : <span className="cropx-zero">—</span>}
+                            {f.onOrderV4 > 0 ? f.onOrderV4 : <span className="cropx-zero">—</span>}
                           </td>
                           <td className="cropx-td-num cropx-field-num">
-                            {f.onOrderTrade > 0 ? f.onOrderTrade : <span className="cropx-zero">—</span>}
+                            {f.onOrderTradeV4 > 0 ? f.onOrderTradeV4 : <span className="cropx-zero">—</span>}
+                          </td>
+                          <td className="cropx-td-num cropx-field-num">
+                            {f.onOrderApex > 0 ? f.onOrderApex : <span className="cropx-zero">—</span>}
                           </td>
                         </tr>
                       ))}

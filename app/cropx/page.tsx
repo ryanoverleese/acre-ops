@@ -10,15 +10,17 @@ export interface CropXFieldRow {
   serviceType: string;
   probeCount: number;
   cropXService: number;
-  onOrder: number;
-  onOrderTrade: number;
+  onOrderV4: number;
+  onOrderTradeV4: number;
+  onOrderApex: number;
 }
 
 export interface CropXSeasonData {
   season: string;
   cropXService: number;
-  onOrder: number;
-  onOrderTrade: number;
+  onOrderV4: number;
+  onOrderTradeV4: number;
+  onOrderApex: number;
   fields: CropXFieldRow[];
 }
 
@@ -95,14 +97,14 @@ export default async function CropXOrderPage() {
     const seasons: CropXSeasonData[] = [];
 
     for (const season of allSeasons) {
-      let totalCropX = 0, totalOnOrder = 0, totalOnOrderTrade = 0;
+      let totalCropX = 0, totalOnOrderV4 = 0, totalOnOrderTradeV4 = 0, totalOnOrderApex = 0;
       const fieldRows: CropXFieldRow[] = [];
 
       for (const field of opFields) {
         const fss = (fieldToFS.get(field.id) ?? []).filter((fs) => String(fs.season) === season);
         if (fss.length === 0) continue;
 
-        let fieldCropX = 0, fieldOnOrder = 0, fieldOnOrderTrade = 0, fieldProbeCount = 0;
+        let fieldCropX = 0, fieldOnOrderV4 = 0, fieldOnOrderTradeV4 = 0, fieldOnOrderApex = 0, fieldProbeCount = 0;
 
         for (const fs of fss) {
           const serviceType = fs.service_type?.[0]?.value ?? '';
@@ -113,11 +115,16 @@ export default async function CropXOrderPage() {
             const probeId = pa.probe?.[0]?.id;
             const probe = probeId ? probeMap.get(probeId) : undefined;
             const status = (probe?.status?.value ?? '').toLowerCase();
+            const brand = (probe?.brand?.value ?? '').toLowerCase();
+            const isApex = brand.includes('apex');
 
             fieldProbeCount++;
             if (isCropX) fieldCropX++;
-            if (status.includes('on order') && !status.includes('trade')) fieldOnOrder++;
-            if (status.includes('trade')) fieldOnOrderTrade++;
+            if (status.includes('on order') && !status.includes('trade')) {
+              if (isApex) fieldOnOrderApex++;
+              else fieldOnOrderV4++;
+            }
+            if (status.includes('trade')) fieldOnOrderTradeV4++;
           }
 
           // If field has CropX service but no probe assignments yet, still count service type
@@ -128,8 +135,9 @@ export default async function CropXOrderPage() {
 
         if (fieldProbeCount > 0) {
           totalCropX += fieldCropX;
-          totalOnOrder += fieldOnOrder;
-          totalOnOrderTrade += fieldOnOrderTrade;
+          totalOnOrderV4 += fieldOnOrderV4;
+          totalOnOrderTradeV4 += fieldOnOrderTradeV4;
+          totalOnOrderApex += fieldOnOrderApex;
 
           const serviceType = fss[0].service_type?.[0]?.value ?? '';
           fieldRows.push({
@@ -138,8 +146,9 @@ export default async function CropXOrderPage() {
             serviceType,
             probeCount: fieldProbeCount,
             cropXService: fieldCropX,
-            onOrder: fieldOnOrder,
-            onOrderTrade: fieldOnOrderTrade,
+            onOrderV4: fieldOnOrderV4,
+            onOrderTradeV4: fieldOnOrderTradeV4,
+            onOrderApex: fieldOnOrderApex,
           });
         }
       }
@@ -148,8 +157,9 @@ export default async function CropXOrderPage() {
         seasons.push({
           season,
           cropXService: totalCropX,
-          onOrder: totalOnOrder,
-          onOrderTrade: totalOnOrderTrade,
+          onOrderV4: totalOnOrderV4,
+          onOrderTradeV4: totalOnOrderTradeV4,
+          onOrderApex: totalOnOrderApex,
           fields: fieldRows.sort((a, b) => a.fieldName.localeCompare(b.fieldName)),
         });
       }
