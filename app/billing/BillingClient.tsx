@@ -504,7 +504,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             </div>
           </div>
         ) : (
-          <div className="table-container">
+          <div className="table-container billing-table-container">
             <table className="billing-table condensed-table">
               <thead>
                 <tr>

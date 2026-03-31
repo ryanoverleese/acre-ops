@@ -4924,6 +4924,10 @@ input[type="date"]:focus {
 }
 
 /* Billing Table Styles */
+.billing-table-container {
+  overflow: clip;
+}
+
 .billing-table {
   width: 100%;
   border-collapse: separate;
