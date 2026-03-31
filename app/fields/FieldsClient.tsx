@@ -1717,18 +1717,12 @@ export default function FieldsClient({
                     <label
                       key={col.key}
                       className={`fields-col-item ${col.alwaysVisible ? 'disabled' : ''}`}
-                      onClick={(e) => {
-                        if (!col.alwaysVisible) {
-                          e.preventDefault();
-                          toggleColumn(col.key);
-                        }
-                      }}
                     >
                       <input
                         type="checkbox"
                         checked={isColumnVisible(col.key)}
                         disabled={col.alwaysVisible}
-                        onChange={() => {}}
+                        onChange={() => { if (!col.alwaysVisible) toggleColumn(col.key); }}
                         className={`fields-col-checkbox ${col.alwaysVisible ? 'disabled' : ''}`}
                       />
                       {col.label}
