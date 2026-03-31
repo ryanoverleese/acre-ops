@@ -119,7 +119,8 @@ export default async function CropXOrderPage() {
             const isApex = brand.includes('apex');
 
             fieldProbeCount++;
-            if (isCropX) fieldCropX++;
+            const isOnOrder = status.includes('on order') || status.includes('trade');
+            if (isCropX && !isOnOrder) fieldCropX++;
             if (status.includes('on order') && !status.includes('trade')) {
               if (isApex) fieldOnOrderApex++;
               else fieldOnOrderV4++;
