@@ -156,6 +156,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [filterOperation, setFilterOperation] = useState<string[]>([]);
   const [filterBillingEntity, setFilterBillingEntity] = useState<string[]>([]);
   const [filterTradeYear, setFilterTradeYear] = useState<string[]>([]);
+  const [filterField, setFilterField] = useState<string>('');
   const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
   const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
   const [savingBE, setSavingBE] = useState<Set<number>>(new Set());
@@ -338,6 +339,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     if (filterTradeYear.length > 0) {
       filtered = filtered.filter(p => filterTradeYear.includes(p.tradeYear));
     }
+    if (filterField === 'filled') {
+      filtered = filtered.filter(p => !!probeFieldMap.get(`${p.id}-${currentSeason}`));
+    } else if (filterField === 'empty') {
+      filtered = filtered.filter(p => !probeFieldMap.get(`${p.id}-${currentSeason}`));
+    }
 
     // Sort (only if not in rack view, which has its own sort)
     if (viewMode !== 'rack') {
@@ -369,7 +375,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, filterTradeYear, focusedOperation]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, filterTradeYear, filterField, focusedOperation]);
 
   // Get unique rack prefixes (numbers) from filtered probes for highlighting active ones
   const activeRackNumbers = useMemo(() => {
@@ -949,10 +955,20 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               placeholder="All Trade Years"
               style={{ minWidth: 110 }}
             />
-            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0) && (
+            <SearchableSelect
+              value={filterField}
+              onChange={setFilterField}
+              options={[
+                { value: 'filled', label: 'Filled' },
+                { value: 'empty', label: 'Empty' },
+              ]}
+              placeholder="All Fields"
+              style={{ minWidth: 100 }}
+            />
+            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0 || filterField !== '') && (
               <button
                 className="btn btn-secondary btn-compact"
-                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); }}
+                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); setFilterField(''); }}
                 title="Clear all filters"
               >
                 Clear
