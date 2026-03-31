@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import type { FieldInfoItem, FieldInfoSelectOptions, BillingEntityOption } from './page';
 
 const ApprovalPinMap = dynamic(
@@ -242,6 +243,9 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
 
   return (
     <div className="approval-page">
+      <div className="approval-branding">
+        <Image src="/acre-insights-logo.png" alt="Acre Insights" height={40} width={200} style={{ objectFit: 'contain' }} />
+      </div>
       <div className="approval-container">
         <header className="approval-header">
           <div className="approval-header-content">

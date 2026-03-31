@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import type { ReviewFieldInfoItem, ReviewProbeAssignment, ReviewSelectOptions, ReviewBillingEntityOption } from './page';
 
 const ApprovalMap = dynamic(() => import('@/app/approve/[token]/[season]/ApprovalMap'), {
@@ -323,6 +324,9 @@ export default function ReviewClient({
 
   return (
     <div className="approval-page">
+      <div className="approval-branding">
+        <Image src="/acre-insights-logo.png" alt="Acre Insights" height={40} width={200} style={{ objectFit: 'contain' }} />
+      </div>
       <div className="approval-container">
         <header className="approval-header">
           <div className="approval-header-content">
