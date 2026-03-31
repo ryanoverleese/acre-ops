@@ -146,6 +146,7 @@ export default function CreateProbeModal({ operationName, billingEntities, onClo
               >
                 <option value="">Select brand...</option>
                 <option value="CropX V4">CropX V4</option>
+                <option value="CropX Apex 36&quot;">CropX Apex 36&quot;</option>
                 <option value="Sentek 36&quot;/CropX Gateway">Sentek 36&quot;/CropX Gateway</option>
                 <option value="Sentek 48&quot; Blue/Sentek Rocket">Sentek 48&quot; Blue/Sentek Rocket</option>
               </select>
