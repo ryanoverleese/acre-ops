@@ -2832,6 +2832,14 @@ input[type="date"]:focus {
   padding: 20px;
 }
 
+.approval-branding {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 8px;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
 .approval-container {
   max-width: 900px;
   margin: 0 auto;

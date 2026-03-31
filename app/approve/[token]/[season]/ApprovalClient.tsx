@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import type { ApprovalProbeAssignment } from './page';
 
 // Dynamically import map components
@@ -276,6 +277,9 @@ export default function ApprovalClient({ operationName, season, probeAssignments
 
   return (
     <div className="approval-page">
+      <div className="approval-branding">
+        <Image src="/acre-insights-logo.png" alt="Acre Insights" height={40} width={200} style={{ objectFit: 'contain' }} />
+      </div>
       <div className="approval-container">
         {/* Header */}
         <header className="approval-header">
