@@ -147,6 +147,21 @@ export default function FieldsClient({
   const { focusedOperation } = useOperationFocus();
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<number>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const stored = localStorage.getItem('acre-ops-dismissed-alerts');
+      return stored ? new Set(JSON.parse(stored) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const dismissAlert = (paId: number) => {
+    setDismissedAlerts(prev => {
+      const next = new Set(prev);
+      next.add(paId);
+      try { localStorage.setItem('acre-ops-dismissed-alerts', JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const [expandedFieldSeasons, setExpandedFieldSeasons] = useState<Set<number>>(new Set());
   const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
   const [savingProbeAssignmentFor, setSavingProbeAssignmentFor] = useState<number | null>(null);
@@ -550,6 +565,7 @@ export default function FieldsClient({
         const pas = probeAssignments.filter(pa => pa.fieldSeasonId === f.fieldSeasonId);
         // Equipment warnings
         const hasEquipment = pas.some(pa => {
+          if (dismissedAlerts.has(pa.id)) return false;
           if (!pa.probeId) return true;
           const brand = (localProbes.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
           if (!pa.antennaType || !pa.batteryType) return true;
@@ -2062,6 +2078,7 @@ export default function FieldsClient({
                             const needsSeasonStart = !field.fieldSeasonId && currentSeason !== 'all';
 
                             const hasEquipmentWarning = fieldSeasonProbeAssignments.some((pa) => {
+                              if (dismissedAlerts.has(pa.id)) return false;
                               if (!pa.probeId) return true;
                               const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
                               const isCropx = brand.includes('cropx');
@@ -2225,14 +2242,21 @@ export default function FieldsClient({
                                       const missingProbe = !pa.probeId;
                                       const antennaDanger = missingAntenna || mismatchAntenna;
                                       const batteryDanger = missingBattery || mismatchBattery;
-                                      const hasEquipmentWarning = missingProbe || antennaDanger || batteryDanger;
+                                      const hasEquipmentWarning = (missingProbe || antennaDanger || batteryDanger) && !dismissedAlerts.has(pa.id);
+                                      const hasDismissedAlert = dismissedAlerts.has(pa.id);
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row">
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
                                             {hasEquipmentWarning && (
-                                              <span title={[missingProbe && 'Missing Probe', missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
+                                              <span style={{ whiteSpace: 'nowrap' }}>
+                                                <span title={[missingProbe && 'Missing Probe', missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
+                                                <button onClick={(e) => { e.stopPropagation(); dismissAlert(pa.id); }} title="Dismiss alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.6, lineHeight: 1 }}>✕</button>
+                                              </span>
+                                            )}
+                                            {hasDismissedAlert && (
+                                              <button onClick={(e) => { e.stopPropagation(); setDismissedAlerts(prev => { const next = new Set(prev); next.delete(pa.id); try { localStorage.setItem('acre-ops-dismissed-alerts', JSON.stringify([...next])); } catch { /* ignore */ } return next; }); }} title="Restore alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.4, lineHeight: 1 }}>↺</button>
                                             )}
                                           </span>
                                           <InlineProbeCell
@@ -2263,8 +2287,11 @@ export default function FieldsClient({
                                         >
                                           {pa.placementLat && pa.placementLng ? (
                                             <span className="fields-probe-loc-link">
-                                              {hasDuplicateLocation && (
-                                                <span title="Same location" className="fields-loc-warning">&#9888;</span>
+                                              {hasDuplicateLocation && !dismissedAlerts.has(pa.id) && (
+                                                <span style={{ whiteSpace: 'nowrap' }}>
+                                                  <span title="Same location as another probe" className="fields-loc-warning">&#9888;</span>
+                                                  <button onClick={(e) => { e.stopPropagation(); dismissAlert(pa.id); }} title="Dismiss alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.6, lineHeight: 1 }}>✕</button>
+                                                </span>
                                               )}
                                               {Number(pa.placementLat).toFixed(4)}, {Number(pa.placementLng).toFixed(4)}
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" className="fields-edit-icon">
