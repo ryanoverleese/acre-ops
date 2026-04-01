@@ -9709,3 +9709,8 @@ tr.expanded-row:hover {
   }
 }
 
+
+.workflow-card:hover {
+  border-color: var(--border-hover, var(--accent)) !important;
+  background: var(--bg-tertiary) !important;
+}
