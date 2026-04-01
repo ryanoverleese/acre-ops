@@ -147,7 +147,7 @@ export default function FieldsClient({
   const { focusedOperation } = useOperationFocus();
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
-  const [showDismissedFor, setShowDismissedFor] = useState<Set<number>>(new Set());
+  const [showAllDismissed, setShowAllDismissed] = useState(false);
   const [dismissedFieldAlerts, setDismissedFieldAlerts] = useState<Set<number>>(() => {
     if (typeof window === 'undefined') return new Set();
     try {
@@ -162,11 +162,6 @@ export default function FieldsClient({
       return next;
     });
   };
-  const toggleShowDismissed = (fsId: number) => setShowDismissedFor(prev => {
-    const next = new Set(prev);
-    if (next.has(fsId)) next.delete(fsId); else next.add(fsId);
-    return next;
-  });
   const ALERT_DISMISS_TAG = '[ALERT_DISMISSED]';
   const dismissedAlerts = useMemo(
     () => new Set(probeAssignments.filter(pa => pa.installNotes?.includes(ALERT_DISMISS_TAG)).map(pa => pa.id)),
@@ -1837,8 +1832,7 @@ export default function FieldsClient({
         {/* Tab Navigation - hidden on All Seasons */}
         {currentSeason !== 'all' && (
           <div className="fields-filter-row">
-            {/* Desktop: Tab buttons */}
-            <div className="fields-tabs fields-tabs-desktop">
+            <div className="fields-tabs">
               {TAB_INFO.map((tab) => (
                 <button
                   key={tab.key}
@@ -1849,13 +1843,6 @@ export default function FieldsClient({
                 </button>
               ))}
             </div>
-            {/* Mobile: Dropdown */}
-            <SearchableSelect
-              className="fields-tabs-mobile"
-              value={currentTab}
-              onChange={(v) => setCurrentTab(v as TabView)}
-              options={TAB_INFO.map((tab) => ({ value: tab.key, label: tab.label }))}
-            />
           </div>
         )}
 
@@ -1925,6 +1912,15 @@ export default function FieldsClient({
                     </svg>
                     Alerts
                   </button>
+                  {dismissedAlerts.size > 0 && (
+                    <button
+                      className={`btn ${showAllDismissed ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => setShowAllDismissed(v => !v)}
+                      title={showAllDismissed ? 'Hide dismissed alerts' : 'Show dismissed alerts'}
+                    >
+                      {showAllDismissed ? 'Hide Dismissed' : `Dismissed (${dismissedAlerts.size})`}
+                    </button>
+                  )}
                   <button
                     className="btn btn-secondary"
                     onClick={() => {
@@ -2259,7 +2255,6 @@ export default function FieldsClient({
                                           if (isSentek && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
                                           return false;
                                         })());
-                                        const showing = showDismissedFor.has(field.fieldSeasonId!);
                                         if (!hasActiveAlerts && !dismissedCount) return null;
                                         return (
                                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 6 }}>
@@ -2282,14 +2277,6 @@ export default function FieldsClient({
                                                 style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, color: 'var(--text-secondary)' }}
                                               >
                                                 Dismiss Alerts
-                                              </button>
-                                            )}
-                                            {dismissedCount > 0 && (
-                                              <button
-                                                onClick={() => toggleShowDismissed(field.fieldSeasonId!)}
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, padding: '2px 4px' }}
-                                              >
-                                                {showing ? 'Hide dismissed' : `Show dismissed (${dismissedCount})`}
                                               </button>
                                             )}
                                           </div>
@@ -2338,8 +2325,7 @@ export default function FieldsClient({
                                       const batteryDanger = missingBattery || mismatchBattery;
                                       const hasEquipmentWarning = (missingProbe || antennaDanger || batteryDanger) && !dismissedAlerts.has(pa.id);
                                       const hasDismissedAlert = dismissedAlerts.has(pa.id);
-                                      const showingDismissed = showDismissedFor.has(field.fieldSeasonId!);
-                                      if (hasDismissedAlert && !showingDismissed) return null;
+                                      if (hasDismissedAlert && !showAllDismissed) return null;
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row" style={hasDismissedAlert ? { opacity: 0.45 } : undefined}>
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
@@ -2522,7 +2508,7 @@ export default function FieldsClient({
                                           />
                                         </td>
                                         <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                                          {hasDismissedAlert && showingDismissed && (
+                                          {hasDismissedAlert && showAllDismissed && (
                                             <button
                                               onClick={(e) => { e.stopPropagation(); restoreAlert(pa.id); }}
                                               title="Restore alert"

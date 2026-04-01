@@ -881,19 +881,7 @@ body::before {
   color: white;
 }
 
-/* Mobile dropdown for tabs - hidden on desktop */
-.fields-tabs-mobile {
-  display: none;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 500;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  cursor: pointer;
-  width: 100%;
-}
+
 
 /* Tabs */
 .tabs {
@@ -2521,14 +2509,6 @@ tr.selected {
     align-items: stretch;
   }
 
-  /* Hide desktop tabs, show mobile dropdown */
-  .fields-tabs-desktop {
-    display: none !important;
-  }
-
-  .fields-tabs-mobile {
-    display: block;
-  }
 
   .fields-container {
     flex-direction: column;
@@ -9539,7 +9519,6 @@ tr.expanded-row:hover {
   .map-legend,
   .season-selector,
   .fields-tabs,
-  .fields-tabs-mobile,
   .fields-filter-row,
   .detail-panel-close,
   .popup-actions,
