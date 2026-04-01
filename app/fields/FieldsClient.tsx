@@ -147,20 +147,22 @@ export default function FieldsClient({
   const { focusedOperation } = useOperationFocus();
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
-  const [dismissedAlerts, setDismissedAlerts] = useState<Set<number>>(() => {
-    if (typeof window === 'undefined') return new Set();
-    try {
-      const stored = localStorage.getItem('acre-ops-dismissed-alerts');
-      return stored ? new Set(JSON.parse(stored) as number[]) : new Set();
-    } catch { return new Set(); }
-  });
-  const dismissAlert = (paId: number) => {
-    setDismissedAlerts(prev => {
-      const next = new Set(prev);
-      next.add(paId);
-      try { localStorage.setItem('acre-ops-dismissed-alerts', JSON.stringify([...next])); } catch { /* ignore */ }
-      return next;
-    });
+  const ALERT_DISMISS_TAG = '[ALERT_DISMISSED]';
+  const dismissedAlerts = useMemo(
+    () => new Set(probeAssignments.filter(pa => pa.installNotes?.includes(ALERT_DISMISS_TAG)).map(pa => pa.id)),
+    [probeAssignments]
+  );
+  const dismissAlert = async (paId: number) => {
+    const pa = probeAssignments.find(p => p.id === paId);
+    const newNotes = pa?.installNotes ? `${pa.installNotes} ${ALERT_DISMISS_TAG}` : ALERT_DISMISS_TAG;
+    setProbeAssignments(prev => prev.map(p => p.id === paId ? { ...p, installNotes: newNotes } : p));
+    await handleProbeAssignmentSave(paId, 'installNotes', newNotes);
+  };
+  const restoreAlert = async (paId: number) => {
+    const pa = probeAssignments.find(p => p.id === paId);
+    const newNotes = (pa?.installNotes || '').replace(ALERT_DISMISS_TAG, '').replace(/\s{2,}/g, ' ').trim();
+    setProbeAssignments(prev => prev.map(p => p.id === paId ? { ...p, installNotes: newNotes } : p));
+    await handleProbeAssignmentSave(paId, 'installNotes', newNotes);
   };
   const [expandedFieldSeasons, setExpandedFieldSeasons] = useState<Set<number>>(new Set());
   const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
@@ -2256,7 +2258,7 @@ export default function FieldsClient({
                                               </span>
                                             )}
                                             {hasDismissedAlert && (
-                                              <button onClick={(e) => { e.stopPropagation(); setDismissedAlerts(prev => { const next = new Set(prev); next.delete(pa.id); try { localStorage.setItem('acre-ops-dismissed-alerts', JSON.stringify([...next])); } catch { /* ignore */ } return next; }); }} title="Restore alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.4, lineHeight: 1 }}>↺</button>
+                                              <button onClick={(e) => { e.stopPropagation(); restoreAlert(pa.id); }} title="Restore alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.4, lineHeight: 1 }}>↺</button>
                                             )}
                                           </span>
                                           <InlineProbeCell
