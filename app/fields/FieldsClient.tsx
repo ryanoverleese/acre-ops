@@ -148,6 +148,20 @@ export default function FieldsClient({
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [showDismissedFor, setShowDismissedFor] = useState<Set<number>>(new Set());
+  const [dismissedFieldAlerts, setDismissedFieldAlerts] = useState<Set<number>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const stored = localStorage.getItem('acre-ops-dismissed-field-alerts');
+      return stored ? new Set(JSON.parse(stored) as number[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const dismissFieldAlert = (fieldId: number) => {
+    setDismissedFieldAlerts(prev => {
+      const next = new Set(prev); next.add(fieldId);
+      try { localStorage.setItem('acre-ops-dismissed-field-alerts', JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  };
   const toggleShowDismissed = (fsId: number) => setShowDismissedFor(prev => {
     const next = new Set(prev);
     if (next.has(fsId)) next.delete(fsId); else next.add(fsId);
@@ -2226,7 +2240,7 @@ export default function FieldsClient({
                                 {isExpanded && field.fieldSeasonId && (
                                   <tr>
                                     <td colSpan={visibleColumns.length + 1 + (inlineEnrollMode ? 1 : 0)} className="fields-probe-expand-cell">
-                                      {(!field.lat || !field.lng) && (
+                                      {(!field.lat || !field.lng) && !dismissedFieldAlerts.has(field.id) && (
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '6px 10px', marginBottom: '8px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '4px', fontSize: '12px', color: '#f59e0b' }}>
                                           <span style={{ fontSize: '14px' }}>&#9888;</span> Field location not set
                                         </div>
@@ -2234,7 +2248,8 @@ export default function FieldsClient({
                                       {(() => {
                                         const alertPaIds = fieldSeasonProbeAssignments.filter(pa => !dismissedAlerts.has(pa.id)).map(pa => pa.id);
                                         const dismissedCount = fieldSeasonProbeAssignments.filter(pa => dismissedAlerts.has(pa.id)).length;
-                                        const hasActiveAlerts = fieldSeasonProbeAssignments.some(pa => !dismissedAlerts.has(pa.id) && (() => {
+                                        const hasFieldLocationAlert = (!field.lat || !field.lng) && !dismissedFieldAlerts.has(field.id);
+                                        const hasActiveAlerts = hasFieldLocationAlert || fieldSeasonProbeAssignments.some(pa => !dismissedAlerts.has(pa.id) && (() => {
                                           if (!pa.probeId) return true;
                                           const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
                                           const isCropx = brand.includes('cropx'); const isSentek = brand.includes('rocket');
@@ -2250,17 +2265,20 @@ export default function FieldsClient({
                                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 6 }}>
                                             {hasActiveAlerts && (
                                               <button
-                                                onClick={() => dismissAllAlerts(alertPaIds.filter(id => {
-                                                  const pa = fieldSeasonProbeAssignments.find(p => p.id === id);
-                                                  if (!pa || !pa.probeId) return !!pa;
-                                                  const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
-                                                  const isCropx = brand.includes('cropx'); const isSentek = brand.includes('rocket');
-                                                  if (!pa.antennaType || !pa.batteryType) return true;
-                                                  const aL = pa.antennaType.toLowerCase(); const bL = pa.batteryType.toLowerCase();
-                                                  if (isCropx && (!aL.includes('cropx') || !bL.includes('cropx'))) return true;
-                                                  if (isSentek && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
-                                                  return false;
-                                                }))}
+                                                onClick={() => {
+                                                  if (hasFieldLocationAlert) dismissFieldAlert(field.id);
+                                                  dismissAllAlerts(alertPaIds.filter(id => {
+                                                    const pa = fieldSeasonProbeAssignments.find(p => p.id === id);
+                                                    if (!pa || !pa.probeId) return !!pa;
+                                                    const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
+                                                    const isCropx = brand.includes('cropx'); const isSentek = brand.includes('rocket');
+                                                    if (!pa.antennaType || !pa.batteryType) return true;
+                                                    const aL = pa.antennaType.toLowerCase(); const bL = pa.batteryType.toLowerCase();
+                                                    if (isCropx && (!aL.includes('cropx') || !bL.includes('cropx'))) return true;
+                                                    if (isSentek && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
+                                                    return false;
+                                                  }));
+                                                }}
                                                 style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, color: 'var(--text-secondary)' }}
                                               >
                                                 Dismiss Alerts
