@@ -2275,13 +2275,7 @@ export default function FieldsClient({
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
                                             {hasEquipmentWarning && (
-                                              <span style={{ whiteSpace: 'nowrap' }}>
-                                                <span title={[missingProbe && 'Missing Probe', missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
-                                                <button onClick={(e) => { e.stopPropagation(); dismissAlert(pa.id); }} title="Dismiss alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.6, lineHeight: 1 }}>✕</button>
-                                              </span>
-                                            )}
-                                            {hasDismissedAlert && showingDismissed && (
-                                              <button onClick={(e) => { e.stopPropagation(); restoreAlert(pa.id); }} title="Restore alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1 }}>↺</button>
+                                              <span title={[missingProbe && 'Missing Probe', missingAntenna && 'Missing Antenna', missingBattery && 'Missing Battery', mismatchAntenna && 'Antenna doesn\u2019t match probe brand', mismatchBattery && 'Battery doesn\u2019t match probe brand'].filter(Boolean).join(', ')} className="fields-loc-warning"> &#9888;</span>
                                             )}
                                           </span>
                                           <InlineProbeCell
@@ -2456,7 +2450,17 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()}>
+                                        <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                                          {(hasEquipmentWarning || (hasDismissedAlert && showingDismissed)) && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); hasDismissedAlert ? restoreAlert(pa.id) : dismissAlert(pa.id); }}
+                                              title={hasDismissedAlert ? 'Restore alert' : 'Dismiss alert'}
+                                              className="action-btn"
+                                              style={{ marginRight: 4, opacity: hasDismissedAlert ? 0.5 : 1 }}
+                                            >
+                                              {hasDismissedAlert ? '↺' : 'Dismiss'}
+                                            </button>
+                                          )}
                                           <button
                                             className="action-btn fields-delete-btn"
                                             title="Delete probe assignment"
