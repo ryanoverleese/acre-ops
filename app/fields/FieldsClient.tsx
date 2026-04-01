@@ -3283,6 +3283,16 @@ export default function FieldsClient({
             }}
             initialCenter={locationPickerInitialCenter}
             initialZoom={locationPickerInitialZoom}
+            referenceMarkers={locationPickerTarget === 'probeAssignment' && editingProbeAssignmentLocation ? (() => {
+              const fsIdToName = new Map(fields.map(f => f.fieldSeasonId ? [f.fieldSeasonId, f.name] : null).filter(Boolean) as [number, string][]);
+              return probeAssignments
+                .filter(pa => pa.id !== editingProbeAssignmentLocation.id && pa.placementLat && pa.placementLng)
+                .map(pa => ({
+                  lat: pa.placementLat!,
+                  lng: pa.placementLng!,
+                  label: [fsIdToName.get(pa.fieldSeasonId), pa.label || (pa.probeNumber > 1 ? `Probe ${pa.probeNumber}` : null)].filter(Boolean).join(' — ') || undefined,
+                }));
+            })() : undefined}
           />
         )}
       </div>

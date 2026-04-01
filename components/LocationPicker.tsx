@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import type { ReferenceMarker } from './LocationPickerMap';
 
 // Dynamically import the map component with SSR disabled
 const LocationPickerMap = dynamic(() => import('./LocationPickerMap'), {
@@ -29,6 +30,7 @@ interface LocationPickerProps {
   onProbeLabelChange?: (label: string) => void;
   initialCenter?: [number, number];
   initialZoom?: number;
+  referenceMarkers?: ReferenceMarker[];
 }
 
 // Fetch elevation via our API proxy (avoids CORS issues with USGS)
@@ -58,7 +60,7 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
   }
 }
 
-export default function LocationPicker({ lat, lng, onLocationChange, onClose, title, probeLabel, onProbeLabelChange, initialCenter, initialZoom }: LocationPickerProps) {
+export default function LocationPicker({ lat, lng, onLocationChange, onClose, title, probeLabel, onProbeLabelChange, initialCenter, initialZoom, referenceMarkers }: LocationPickerProps) {
   const [isClient, setIsClient] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(null);
   const hasInitialized = useRef(false);
@@ -215,6 +217,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
             brightness={brightness}
             initialCenter={initialCenter}
             initialZoom={initialZoom}
+            referenceMarkers={referenceMarkers}
           />
         </div>
         <div className="location-picker-coords">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, WMSTileLayer, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, CircleMarker, Tooltip, useMapEvents, WMSTileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PLSSOverlay from './PLSSOverlay';
@@ -18,6 +18,12 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
+export interface ReferenceMarker {
+  lat: number;
+  lng: number;
+  label?: string;
+}
+
 interface LocationPickerMapProps {
   position: [number, number] | null;
   onPositionChange: (lat: number, lng: number) => void;
@@ -27,6 +33,7 @@ interface LocationPickerMapProps {
   brightness?: number;
   initialCenter?: [number, number];
   initialZoom?: number;
+  referenceMarkers?: ReferenceMarker[];
 }
 
 // Component to apply brightness filter to the satellite tile layer
@@ -56,7 +63,7 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
   return null;
 }
 
-export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, showElevation = false, brightness = 1.2, initialCenter, initialZoom }: LocationPickerMapProps) {
+export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, showElevation = false, brightness = 1.2, initialCenter, initialZoom, referenceMarkers = [] }: LocationPickerMapProps) {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -107,6 +114,17 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
       <ElevationOverlay show={showElevation} />
       <PLSSOverlay show={showPLSS} />
       <MapClickHandler onPositionChange={onPositionChange} />
+      {referenceMarkers.map((m, i) => (
+        <CircleMarker
+          key={i}
+          center={[m.lat, m.lng]}
+          radius={7}
+          pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.7, weight: 1.5 }}
+          interactive={false}
+        >
+          {m.label && <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>{m.label}</Tooltip>}
+        </CircleMarker>
+      ))}
       {position && <Marker position={position} icon={defaultIcon} />}
     </MapContainer>
   );
