@@ -209,13 +209,18 @@ async function getBillingData(): Promise<BillingData> {
     // Match each on-order group to a products_services rate
     // Trade probes match "Trade-In" service types, regular probes match by brand name
     const onOrderLines: OnOrderLine[] = Array.from(onOrderGrouped.values()).map((group) => {
+      const brandLower = group.brand.toLowerCase();
       const matchingService = group.isTrade
-        ? productsServices.find((ps) =>
+        ? // Try full brand name first, then fall back to first word only
+          (productsServices.find((ps) =>
             ps.service_type?.toLowerCase().includes('trade') &&
-            ps.service_type?.toLowerCase().includes(group.brand.toLowerCase().split(' ')[0])
-          )
+            ps.service_type?.toLowerCase().includes(brandLower)
+          ) ?? productsServices.find((ps) =>
+            ps.service_type?.toLowerCase().includes('trade') &&
+            ps.service_type?.toLowerCase().includes(brandLower.split(' ')[0])
+          ))
         : productsServices.find((ps) =>
-            ps.service_type?.toLowerCase().includes(group.brand.toLowerCase()) &&
+            ps.service_type?.toLowerCase().includes(brandLower) &&
             !ps.service_type?.toLowerCase().includes('trade')
           );
       const rate = matchingService
