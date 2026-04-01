@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import type { AttentionGroup, NeedsAttentionResponse } from './api/needs-attention/route';
 
 export interface DashboardStats {
   installedCount: number;
@@ -75,30 +74,6 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
   const [bookingSortCol, setBookingSortCol] = useState<BookingSortColumn>('status');
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc');
   const [dismissLoading, setDismissLoading] = useState<Record<number, boolean>>({});
-  const [attentionGroups, setAttentionGroups] = useState<AttentionGroup[]>([]);
-  const [attentionTotal, setAttentionTotal] = useState(0);
-  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    fetch('/api/needs-attention')
-      .then(res => res.json())
-      .then((data: NeedsAttentionResponse) => {
-        if (data.groups?.length) {
-          setAttentionGroups(data.groups);
-          setAttentionTotal(data.totalCount);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  const toggleGroup = (key: string) => {
-    setExpandedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  };
 
   useEffect(() => {
     fetch('/api/bookings')
@@ -233,71 +208,6 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
             </div>
           )}
         </div>
-
-        {/* Needs Attention */}
-        {attentionGroups.length > 0 && (
-          <div className="dashboard-section">
-            <h3 className="section-label">
-              Needs Attention
-              {attentionTotal > 0
-                ? <span className="season-badge" style={{ marginLeft: 8, background: 'var(--amber, #f59e0b)', color: '#fff' }}>{attentionTotal}</span>
-                : <span className="season-badge" style={{ marginLeft: 8, background: 'var(--green, #22c55e)', color: '#fff' }}>All Clear</span>
-              }
-            </h3>
-            <div className="table-container">
-              <table className="desktop-table">
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Description</th>
-                    <th style={{ textAlign: 'right' }}>Count</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attentionGroups.map((group) => (
-                    <>
-                      <tr
-                        key={group.key}
-                        className={group.count > 0 ? 'stat-card-clickable' : undefined}
-                        onClick={group.count > 0 ? () => toggleGroup(group.key) : undefined}
-                        style={group.count > 0 ? { cursor: 'pointer' } : undefined}
-                      >
-                        <td>
-                          {group.count > 0 && (
-                            <span style={{ marginRight: 6, fontSize: 11, opacity: 0.6 }}>
-                              {expandedGroups.has(group.key) ? '▼' : '▶'}
-                            </span>
-                          )}
-                          {group.label}
-                        </td>
-                        <td><span className="text-secondary">{group.description}</span></td>
-                        <td style={{ textAlign: 'right' }}>
-                          {group.count === 0
-                            ? <span className="status-badge installed">✓</span>
-                            : <span className="status-badge repair">{group.count}</span>
-                          }
-                        </td>
-                      </tr>
-                      {group.count > 0 && expandedGroups.has(group.key) && (
-                        <tr key={`${group.key}-items`}>
-                          <td colSpan={3} style={{ padding: '4px 12px 12px 28px', background: 'var(--surface-secondary, var(--bg-secondary))' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                              {group.items.map((item) => (
-                                <Link key={item.id} href={item.href} style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none' }}>
-                                  {item.label}
-                                </Link>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* Booking Tracker */}
         {bookings.length > 0 && (() => {
