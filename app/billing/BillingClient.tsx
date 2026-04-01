@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Fragment } from 'react';
+import { useState, useMemo, Fragment, useRef, useCallback } from 'react';
 
 function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [local, setLocal] = useState(value);
@@ -87,6 +87,15 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const debounceSave = useCallback((key: string, fn: () => void, delay = 800) => {
+    const existing = debounceTimers.current.get(key);
+    if (existing) clearTimeout(existing);
+    debounceTimers.current.set(key, setTimeout(() => {
+      fn();
+      debounceTimers.current.delete(key);
+    }, delay));
+  }, []);
 
   // Helper to get on-order total for a billing entity
   const getOnOrderTotal = (beId: number) =>
@@ -548,11 +557,20 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             type="number"
                             className="inline-input"
                             defaultValue={invoice?.invoiceNumber ?? ''}
-                            onBlur={(e) => {
+                            onChange={(e) => {
                               const val = e.target.value ? parseInt(e.target.value, 10) : null;
-                              if (val !== (invoice?.invoiceNumber ?? null)) {
+                              debounceSave(`inv-${be.id}-invoice_number`, () => {
+                                if (val !== (invoice?.invoiceNumber ?? null))
+                                  handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'invoice_number', val);
+                              });
+                            }}
+                            onBlur={(e) => {
+                              const key = `inv-${be.id}-invoice_number`;
+                              const existing = debounceTimers.current.get(key);
+                              if (existing) { clearTimeout(existing); debounceTimers.current.delete(key); }
+                              const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                              if (val !== (invoice?.invoiceNumber ?? null))
                                 handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'invoice_number', val);
-                              }
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '80px' }}
@@ -581,11 +599,20 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             type="number"
                             className="inline-input"
                             defaultValue={invoice?.checkNumber ?? ''}
-                            onBlur={(e) => {
+                            onChange={(e) => {
                               const val = e.target.value ? parseInt(e.target.value, 10) : null;
-                              if (val !== (invoice?.checkNumber ?? null)) {
+                              debounceSave(`inv-${be.id}-check_number`, () => {
+                                if (val !== (invoice?.checkNumber ?? null))
+                                  handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'check_number', val);
+                              });
+                            }}
+                            onBlur={(e) => {
+                              const key = `inv-${be.id}-check_number`;
+                              const existing = debounceTimers.current.get(key);
+                              if (existing) { clearTimeout(existing); debounceTimers.current.delete(key); }
+                              const val = e.target.value ? parseInt(e.target.value, 10) : null;
+                              if (val !== (invoice?.checkNumber ?? null))
                                 handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'check_number', val);
-                              }
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '80px' }}
@@ -619,10 +646,19 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             className="inline-input"
                             title={invoice?.notes || ''}
                             defaultValue={invoice?.notes || ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              debounceSave(`inv-${be.id}-notes`, () => {
+                                if (val !== (invoice?.notes || ''))
+                                  handleUpdateNotes(invoice?.id || 0, be.id, be.season || currentSeason, val);
+                              });
+                            }}
                             onBlur={(e) => {
-                              if (e.target.value !== (invoice?.notes || '')) {
+                              const key = `inv-${be.id}-notes`;
+                              const existing = debounceTimers.current.get(key);
+                              if (existing) { clearTimeout(existing); debounceTimers.current.delete(key); }
+                              if (e.target.value !== (invoice?.notes || ''))
                                 handleUpdateNotes(invoice?.id || 0, be.id, be.season || currentSeason, e.target.value);
-                              }
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '100%', minWidth: '150px' }}
