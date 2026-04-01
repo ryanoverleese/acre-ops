@@ -2253,6 +2253,10 @@ export default function FieldsClient({
                                             setLocationPickerTarget('probeAssignment');
                                             setLocationPickerTitle(`${field.name} — Probe ${pa.probeNumber}`);
                                             setLocationPickerProbeLabel(pa.label || '');
+                                            if (field.lat && field.lng) {
+                                              setLocationPickerInitialCenter([field.lat, field.lng]);
+                                              setLocationPickerInitialZoom(15);
+                                            }
                                             setShowLocationPicker(true);
                                           }}
                                           title="Click to edit location"
