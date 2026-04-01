@@ -22,6 +22,7 @@ export interface ReferenceMarker {
   lat: number;
   lng: number;
   label?: string;
+  color?: string;
 }
 
 interface LocationPickerMapProps {
@@ -114,17 +115,20 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
       <ElevationOverlay show={showElevation} />
       <PLSSOverlay show={showPLSS} />
       <MapClickHandler onPositionChange={onPositionChange} />
-      {referenceMarkers.map((m, i) => (
-        <CircleMarker
-          key={i}
-          center={[m.lat, m.lng]}
-          radius={7}
-          pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.7, weight: 1.5 }}
-          interactive={false}
-        >
-          {m.label && <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>{m.label}</Tooltip>}
-        </CircleMarker>
-      ))}
+      {referenceMarkers.map((m, i) => {
+        const color = m.color || '#f97316';
+        return (
+          <CircleMarker
+            key={i}
+            center={[m.lat, m.lng]}
+            radius={7}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.8, weight: 1.5 }}
+            interactive={false}
+          >
+            {m.label && <Tooltip direction="top" offset={[0, -8]} opacity={0.9}>{m.label}</Tooltip>}
+          </CircleMarker>
+        );
+      })}
       {position && <Marker position={position} icon={defaultIcon} />}
     </MapContainer>
   );
