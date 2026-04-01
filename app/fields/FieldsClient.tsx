@@ -147,6 +147,12 @@ export default function FieldsClient({
   const { focusedOperation } = useOperationFocus();
   const [fields, setFields] = useState(initialFields);
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
+  const [showDismissedFor, setShowDismissedFor] = useState<Set<number>>(new Set());
+  const toggleShowDismissed = (fsId: number) => setShowDismissedFor(prev => {
+    const next = new Set(prev);
+    if (next.has(fsId)) next.delete(fsId); else next.add(fsId);
+    return next;
+  });
   const ALERT_DISMISS_TAG = '[ALERT_DISMISSED]';
   const dismissedAlerts = useMemo(
     () => new Set(probeAssignments.filter(pa => pa.installNotes?.includes(ALERT_DISMISS_TAG)).map(pa => pa.id)),
@@ -2203,6 +2209,21 @@ export default function FieldsClient({
                                           <span style={{ fontSize: '14px' }}>&#9888;</span> Field location not set
                                         </div>
                                       )}
+                                      {(() => {
+                                        const dismissedCount = fieldSeasonProbeAssignments.filter(pa => dismissedAlerts.has(pa.id)).length;
+                                        if (!dismissedCount) return null;
+                                        const showing = showDismissedFor.has(field.fieldSeasonId!);
+                                        return (
+                                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+                                            <button
+                                              onClick={() => toggleShowDismissed(field.fieldSeasonId!)}
+                                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, padding: '2px 4px' }}
+                                            >
+                                              {showing ? `Hide dismissed` : `Show dismissed (${dismissedCount})`}
+                                            </button>
+                                          </div>
+                                        );
+                                      })()}
                                       <table className="fields-probe-table">
                                         <thead>
                                           <tr className="fields-probe-row">
@@ -2246,8 +2267,10 @@ export default function FieldsClient({
                                       const batteryDanger = missingBattery || mismatchBattery;
                                       const hasEquipmentWarning = (missingProbe || antennaDanger || batteryDanger) && !dismissedAlerts.has(pa.id);
                                       const hasDismissedAlert = dismissedAlerts.has(pa.id);
+                                      const showingDismissed = showDismissedFor.has(field.fieldSeasonId!);
+                                      if (hasDismissedAlert && !showingDismissed) return null;
                                       return (
-                                      <tr key={`pa-${pa.id}`} className="fields-probe-row">
+                                      <tr key={`pa-${pa.id}`} className="fields-probe-row" style={hasDismissedAlert ? { opacity: 0.45 } : undefined}>
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
                                           <span className="fields-probe-number">
                                             Probe {pa.probeNumber}
@@ -2257,8 +2280,8 @@ export default function FieldsClient({
                                                 <button onClick={(e) => { e.stopPropagation(); dismissAlert(pa.id); }} title="Dismiss alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.6, lineHeight: 1 }}>✕</button>
                                               </span>
                                             )}
-                                            {hasDismissedAlert && (
-                                              <button onClick={(e) => { e.stopPropagation(); restoreAlert(pa.id); }} title="Restore alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 10, color: 'var(--text-secondary)', opacity: 0.4, lineHeight: 1 }}>↺</button>
+                                            {hasDismissedAlert && showingDismissed && (
+                                              <button onClick={(e) => { e.stopPropagation(); restoreAlert(pa.id); }} title="Restore alert" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1 }}>↺</button>
                                             )}
                                           </span>
                                           <InlineProbeCell
