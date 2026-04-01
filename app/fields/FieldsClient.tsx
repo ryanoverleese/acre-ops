@@ -170,6 +170,28 @@ export default function FieldsClient({
     setProbeAssignments(prev => prev.map(p => p.id === paId ? { ...p, installNotes: newNotes } : p));
     await handleProbeAssignmentSave(paId, 'installNotes', newNotes);
   };
+  const dismissAllAlerts = async (paIds: number[]) => {
+    const updates = paIds.map(paId => {
+      const pa = probeAssignments.find(p => p.id === paId);
+      return { paId, newNotes: pa?.installNotes ? `${pa.installNotes} ${ALERT_DISMISS_TAG}` : ALERT_DISMISS_TAG };
+    });
+    setProbeAssignments(prev => prev.map(p => {
+      const update = updates.find(u => u.paId === p.id);
+      return update ? { ...p, installNotes: update.newNotes } : p;
+    }));
+    await Promise.all(updates.map(({ paId, newNotes }) => handleProbeAssignmentSave(paId, 'installNotes', newNotes)));
+  };
+  const restoreAllAlerts = async (paIds: number[]) => {
+    const updates = paIds.map(paId => {
+      const pa = probeAssignments.find(p => p.id === paId);
+      return { paId, newNotes: (pa?.installNotes || '').replace(ALERT_DISMISS_TAG, '').replace(/\s{2,}/g, ' ').trim() };
+    });
+    setProbeAssignments(prev => prev.map(p => {
+      const update = updates.find(u => u.paId === p.id);
+      return update ? { ...p, installNotes: update.newNotes } : p;
+    }));
+    await Promise.all(updates.map(({ paId, newNotes }) => handleProbeAssignmentSave(paId, 'installNotes', newNotes)));
+  };
   const [expandedFieldSeasons, setExpandedFieldSeasons] = useState<Set<number>>(new Set());
   const [addingProbeForFieldSeason, setAddingProbeForFieldSeason] = useState<number | null>(null);
   const [savingProbeAssignmentFor, setSavingProbeAssignmentFor] = useState<number | null>(null);
@@ -2210,17 +2232,48 @@ export default function FieldsClient({
                                         </div>
                                       )}
                                       {(() => {
+                                        const alertPaIds = fieldSeasonProbeAssignments.filter(pa => !dismissedAlerts.has(pa.id)).map(pa => pa.id);
                                         const dismissedCount = fieldSeasonProbeAssignments.filter(pa => dismissedAlerts.has(pa.id)).length;
-                                        if (!dismissedCount) return null;
+                                        const hasActiveAlerts = fieldSeasonProbeAssignments.some(pa => !dismissedAlerts.has(pa.id) && (() => {
+                                          if (!pa.probeId) return true;
+                                          const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
+                                          const isCropx = brand.includes('cropx'); const isSentek = brand.includes('rocket');
+                                          if (!pa.antennaType || !pa.batteryType) return true;
+                                          const aL = pa.antennaType.toLowerCase(); const bL = pa.batteryType.toLowerCase();
+                                          if (isCropx && (!aL.includes('cropx') || !bL.includes('cropx'))) return true;
+                                          if (isSentek && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
+                                          return false;
+                                        })());
                                         const showing = showDismissedFor.has(field.fieldSeasonId!);
+                                        if (!hasActiveAlerts && !dismissedCount) return null;
                                         return (
-                                          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
-                                            <button
-                                              onClick={() => toggleShowDismissed(field.fieldSeasonId!)}
-                                              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, padding: '2px 4px' }}
-                                            >
-                                              {showing ? `Hide dismissed` : `Show dismissed (${dismissedCount})`}
-                                            </button>
+                                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 6 }}>
+                                            {hasActiveAlerts && (
+                                              <button
+                                                onClick={() => dismissAllAlerts(alertPaIds.filter(id => {
+                                                  const pa = fieldSeasonProbeAssignments.find(p => p.id === id);
+                                                  if (!pa || !pa.probeId) return !!pa;
+                                                  const brand = (allProbesWithStatus.find(p => p.id === pa.probeId)?.brand || '').toLowerCase();
+                                                  const isCropx = brand.includes('cropx'); const isSentek = brand.includes('rocket');
+                                                  if (!pa.antennaType || !pa.batteryType) return true;
+                                                  const aL = pa.antennaType.toLowerCase(); const bL = pa.batteryType.toLowerCase();
+                                                  if (isCropx && (!aL.includes('cropx') || !bL.includes('cropx'))) return true;
+                                                  if (isSentek && (!aL.includes('sentek') || !bL.includes('sentek'))) return true;
+                                                  return false;
+                                                }))}
+                                                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, color: 'var(--text-secondary)' }}
+                                              >
+                                                Dismiss Alerts
+                                              </button>
+                                            )}
+                                            {dismissedCount > 0 && (
+                                              <button
+                                                onClick={() => toggleShowDismissed(field.fieldSeasonId!)}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, padding: '2px 4px' }}
+                                              >
+                                                {showing ? 'Hide dismissed' : `Show dismissed (${dismissedCount})`}
+                                              </button>
+                                            )}
                                           </div>
                                         );
                                       })()}
@@ -2451,13 +2504,13 @@ export default function FieldsClient({
                                           />
                                         </td>
                                         <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                                          {(hasEquipmentWarning || (hasDismissedAlert && showingDismissed)) && (
+                                          {hasDismissedAlert && showingDismissed && (
                                             <button
-                                              onClick={(e) => { e.stopPropagation(); hasDismissedAlert ? restoreAlert(pa.id) : dismissAlert(pa.id); }}
-                                              title={hasDismissedAlert ? 'Restore alert' : 'Dismiss alert'}
-                                              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', fontSize: 11, color: 'var(--text-secondary)', marginRight: 4, opacity: hasDismissedAlert ? 0.5 : 1, whiteSpace: 'nowrap' }}
+                                              onClick={(e) => { e.stopPropagation(); restoreAlert(pa.id); }}
+                                              title="Restore alert"
+                                              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', fontSize: 11, color: 'var(--text-secondary)', marginRight: 4, opacity: 0.6, whiteSpace: 'nowrap' }}
                                             >
-                                              {hasDismissedAlert ? '↺ Restore' : 'Dismiss'}
+                                              ↺ Restore
                                             </button>
                                           )}
                                           <button
