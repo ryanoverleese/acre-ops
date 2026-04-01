@@ -9,8 +9,10 @@ function DateCell({ value, onSave }: { value: string; onSave: (v: string) => voi
       type="date"
       className={`inline-input${local ? '' : ' date-empty'}`}
       value={local}
-      onChange={(e) => setLocal(e.target.value)}
-      onBlur={() => { if (local !== value) onSave(local); }}
+      onChange={(e) => {
+        setLocal(e.target.value);
+        if (e.target.value !== value) onSave(e.target.value);
+      }}
     />
   );
 }
