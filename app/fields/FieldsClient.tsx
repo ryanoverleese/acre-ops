@@ -2394,7 +2394,7 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()} className={antennaDanger ? 'fields-probe-cell-danger' : ''}>
+                                        <td onClick={(e) => e.stopPropagation()} className={antennaDanger && !hasDismissedAlert ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="antennaType"
@@ -2413,7 +2413,7 @@ export default function FieldsClient({
                                             savedFields={savedFields}
                                           />
                                         </td>
-                                        <td onClick={(e) => e.stopPropagation()} className={batteryDanger ? 'fields-probe-cell-danger' : ''}>
+                                        <td onClick={(e) => e.stopPropagation()} className={batteryDanger && !hasDismissedAlert ? 'fields-probe-cell-danger' : ''}>
                                           <InlineProbeCell
                                             probeAssignmentId={pa.id}
                                             field="batteryType"
