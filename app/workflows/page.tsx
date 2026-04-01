@@ -48,7 +48,6 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
           probeBrand: probe?.brand?.value || '',
           probeLabel: pa.label || '',
           installDate: pa.install_date || '',
-          installNotes: pa.install_notes || '',
           season: fieldSeason?.season || 0,
         };
       })

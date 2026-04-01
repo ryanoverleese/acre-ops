@@ -11,7 +11,6 @@ export interface UninstallProbeData {
   probeBrand: string;
   probeLabel: string;
   installDate: string;
-  installNotes: string;
   season: number;
 }
 
@@ -27,6 +26,7 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
   const [removalDate, setRemovalDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [removalNotes, setRemovalNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,6 +47,7 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
     setSearch('');
     setSelected(null);
     setRemovalDate(new Date().toISOString().split('T')[0]);
+    setRemovalNotes('');
     setError('');
   };
 
@@ -60,18 +61,15 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
     setSaving(true);
     setError('');
     try {
-      // Build updated install_notes with removal tag appended
-      const removalTag = `[REMOVED: ${removalDate}]`;
-      const existingNotes = selected.installNotes || '';
-      const updatedNotes = existingNotes
-        ? `${existingNotes.replace(/\[REMOVED:.*?\]/g, '').trim()}\n${removalTag}`.trim()
-        : removalTag;
-
-      // 1. Update probe assignment: add removal tag to install_notes, clear probe_status
+      // 1. Update probe assignment: set removal_date, removal_notes, clear probe_status
       const paRes = await fetch(`/api/probe-assignments/${selected.assignmentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ install_notes: updatedNotes, probe_status: '' }),
+        body: JSON.stringify({
+          removal_date: removalDate,
+          removal_notes: removalNotes || null,
+          probe_status: '',
+        }),
       });
       if (!paRes.ok) throw new Error('Failed to update probe assignment');
 
@@ -256,25 +254,48 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
-                  Removal date
-                </label>
-                <input
-                  type="date"
-                  value={removalDate}
-                  onChange={(e) => setRemovalDate(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    background: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                    fontSize: 14,
-                    width: '100%',
-                    maxWidth: 200,
-                  }}
-                />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                    Removal date
+                  </label>
+                  <input
+                    type="date"
+                    value={removalDate}
+                    onChange={(e) => setRemovalDate(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: 14,
+                      width: '100%',
+                      maxWidth: 200,
+                    }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                    Removal notes <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span>
+                  </label>
+                  <textarea
+                    value={removalNotes}
+                    onChange={(e) => setRemovalNotes(e.target.value)}
+                    placeholder="e.g. End of season, damaged, customer request..."
+                    rows={3}
+                    style={{
+                      padding: '8px 12px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 6,
+                      background: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                      fontSize: 14,
+                      width: '100%',
+                      resize: 'vertical',
+                    }}
+                  />
+                </div>
               </div>
 
               {error && (

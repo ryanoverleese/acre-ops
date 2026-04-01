@@ -432,6 +432,8 @@ export interface ProbeAssignment {
   probe_status?: { id: number; value: string };
   installer?: string;
   install_date?: string;
+  removal_date?: string;
+  removal_notes?: string;
   install_lat?: number;
   install_lng?: number;
   install_photo_field_end_url?: { url: string; name: string }[];
