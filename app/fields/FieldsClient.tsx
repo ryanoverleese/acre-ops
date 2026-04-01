@@ -2455,10 +2455,9 @@ export default function FieldsClient({
                                             <button
                                               onClick={(e) => { e.stopPropagation(); hasDismissedAlert ? restoreAlert(pa.id) : dismissAlert(pa.id); }}
                                               title={hasDismissedAlert ? 'Restore alert' : 'Dismiss alert'}
-                                              className="action-btn"
-                                              style={{ marginRight: 4, opacity: hasDismissedAlert ? 0.5 : 1 }}
+                                              style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', padding: '2px 6px', fontSize: 11, color: 'var(--text-secondary)', marginRight: 4, opacity: hasDismissedAlert ? 0.5 : 1, whiteSpace: 'nowrap' }}
                                             >
-                                              {hasDismissedAlert ? '↺' : 'Dismiss'}
+                                              {hasDismissedAlert ? '↺ Restore' : 'Dismiss'}
                                             </button>
                                           )}
                                           <button
