@@ -32,6 +32,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.season !== undefined) updateData.season = body.season;
     if (body.check_number !== undefined) updateData.check_number = body.check_number;
     if (body.actual_billed_amount !== undefined) updateData.actual_billed_amount = body.actual_billed_amount;
+    if (body.invoice_number !== undefined) updateData.invoice_number = body.invoice_number;
     if (body.billing_entity !== undefined) {
       updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
     }
