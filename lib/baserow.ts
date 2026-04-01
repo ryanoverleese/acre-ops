@@ -468,6 +468,7 @@ export interface Invoice {
   check_number?: number;
   actual_billed_amount?: number;
   invoice_number?: number;
+  matched_in_qb?: boolean;
 }
 
 export interface InvoiceLine {

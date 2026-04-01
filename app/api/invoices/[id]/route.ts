@@ -33,6 +33,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.check_number !== undefined) updateData.check_number = body.check_number;
     if (body.actual_billed_amount !== undefined) updateData.actual_billed_amount = body.actual_billed_amount;
     if (body.invoice_number !== undefined) updateData.invoice_number = body.invoice_number;
+    if (body.matched_in_qb !== undefined) updateData.matched_in_qb = body.matched_in_qb;
     if (body.billing_entity !== undefined) {
       updateData.billing_entity = body.billing_entity ? [body.billing_entity] : [];
     }

@@ -1,6 +1,19 @@
 'use client';
 
-import { useState, useMemo, Fragment, useRef, useCallback, useEffect } from 'react';
+import { useState, useMemo, Fragment, useRef, useCallback, useEffect, type ReactNode } from 'react';
+
+const BILLING_COLUMNS = [
+  { key: 'invoiceNumber', label: 'Invoice #', defaultOn: true },
+  { key: 'sentDate',      label: 'Sent Date',    defaultOn: true },
+  { key: 'depositDate',   label: 'Deposit Date', defaultOn: true },
+  { key: 'paidDate',      label: 'Paid Date',    defaultOn: true },
+  { key: 'checkNumber',   label: 'Check #',      defaultOn: true },
+  { key: 'calculated',    label: 'Calculated',   defaultOn: true },
+  { key: 'actualBilled',  label: 'Actual Billed',defaultOn: true },
+  { key: 'matchedInQb',   label: 'In QB',        defaultOn: true },
+  { key: 'notes',         label: 'Notes',        defaultOn: true },
+] as const;
+type BillingColKey = typeof BILLING_COLUMNS[number]['key'];
 
 function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [local, setLocal] = useState(value);
@@ -43,6 +56,7 @@ export interface ProcessedInvoice {
   season: number;
   amount: number;
   invoiceNumber?: number;
+  matchedInQb?: boolean;
   status: string;
   sentAt?: string;
   depositAt?: string;
@@ -101,6 +115,21 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [savingQty, setSavingQty] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [hiddenCols, setHiddenCols] = useState<Set<BillingColKey>>(() => {
+    try {
+      const stored = localStorage.getItem('billing-hidden-cols');
+      return stored ? new Set(JSON.parse(stored) as BillingColKey[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const [showColPicker, setShowColPicker] = useState(false);
+  const colPickerRef = useRef<HTMLDivElement>(null);
+  const col = (key: BillingColKey) => !hiddenCols.has(key);
+  const toggleCol = (key: BillingColKey) => setHiddenCols(prev => {
+    const next = new Set(prev);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    try { localStorage.setItem('billing-hidden-cols', JSON.stringify([...next])); } catch { /* ignore */ }
+    return next;
+  });
   const debounceTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const debounceSave = useCallback((key: string, fn: () => void, delay = 800) => {
     const existing = debounceTimers.current.get(key);
@@ -391,6 +420,32 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     }
   };
 
+  // Close column picker on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target as Node)) {
+        setShowColPicker(false);
+      }
+    };
+    if (showColPicker) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showColPicker]);
+
+  const handleToggleQb = async (invoiceId: number, billingEntityId: number, season: number, current: boolean) => {
+    const realId = await ensureInvoice(invoiceId, billingEntityId, season);
+    if (!realId) return;
+    const next = !current;
+    await fetch(`/api/invoices/${realId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ matched_in_qb: next }),
+    });
+    setBillingEntities(prev => prev.map(be => ({
+      ...be,
+      invoices: be.invoices.map(inv => inv.id === realId ? { ...inv, matchedInQb: next } : inv),
+    })));
+  };
+
   const handleExport = () => {
     const headers = ['Billing Entity', 'Operation', 'Field', 'Service Type', 'Qty', 'Rate', 'Discount', 'Total'];
     const rows: (string | number)[][] = [];
@@ -488,6 +543,34 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             />
           </div>
           <span className="header-divider" />
+          <div ref={colPickerRef} className="fields-col-picker">
+            <button className="btn btn-secondary" onClick={() => setShowColPicker(v => !v)} title="Show/hide columns">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+              </svg>
+              Columns
+            </button>
+            {showColPicker && (
+              <div className="fields-col-dropdown">
+                <div className="fields-col-header">
+                  <span className="fields-col-label">Show Columns</span>
+                </div>
+                {BILLING_COLUMNS.map(c => (
+                  <label key={c.key} className="fields-col-item">
+                    <input type="checkbox" checked={col(c.key)} onChange={() => toggleCol(c.key)} className="fields-col-checkbox" />
+                    {c.label}
+                  </label>
+                ))}
+                <div className="fields-col-footer">
+                  <button className="btn btn-secondary fields-col-reset" onClick={() => {
+                    setHiddenCols(new Set());
+                    try { localStorage.removeItem('billing-hidden-cols'); } catch { /* ignore */ }
+                  }}>Reset</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <span className="header-divider" />
           <button className="btn-toolbar" onClick={handleExport} title="Export CSV">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -534,14 +617,15 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   <th style={{ width: '24px' }}></th>
                   <th className="sortable-th" onClick={() => handleSort('entity')}>Entity{sortIndicator('entity')}</th>
                   <th className="sortable-th" onClick={() => handleSort('operation')}>Operation{sortIndicator('operation')}</th>
-                  <th>Invoice #</th>
-                  <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>
-                  <th className="sortable-th" onClick={() => handleSort('depositDate')}>Deposit Date{sortIndicator('depositDate')}</th>
-                  <th className="sortable-th" onClick={() => handleSort('paidDate')}>Paid Date{sortIndicator('paidDate')}</th>
-                  <th className="sortable-th" onClick={() => handleSort('checkNumber')}>Check #{sortIndicator('checkNumber')}</th>
-                  <th className="sortable-th align-right" onClick={() => handleSort('calculated')}>Calculated{sortIndicator('calculated')}</th>
-                  <th className="sortable-th align-right" onClick={() => handleSort('actualBilled')}>Actual Billed{sortIndicator('actualBilled')}</th>
-                  <th className="sortable-th" onClick={() => handleSort('notes')} style={{ minWidth: '250px' }}>Notes{sortIndicator('notes')}</th>
+                  {col('invoiceNumber') && <th>Invoice #</th>}
+                  {col('sentDate') && <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>}
+                  {col('depositDate') && <th className="sortable-th" onClick={() => handleSort('depositDate')}>Deposit Date{sortIndicator('depositDate')}</th>}
+                  {col('paidDate') && <th className="sortable-th" onClick={() => handleSort('paidDate')}>Paid Date{sortIndicator('paidDate')}</th>}
+                  {col('checkNumber') && <th className="sortable-th" onClick={() => handleSort('checkNumber')}>Check #{sortIndicator('checkNumber')}</th>}
+                  {col('calculated') && <th className="sortable-th align-right" onClick={() => handleSort('calculated')}>Calculated{sortIndicator('calculated')}</th>}
+                  {col('actualBilled') && <th className="sortable-th align-right" onClick={() => handleSort('actualBilled')}>Actual Billed{sortIndicator('actualBilled')}</th>}
+                  {col('matchedInQb') && <th style={{ textAlign: 'center' }}>In QB</th>}
+                  {col('notes') && <th className="sortable-th" onClick={() => handleSort('notes')} style={{ minWidth: '200px' }}>Notes{sortIndicator('notes')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -566,7 +650,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         </td>
                         <td>{be.name}</td>
                         <td>{be.operation}</td>
-                        <td>
+                        {col('invoiceNumber') && <td>
                           <input
                             type="text"
                             inputMode="numeric"
@@ -591,26 +675,26 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '80px' }}
                           />
-                        </td>
-                        <td>
+                        </td>}
+                        {col('sentDate') && <td>
                           <DateCell
                             value={invoice?.sentAt?.split('T')[0] || ''}
                             onSave={(v) => handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'sent_at', v)}
                           />
-                        </td>
-                        <td>
+                        </td>}
+                        {col('depositDate') && <td>
                           <DateCell
                             value={invoice?.depositAt?.split('T')[0] || ''}
                             onSave={(v) => handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'deposit_at', v)}
                           />
-                        </td>
-                        <td>
+                        </td>}
+                        {col('paidDate') && <td>
                           <DateCell
                             value={invoice?.paidAt?.split('T')[0] || ''}
                             onSave={(v) => handleUpdateInvoiceDate(invoice?.id || 0, be.id, be.season || currentSeason, 'paid_at', v)}
                           />
-                        </td>
-                        <td>
+                        </td>}
+                        {col('checkNumber') && <td>
                           <input
                             type="text"
                             inputMode="numeric"
@@ -635,9 +719,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '80px' }}
                           />
-                        </td>
-                        <td className="align-right text-secondary">{formatCurrency(total)}</td>
-                        <td className="align-right">
+                        </td>}
+                        {col('calculated') && <td className="align-right text-secondary">{formatCurrency(total)}</td>}
+                        {col('actualBilled') && <td className="align-right">
                           <input
                             type="text"
                             className="inline-input"
@@ -667,8 +751,16 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '100px', textAlign: 'right' }}
                           />
-                        </td>
-                        <td>
+                        </td>}
+                        {col('matchedInQb') && <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
+                            checked={invoice?.matchedInQb ?? false}
+                            onChange={() => handleToggleQb(invoice?.id || 0, be.id, be.season || currentSeason, invoice?.matchedInQb ?? false)}
+                            style={{ cursor: 'pointer', width: 16, height: 16 }}
+                          />
+                        </td>}
+                        {col('notes') && <td>
                           <input
                             type="text"
                             className="inline-input"
@@ -691,11 +783,11 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                             style={{ width: '100%', minWidth: '150px' }}
                           />
-                        </td>
+                        </td>}
                       </tr>
                       {isExpanded && (
                         <tr className="detail-row">
-                          <td colSpan={10} style={{ padding: 0 }}>
+                          <td colSpan={3 + BILLING_COLUMNS.filter(c => col(c.key)).length} style={{ padding: 0 }}>
                             <div className="detail-row-content">
                               <table className="line-items-table">
                                 <thead>
