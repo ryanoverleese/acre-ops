@@ -1,19 +1,31 @@
 'use client';
 
-import { useState, useMemo, Fragment, useRef, useCallback } from 'react';
+import { useState, useMemo, Fragment, useRef, useCallback, useEffect } from 'react';
 
 function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [local, setLocal] = useState(value);
+  // Sync local state if parent's value changes (e.g. after another field triggers a re-render)
+  useEffect(() => { setLocal(value); }, [value]);
   return (
-    <input
-      type="date"
-      className={`inline-input${local ? '' : ' date-empty'}`}
-      value={local}
-      onChange={(e) => {
-        setLocal(e.target.value);
-        if (e.target.value !== value) onSave(e.target.value);
-      }}
-    />
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+      <input
+        type="date"
+        className={`inline-input${local ? '' : ' date-empty'}`}
+        value={local}
+        onChange={(e) => {
+          setLocal(e.target.value);
+          onSave(e.target.value);
+        }}
+      />
+      {local && (
+        <button
+          type="button"
+          onClick={() => { setLocal(''); onSave(''); }}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
+          title="Clear date"
+        >×</button>
+      )}
+    </span>
   );
 }
 
@@ -556,7 +568,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         <td>{be.operation}</td>
                         <td>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             className="inline-input"
                             defaultValue={invoice?.invoiceNumber ?? ''}
                             onChange={(e) => {
@@ -598,7 +612,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                         </td>
                         <td>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             className="inline-input"
                             defaultValue={invoice?.checkNumber ?? ''}
                             onChange={(e) => {
