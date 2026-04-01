@@ -628,12 +628,22 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                               const raw = invoice?.actualBilledAmount;
                               e.target.value = raw != null ? String(raw) : '';
                             }}
-                            onBlur={(e) => {
+                            onChange={(e) => {
                               const raw = e.target.value.replace(/[^0-9.\-]/g, '');
                               const val = raw ? parseFloat(raw) : null;
-                              if (val !== (invoice?.actualBilledAmount ?? null)) {
+                              debounceSave(`inv-${be.id}-actual_billed_amount`, () => {
+                                if (val !== (invoice?.actualBilledAmount ?? null))
+                                  handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'actual_billed_amount', val);
+                              });
+                            }}
+                            onBlur={(e) => {
+                              const key = `inv-${be.id}-actual_billed_amount`;
+                              const existing = debounceTimers.current.get(key);
+                              if (existing) { clearTimeout(existing); debounceTimers.current.delete(key); }
+                              const raw = e.target.value.replace(/[^0-9.\-]/g, '');
+                              const val = raw ? parseFloat(raw) : null;
+                              if (val !== (invoice?.actualBilledAmount ?? null))
                                 handleUpdateInvoiceField(invoice?.id || 0, be.id, be.season || currentSeason, 'actual_billed_amount', val);
-                              }
                               e.target.value = val != null ? formatCurrency(val) : '';
                             }}
                             onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
