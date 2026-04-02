@@ -111,7 +111,12 @@ export default function SearchableSelect(props: CombinedProps) {
   useEffect(() => {
     if (isOpen) {
       updatePosition();
-      searchInputRef.current?.focus();
+      // Don't auto-focus on touch devices — focusing causes iOS to scroll the page,
+      // which immediately triggers the scroll-close handler and closes the dropdown.
+      const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+      if (!isTouchDevice) {
+        searchInputRef.current?.focus();
+      }
     } else {
       setSearch('');
     }
@@ -120,15 +125,21 @@ export default function SearchableSelect(props: CombinedProps) {
   // Close on scroll/resize (but not when scrolling inside the dropdown)
   useEffect(() => {
     if (!isOpen) return;
-    const handleScroll = (e: Event) => {
-      if (dropdownRef.current?.contains(e.target as Node)) return;
-      setIsOpen(false);
-    };
+    // Delay scroll listener slightly so the tap/focus-induced scroll on iOS
+    // doesn't immediately close the dropdown that was just opened.
+    let scrollHandler: ((e: Event) => void) | null = null;
+    const timer = setTimeout(() => {
+      scrollHandler = (e: Event) => {
+        if (dropdownRef.current?.contains(e.target as Node)) return;
+        setIsOpen(false);
+      };
+      window.addEventListener('scroll', scrollHandler, true);
+    }, 150);
     const handleResize = () => updatePosition();
-    window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', handleResize);
     return () => {
-      window.removeEventListener('scroll', handleScroll, true);
+      clearTimeout(timer);
+      if (scrollHandler) window.removeEventListener('scroll', scrollHandler, true);
       window.removeEventListener('resize', handleResize);
     };
   }, [isOpen, updatePosition]);

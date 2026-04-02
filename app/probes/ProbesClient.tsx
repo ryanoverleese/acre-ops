@@ -64,6 +64,8 @@ const STATUS_OPTIONS = [
   'Assigned',
   'Installed',
   'Trade Ordered',
+  'Trade Ordered - In Crate',
+  'In Crate for Shipment',
   'No Trade',
   'RMA',
   'Retired',

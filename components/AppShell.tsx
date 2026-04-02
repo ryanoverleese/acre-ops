@@ -35,6 +35,7 @@ const navSections: NavSection[] = [
       { name: 'Installs', href: '/install', icon: 'download' },
       { name: 'Locations', href: '/route', icon: 'route' },
       { name: 'Repairs', href: '/repairs', icon: 'settings' },
+      { name: 'Workflows', href: '/workflows', icon: 'workflow' },
     ],
   },
   {
@@ -148,6 +149,13 @@ const icons: Record<string, ReactNode> = {
   'file-text': (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  ),
+  workflow: (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l3 3 3-3" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 18V9" />
     </svg>
   ),
 };
