@@ -167,6 +167,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [tradingProbe, setTradingProbe] = useState<ProcessedProbe | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showQuickHits, setShowQuickHits] = useState(false);
+  const [quickStatusProbe, setQuickStatusProbe] = useState<ProcessedProbe | null>(null);
+  const [savingQuickStatus, setSavingQuickStatus] = useState(false);
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -638,6 +640,23 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const openTradeModal = (probe: ProcessedProbe) => {
     setTradingProbe(probe);
     setShowTradeModal(true);
+  };
+
+  const handleQuickStatusSave = async (newStatus: string) => {
+    if (!quickStatusProbe) return;
+    setSavingQuickStatus(true);
+    try {
+      const response = await fetch(`/api/probes/${quickStatusProbe.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (response.ok) {
+        setProbes(prev => prev.map(p => p.id === quickStatusProbe.id ? { ...p, status: newStatus } : p));
+        setQuickStatusProbe(null);
+      }
+    } catch (e) { /* ignore */ }
+    setSavingQuickStatus(false);
   };
 
   const handleTradeComplete = async (oldProbeId: number, tradeYear: string) => {
@@ -1219,6 +1238,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         >
                           Trade
                         </button>
+                        <button
+                          className="btn btn-secondary btn-compact"
+                          onClick={(e) => { e.stopPropagation(); setQuickStatusProbe(item.probe); }}
+                        >
+                          Status
+                        </button>
                         <span className="mobile-card-edit-link">
                           Edit
                           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
@@ -1281,6 +1306,12 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                         onClick={(e) => { e.stopPropagation(); openTradeModal(probe); }}
                       >
                         Trade
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-compact"
+                        onClick={(e) => { e.stopPropagation(); setQuickStatusProbe(probe); }}
+                      >
+                        Status
                       </button>
                       <span className="mobile-card-edit-link">
                         Edit
@@ -1581,6 +1612,40 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               <button className="btn btn-primary" onClick={handleEdit} disabled={saving}>
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Status Popup */}
+      {quickStatusProbe && (
+        <div className="detail-panel-overlay" onClick={() => setQuickStatusProbe(null)}>
+          <div className="quick-status-popup" onClick={(e) => e.stopPropagation()}>
+            <div className="quick-status-header">
+              <div>
+                <div className="quick-status-title">Change Status</div>
+                <div className="quick-status-serial">#{quickStatusProbe.serialNumber}</div>
+              </div>
+              <button className="close-btn" onClick={() => setQuickStatusProbe(null)}>
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="quick-status-current">
+              Current: {getStatusBadge(quickStatusProbe.status)}
+            </div>
+            <div className="quick-status-options">
+              {STATUS_OPTIONS.map((s) => (
+                <button
+                  key={s}
+                  className={`quick-status-option${quickStatusProbe.status === s ? ' quick-status-option-active' : ''}`}
+                  disabled={savingQuickStatus}
+                  onClick={() => handleQuickStatusSave(s)}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
           </div>
         </div>
