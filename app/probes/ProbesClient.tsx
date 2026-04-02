@@ -69,6 +69,7 @@ const STATUS_OPTIONS = [
   'No Trade',
   'RMA',
   'Retired',
+  'Lost',
 ];
 
 // Rack options: 1A, 1B, 2A, 2B, ... 15A, 15B
