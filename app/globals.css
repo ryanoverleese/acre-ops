@@ -9781,6 +9781,9 @@ tr.expanded-row:hover {
   box-shadow: var(--shadow-lg);
   width: 320px;
   max-width: calc(100vw - 32px);
+  max-height: 85dvh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: slideUp 0.18s ease;
 }
@@ -9821,8 +9824,8 @@ tr.expanded-row:hover {
   flex-direction: column;
   padding: 8px;
   gap: 4px;
-  max-height: 60vh;
-  max-height: 60dvh;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
 }
 
