@@ -165,6 +165,8 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [savedBE, setSavedBE] = useState<Set<number>>(new Set());
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradingProbe, setTradingProbe] = useState<ProcessedProbe | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showQuickHits, setShowQuickHits] = useState(false);
   const mobileCardsRef = useRef<HTMLDivElement>(null);
   const columnPickerRef = useRef<HTMLDivElement>(null);
   const [showColumnPicker, setShowColumnPicker] = useState(false);
@@ -858,51 +860,39 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       </header>
 
       <div className="content">
-        <div className="stats-grid stats-grid-5">
-          <div className="stat-card">
-            <div className="stat-label">Total Probes</div>
-            <div className="stat-value blue">{statusCounts.all || 0}</div>
+        {/* Quick Hits collapsible */}
+        {showQuickHits && (
+          <div className="stats-grid stats-grid-5" style={{ marginBottom: 12 }}>
+            <div className="stat-card">
+              <div className="stat-label">Total Probes</div>
+              <div className="stat-value blue">{statusCounts.all || 0}</div>
+            </div>
+            <div className="stat-card stat-card-clickable" onClick={() => setViewMode('on-order')}>
+              <div className="stat-label">On Order</div>
+              <div className="stat-value amber">{statusCounts['on-order'] || statusCounts['on order'] || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">In Stock</div>
+              <div className="stat-value green">{statusCounts['in-stock'] || statusCounts['in stock'] || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">Installed</div>
+              <div className="stat-value amber">{statusCounts['deployed'] || statusCounts['installed'] || 0}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">RMA</div>
+              <div className="stat-value red">{statusCounts['rma'] || statusCounts['repair'] || 0}</div>
+            </div>
           </div>
-          <div className="stat-card stat-card-clickable" onClick={() => setViewMode('on-order')}>
-            <div className="stat-label">On Order</div>
-            <div className="stat-value amber">{statusCounts['on-order'] || statusCounts['on order'] || 0}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">In Stock</div>
-            <div className="stat-value green">{statusCounts['in-stock'] || statusCounts['in stock'] || 0}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Installed</div>
-            <div className="stat-value amber">{statusCounts['deployed'] || statusCounts['installed'] || 0}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">RMA</div>
-            <div className="stat-value red">{statusCounts['rma'] || statusCounts['repair'] || 0}</div>
-          </div>
-        </div>
+        )}
 
-        {/* Filter Row */}
+        {/* Main toolbar */}
         <div className="fields-filter-row">
           <div className="probes-filter-left">
             <div className="fields-tabs">
-              <button
-                onClick={() => setViewMode('all')}
-                className={viewMode === 'all' ? 'active' : ''}
-              >
-                All Probes
-              </button>
-              <button
-                onClick={() => setViewMode('rack')}
-                className={viewMode === 'rack' ? 'active' : ''}
-              >
-                Probe Rack
-              </button>
-              <button
-                onClick={() => setViewMode('on-order')}
-                className={viewMode === 'on-order' ? 'active' : ''}
-              >
-                On Order
-              </button>
+              <button onClick={() => setViewMode('all')} className={viewMode === 'all' ? 'active' : ''}>All Probes</button>
+              <button onClick={() => setViewMode('rack')} className={viewMode === 'rack' ? 'active' : ''}>Probe Rack</button>
+              <button onClick={() => setViewMode('on-order')} className={viewMode === 'on-order' ? 'active' : ''}>On Order</button>
             </div>
             <div className="search-box search-box-wide">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -915,67 +905,32 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <SearchableSelect
-              multi
-              value={filterStatus}
-              onChange={setFilterStatus}
-              options={filterOptions.statuses.map(s => ({ value: s, label: s }))}
-              placeholder="All Statuses"
-              style={{ minWidth: 120 }}
-            />
-            <SearchableSelect
-              multi
-              value={filterBrand}
-              onChange={setFilterBrand}
-              options={filterOptions.brands.map(s => ({ value: s, label: s }))}
-              placeholder="All Brands"
-              style={{ minWidth: 110 }}
-            />
-            {!focusedOperation && (
-              <SearchableSelect
-                multi
-                value={filterOperation}
-                onChange={setFilterOperation}
-                options={filterOptions.operations.map(s => ({ value: s, label: s }))}
-                placeholder="All Operations"
-                style={{ minWidth: 130 }}
-              />
-            )}
-            <SearchableSelect
-              multi
-              value={filterBillingEntity}
-              onChange={setFilterBillingEntity}
-              options={filterOptions.billingEntities.map(s => ({ value: s, label: s }))}
-              placeholder="All Billing Entities"
-              style={{ minWidth: 140 }}
-            />
-            <SearchableSelect
-              multi
-              value={filterTradeYear}
-              onChange={setFilterTradeYear}
-              options={filterOptions.tradeYears.map(s => ({ value: s, label: s }))}
-              placeholder="All Trade Years"
-              style={{ minWidth: 110 }}
-            />
-            <SearchableSelect
-              value={filterField}
-              onChange={setFilterField}
-              options={[
-                { value: 'filled', label: 'Filled' },
-                { value: 'empty', label: 'Empty' },
-              ]}
-              placeholder="All Fields"
-              style={{ minWidth: 100 }}
-            />
-            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0 || filterField !== '') && (
-              <button
-                className="btn btn-secondary btn-compact"
-                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); setFilterField(''); }}
-                title="Clear all filters"
-              >
-                Clear
-              </button>
-            )}
+            {/* Filters button with active count badge */}
+            {(() => {
+              const activeCount = filterStatus.length + filterBrand.length + filterOperation.length + filterBillingEntity.length + filterTradeYear.length + (filterField !== '' ? 1 : 0);
+              return (
+                <button
+                  className={`btn btn-secondary${showFilters ? ' btn-active' : ''}`}
+                  onClick={() => setShowFilters(f => !f)}
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="15" height="15">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filters
+                  {activeCount > 0 && <span className="probes-filter-badge">{activeCount}</span>}
+                </button>
+              );
+            })()}
+            {/* Quick Hits button */}
+            <button
+              className={`btn btn-secondary${showQuickHits ? ' btn-active' : ''}`}
+              onClick={() => setShowQuickHits(q => !q)}
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="15" height="15">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Quick Hits
+            </button>
           </div>
           <div className="probes-filter-right">
             {viewMode === 'rack' && (
@@ -1072,6 +1027,72 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </button>
           </div>
         </div>
+
+        {/* Collapsible filter panel */}
+        {showFilters && (
+          <div className="probes-filter-panel">
+            <SearchableSelect
+              multi
+              value={filterStatus}
+              onChange={setFilterStatus}
+              options={filterOptions.statuses.map(s => ({ value: s, label: s }))}
+              placeholder="All Statuses"
+              style={{ minWidth: 130 }}
+            />
+            <SearchableSelect
+              multi
+              value={filterBrand}
+              onChange={setFilterBrand}
+              options={filterOptions.brands.map(s => ({ value: s, label: s }))}
+              placeholder="All Brands"
+              style={{ minWidth: 120 }}
+            />
+            {!focusedOperation && (
+              <SearchableSelect
+                multi
+                value={filterOperation}
+                onChange={setFilterOperation}
+                options={filterOptions.operations.map(s => ({ value: s, label: s }))}
+                placeholder="All Operations"
+                style={{ minWidth: 140 }}
+              />
+            )}
+            <SearchableSelect
+              multi
+              value={filterBillingEntity}
+              onChange={setFilterBillingEntity}
+              options={filterOptions.billingEntities.map(s => ({ value: s, label: s }))}
+              placeholder="All Billing Entities"
+              style={{ minWidth: 150 }}
+            />
+            <SearchableSelect
+              multi
+              value={filterTradeYear}
+              onChange={setFilterTradeYear}
+              options={filterOptions.tradeYears.map(s => ({ value: s, label: s }))}
+              placeholder="All Trade Years"
+              style={{ minWidth: 120 }}
+            />
+            <SearchableSelect
+              value={filterField}
+              onChange={setFilterField}
+              options={[
+                { value: 'filled', label: 'Filled' },
+                { value: 'empty', label: 'Empty' },
+              ]}
+              placeholder="All Fields"
+              style={{ minWidth: 110 }}
+            />
+            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0 || filterField !== '') && (
+              <button
+                className="btn btn-secondary btn-compact"
+                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); setFilterField(''); }}
+              >
+                Clear All
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="probes-row-count">
           Showing {filteredProbes.length} of {probes.length} probes
