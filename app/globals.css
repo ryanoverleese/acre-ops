@@ -2204,7 +2204,7 @@ a.notification-item {
   justify-content: center;
   align-items: center;
   z-index: var(--z-modal);
-  padding: var(--space-5);
+  padding: max(var(--space-5), env(safe-area-inset-top)) max(var(--space-5), env(safe-area-inset-right)) max(var(--space-5), env(safe-area-inset-bottom)) max(var(--space-5), env(safe-area-inset-left));
   animation: fadeIn 0.15s ease;
 }
 
@@ -2222,6 +2222,7 @@ a.notification-item {
   width: 560px;
   max-width: 100%;
   max-height: 85vh;
+  max-height: 85dvh;
   background: var(--bg-card);
   display: flex;
   flex-direction: column;
@@ -2555,6 +2556,19 @@ tr.selected {
   .stat-value {
     font-size: 24px;
   }
+
+  /* Modals: tighter overlay padding on small phones so the panel isn't cramped */
+  .detail-panel-overlay {
+    padding: 12px;
+    align-items: flex-end;
+  }
+
+  .detail-panel {
+    width: 100%;
+    max-height: 92dvh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
 }
 
 /* Mobile Card View */
@@ -2719,7 +2733,7 @@ input[type="date"]:focus {
   align-items: center;
   justify-content: center;
   z-index: var(--z-picker);
-  padding: 20px;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
 }
 
 .location-picker-modal {
@@ -2728,6 +2742,7 @@ input[type="date"]:focus {
   width: 100%;
   max-width: 900px;
   max-height: 90vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2793,8 +2808,15 @@ input[type="date"]:focus {
 }
 
 @media (max-width: 640px) {
+  .location-picker-overlay {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
   .location-picker-modal {
-    max-height: 80vh;
+    max-height: 92dvh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
   }
 
   .location-picker-map {
