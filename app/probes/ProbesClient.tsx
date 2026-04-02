@@ -1324,21 +1324,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                 ))
             )}
             </div>
-            {/* Rack Index Scrubber - only show in rack view on mobile */}
-            {viewMode === 'rack' && filteredProbes.length > 0 && (
-              <div className="rack-scrubber">
-                {rackNumbers.map((num) => (
-                  <button
-                    key={num}
-                    onClick={() => scrollToRack(num)}
-                    disabled={!activeRackNumbers.has(num)}
-                    className={`rack-scrubber-btn${activeRackNumbers.has(num) ? ' active' : ''}`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
