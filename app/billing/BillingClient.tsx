@@ -17,6 +17,7 @@ type BillingColKey = typeof BILLING_COLUMNS[number]['key'];
 
 function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [local, setLocal] = useState(value);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Sync local state if parent's value changes (e.g. after another field triggers a re-render)
   useEffect(() => { setLocal(value); }, [value]);
   return (
@@ -25,13 +26,17 @@ function DateCell({ value, onSave }: { value: string; onSave: (v: string) => voi
         type="date"
         className={`inline-input${local ? '' : ' date-empty'}`}
         value={local}
-        onChange={(e) => setLocal(e.target.value)}
-        onBlur={(e) => onSave(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          setLocal(v);
+          if (timerRef.current) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => { onSave(v); }, 1000);
+        }}
       />
       {local && (
         <button
           type="button"
-          onClick={() => { setLocal(''); onSave(''); }}
+          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); setLocal(''); onSave(''); }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
           title="Clear date"
         >×</button>
