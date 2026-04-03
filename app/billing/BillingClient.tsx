@@ -18,8 +18,35 @@ type BillingColKey = typeof BILLING_COLUMNS[number]['key'];
 function DateCell({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [local, setLocal] = useState(value);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Sync local state if parent's value changes (e.g. after another field triggers a re-render)
-  useEffect(() => { setLocal(value); }, [value]);
+  const localRef = useRef(value);   // latest local value (no stale closure)
+  const savedRef = useRef(value);   // last value actually sent to API
+  const onSaveRef = useRef(onSave); // latest onSave (no stale closure)
+  useEffect(() => { onSaveRef.current = onSave; }, [onSave]);
+  // Sync when parent value changes
+  useEffect(() => {
+    setLocal(value);
+    localRef.current = value;
+    savedRef.current = value;
+  }, [value]);
+
+  const flush = () => {
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    if (localRef.current !== savedRef.current) {
+      savedRef.current = localRef.current;
+      onSaveRef.current(localRef.current);
+    }
+  };
+
+  // Flush on unmount (catches Next.js navigation away mid-edit)
+  useEffect(() => () => { flush(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Flush when tab is backgrounded / user switches away
+  useEffect(() => {
+    const handler = () => { if (document.visibilityState === 'hidden') flush(); };
+    document.addEventListener('visibilitychange', handler);
+    return () => document.removeEventListener('visibilitychange', handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
       <input
@@ -29,14 +56,26 @@ function DateCell({ value, onSave }: { value: string; onSave: (v: string) => voi
         onChange={(e) => {
           const v = e.target.value;
           setLocal(v);
+          localRef.current = v;
           if (timerRef.current) clearTimeout(timerRef.current);
-          timerRef.current = setTimeout(() => { onSave(v); }, 1000);
+          timerRef.current = setTimeout(() => {
+            savedRef.current = v;
+            onSaveRef.current(v);
+            timerRef.current = null;
+          }, 600);
         }}
+        onBlur={flush}
       />
       {local && (
         <button
           type="button"
-          onClick={() => { if (timerRef.current) clearTimeout(timerRef.current); setLocal(''); onSave(''); }}
+          onClick={() => {
+            if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+            localRef.current = '';
+            savedRef.current = '';
+            setLocal('');
+            onSaveRef.current('');
+          }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 14, padding: '0 2px', lineHeight: 1 }}
           title="Clear date"
         >×</button>
