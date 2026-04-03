@@ -25,10 +25,8 @@ function DateCell({ value, onSave }: { value: string; onSave: (v: string) => voi
         type="date"
         className={`inline-input${local ? '' : ' date-empty'}`}
         value={local}
-        onChange={(e) => {
-          setLocal(e.target.value);
-          onSave(e.target.value);
-        }}
+        onChange={(e) => setLocal(e.target.value)}
+        onBlur={(e) => onSave(e.target.value)}
       />
       {local && (
         <button
