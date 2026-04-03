@@ -457,7 +457,8 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                         type="date"
                         className="fi-text-input"
                         value={form.plantingDate}
-                        onChange={(e) => saveFieldChange(field, 'plantingDate', e.target.value)}
+                        onChange={(e) => setForms((prev) => ({ ...prev, [field.fieldSeasonId]: { ...prev[field.fieldSeasonId], plantingDate: e.target.value } }))}
+                        onBlur={(e) => saveFieldChange(field, 'plantingDate', e.target.value)}
                       />
                     </div>
                     )}

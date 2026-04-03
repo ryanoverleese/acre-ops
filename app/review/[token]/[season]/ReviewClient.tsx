@@ -457,7 +457,8 @@ export default function ReviewClient({
                         <div className="fi-text-field">
                           <div className="fi-field-label">Planting Date</div>
                           <input type="date" className="fi-text-input" value={form.plantingDate}
-                            onChange={(e) => saveFieldChange(field, 'plantingDate', e.target.value)} />
+                            onChange={(e) => setForms((prev) => ({ ...prev, [field.fieldSeasonId]: { ...prev[field.fieldSeasonId], plantingDate: e.target.value } }))}
+                            onBlur={(e) => saveFieldChange(field, 'plantingDate', e.target.value)} />
                         </div>
                       )}
                     </div>
