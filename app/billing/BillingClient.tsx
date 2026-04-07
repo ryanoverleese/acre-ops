@@ -164,7 +164,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     } catch { return new Set(); }
   });
   const [showColPicker, setShowColPicker] = useState(false);
-  const [summaryView, setSummaryView] = useState<'overview' | 'discounts' | 'collections' | 'pipeline' | 'qb' | 'onorder' | 'numbered'>('overview');
+  const [summaryView, setSummaryView] = useState<'overview' | 'discounts' | 'collections' | 'pipeline' | 'qb' | 'onorder' | 'numbered' | 'invoicedvsnot'>('overview');
   const colPickerRef = useRef<HTMLDivElement>(null);
   const col = (key: BillingColKey) => !hiddenCols.has(key);
   const toggleCol = (key: BillingColKey) => setHiddenCols(prev => {
@@ -578,21 +578,24 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
   // Invoiced (have invoice number)
   const invoicedEntities = filteredEntities.filter(be => be.invoices.some(inv => inv.invoiceNumber));
-  const totalInvoicedCalculated = invoicedEntities.reduce((sum, be) => {
-    const inv = be.invoices.find(i => i.invoiceNumber);
-    if (!inv) return sum;
+  const notInvoicedEntities = filteredEntities.filter(be => !be.invoices.some(inv => inv.invoiceNumber));
+  const calcEntityTotal = (be: ProcessedBillingEntity) => {
+    const inv = be.invoices[0];
+    if (!inv) return getOnOrderTotal(be.id);
     const subtotal = inv.lines.reduce((s, l) => s + (l.rate * l.quantity), 0);
     const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
-    return sum + subtotal - discount;
-  }, 0);
+    return subtotal - discount + getOnOrderTotal(be.id);
+  };
+  const totalInvoicedCalculated = invoicedEntities.reduce((sum, be) => sum + calcEntityTotal(be), 0);
   const totalInvoicedActual = invoicedEntities.reduce((sum, be) => {
     const inv = be.invoices.find(i => i.invoiceNumber);
-    if (!inv) return sum;
+    if (!inv) return sum + getOnOrderTotal(be.id);
     if (inv.actualBilledAmount != null) return sum + inv.actualBilledAmount;
     const subtotal = inv.lines.reduce((s, l) => s + (l.rate * l.quantity), 0);
     const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
-    return sum + subtotal - discount;
+    return sum + subtotal - discount + getOnOrderTotal(be.id);
   }, 0);
+  const totalNotInvoicedCalculated = notInvoicedEntities.reduce((sum, be) => sum + calcEntityTotal(be), 0);
 
   return (
     <>
@@ -672,6 +675,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             <option value="qb">QB Reconciliation</option>
             <option value="onorder">On Order</option>
             <option value="numbered">Has Invoice #</option>
+            <option value="invoicedvsnot">Invoiced vs Not</option>
           </select>
           <div className="billing-summary-stats">
             {summaryView === 'overview' && (<>
@@ -730,6 +734,13 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               <div className="billing-stat"><span className="billing-stat-label">Actual Billed</span><span className="billing-stat-value green">{formatCurrency(totalInvoicedActual)}</span></div>
               <div className="billing-stat-divider" />
               <div className="billing-stat"><span className="billing-stat-label">Difference</span><span className={`billing-stat-value ${totalInvoicedActual - totalInvoicedCalculated !== 0 ? 'amber' : 'green'}`}>{formatCurrency(totalInvoicedActual - totalInvoicedCalculated)}</span></div>
+            </>)}
+            {summaryView === 'invoicedvsnot' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">Has Invoice # ({invoicedEntities.length})</span><span className="billing-stat-value green">{formatCurrency(totalInvoicedCalculated)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">No Invoice # ({notInvoicedEntities.length})</span><span className="billing-stat-value amber">{formatCurrency(totalNotInvoicedCalculated)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Total</span><span className="billing-stat-value">{formatCurrency(totalInvoicedCalculated + totalNotInvoicedCalculated)}</span></div>
             </>)}
           </div>
         </div>
