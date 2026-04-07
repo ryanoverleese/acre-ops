@@ -164,7 +164,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     } catch { return new Set(); }
   });
   const [showColPicker, setShowColPicker] = useState(false);
-  const [summaryView, setSummaryView] = useState<'overview' | 'discounts' | 'collections'>('overview');
+  const [summaryView, setSummaryView] = useState<'overview' | 'discounts' | 'collections' | 'pipeline' | 'qb' | 'onorder'>('overview');
   const colPickerRef = useRef<HTMLDivElement>(null);
   const col = (key: BillingColKey) => !hiddenCols.has(key);
   const toggleCol = (key: BillingColKey) => setHiddenCols(prev => {
@@ -558,6 +558,21 @@ export default function BillingClient({ billingEntities: initialEntities, availa
         return invSum + subtotal - discount;
       }, 0), 0);
 
+  // Pipeline counts
+  const countNotSent = filteredEntities.filter(be => be.invoices.length === 0 || be.invoices.every(inv => !inv.sentAt)).length;
+  const countSentUnpaid = filteredEntities.filter(be => be.invoices.some(inv => inv.sentAt && inv.status.toLowerCase() !== 'paid')).length;
+  const countPaid = filteredEntities.filter(be => be.invoices.some(inv => inv.status.toLowerCase() === 'paid')).length;
+
+  // QB reconciliation
+  const countMatchedQb = filteredEntities.filter(be => be.invoices.some(inv => inv.matchedInQb)).length;
+  const countNotMatchedQb = filteredEntities.filter(be => be.invoices.some(inv => inv.sentAt && !inv.matchedInQb)).length;
+  const totalActualBilled = filteredEntities.reduce((sum, be) =>
+    sum + be.invoices.reduce((invSum, inv) =>
+      invSum + (inv.actualBilledAmount ?? 0), 0), 0);
+
+  // On order
+  const totalInvoiced = totalAfterDiscount - totalOnOrder;
+
   return (
     <>
       <header className="header">
@@ -632,6 +647,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
             <option value="overview">Overview</option>
             <option value="discounts">Discounts</option>
             <option value="collections">Collections</option>
+            <option value="pipeline">Pipeline</option>
+            <option value="qb">QB Reconciliation</option>
+            <option value="onorder">On Order</option>
           </select>
           <div className="billing-summary-stats">
             {summaryView === 'overview' && (<>
@@ -656,6 +674,31 @@ export default function BillingClient({ billingEntities: initialEntities, availa
               <div className="billing-stat"><span className="billing-stat-label">Paid</span><span className="billing-stat-value green">{formatCurrency(totalPaid)}</span></div>
               <div className="billing-stat-divider" />
               <div className="billing-stat"><span className="billing-stat-label">Unpaid</span><span className="billing-stat-value amber">{formatCurrency(totalSentAmount - totalPaid)}</span></div>
+            </>)}
+            {summaryView === 'pipeline' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">Not Sent</span><span className="billing-stat-value amber">{countNotSent}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Sent / Unpaid</span><span className="billing-stat-value blue">{countSentUnpaid}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Paid</span><span className="billing-stat-value green">{countPaid}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Total</span><span className="billing-stat-value">{filteredEntities.length}</span></div>
+            </>)}
+            {summaryView === 'qb' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">Matched in QB</span><span className="billing-stat-value green">{countMatchedQb}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Not Matched</span><span className="billing-stat-value amber">{countNotMatchedQb}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Actual Billed</span><span className="billing-stat-value">{formatCurrency(totalActualBilled)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Calculated</span><span className="billing-stat-value">{formatCurrency(totalAfterDiscount)}</span></div>
+            </>)}
+            {summaryView === 'onorder' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">On Order</span><span className="billing-stat-value amber">{formatCurrency(totalOnOrder)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Invoiced</span><span className="billing-stat-value">{formatCurrency(totalInvoiced)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Total w/ On Order</span><span className="billing-stat-value green">{formatCurrency(totalAfterDiscount)}</span></div>
             </>)}
           </div>
         </div>
