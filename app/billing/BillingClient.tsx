@@ -227,6 +227,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       } else if (sortBy === 'operation') {
         aVal = a.operation.toLowerCase();
         bVal = b.operation.toLowerCase();
+      } else if (sortBy === 'invoiceNumber') {
+        aVal = aInv?.invoiceNumber || 0;
+        bVal = bInv?.invoiceNumber || 0;
       } else if (sortBy === 'sentDate') {
         aVal = aInv?.sentAt || '';
         bVal = bInv?.sentAt || '';
@@ -717,7 +720,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   <th style={{ width: '24px' }}></th>
                   <th className="sortable-th" onClick={() => handleSort('entity')}>Entity{sortIndicator('entity')}</th>
                   <th className="sortable-th" onClick={() => handleSort('operation')}>Operation{sortIndicator('operation')}</th>
-                  {col('invoiceNumber') && <th>Invoice #</th>}
+                  {col('invoiceNumber') && <th className="sortable-th" onClick={() => handleSort('invoiceNumber')}>Invoice #{sortIndicator('invoiceNumber')}</th>}
                   {col('sentDate') && <th className="sortable-th" onClick={() => handleSort('sentDate')}>Sent Date{sortIndicator('sentDate')}</th>}
                   {col('depositDate') && <th className="sortable-th" onClick={() => handleSort('depositDate')}>Deposit Date{sortIndicator('depositDate')}</th>}
                   {col('paidDate') && <th className="sortable-th" onClick={() => handleSort('paidDate')}>Paid Date{sortIndicator('paidDate')}</th>}
