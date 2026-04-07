@@ -164,6 +164,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     } catch { return new Set(); }
   });
   const [showColPicker, setShowColPicker] = useState(false);
+  const [summaryView, setSummaryView] = useState<'overview' | 'discounts' | 'collections'>('overview');
   const colPickerRef = useRef<HTMLDivElement>(null);
   const col = (key: BillingColKey) => !hiddenCols.has(key);
   const toggleCol = (key: BillingColKey) => setHiddenCols(prev => {
@@ -622,26 +623,40 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       </header>
 
       <div className="content">
-        <div className="stats-grid mb-6">
-          <div className="stat-card">
-            <div className="stat-label">Active Entities</div>
-            <div className="stat-value blue">{filteredEntities.length}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Subtotal</div>
-            <div className="stat-value">{formatCurrency(totalSubtotal)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Bulk Discounts</div>
-            <div className="stat-value amber">-{formatCurrency(totalDiscount)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Sent Amount</div>
-            <div className="stat-value">{formatCurrency(totalSentAmount)}</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Total / Paid</div>
-            <div className="stat-value green">{formatCurrency(totalAfterDiscount)} / {formatCurrency(totalPaid)}</div>
+        <div className="billing-summary-bar mb-6">
+          <select
+            className="billing-summary-select"
+            value={summaryView}
+            onChange={(e) => setSummaryView(e.target.value as typeof summaryView)}
+          >
+            <option value="overview">Overview</option>
+            <option value="discounts">Discounts</option>
+            <option value="collections">Collections</option>
+          </select>
+          <div className="billing-summary-stats">
+            {summaryView === 'overview' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">Entities</span><span className="billing-stat-value blue">{filteredEntities.length}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Total</span><span className="billing-stat-value">{formatCurrency(totalAfterDiscount)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Paid</span><span className="billing-stat-value green">{formatCurrency(totalPaid)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Outstanding</span><span className="billing-stat-value amber">{formatCurrency(totalAfterDiscount - totalPaid)}</span></div>
+            </>)}
+            {summaryView === 'discounts' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">Subtotal</span><span className="billing-stat-value">{formatCurrency(totalSubtotal)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Bulk Discounts</span><span className="billing-stat-value amber">-{formatCurrency(totalDiscount)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">After Discount</span><span className="billing-stat-value green">{formatCurrency(totalAfterDiscount)}</span></div>
+            </>)}
+            {summaryView === 'collections' && (<>
+              <div className="billing-stat"><span className="billing-stat-label">Sent</span><span className="billing-stat-value">{formatCurrency(totalSentAmount)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Paid</span><span className="billing-stat-value green">{formatCurrency(totalPaid)}</span></div>
+              <div className="billing-stat-divider" />
+              <div className="billing-stat"><span className="billing-stat-label">Unpaid</span><span className="billing-stat-value amber">{formatCurrency(totalSentAmount - totalPaid)}</span></div>
+            </>)}
           </div>
         </div>
 
