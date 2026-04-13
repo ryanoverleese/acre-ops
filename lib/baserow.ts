@@ -129,12 +129,7 @@ async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): P
     }
     // Retry on 429 (rate limit) or 5xx (server error)
     if (attempt < maxRetries) {
-      if (response.status === 429) {
-        // Don't retry 429s on page loads — waiting 30s would exceed Netlify's timeout.
-        // Fail fast so the user sees an error quickly and can refresh.
-        throw new Error(`Baserow API error: 429 Too Many Requests`);
-      }
-      const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s for 5xx errors
+      const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
       console.warn(`Baserow API ${response.status} for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, delay));
     } else {
