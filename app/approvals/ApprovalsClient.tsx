@@ -364,24 +364,6 @@ export default function ApprovalsClient({
     }
   };
 
-  const handleMarkAllSentToday = async (operationId: number) => {
-    const today = new Date().toISOString().split('T')[0];
-    const opItems = items.filter((i) => i.operationId === operationId);
-    try {
-      await Promise.all(opItems.map((item) =>
-        fetch(`/api/probe-assignments/${item.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ approval_sent: today }),
-        })
-      ));
-      setItems((prev) =>
-        prev.map((item) => item.operationId === operationId ? { ...item, approvalSent: today } : item)
-      );
-    } catch {
-      alert('Failed to mark sent date');
-    }
-  };
 
   const handleGenerateApprovalLink = async (operationId: number, type: 'approval' | 'field-info' | 'combined' = 'approval', regenerate: boolean = false) => {
     setApprovalLoading(true);
@@ -546,13 +528,6 @@ export default function ApprovalsClient({
           }}
           style={{ fontSize: '13px', padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: '4px' }}
         />
-        <button
-          className="btn btn-secondary"
-          style={{ fontSize: '12px', padding: '3px 10px' }}
-          onClick={() => handleMarkAllSentToday(operationId)}
-        >
-          Mark Sent Today
-        </button>
       </div>
     </div>
   );
