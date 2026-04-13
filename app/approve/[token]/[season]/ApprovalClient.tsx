@@ -159,23 +159,20 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     setBulkLoading(true);
     try {
       const approvalDate = new Date().toISOString().split('T')[0];
-      await Promise.all(
-        pendingAssignments.map((pa) =>
-          fetch(`/api/probe-assignments/${pa.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
-          })
-        )
-      );
-
-      setProbeAssignments((prev) =>
-        prev.map((pa) =>
-          pa.approvalStatus === 'Pending'
-            ? { ...pa, approvalStatus: 'Approved', approvalDate }
-            : pa
-        )
-      );
+      // Send sequentially to avoid hitting Baserow rate limits
+      for (const pa of pendingAssignments) {
+        await fetch(`/api/probe-assignments/${pa.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
+        });
+        // Small delay between requests to stay under rate limit
+        await new Promise((r) => setTimeout(r, 150));
+        // Optimistically update each one as it saves
+        setProbeAssignments((prev) =>
+          prev.map((p) => p.id === pa.id ? { ...p, approvalStatus: 'Approved', approvalDate } : p)
+        );
+      }
     } catch {
       // silent fail
     } finally {
