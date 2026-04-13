@@ -6188,25 +6188,25 @@ tr.expanded-row:hover {
 
 /* Route order badge (left sidebar of card) */
 .install-route-badge {
-  width: 60px;
-  min-width: 60px;
+  width: 48px;
+  min-width: 48px;
   background: var(--accent-blue);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: white;
-  padding: 12px 0;
+  padding: 8px 0;
 }
 
 .install-route-badge-label {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   opacity: 0.8;
 }
 
 .install-route-badge-number {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 700;
   line-height: 1;
 }
@@ -6218,7 +6218,7 @@ tr.expanded-row:hover {
 
 /* Card header */
 .install-card-header {
-  padding: 12px 16px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -6226,11 +6226,11 @@ tr.expanded-row:hover {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .install-field-name {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   margin: 0;
 }
@@ -6238,12 +6238,12 @@ tr.expanded-row:hover {
 .install-probe-number-suffix {
   color: var(--text-muted);
   font-weight: 400;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .install-installer-badge {
-  font-size: 11px;
-  padding: 2px 8px;
+  font-size: 10px;
+  padding: 1px 6px;
   background: var(--accent-amber-dim);
   color: var(--accent-amber);
   border-radius: var(--radius-xs);
@@ -6251,21 +6251,21 @@ tr.expanded-row:hover {
 }
 
 .install-operation {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--text-secondary);
   margin: 0;
 }
 
 .install-tags-row {
   display: flex;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 6px;
+  margin-top: 4px;
   flex-wrap: wrap;
 }
 
 .install-crop-tag {
-  font-size: 12px;
-  padding: 2px 8px;
+  font-size: 11px;
+  padding: 1px 6px;
   background: var(--accent-primary-dim);
   color: var(--accent-primary);
   border-radius: var(--radius-xs);
@@ -6273,7 +6273,7 @@ tr.expanded-row:hover {
 
 .install-antenna-tag {
   font-size: 11px;
-  padding: 2px 8px;
+  padding: 1px 6px;
   background: var(--bg-tertiary);
   border-radius: var(--radius-xs);
   color: var(--text-secondary);
@@ -6281,24 +6281,24 @@ tr.expanded-row:hover {
 
 /* Probe info section */
 .install-probe-info {
-  padding: 12px 16px;
+  padding: 8px 12px;
 }
 
 .install-probe-info-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .install-probe-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .install-probe-serial {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -6307,12 +6307,12 @@ tr.expanded-row:hover {
 }
 
 .install-rack-label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
 .install-rack-value {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
 }
 
@@ -6320,8 +6320,8 @@ tr.expanded-row:hover {
 .install-btn-full {
   width: 100%;
   justify-content: center;
-  padding: 7px 12px;
-  font-size: 13px;
+  padding: 5px 10px;
+  font-size: 12px;
 }
 
 /* Navigate button */
@@ -6330,9 +6330,9 @@ tr.expanded-row:hover {
   justify-content: center;
   align-items: center;
   gap: 6px;
-  margin: 0 16px 12px;
-  padding: 7px 12px;
-  font-size: 13px;
+  margin: 0 12px 8px;
+  padding: 5px 10px;
+  font-size: 12px;
   border-radius: var(--radius-sm);
 }
 
