@@ -363,6 +363,12 @@ export default function ApprovalClient({ operationName, season, probeAssignments
 
                           {/* Details */}
                           <div className="card-details">
+                            {pa.label && (
+                              <div className="detail-row">
+                                <span className="detail-label">Probe Note</span>
+                                <span className="detail-value">{pa.label}</span>
+                              </div>
+                            )}
                             {pa.placementLat && pa.placementLng && (
                               <div className="detail-row">
                                 <span className="detail-label">Coordinates</span>
