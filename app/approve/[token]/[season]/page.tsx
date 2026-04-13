@@ -57,7 +57,7 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
     getContacts(),
   ]);
 
-  const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
+  const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || undefined]));
 
   // Find operation by approval token
   const operation = operations.find((op) => op.approval_token === token);
