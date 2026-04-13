@@ -17,13 +17,14 @@ const defaultIcon = L.icon({
   shadowSize: [41, 41],
 });
 
-export type ColorByMode = 'none' | 'crop' | 'status' | 'operation' | 'probeBrand';
+export type ColorByMode = 'none' | 'crop' | 'status' | 'operation' | 'probeBrand' | 'billingEntity';
 
 const COLOR_BY_LABELS: Record<Exclude<ColorByMode, 'none'>, string> = {
   crop: 'Crop',
   status: 'Status',
   operation: 'Operation',
   probeBrand: 'Probe Brand',
+  billingEntity: 'Billing Entity',
 };
 
 export interface FieldData {
@@ -31,6 +32,7 @@ export interface FieldData {
   name: string;
   operation: string;
   operationId: number | null;
+  billingEntity: string;
   acres: number;
   crop: string;
   probe: string | null;
@@ -218,6 +220,17 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
     }
   });
 
+  // Build billing entity to color map
+  const billingEntityColorMap = new Map<string, string>();
+  let beColorIndex = 0;
+  mappableFields.forEach((field) => {
+    const be = field.billingEntity || 'Unknown';
+    if (!billingEntityColorMap.has(be)) {
+      billingEntityColorMap.set(be, OPERATION_COLORS[beColorIndex % OPERATION_COLORS.length]);
+      beColorIndex++;
+    }
+  });
+
   // Get marker color based on colorBy mode
   const getMarkerColor = (field: FieldData): string => {
     switch (colorBy) {
@@ -229,6 +242,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         return operationColorMap.get(field.operationId) || OPERATION_COLORS[0];
       case 'probeBrand':
         return getBrandColor(field.probeBrand || '');
+      case 'billingEntity':
+        return billingEntityColorMap.get(field.billingEntity || 'Unknown') || OPERATION_COLORS[0];
       default:
         return '#60a5fa'; // default blue
     }
@@ -264,6 +279,11 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         case 'probeBrand': {
           label = field.probeBrand || 'None';
           color = getBrandColor(field.probeBrand || '');
+          break;
+        }
+        case 'billingEntity': {
+          label = field.billingEntity || 'Unknown';
+          color = billingEntityColorMap.get(label) || OPERATION_COLORS[0];
           break;
         }
         default:

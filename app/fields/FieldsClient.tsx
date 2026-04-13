@@ -664,6 +664,7 @@ export default function FieldsClient({
       name: f.name,
       operation: f.operation,
       operationId: f.operationId,
+      billingEntity: f.billingEntityName || '',
       acres: f.acres,
       crop: f.crop,
       probe,
