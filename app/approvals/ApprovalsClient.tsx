@@ -114,10 +114,10 @@ export default function ApprovalsClient({
         operationId: parseInt(opId),
         operationName: data.operation,
         items: data.items.sort((a, b) => a.fieldName.localeCompare(b.fieldName) || a.probeNumber - b.probeNumber),
-        approvalSent: data.items[0]?.approvalSent,
+        approvalSent: data.items.map((i) => i.approvalSent).filter(Boolean).sort().pop(),
       }))
       .sort((a, b) => {
-        // Unsent first, then oldest sent date first
+        // Sent operations go to bottom; unsent sorted alphabetically; sent sorted oldest first
         if (!a.approvalSent && !b.approvalSent) return a.operationName.localeCompare(b.operationName);
         if (!a.approvalSent) return -1;
         if (!b.approvalSent) return 1;
