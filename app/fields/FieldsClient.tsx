@@ -1957,6 +1957,7 @@ export default function FieldsClient({
                         { value: 'crop', label: 'Crop' },
                         { value: 'status', label: 'Status' },
                         { value: 'operation', label: 'Operation' },
+                        { value: 'billingEntity', label: 'Billing Entity' },
                         { value: 'probeBrand', label: 'Probe Brand' },
                       ]}
                       style={{ minWidth: 130 }}
