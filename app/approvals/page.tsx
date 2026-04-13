@@ -28,6 +28,7 @@ export interface ApprovalItem {
   approvalStatus: string;
   approvalNotes?: string;
   approvalDate?: string;
+  approvalSent?: string;
   season: number;
 }
 
@@ -145,6 +146,7 @@ async function getApprovalsData(): Promise<ApprovalsData> {
           approvalStatus: pa.approval_status?.value || 'Pending',
           approvalNotes: pa.approval_notes,
           approvalDate: pa.approval_date,
+          approvalSent: pa.approval_sent,
           season: Number(fieldSeason.season),
         };
       })

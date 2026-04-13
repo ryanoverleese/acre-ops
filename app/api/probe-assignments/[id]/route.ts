@@ -56,6 +56,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.approval_status !== undefined) updateData.approval_status = body.approval_status;
     if (body.approval_notes !== undefined) updateData.approval_notes = body.approval_notes;
     if (body.approval_date !== undefined) updateData.approval_date = body.approval_date;
+    if (body.approval_sent !== undefined) updateData.approval_sent = body.approval_sent;
 
     const patchData = addSpaceVariants(updateData);
     const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;

@@ -114,8 +114,15 @@ export default function ApprovalsClient({
         operationId: parseInt(opId),
         operationName: data.operation,
         items: data.items.sort((a, b) => a.fieldName.localeCompare(b.fieldName) || a.probeNumber - b.probeNumber),
+        approvalSent: data.items[0]?.approvalSent,
       }))
-      .sort((a, b) => a.operationName.localeCompare(b.operationName));
+      .sort((a, b) => {
+        // Unsent first, then oldest sent date first
+        if (!a.approvalSent && !b.approvalSent) return a.operationName.localeCompare(b.operationName);
+        if (!a.approvalSent) return -1;
+        if (!b.approvalSent) return 1;
+        return a.approvalSent.localeCompare(b.approvalSent);
+      });
   }, [filteredItems]);
 
   // Enrolled-only operations: have field_seasons for selected season but no probe items
@@ -342,6 +349,40 @@ export default function ApprovalsClient({
     }
   };
 
+  const handleSetApprovalSent = async (itemId: number, date: string) => {
+    try {
+      await fetch(`/api/probe-assignments/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approval_sent: date || null }),
+      });
+      setItems((prev) =>
+        prev.map((item) => item.id === itemId ? { ...item, approvalSent: date || undefined } : item)
+      );
+    } catch {
+      alert('Failed to save approval sent date');
+    }
+  };
+
+  const handleMarkAllSentToday = async (operationId: number) => {
+    const today = new Date().toISOString().split('T')[0];
+    const opItems = items.filter((i) => i.operationId === operationId);
+    try {
+      await Promise.all(opItems.map((item) =>
+        fetch(`/api/probe-assignments/${item.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approval_sent: today }),
+        })
+      ));
+      setItems((prev) =>
+        prev.map((item) => item.operationId === operationId ? { ...item, approvalSent: today } : item)
+      );
+    } catch {
+      alert('Failed to mark sent date');
+    }
+  };
+
   const handleGenerateApprovalLink = async (operationId: number, type: 'approval' | 'field-info' | 'combined' = 'approval', regenerate: boolean = false) => {
     setApprovalLoading(true);
     setLinkOperationId(operationId);
@@ -488,6 +529,29 @@ export default function ApprovalsClient({
           disabled={approvalLoading}
         >
           Regenerate
+        </button>
+      </div>
+
+      {/* Approval sent date */}
+      <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+        <label style={{ fontSize: '13px', color: '#6b7280', fontWeight: 500 }}>Approval Sent:</label>
+        <input
+          type="date"
+          value={items.find((i) => i.operationId === operationId)?.approvalSent || ''}
+          onChange={(e) => {
+            const date = e.target.value;
+            items
+              .filter((i) => i.operationId === operationId)
+              .forEach((i) => handleSetApprovalSent(i.id, date));
+          }}
+          style={{ fontSize: '13px', padding: '3px 6px', border: '1px solid #d1d5db', borderRadius: '4px' }}
+        />
+        <button
+          className="btn btn-secondary"
+          style={{ fontSize: '12px', padding: '3px 10px' }}
+          onClick={() => handleMarkAllSentToday(operationId)}
+        >
+          Mark Sent Today
         </button>
       </div>
     </div>
