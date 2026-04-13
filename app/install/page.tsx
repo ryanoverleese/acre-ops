@@ -47,16 +47,9 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         // Field season must be marked ready to install
         if (!fieldSeason.ready_to_install) return false;
 
-        // Probe must be assigned (has a probe) but not yet installed
+        // Exclude already installed or removed probes
         const status = pa.probe_status?.value?.toLowerCase() || 'unassigned';
-        if (status !== 'assigned') return false;
-
-        // Only show probes that have a serial number (not "On Order" probes without serial)
-        const probeId = pa.probe?.[0]?.id;
-        if (probeId) {
-          const probe = probeMap.get(probeId);
-          if (!probe?.serial_number) return false;
-        }
+        if (status === 'installed' || status === 'removed') return false;
 
         return true;
       })
