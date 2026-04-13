@@ -399,6 +399,7 @@ export interface FieldSeason {
   approval_status?: { id: number; value: string };
   approval_notes?: string;
   approval_date?: string;
+  approval_sent?: string;
 }
 
 export interface Repair {
@@ -445,6 +446,7 @@ export interface ProbeAssignment {
   approval_status?: { id: number; value: string };
   approval_notes?: string;
   approval_date?: string;
+  approval_sent?: string;
 }
 
 export interface WaterRec {
