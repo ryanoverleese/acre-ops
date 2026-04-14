@@ -168,6 +168,7 @@ export default function ApprovalsClient({
         operationId: parseInt(opId),
         operationName: data.name,
         count: data.items.length,
+        approvalSent: data.items.map((i) => i.approvalSent).filter(Boolean).sort().pop(),
       }))
       .sort((a, b) => a.operationName.localeCompare(b.operationName));
   }, [groupedItems, enrolledOnlyOps, items, selectedSeason, statusFilter, effectiveOperation, searchQuery]);
@@ -675,6 +676,12 @@ export default function ApprovalsClient({
                       {group.items.length} probe{group.items.length !== 1 ? 's' : ''}
                     </span>
 
+                    {group.approvalSent && (
+                      <span className="status-badge status-approved" style={{ fontSize: '11px' }}>
+                        Sent {group.approvalSent}
+                      </span>
+                    )}
+
                     {groupPendingCount > 0 && (
                       <span className="status-badge pending approvals-op-pending">
                         {groupPendingCount} pending
@@ -994,6 +1001,11 @@ export default function ApprovalsClient({
                       <span className="status-badge approved" style={{ fontSize: '11px' }}>
                         All approved
                       </span>
+                      {op.approvalSent && (
+                        <span className="status-badge status-approved" style={{ fontSize: '11px' }}>
+                          Sent {op.approvalSent}
+                        </span>
+                      )}
                     </div>
                   </div>
                 ))}
