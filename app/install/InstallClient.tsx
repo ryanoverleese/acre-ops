@@ -416,7 +416,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     const mapsLink = probe.installLat && probe.installLng
       ? `\nLocation: https://www.google.com/maps?q=${probe.installLat},${probe.installLng}`
       : '';
-    return `${greeting}\n\nYour soil moisture probe has been installed at ${probe.fieldName}${probeLabel}.\n\nProbe #${probe.probeNumber}: ${probe.probeSerial}\nDate: ${dateStr}${mapsLink}\n\nWe'll be monitoring your field throughout the season. If you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
+    return `${greeting}\n\nYour soil moisture probe has been installed at ${probe.fieldName}${probeLabel}.\n\nProbe #${probe.probeNumber}: ${probe.probeSerial}\nDate: ${dateStr}${mapsLink}\n\nIf you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
   };
 
   const handleCopyMessage = async (probe: InstalledProbeData, contactName?: string) => {
@@ -515,7 +515,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
         : '';
       return `- ${p.fieldName}${probeLabel}\n  Probe #${p.probeNumber}: ${p.probeSerial}\n  Date: ${dateStr}${mapsLink ? '\n' + mapsLink : ''}`;
     });
-    return `${greeting}\n\nYour soil moisture probes have been installed:\n\n${lines.join('\n\n')}\n\nWe'll be monitoring your fields throughout the season. If you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
+    return `${greeting}\n\nYour soil moisture probes have been installed:\n\n${lines.join('\n\n')}\n\nIf you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
   };
 
   const handleBatchCopy = async (probes: InstalledProbeData[], contactName?: string) => {
