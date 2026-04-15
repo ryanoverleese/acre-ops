@@ -207,6 +207,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           cropxTelemetryId: pa.cropx_telemetry_id || '',
           signalStrength: pa.signal_strength || '',
           installNotes: pa.install_notes || '',
+          growerNotified: pa.grower_notified || '',
           photoFieldEndUrl: pa.install_photo_field_end_url?.[0]?.url || '',
           photoExtraUrl: pa.install_photo_extra_url?.[0]?.url || '',
         };

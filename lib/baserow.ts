@@ -440,6 +440,7 @@ export interface ProbeAssignment {
   install_photo_field_end_url?: { url: string; name: string }[];
   install_photo_extra_url?: { url: string; name: string }[];
   install_notes?: string;
+  grower_notified?: string;
   cropx_telemetry_id?: string;
   signal_strength?: string;
   // Approval data

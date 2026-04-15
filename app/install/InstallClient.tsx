@@ -212,6 +212,7 @@ export interface InstalledProbeData {
   cropxTelemetryId: string;
   signalStrength: string;
   installNotes: string;
+  growerNotified: string;
   photoFieldEndUrl: string;
   photoExtraUrl: string;
 }
@@ -419,11 +420,26 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     return `${greeting}\n\nYour soil moisture probe has been installed at ${probe.fieldName}${probeLabel}.\n\nProbe #${probe.probeNumber}: ${probe.probeSerial}\nDate: ${dateStr}${mapsLink}\n\nIf you have any questions, don't hesitate to reach out!\n\n— Acre Insights`;
   };
 
+  const stampGrowerNotified = async (probeIds: number[]) => {
+    const today = new Date().toISOString().split('T')[0];
+    await Promise.all(probeIds.map(id =>
+      fetch(`/api/probe-assignments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ grower_notified: today }),
+      })
+    ));
+    setInstalledProbes(prev => prev.map(p =>
+      probeIds.includes(p.id) ? { ...p, growerNotified: today } : p
+    ));
+  };
+
   const handleCopyMessage = async (probe: InstalledProbeData, contactName?: string) => {
     const msg = buildShareMessage(probe, contactName);
     await navigator.clipboard.writeText(msg);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    stampGrowerNotified([probe.id]);
   };
 
   // Unique operations for the picker
@@ -523,6 +539,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     await navigator.clipboard.writeText(msg);
     setBatchCopied(contactName || '__generic__');
     setTimeout(() => setBatchCopied(null), 2000);
+    stampGrowerNotified(probes.map(p => p.id));
   };
 
   // Filter by planned installer
@@ -941,7 +958,12 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     </td>
                     <td>
                       {!batchMode && (
-                        <div style={{ display: 'flex', gap: 4 }}>
+                        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                          {probe.growerNotified && (
+                            <span className="status-badge status-approved" style={{ fontSize: 11 }}>
+                              Notified {new Date(probe.growerNotified).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          )}
                           <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setViewingInstall(probe)}>
                             View
                           </button>
