@@ -868,7 +868,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   </>
                 ) : (
                   <button className="btn btn-secondary" style={{ fontSize: 13 }} onClick={() => setBatchMode(true)}>
-                    Send Reports
+                    Bulk Notify
                   </button>
                 )}
               </div>
