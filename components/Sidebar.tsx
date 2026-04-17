@@ -24,6 +24,7 @@ const navSections: NavSection[] = [
       { name: 'CRM', href: '/crm', icon: 'users' },
       { name: 'Fields', href: '/fields', icon: 'map' },
       { name: 'Probes', href: '/probes', icon: 'cpu' },
+      { name: 'Racks', href: '/racks', icon: 'rack' },
     ],
   },
   {
@@ -95,6 +96,11 @@ const icons: Record<string, ReactNode> = {
   check: (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  ),
+  rack: (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 6a2 2 0 012-2h12a2 2 0 012 2M4 6v12a2 2 0 002 2h12a2 2 0 002-2V6M8 10h8M8 14h8" />
     </svg>
   ),
   workflow: (

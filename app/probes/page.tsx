@@ -38,7 +38,7 @@ async function getProbesData(): Promise<{
         : '—';
       return {
         id: probe.id,
-        serialNumber: probe.serial_number || (probe.status?.value === 'On Order - Trade' ? `On Order - Trade #${probe.id}` : `On Order #${probe.id}`),
+        serialNumber: probe.serial_number || (probe.status?.value === 'On Order - Trade' ? `On Order - Trade #${probe.id}` : probe.status?.value === 'On Order' ? `On Order #${probe.id}` : 'EMPTY'),
         rawSerialNumber: probe.serial_number || '',
         brand: probe.brand?.value || 'Unknown',
         status: probe.status?.value || 'Unknown',

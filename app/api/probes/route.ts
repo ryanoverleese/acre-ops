@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error('Baserow API error:', response.status, errorText);
       return NextResponse.json(
-        { error: 'Failed to create probe' },
+        { error: 'Failed to create probe', detail: errorText },
         { status: response.status }
       );
     }
