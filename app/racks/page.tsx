@@ -46,15 +46,14 @@ export default async function RacksPage() {
     if (fieldName) probeToCurrentField.set(probeId, fieldName);
   }
 
-  // Build probeLabels: probeId → { operation, field }
-  const probeLabels: Record<number, { operation: string; field: string }> = {};
+  // Build probeLabels: probeId → { operation, field, status }
+  const probeLabels: Record<number, { operation: string; field: string; status: string }> = {};
   for (const probe of probes) {
     const beId = probe.billing_entity?.[0]?.id;
     const operation = beId ? (billingToOperationNames.get(beId) || []).join(', ') : '';
     const field = probeToCurrentField.get(probe.id) || '';
-    if (operation || field) {
-      probeLabels[probe.id] = { operation, field };
-    }
+    const status = probe.status?.value || '';
+    probeLabels[probe.id] = { operation, field, status };
   }
 
   return <RacksClient slots={slots} probes={processedProbes} probeLabels={probeLabels} />;

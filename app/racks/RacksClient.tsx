@@ -17,12 +17,12 @@ interface MoveSource {
   serialNumber: string;
 }
 
-type DisplayMode = 'serial' | 'operation' | 'field';
+type DisplayMode = 'serial' | 'operation' | 'field' | 'status';
 
 interface RacksClientProps {
   slots: ProbeRackSlot[];
   probes: SimpleProbe[];
-  probeLabels: Record<number, { operation: string; field: string }>;
+  probeLabels: Record<number, { operation: string; field: string; status: string }>;
 }
 
 const RACK_SLOT_COUNTS: Record<number, number> = {
@@ -247,7 +247,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
           const sn = linked?.value;
           const probeId = linked?.id;
           const secondLine = probeId && displayMode !== 'serial'
-            ? probeLabels[probeId]?.[displayMode === 'operation' ? 'operation' : 'field'] || null
+            ? probeLabels[probeId]?.[displayMode as 'operation' | 'field' | 'status'] || null
             : null;
           return (
             <div key={row.id}>
@@ -421,7 +421,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
               </div>
               {/* Display mode toggle */}
               <div style={{ display: 'flex', gap: 2, background: 'var(--bg-secondary)', borderRadius: 6, padding: 2 }}>
-                {(['serial', 'operation', 'field'] as DisplayMode[]).map((mode) => (
+                {(['serial', 'operation', 'field', 'status'] as DisplayMode[]).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setAndSaveDisplayMode(mode)}
@@ -438,7 +438,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {mode === 'serial' ? 'SN' : mode === 'operation' ? '+ Op' : '+ Field'}
+                    {mode === 'serial' ? 'SN' : mode === 'operation' ? '+ Op' : mode === 'field' ? '+ Field' : '+ Status'}
                   </button>
                 ))}
               </div>
