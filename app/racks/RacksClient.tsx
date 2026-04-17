@@ -38,7 +38,20 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
 
   const totalFilled = useMemo(() => slots.filter((s) => (s.probe?.length ?? 0) > 0).length, [slots]);
 
-  const { sideAGroups, sideBGroups } = useMemo(() => {
+  // Per-rack fill stats for the selector
+  const rackStats = useMemo(() => {
+    const stats: Record<number, { filled: number; total: number }> = {};
+    for (let n = 1; n <= 13; n++) {
+      const rackSlots = slots.filter((s) => parseRackStr(s.rack).num === n);
+      stats[n] = {
+        filled: rackSlots.filter((s) => (s.probe?.length ?? 0) > 0).length,
+        total: rackSlots.length,
+      };
+    }
+    return stats;
+  }, [slots]);
+
+  const { sideAGroups, sideBGroups, rackFilled, rackTotal } = useMemo(() => {
     const rackSlots = slots.filter((s) => parseRackStr(s.rack).num === selectedRack);
 
     function groupSide(side: 'A' | 'B'): [number, ProbeRackSlot[]][] {
@@ -52,7 +65,8 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
       return Array.from(map.entries()).sort(([a], [b]) => a - b);
     }
 
-    return { sideAGroups: groupSide('A'), sideBGroups: groupSide('B') };
+    const rackFilled = rackSlots.filter((s) => (s.probe?.length ?? 0) > 0).length;
+    return { sideAGroups: groupSide('A'), sideBGroups: groupSide('B'), rackFilled, rackTotal: rackSlots.length };
   }, [slots, selectedRack]);
 
   const assignedProbeIds = useMemo(
@@ -224,39 +238,89 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
             flexShrink: 0,
           }}
         >
-          {Array.from({ length: 13 }, (_, i) => i + 1).map((n) => (
-            <button
-              key={n}
-              onClick={() => {
-                setSelectedRack(n);
-                closePanel();
-              }}
-              style={{
-                width: '100%',
-                padding: '6px 0',
-                borderRadius: 6,
-                border: 'none',
-                background: selectedRack === n ? 'var(--accent-primary)' : 'transparent',
-                color: selectedRack === n ? '#fff' : 'var(--text-secondary)',
-                fontWeight: selectedRack === n ? 600 : 400,
-                fontSize: 13,
-                cursor: 'pointer',
-                transition: 'all 0.12s ease',
-              }}
-            >
-              {n}
-            </button>
-          ))}
+          {Array.from({ length: 13 }, (_, i) => i + 1).map((n) => {
+            const stat = rackStats[n];
+            const pct = stat?.total ? Math.round((stat.filled / stat.total) * 100) : 0;
+            const isActive = selectedRack === n;
+            return (
+              <button
+                key={n}
+                onClick={() => { setSelectedRack(n); closePanel(); }}
+                style={{
+                  width: '100%',
+                  padding: '6px 4px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: isActive ? 'var(--accent-primary)' : 'transparent',
+                  color: isActive ? '#fff' : 'var(--text-secondary)',
+                  fontWeight: isActive ? 600 : 400,
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.12s ease',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                <span>{n}</span>
+                <div style={{
+                  width: '80%',
+                  height: 3,
+                  borderRadius: 2,
+                  background: isActive ? 'rgba(255,255,255,0.3)' : 'var(--border)',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    width: `${pct}%`,
+                    height: '100%',
+                    background: isActive ? '#fff' : 'var(--accent-primary)',
+                    borderRadius: 2,
+                  }} />
+                </div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Slot grid */}
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-          <div style={{ marginBottom: 14 }}>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>Rack {selectedRack}</span>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)', marginLeft: 8 }}>
-              {RACK_SLOT_COUNTS[selectedRack]} slots per side
-            </span>
+          {/* Rack summary */}
+          <div style={{
+            marginBottom: 16,
+            padding: '12px 16px',
+            borderRadius: 10,
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-sm)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em' }}>Rack {selectedRack}</span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rackTotal} probe positions</span>
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-primary)' }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{rackFilled}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>filled</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--border-strong)' }} />
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{rackTotal - rackFilled}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>empty</span>
+              </div>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+              <div style={{
+                width: `${rackTotal ? Math.round((rackFilled / rackTotal) * 100) : 0}%`,
+                height: '100%',
+                background: 'var(--accent-primary)',
+                borderRadius: 3,
+                transition: 'width 0.3s ease',
+              }} />
+            </div>
           </div>
+
           <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
             <Side side="A" groups={sideAGroups} />
             <Side side="B" groups={sideBGroups} />
