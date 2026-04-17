@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities, updateRow, createRow } from '@/lib/baserow';
+import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities, getRows, updateRow, createRow } from '@/lib/baserow';
+import type { ProbeRackSlot } from '@/lib/baserow';
 import type { FieldSeason, Probe, Repair, ProbeAssignment } from '@/lib/baserow';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -204,6 +205,27 @@ const TOOLS = [
         }
       },
       required: ["probe_assignment_id", "updates"]
+    }
+  },
+  {
+    name: "search_rack_slots",
+    description: "Query probe rack slots. Use this for questions about rack inventory: how many slots are empty or filled in a specific rack, which probes are in a rack, etc. Racks 1-5 have 10 slots (1 probe each), rack 6 has 34 slots, racks 7-13 have 13 slots (2 probe positions each).",
+    input_schema: {
+      type: "object",
+      properties: {
+        rack_number: {
+          type: "number",
+          description: "Filter to a specific rack number (1-13)"
+        },
+        filled_only: {
+          type: "boolean",
+          description: "If true, return only filled slots"
+        },
+        empty_only: {
+          type: "boolean",
+          description: "If true, return only empty slots"
+        }
+      }
     }
   },
   {
@@ -612,6 +634,37 @@ async function executeCreateRepair(params: { field_season_id?: number; probe_ass
   }
 }
 
+async function executeSearchRackSlots(params: { rack_number?: number; filled_only?: boolean; empty_only?: boolean }) {
+  const slots = await getRows<ProbeRackSlot>('probe_rack');
+  const isFilled = (s: ProbeRackSlot) => Array.isArray(s.probe) && s.probe.some(p => !!p.value);
+
+  let results = slots;
+  if (params.rack_number !== undefined) {
+    results = results.filter(s => s.rack.startsWith(String(params.rack_number)));
+  }
+  if (params.filled_only) results = results.filter(isFilled);
+  if (params.empty_only) results = results.filter(s => !isFilled(s));
+
+  // Summarize by rack
+  const byRack: Record<string, { filled: number; empty: number; probes: string[] }> = {};
+  for (const s of results) {
+    if (!byRack[s.rack]) byRack[s.rack] = { filled: 0, empty: 0, probes: [] };
+    if (isFilled(s)) {
+      byRack[s.rack].filled++;
+      s.probe?.forEach(p => { if (p.value) byRack[s.rack].probes.push(p.value); });
+    } else {
+      byRack[s.rack].empty++;
+    }
+  }
+
+  return {
+    total_slots: results.length,
+    total_filled: results.filter(isFilled).length,
+    total_empty: results.filter(s => !isFilled(s)).length,
+    by_rack: byRack,
+  };
+}
+
 // Execute a tool call
 async function executeTool(name: string, input: Record<string, unknown>) {
   switch (name) {
@@ -627,6 +680,8 @@ async function executeTool(name: string, input: Record<string, unknown>) {
       return await executeSearchByName(input as { name: string });
     case 'search_field_seasons':
       return await executeSearchFieldSeasons(input as { field_name_contains?: string; season?: string });
+    case 'search_rack_slots':
+      return await executeSearchRackSlots(input as { rack_number?: number; filled_only?: boolean; empty_only?: boolean });
     case 'update_field_season':
       return await executeUpdateFieldSeason(input as { field_season_id: number; updates: Record<string, unknown> });
     case 'update_probe':
