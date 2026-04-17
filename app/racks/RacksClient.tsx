@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ProbeRackSlot } from '@/lib/baserow';
 
@@ -11,9 +11,18 @@ export interface SimpleProbe {
   brand: string;
 }
 
+interface MoveSource {
+  rowId: number;
+  probeId: number;
+  serialNumber: string;
+}
+
+type DisplayMode = 'serial' | 'operation' | 'field';
+
 interface RacksClientProps {
   slots: ProbeRackSlot[];
   probes: SimpleProbe[];
+  probeLabels: Record<number, { operation: string; field: string }>;
 }
 
 const RACK_SLOT_COUNTS: Record<number, number> = {
@@ -28,19 +37,30 @@ function parseRackStr(rackStr: string): { num: number; side: 'A' | 'B' } {
   return { num: parseInt(match[1], 10), side: match[2] as 'A' | 'B' };
 }
 
-export default function RacksClient({ slots, probes }: RacksClientProps) {
+export default function RacksClient({ slots, probes, probeLabels }: RacksClientProps) {
   const router = useRouter();
   const [selectedRack, setSelectedRack] = useState(1);
   const [panelSlot, setPanelSlot] = useState<{ rows: ProbeRackSlot[]; slotNum: number; side: 'A' | 'B' } | null>(null);
   const [assigningRowId, setAssigningRowId] = useState<number | null>(null);
   const [probeSearch, setProbeSearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [moveSource, setMoveSource] = useState<MoveSource | null>(null);
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('serial');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('rack-display-mode') as DisplayMode | null;
+    if (saved === 'operation' || saved === 'field') setDisplayMode(saved);
+  }, []);
+
+  function setAndSaveDisplayMode(mode: DisplayMode) {
+    setDisplayMode(mode);
+    localStorage.setItem('rack-display-mode', mode);
+  }
 
   const slotIsFilled = (s: ProbeRackSlot) => Array.isArray(s.probe) && s.probe.some(p => !!p.value);
 
   const totalFilled = useMemo(() => slots.filter(slotIsFilled).length, [slots]);
 
-  // Per-rack fill stats for the selector
   const rackStats = useMemo(() => {
     const stats: Record<number, { filled: number; total: number }> = {};
     for (let n = 1; n <= 13; n++) {
@@ -130,25 +150,93 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
     }
   }
 
+  async function handleMove(destRow: ProbeRackSlot) {
+    if (!moveSource) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/probe-rack/${moveSource.rowId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe: null }),
+      });
+      await fetch(`/api/probe-rack/${destRow.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe: moveSource.probeId }),
+      });
+    } finally {
+      setSaving(false);
+      setMoveSource(null);
+      router.refresh();
+    }
+  }
+
   function SlotGroup({ slotNum, rows, side }: { slotNum: number; rows: ProbeRackSlot[]; side: 'A' | 'B' }) {
     const isFilled = rows.some(slotIsFilled);
     const isSelected = panelSlot?.slotNum === slotNum && panelSlot?.side === side;
+    const isSource = !!moveSource && rows.some(r => r.id === moveSource.rowId);
+    const hasEmpty = rows.some(r => !slotIsFilled(r));
+    const isValidTarget = !!moveSource && !isSource && hasEmpty;
+    const isInvalidTarget = !!moveSource && !isSource && !hasEmpty && isFilled;
+
+    let borderColor = isSelected
+      ? 'var(--accent-primary)'
+      : isFilled
+      ? 'rgba(74,122,91,0.25)'
+      : 'var(--border)';
+    let background = isSelected
+      ? 'var(--accent-primary-dim)'
+      : isFilled
+      ? 'rgba(74,122,91,0.06)'
+      : 'var(--bg-card)';
+    let borderWidth = '1px';
+    const opacity = isInvalidTarget ? 0.35 : 1;
+
+    if (moveSource) {
+      if (isSource) {
+        borderColor = 'var(--accent-primary)';
+        borderWidth = '2px';
+        background = 'rgba(74,122,91,0.15)';
+      } else if (isValidTarget) {
+        borderColor = 'rgba(74,122,91,0.5)';
+        background = 'rgba(74,122,91,0.04)';
+      }
+    }
 
     return (
       <div
-        onClick={() => openSlot(rows, slotNum, side)}
+        onClick={() => {
+          if (moveSource) {
+            if (isSource) {
+              setMoveSource(null);
+              return;
+            }
+            const destRow = rows.find(r => !slotIsFilled(r));
+            if (!destRow) return;
+            handleMove(destRow);
+          } else {
+            const filledRow = rows.find(r => slotIsFilled(r));
+            if (filledRow) {
+              closePanel();
+              setMoveSource({
+                rowId: filledRow.id,
+                probeId: filledRow.probe![0].id,
+                serialNumber: filledRow.probe![0].value,
+              });
+            } else {
+              openSlot(rows, slotNum, side);
+            }
+          }
+        }}
         style={{
           padding: '5px 8px',
           borderRadius: 6,
-          border: `1px solid ${isSelected ? 'var(--accent-primary)' : isFilled ? 'rgba(74,122,91,0.25)' : 'var(--border)'}`,
-          background: isSelected
-            ? 'var(--accent-primary-dim)'
-            : isFilled
-            ? 'rgba(74,122,91,0.06)'
-            : 'var(--bg-card)',
-          cursor: 'pointer',
+          border: `${borderWidth} solid ${borderColor}`,
+          background,
+          cursor: isInvalidTarget ? 'default' : 'pointer',
           transition: 'all 0.12s ease',
           minWidth: 0,
+          opacity,
         }}
       >
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>
@@ -157,9 +245,20 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
         {rows.map((row) => {
           const linked = row.probe?.[0];
           const sn = linked?.value;
+          const probeId = linked?.id;
+          const secondLine = probeId && displayMode !== 'serial'
+            ? probeLabels[probeId]?.[displayMode === 'operation' ? 'operation' : 'field'] || null
+            : null;
           return (
-            <div key={row.id} style={{ fontSize: 11, fontWeight: sn ? 500 : 400, color: sn ? 'var(--accent-primary)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {sn || '–'}
+            <div key={row.id}>
+              <div style={{ fontSize: 11, fontWeight: sn ? 500 : 400, color: sn ? 'var(--accent-primary)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {sn || '–'}
+              </div>
+              {secondLine && (
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {secondLine}
+                </div>
+              )}
             </div>
           );
         })}
@@ -175,7 +274,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
             fontSize: 11,
             fontWeight: 600,
             color: 'var(--text-muted)',
-            textTransform: 'uppercase',
+            textTransform: 'uppercase' as const,
             letterSpacing: '0.05em',
             paddingBottom: 6,
             marginBottom: 8,
@@ -277,6 +376,35 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
 
         {/* Slot grid */}
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          {/* Move mode banner */}
+          {moveSource && (
+            <div style={{
+              padding: '10px 16px',
+              background: 'var(--accent-primary)',
+              color: '#fff',
+              borderRadius: 8,
+              marginBottom: 12,
+              fontSize: 13,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <span>
+                {saving
+                  ? 'Moving…'
+                  : <>Moving <strong>{moveSource.serialNumber}</strong> — tap a slot to place it, or tap the highlighted slot to cancel</>}
+              </span>
+              {!saving && (
+                <button
+                  onClick={() => setMoveSource(null)}
+                  style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18, lineHeight: 1, marginLeft: 12, padding: '0 2px' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Rack summary */}
           <div style={{
             marginBottom: 16,
@@ -286,9 +414,34 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
             border: '1px solid var(--border)',
             boxShadow: 'var(--shadow-sm)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em' }}>Rack {selectedRack}</span>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rackTotal} probe positions</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em' }}>Rack {selectedRack}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rackTotal} probe positions</span>
+              </div>
+              {/* Display mode toggle */}
+              <div style={{ display: 'flex', gap: 2, background: 'var(--bg-secondary)', borderRadius: 6, padding: 2 }}>
+                {(['serial', 'operation', 'field'] as DisplayMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setAndSaveDisplayMode(mode)}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: 4,
+                      border: 'none',
+                      background: displayMode === mode ? 'var(--bg-card)' : 'transparent',
+                      color: displayMode === mode ? 'var(--text-primary)' : 'var(--text-muted)',
+                      fontSize: 11,
+                      fontWeight: displayMode === mode ? 600 : 400,
+                      cursor: 'pointer',
+                      boxShadow: displayMode === mode ? 'var(--shadow-sm)' : 'none',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {mode === 'serial' ? 'SN' : mode === 'operation' ? '+ Op' : '+ Field'}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -320,7 +473,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
         </div>
 
         {/* Assignment panel */}
-        {panelSlot && (
+        {panelSlot && !moveSource && (
           <div
             style={{
               width: 272,
@@ -366,7 +519,6 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
                 const probe = row.probe?.[0];
 
                 if (probe) {
-                  // Filled: show probe + unassign
                   const probeData = probes.find((p) => p.id === probe.id);
                   return (
                     <div
@@ -413,7 +565,6 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
                   );
                 }
 
-                // Empty: show assign button or probe picker
                 if (assigningRowId === row.id) {
                   return (
                     <div key={row.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
