@@ -168,7 +168,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              {probe ? (probe.value || 'No SN') : '—'}
+              {probe ? (probe.value || 'No SN') : 'EMPTY'}
             </div>
           );
         })}
