@@ -17,6 +17,13 @@ interface MoveSource {
   serialNumber: string;
 }
 
+interface LastMove {
+  sourceRowId: number;
+  destRowId: number;
+  probeId: number;
+  serialNumber: string;
+}
+
 type DisplayMode = 'serial' | 'operation' | 'field' | 'status';
 
 interface RacksClientProps {
@@ -46,12 +53,20 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   const [saving, setSaving] = useState(false);
   const [moveSource, setMoveSource] = useState<MoveSource | null>(null);
   const [tapToMove, setTapToMove] = useState(false);
+  const [lastMove, setLastMove] = useState<LastMove | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('serial');
 
   useEffect(() => {
     const saved = localStorage.getItem('rack-display-mode') as DisplayMode | null;
     if (saved === 'operation' || saved === 'field' || saved === 'status') setDisplayMode(saved);
   }, []);
+
+  // Auto-dismiss undo bar after 30 seconds
+  useEffect(() => {
+    if (!lastMove) return;
+    const timer = setTimeout(() => setLastMove(null), 30_000);
+    return () => clearTimeout(timer);
+  }, [lastMove]);
 
   function setAndSaveDisplayMode(mode: DisplayMode) {
     setDisplayMode(mode);
@@ -165,9 +180,36 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ probe: moveSource.probeId }),
       });
+      setLastMove({
+        sourceRowId: moveSource.rowId,
+        destRowId: destRow.id,
+        probeId: moveSource.probeId,
+        serialNumber: moveSource.serialNumber,
+      });
     } finally {
       setSaving(false);
       setMoveSource(null);
+      router.refresh();
+    }
+  }
+
+  async function handleUndo() {
+    if (!lastMove) return;
+    setSaving(true);
+    try {
+      await fetch(`/api/probe-rack/${lastMove.destRowId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe: null }),
+      });
+      await fetch(`/api/probe-rack/${lastMove.sourceRowId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe: lastMove.probeId }),
+      });
+    } finally {
+      setSaving(false);
+      setLastMove(null);
       router.refresh();
     }
   }
@@ -406,6 +448,50 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
 
         {/* Slot grid */}
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          {/* Undo bar */}
+          {lastMove && !moveSource && (
+            <div style={{
+              padding: '8px 14px',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
+              borderRadius: 8,
+              marginBottom: 10,
+              fontSize: 13,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: 12,
+            }}>
+              <span style={{ color: 'var(--text-muted)' }}>
+                Moved <strong style={{ color: 'var(--text-primary)' }}>{lastMove.serialNumber}</strong>
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={handleUndo}
+                  disabled={saving}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-secondary)',
+                    color: 'var(--text-primary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {saving ? 'Undoing…' : 'Undo'}
+                </button>
+                <button
+                  onClick={() => setLastMove(null)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Move mode banner */}
           {moveSource && (
             <div style={{
