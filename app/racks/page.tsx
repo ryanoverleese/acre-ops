@@ -11,9 +11,11 @@ export default async function RacksPage() {
 
   const processedProbes = probes.map((p) => ({
     id: p.id,
-    serialNumber: p.serial_number || `#${p.id}`,
+    serialNumber: p.serial_number || '',
     status: p.status?.value || 'Unknown',
     brand: p.brand?.value || 'Unknown',
+    rack: p.rack?.value || '',
+    rackSlot: p.rack_slot || 0,
   }));
 
   return <RacksClient slots={slots} probes={processedProbes} />;
