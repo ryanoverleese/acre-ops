@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getRows, updateRow, Probe, ProbeRackSlot } from '@/lib/baserow';
+import { getRows, Probe, ProbeRackSlot, TABLE_IDS } from '@/lib/baserow';
+
+const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
+const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 export async function POST() {
   try {
@@ -8,7 +11,7 @@ export async function POST() {
       getRows<ProbeRackSlot>('probe_rack'),
     ]);
 
-    // Group probe_rack rows by "rack|slot" key (may be multiple rows per slot for racks 7-13)
+    // Group probe_rack rows by "rack|slot" — multiple rows per slot for racks 7-13
     const slotsByKey = new Map<string, ProbeRackSlot[]>();
     for (const slot of slots) {
       const key = `${slot.rack}|${slot.rack_slot}`;
@@ -17,10 +20,8 @@ export async function POST() {
       slotsByKey.set(key, existing);
     }
 
-    // Track which slot rows have been assigned (to handle 2-probe slots)
     const assignedSlotRowIds = new Set<number>();
-
-    let assigned = 0;
+    const updates: { id: number; probe: number[] }[] = [];
     let skipped = 0;
     let notFound = 0;
     const errors: string[] = [];
@@ -29,21 +30,17 @@ export async function POST() {
       const rackValue = probe.rack?.value;
       const rackSlot = probe.rack_slot;
 
-      if (!rackValue || !rackSlot) {
-        skipped++;
-        continue;
-      }
+      if (!rackValue || !rackSlot) { skipped++; continue; }
 
       const key = `${rackValue}|${rackSlot}`;
       const matchingRows = slotsByKey.get(key);
 
-      if (!matchingRows || matchingRows.length === 0) {
+      if (!matchingRows?.length) {
         notFound++;
-        errors.push(`No slot found for probe ${probe.serial_number} at ${rackValue}-${rackSlot}`);
+        errors.push(`No slot for probe ${probe.serial_number} at ${rackValue}-${rackSlot}`);
         continue;
       }
 
-      // Find the first unassigned slot row for this position
       const targetRow = matchingRows.find(
         (r) => !assignedSlotRowIds.has(r.id) && (r.probe?.length ?? 0) === 0
       );
@@ -54,16 +51,33 @@ export async function POST() {
         continue;
       }
 
-      try {
-        await updateRow('probe_rack', targetRow.id, { probe: [probe.id] });
-        assignedSlotRowIds.add(targetRow.id);
-        assigned++;
-      } catch (e) {
-        errors.push(`Failed to assign probe ${probe.serial_number} to ${rackValue}-${rackSlot}: ${e}`);
-      }
+      assignedSlotRowIds.add(targetRow.id);
+      updates.push({ id: targetRow.id, probe: [probe.id] });
     }
 
-    return NextResponse.json({ assigned, skipped, notFound, errors });
+    if (updates.length === 0) {
+      return NextResponse.json({ assigned: 0, skipped, notFound, errors });
+    }
+
+    // Batch update all at once via Baserow batch API
+    const batchRes = await fetch(
+      `${BASEROW_API_URL}/${TABLE_IDS.probe_rack}/batch/?user_field_names=true`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Token ${BASEROW_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items: updates }),
+      }
+    );
+
+    if (!batchRes.ok) {
+      const detail = await batchRes.text();
+      return NextResponse.json({ error: 'Batch update failed', detail }, { status: 500 });
+    }
+
+    return NextResponse.json({ assigned: updates.length, skipped, notFound, errors });
   } catch (error) {
     console.error('Sync error:', error);
     return NextResponse.json({ error: 'Sync failed', detail: String(error) }, { status: 500 });
