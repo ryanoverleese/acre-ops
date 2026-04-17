@@ -12,13 +12,13 @@ export interface SimpleProbe {
 }
 
 interface MoveSource {
-  rowId: number;
+  rowId: number | null; // null = picked up from holding area
   probeId: number;
   serialNumber: string;
 }
 
 interface LastMove {
-  sourceRowId: number;
+  sourceRowId: number | null; // null = came from holding area
   destRowId: number;
   probeId: number;
   serialNumber: string;
@@ -50,6 +50,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   const [panelSlot, setPanelSlot] = useState<{ rows: ProbeRackSlot[]; slotNum: number; side: 'A' | 'B' } | null>(null);
   const [assigningRowId, setAssigningRowId] = useState<number | null>(null);
   const [probeSearch, setProbeSearch] = useState('');
+  const [holdingSearch, setHoldingSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [moveSource, setMoveSource] = useState<MoveSource | null>(null);
   const [tapToMove, setTapToMove] = useState(false);
@@ -112,6 +113,17 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     [slots]
   );
 
+  // Probes with a serial number not assigned to any slot
+  const unplacedProbes = useMemo(() => {
+    const all = probes.filter((p) => p.serialNumber && !assignedProbeIds.has(p.id));
+    if (!holdingSearch) return all;
+    const q = holdingSearch.toLowerCase();
+    return all.filter(
+      (p) => p.serialNumber.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q) || p.status.toLowerCase().includes(q)
+    );
+  }, [probes, assignedProbeIds, holdingSearch]);
+
+  // Probes available for assignment (used in slot panel search)
   const filteredProbes = useMemo(() => {
     const available = probes.filter((p) => !assignedProbeIds.has(p.id));
     if (!probeSearch) return available;
@@ -170,11 +182,14 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     if (!moveSource) return;
     setSaving(true);
     try {
-      await fetch(`/api/probe-rack/${moveSource.rowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ probe: null }),
-      });
+      // Only unassign source if it came from a slot (not holding area)
+      if (moveSource.rowId !== null) {
+        await fetch(`/api/probe-rack/${moveSource.rowId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ probe: null }),
+        });
+      }
       await fetch(`/api/probe-rack/${destRow.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -197,16 +212,20 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     if (!lastMove) return;
     setSaving(true);
     try {
+      // Always unassign from dest
       await fetch(`/api/probe-rack/${lastMove.destRowId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ probe: null }),
       });
-      await fetch(`/api/probe-rack/${lastMove.sourceRowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ probe: lastMove.probeId }),
-      });
+      // Only re-assign to source slot if it came from a slot (not holding area)
+      if (lastMove.sourceRowId !== null) {
+        await fetch(`/api/probe-rack/${lastMove.sourceRowId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ probe: lastMove.probeId }),
+        });
+      }
     } finally {
       setSaving(false);
       setLastMove(null);
@@ -217,7 +236,8 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   function SlotGroup({ slotNum, rows, side }: { slotNum: number; rows: ProbeRackSlot[]; side: 'A' | 'B' }) {
     const isFilled = rows.some(slotIsFilled);
     const isSelected = panelSlot?.slotNum === slotNum && panelSlot?.side === side;
-    const isSource = !!moveSource && rows.some(r => r.id === moveSource.rowId);
+    // Source slot only highlighted when the probe came FROM a slot (not holding area)
+    const isSource = !!moveSource && moveSource.rowId !== null && rows.some(r => r.id === moveSource.rowId);
     const hasEmpty = rows.some(r => !slotIsFilled(r));
     const isValidTarget = tapToMove && !!moveSource && !isSource && hasEmpty;
     const isInvalidTarget = tapToMove && !!moveSource && !isSource && !hasEmpty && isFilled;
@@ -250,22 +270,19 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
       <div
         onClick={() => {
           if (moveSource) {
-            // In move mode: place or cancel
+            // In move mode
             if (isSource) {
-              setMoveSource(null);
+              setMoveSource(null); // tap source to cancel
               return;
             }
             const destRow = rows.find(r => !slotIsFilled(r));
-            if (!destRow) return;
+            if (!destRow) return; // fully filled, ignore
             handleMove(destRow);
           } else if (tapToMove) {
-            // Tap-to-move is active
             const filledRows = rows.filter(r => slotIsFilled(r));
             if (filledRows.length === 0) {
-              // Empty slot — open panel to assign
               openSlot(rows, slotNum, side);
             } else if (filledRows.length === 1) {
-              // Single probe — pick it up directly
               closePanel();
               setMoveSource({
                 rowId: filledRows[0].id,
@@ -273,11 +290,10 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                 serialNumber: filledRows[0].probe![0].value,
               });
             } else {
-              // Both positions filled — open panel so user can choose which to move
+              // Both positions filled — open panel so user can pick which to move
               openSlot(rows, slotNum, side);
             }
           } else {
-            // Default: open assignment panel
             openSlot(rows, slotNum, side);
           }
         }}
@@ -344,6 +360,12 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
       </div>
     );
   }
+
+  // Total unplaced count (unfiltered, for the badge)
+  const totalUnplaced = useMemo(
+    () => probes.filter((p) => p.serialNumber && !assignedProbeIds.has(p.id)).length,
+    [probes, assignedProbeIds]
+  );
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
@@ -463,7 +485,8 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
               gap: 12,
             }}>
               <span style={{ color: 'var(--text-muted)' }}>
-                Moved <strong style={{ color: 'var(--text-primary)' }}>{lastMove.serialNumber}</strong>
+                {lastMove.sourceRowId === null ? 'Placed' : 'Moved'}{' '}
+                <strong style={{ color: 'var(--text-primary)' }}>{lastMove.serialNumber}</strong>
               </span>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button
@@ -507,8 +530,13 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
             }}>
               <span>
                 {saving
-                  ? 'Moving…'
-                  : <>Moving <strong>{moveSource.serialNumber}</strong> — tap a slot to place it, or tap the highlighted slot to cancel</>}
+                  ? 'Placing…'
+                  : <>
+                      {moveSource.rowId === null ? 'Placing' : 'Moving'}{' '}
+                      <strong>{moveSource.serialNumber}</strong>
+                      {' — tap a slot to place it'}
+                      {moveSource.rowId !== null && ', or tap the highlighted slot to cancel'}
+                    </>}
               </span>
               {!saving && (
                 <button
@@ -588,62 +616,204 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
           </div>
         </div>
 
-        {/* Assignment panel */}
-        {panelSlot && !moveSource && (
-          <div
-            style={{
-              width: 272,
-              borderLeft: '1px solid var(--border)',
-              background: 'var(--bg-card)',
-              display: 'flex',
-              flexDirection: 'column',
-              flexShrink: 0,
-            }}
-          >
-            {/* Panel header */}
-            <div
-              style={{
-                padding: '12px 16px',
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <span style={{ fontWeight: 600, fontSize: 13 }}>
-                Rack {selectedRack}{panelSlot.side} · Slot {panelSlot.slotNum}
-              </span>
-              <button
-                onClick={closePanel}
+        {/* Right panel: assignment panel (slot selected) or holding area */}
+        <div
+          style={{
+            width: 260,
+            borderLeft: '1px solid var(--border)',
+            background: 'var(--bg-card)',
+            display: 'flex',
+            flexDirection: 'column',
+            flexShrink: 0,
+          }}
+        >
+          {panelSlot && !moveSource ? (
+            <>
+              {/* Assignment panel header */}
+              <div
                 style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-muted)',
-                  fontSize: 18,
-                  lineHeight: 1,
-                  padding: '0 2px',
+                  padding: '12px 16px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                 }}
               >
-                ×
-              </button>
-            </div>
+                <span style={{ fontWeight: 600, fontSize: 13 }}>
+                  Rack {selectedRack}{panelSlot.side} · Slot {panelSlot.slotNum}
+                </span>
+                <button
+                  onClick={closePanel}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text-muted)',
+                    fontSize: 18,
+                    lineHeight: 1,
+                    padding: '0 2px',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
 
-            {/* Panel body */}
-            <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {panelSlot.rows.map((row, i) => {
-                const probe = row.probe?.[0];
+              {/* Assignment panel body */}
+              <div style={{ flex: 1, overflow: 'auto', padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {panelSlot.rows.map((row, i) => {
+                  const probe = row.probe?.[0];
 
-                if (probe) {
-                  const probeData = probes.find((p) => p.id === probe.id);
+                  if (probe) {
+                    const probeData = probes.find((p) => p.id === probe.id);
+                    return (
+                      <div
+                        key={row.id}
+                        style={{
+                          padding: 10,
+                          borderRadius: 8,
+                          background: 'rgba(74,122,91,0.08)',
+                          border: '1px solid rgba(74,122,91,0.2)',
+                        }}
+                      >
+                        {panelSlot.rows.length > 1 && (
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
+                            Position {i + 1}
+                          </div>
+                        )}
+                        <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent-primary)' }}>
+                          {probe.value}
+                        </div>
+                        {probeData && (
+                          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {probeData.brand} · {probeData.status}
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                          {tapToMove && (
+                            <button
+                              onClick={() => {
+                                closePanel();
+                                setMoveSource({
+                                  rowId: row.id,
+                                  probeId: probe.id,
+                                  serialNumber: probe.value,
+                                });
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: '5px 0',
+                                background: 'var(--accent-primary)',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 6,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontWeight: 500,
+                              }}
+                            >
+                              Move
+                            </button>
+                          )}
+                          <button
+                            onClick={() => unassignProbe(row.id)}
+                            disabled={saving}
+                            style={{
+                              flex: 1,
+                              padding: '5px 0',
+                              background: 'var(--accent-red-dim)',
+                              color: 'var(--accent-red)',
+                              border: '1px solid rgba(220,38,38,0.2)',
+                              borderRadius: 6,
+                              cursor: saving ? 'not-allowed' : 'pointer',
+                              fontSize: 12,
+                              fontWeight: 500,
+                            }}
+                          >
+                            {saving ? 'Saving…' : 'Unassign'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  if (assigningRowId === row.id) {
+                    return (
+                      <div key={row.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {panelSlot.rows.length > 1 && (
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Position {i + 1}</div>
+                        )}
+                        <input
+                          type="text"
+                          placeholder="Search probes…"
+                          value={probeSearch}
+                          onChange={(e) => setProbeSearch(e.target.value)}
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            padding: '6px 10px',
+                            border: '1px solid var(--border)',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            background: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
+                          }}
+                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, maxHeight: 240, overflowY: 'auto' }}>
+                          {filteredProbes.length === 0 ? (
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 0' }}>
+                              No available probes
+                            </div>
+                          ) : (
+                            filteredProbes.map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={() => assignProbe(row.id, p.id)}
+                                disabled={saving}
+                                style={{
+                                  padding: '7px 10px',
+                                  borderRadius: 6,
+                                  border: '1px solid var(--border)',
+                                  background: 'var(--bg-primary)',
+                                  cursor: saving ? 'not-allowed' : 'pointer',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                <div style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-primary)' }}>
+                                  {p.serialNumber}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                  {p.brand} · {p.status}
+                                </div>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                        <button
+                          onClick={() => setAssigningRowId(null)}
+                          style={{
+                            padding: '5px 0',
+                            borderRadius: 6,
+                            border: '1px solid var(--border)',
+                            background: 'transparent',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={row.id}
                       style={{
                         padding: 10,
                         borderRadius: 8,
-                        background: 'rgba(74,122,91,0.08)',
-                        border: '1px solid rgba(74,122,91,0.2)',
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border)',
                       }}
                     >
                       {panelSlot.rows.length > 1 && (
@@ -651,181 +821,111 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                           Position {i + 1}
                         </div>
                       )}
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--accent-primary)' }}>
-                        {probe.value}
-                      </div>
-                      {probeData && (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                          {probeData.brand} · {probeData.status}
-                        </div>
-                      )}
-                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                        {tapToMove && (
-                          <button
-                            onClick={() => {
-                              closePanel();
-                              setMoveSource({
-                                rowId: row.id,
-                                probeId: probe.id,
-                                serialNumber: probe.value,
-                              });
-                            }}
-                            style={{
-                              flex: 1,
-                              padding: '5px 0',
-                              background: 'var(--accent-primary)',
-                              color: '#fff',
-                              border: 'none',
-                              borderRadius: 6,
-                              cursor: 'pointer',
-                              fontSize: 12,
-                              fontWeight: 500,
-                            }}
-                          >
-                            Move
-                          </button>
-                        )}
-                        <button
-                          onClick={() => unassignProbe(row.id)}
-                          disabled={saving}
-                          style={{
-                            flex: 1,
-                            padding: '5px 0',
-                            background: 'var(--accent-red-dim)',
-                            color: 'var(--accent-red)',
-                            border: '1px solid rgba(220,38,38,0.2)',
-                            borderRadius: 6,
-                            cursor: saving ? 'not-allowed' : 'pointer',
-                            fontSize: 12,
-                            fontWeight: 500,
-                          }}
-                        >
-                          {saving ? 'Saving…' : 'Unassign'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (assigningRowId === row.id) {
-                  return (
-                    <div key={row.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {panelSlot.rows.length > 1 && (
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Position {i + 1}</div>
-                      )}
-                      <input
-                        type="text"
-                        placeholder="Search probes…"
-                        value={probeSearch}
-                        onChange={(e) => setProbeSearch(e.target.value)}
-                        autoFocus
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Empty</div>
+                      <button
+                        onClick={() => {
+                          setAssigningRowId(row.id);
+                          setProbeSearch('');
+                        }}
                         style={{
                           width: '100%',
-                          padding: '6px 10px',
-                          border: '1px solid var(--border)',
-                          borderRadius: 6,
-                          fontSize: 12,
-                          background: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                        }}
-                      />
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 3,
-                          maxHeight: 240,
-                          overflowY: 'auto',
-                        }}
-                      >
-                        {filteredProbes.length === 0 ? (
-                          <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 0' }}>
-                            No available probes
-                          </div>
-                        ) : (
-                          filteredProbes.map((p) => (
-                            <button
-                              key={p.id}
-                              onClick={() => assignProbe(row.id, p.id)}
-                              disabled={saving}
-                              style={{
-                                padding: '7px 10px',
-                                borderRadius: 6,
-                                border: '1px solid var(--border)',
-                                background: 'var(--bg-primary)',
-                                cursor: saving ? 'not-allowed' : 'pointer',
-                                textAlign: 'left',
-                              }}
-                            >
-                              <div style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-primary)' }}>
-                                {p.serialNumber}
-                              </div>
-                              <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                {p.brand} · {p.status}
-                              </div>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                      <button
-                        onClick={() => setAssigningRowId(null)}
-                        style={{
                           padding: '5px 0',
+                          background: 'var(--accent-primary)',
+                          color: '#fff',
+                          border: 'none',
                           borderRadius: 6,
-                          border: '1px solid var(--border)',
-                          background: 'transparent',
-                          color: 'var(--text-muted)',
                           cursor: 'pointer',
                           fontSize: 12,
+                          fontWeight: 500,
                         }}
                       >
-                        Cancel
+                        Assign probe
                       </button>
                     </div>
                   );
-                }
+                })}
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Holding area header */}
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
+                  <span style={{ fontWeight: 600, fontSize: 13 }}>Holding Area</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalUnplaced} probes</span>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search…"
+                  value={holdingSearch}
+                  onChange={(e) => setHoldingSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    fontSize: 12,
+                    background: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
 
-                return (
-                  <div
-                    key={row.id}
-                    style={{
-                      padding: 10,
-                      borderRadius: 8,
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border)',
-                    }}
-                  >
-                    {panelSlot.rows.length > 1 && (
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>
-                        Position {i + 1}
-                      </div>
-                    )}
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Empty</div>
-                    <button
-                      onClick={() => {
-                        setAssigningRowId(row.id);
-                        setProbeSearch('');
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '5px 0',
-                        background: 'var(--accent-primary)',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                        fontSize: 12,
-                        fontWeight: 500,
-                      }}
-                    >
-                      Assign probe
-                    </button>
+              {/* Holding area probe list */}
+              <div style={{ flex: 1, overflow: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {unplacedProbes.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 4px' }}>
+                    {holdingSearch ? 'No matches' : 'All probes are placed'}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                ) : (
+                  unplacedProbes.map((p) => {
+                    const isPickedUp = moveSource?.probeId === p.id;
+                    return (
+                      <div
+                        key={p.id}
+                        onClick={() => {
+                          if (!tapToMove) return;
+                          if (isPickedUp) {
+                            setMoveSource(null);
+                            return;
+                          }
+                          closePanel();
+                          setMoveSource({ rowId: null, probeId: p.id, serialNumber: p.serialNumber });
+                        }}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: 7,
+                          border: `${isPickedUp ? '2px' : '1px'} solid ${isPickedUp ? 'var(--accent-primary)' : 'var(--border)'}`,
+                          background: isPickedUp ? 'rgba(74,122,91,0.1)' : 'var(--bg-primary)',
+                          cursor: tapToMove ? 'pointer' : 'default',
+                          transition: 'all 0.1s ease',
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, fontSize: 12, color: 'var(--accent-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {p.serialNumber}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>
+                          {p.brand} · {p.status}
+                        </div>
+                        {tapToMove && !moveSource && (
+                          <div style={{ fontSize: 10, color: 'var(--accent-primary)', marginTop: 4, opacity: 0.7 }}>
+                            Tap to pick up
+                          </div>
+                        )}
+                        {isPickedUp && (
+                          <div style={{ fontSize: 10, color: 'var(--accent-primary)', marginTop: 4, fontWeight: 500 }}>
+                            Tap a slot to place · tap here to cancel
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
