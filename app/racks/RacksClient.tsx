@@ -36,7 +36,8 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
   const [probeSearch, setProbeSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const totalFilled = useMemo(() => slots.filter((s) => (s.probe?.length ?? 0) > 0).length, [slots]);
+  const hasProbe = (s: ProbeRackSlot) => (s.probe?.length ?? 0) > 0 && !!s.probe?.[0]?.value;
+  const totalFilled = useMemo(() => slots.filter(hasProbe).length, [slots]);
 
   // Per-rack fill stats for the selector
   const rackStats = useMemo(() => {
@@ -44,7 +45,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
     for (let n = 1; n <= 13; n++) {
       const rackSlots = slots.filter((s) => parseRackStr(s.rack).num === n);
       stats[n] = {
-        filled: rackSlots.filter((s) => (s.probe?.length ?? 0) > 0).length,
+        filled: rackSlots.filter(hasProbe).length,
         total: rackSlots.length,
       };
     }
@@ -65,7 +66,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
       return Array.from(map.entries()).sort(([a], [b]) => a - b);
     }
 
-    const rackFilled = rackSlots.filter((s) => (s.probe?.length ?? 0) > 0).length;
+    const rackFilled = rackSlots.filter(hasProbe).length;
     return { sideAGroups: groupSide('A'), sideBGroups: groupSide('B'), rackFilled, rackTotal: rackSlots.length };
   }, [slots, selectedRack]);
 
@@ -129,7 +130,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
   }
 
   function SlotGroup({ slotNum, rows, side }: { slotNum: number; rows: ProbeRackSlot[]; side: 'A' | 'B' }) {
-    const filled = rows.filter((r) => (r.probe?.length ?? 0) > 0);
+    const filled = rows.filter(hasProbe);
     const isFilled = filled.length > 0;
     const isSelected = panelSlot?.slotNum === slotNum && panelSlot?.side === side;
 
@@ -167,7 +168,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
                 whiteSpace: 'nowrap',
               }}
             >
-              {probe ? probe.value : '—'}
+              {probe ? (probe.value || 'No SN') : '—'}
             </div>
           );
         })}
