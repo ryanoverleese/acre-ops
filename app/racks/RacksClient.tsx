@@ -9,8 +9,6 @@ export interface SimpleProbe {
   serialNumber: string;
   status: string;
   brand: string;
-  rack: string;
-  rackSlot: number;
 }
 
 interface RacksClientProps {
@@ -38,34 +36,9 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
   const [probeSearch, setProbeSearch] = useState('');
   const [saving, setSaving] = useState(false);
 
-  // Build a set of "rack|slot" keys that have a real probe assigned, based on probe records
-  const filledKeys = useMemo(() => {
-    const set = new Set<string>();
-    for (const p of probes) {
-      if (p.rack && p.rackSlot && p.serialNumber) {
-        set.add(`${p.rack}|${p.rackSlot}`);
-      }
-    }
-    return set;
-  }, [probes]);
+  const slotIsFilled = (s: ProbeRackSlot) => Array.isArray(s.probe) && s.probe.length > 0;
 
-  const slotIsFilled = (rack: string, slot: number) => filledKeys.has(`${rack}|${slot}`);
-
-  // Probes indexed by rack|slot for display
-  const probesByPosition = useMemo(() => {
-    const map = new Map<string, SimpleProbe[]>();
-    for (const p of probes) {
-      if (p.rack && p.rackSlot) {
-        const key = `${p.rack}|${p.rackSlot}`;
-        const existing = map.get(key) ?? [];
-        existing.push(p);
-        map.set(key, existing);
-      }
-    }
-    return map;
-  }, [probes]);
-
-  const totalFilled = useMemo(() => slots.filter((s) => slotIsFilled(s.rack, s.rack_slot)).length, [slots, filledKeys]);
+  const totalFilled = useMemo(() => slots.filter(slotIsFilled).length, [slots]);
 
   // Per-rack fill stats for the selector
   const rackStats = useMemo(() => {
@@ -73,7 +46,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
     for (let n = 1; n <= 13; n++) {
       const rackSlots = slots.filter((s) => parseRackStr(s.rack).num === n);
       stats[n] = {
-        filled: rackSlots.filter((s) => slotIsFilled(s.rack, s.rack_slot)).length,
+        filled: rackSlots.filter(slotIsFilled).length,
         total: rackSlots.length,
       };
     }
@@ -94,7 +67,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
       return Array.from(map.entries()).sort(([a], [b]) => a - b);
     }
 
-    const rackFilled = rackSlots.filter((s) => slotIsFilled(s.rack, s.rack_slot)).length;
+    const rackFilled = rackSlots.filter(slotIsFilled).length;
     return { sideAGroups: groupSide('A'), sideBGroups: groupSide('B'), rackFilled, rackTotal: rackSlots.length };
   }, [slots, selectedRack]);
 
@@ -158,9 +131,7 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
   }
 
   function SlotGroup({ slotNum, rows, side }: { slotNum: number; rows: ProbeRackSlot[]; side: 'A' | 'B' }) {
-    const rack = `${selectedRack}${side}`;
-    const assignedProbes = probesByPosition.get(`${rack}|${slotNum}`) ?? [];
-    const isFilled = assignedProbes.length > 0;
+    const isFilled = rows.some(slotIsFilled);
     const isSelected = panelSlot?.slotNum === slotNum && panelSlot?.side === side;
 
     return (
@@ -183,23 +154,16 @@ export default function RacksClient({ slots, probes }: RacksClientProps) {
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>
           {slotNum}
         </div>
-        {isFilled ? assignedProbes.map((p) => (
-          <div
-            key={p.id}
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              color: 'var(--accent-primary)',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {p.serialNumber || 'No SN'}
-          </div>
-        )) : (
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>EMPTY</div>
-        )}
+        {rows.map((row) => {
+          const linked = row.probe?.[0];
+          return linked ? (
+            <div key={row.id} style={{ fontSize: 11, fontWeight: 500, color: 'var(--accent-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {linked.value || 'No SN'}
+            </div>
+          ) : (
+            <div key={row.id} style={{ fontSize: 11, color: 'var(--text-muted)' }}>EMPTY</div>
+          );
+        })}
       </div>
     );
   }
