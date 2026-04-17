@@ -56,11 +56,17 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   const [tapToMove, setTapToMove] = useState(false);
   const [lastMove, setLastMove] = useState<LastMove | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('serial');
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('rack-display-mode') as DisplayMode | null;
     if (saved === 'operation' || saved === 'field' || saved === 'status') setDisplayMode(saved);
   }, []);
+
+  // Auto-open overlay when a slot is selected
+  useEffect(() => {
+    if (panelSlot) setRightPanelOpen(true);
+  }, [panelSlot]);
 
   // Auto-dismiss undo bar after 30 seconds
   useEffect(() => {
@@ -142,6 +148,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   function closePanel() {
     setPanelSlot(null);
     setAssigningRowId(null);
+    setRightPanelOpen(false);
   }
 
   async function assignProbe(slotId: number, probeId: number) {
@@ -387,28 +394,48 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
             {slots.length} slots · {totalFilled} filled · {slots.length - totalFilled} empty
           </div>
         </div>
-        <button
-          onClick={() => {
-            setTapToMove(v => !v);
-            if (moveSource) setMoveSource(null);
-          }}
-          style={{
-            padding: '7px 14px',
-            borderRadius: 7,
-            border: tapToMove ? 'none' : '1px solid var(--border)',
-            background: tapToMove ? 'var(--accent-primary)' : 'transparent',
-            color: tapToMove ? '#fff' : 'var(--text-secondary)',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: 'pointer',
-            transition: 'all 0.12s ease',
-          }}
-        >
-          {tapToMove ? 'Cancel Move' : 'Tap to Move'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            onClick={() => setRightPanelOpen(v => !v)}
+            style={{
+              padding: '7px 12px',
+              borderRadius: 7,
+              border: '1px solid var(--border)',
+              background: rightPanelOpen && !panelSlot ? 'var(--bg-secondary)' : 'transparent',
+              color: 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.12s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Holding{totalUnplaced > 0 ? ` (${totalUnplaced})` : ''}
+          </button>
+          <button
+            onClick={() => {
+              setTapToMove(v => !v);
+              if (moveSource) setMoveSource(null);
+            }}
+            style={{
+              padding: '7px 14px',
+              borderRadius: 7,
+              border: tapToMove ? 'none' : '1px solid var(--border)',
+              background: tapToMove ? 'var(--accent-primary)' : 'transparent',
+              color: tapToMove ? '#fff' : 'var(--text-secondary)',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.12s ease',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {tapToMove ? 'Cancel Move' : 'Tap to Move'}
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
         {/* Rack number selector */}
         <div
           style={{
@@ -616,15 +643,35 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
           </div>
         </div>
 
-        {/* Right panel: assignment panel (slot selected) or holding area */}
+        {/* Backdrop */}
+        {rightPanelOpen && (
+          <div
+            onClick={closePanel}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(0,0,0,0.25)',
+              zIndex: 9,
+            }}
+          />
+        )}
+
+        {/* Right panel: slides in as overlay from the right */}
         <div
           style={{
-            width: 260,
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: 280,
             borderLeft: '1px solid var(--border)',
             background: 'var(--bg-card)',
             display: 'flex',
             flexDirection: 'column',
-            flexShrink: 0,
+            zIndex: 10,
+            transform: rightPanelOpen ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.22s ease',
+            boxShadow: rightPanelOpen ? '-4px 0 16px rgba(0,0,0,0.12)' : 'none',
           }}
         >
           {panelSlot && !moveSource ? (
@@ -850,9 +897,17 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
             <>
               {/* Holding area header */}
               <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 8 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13 }}>Holding Area</span>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalUnplaced} probes</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>Holding Area</span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{totalUnplaced} probes</span>
+                  </div>
+                  <button
+                    onClick={() => setRightPanelOpen(false)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, padding: '0 2px' }}
+                  >
+                    ×
+                  </button>
                 </div>
                 <input
                   type="text"
