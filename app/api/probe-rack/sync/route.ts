@@ -59,22 +59,26 @@ export async function POST() {
       return NextResponse.json({ assigned: 0, skipped, notFound, errors });
     }
 
-    // Batch update all at once via Baserow batch API
-    const batchRes = await fetch(
-      `${BASEROW_API_URL}/${TABLE_IDS.probe_rack}/batch/?user_field_names=true`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Token ${BASEROW_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ items: updates }),
-      }
-    );
+    // Batch update in chunks of 200 (Baserow limit)
+    const chunkSize = 200;
+    for (let i = 0; i < updates.length; i += chunkSize) {
+      const chunk = updates.slice(i, i + chunkSize);
+      const batchRes = await fetch(
+        `${BASEROW_API_URL}/${TABLE_IDS.probe_rack}/batch/?user_field_names=true`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Token ${BASEROW_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ items: chunk }),
+        }
+      );
 
-    if (!batchRes.ok) {
-      const detail = await batchRes.text();
-      return NextResponse.json({ error: 'Batch update failed', detail }, { status: 500 });
+      if (!batchRes.ok) {
+        const detail = await batchRes.text();
+        return NextResponse.json({ error: 'Batch update failed', detail }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ assigned: updates.length, skipped, notFound, errors });
