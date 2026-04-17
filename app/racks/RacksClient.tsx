@@ -45,11 +45,12 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   const [probeSearch, setProbeSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [moveSource, setMoveSource] = useState<MoveSource | null>(null);
+  const [tapToMove, setTapToMove] = useState(false);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('serial');
 
   useEffect(() => {
     const saved = localStorage.getItem('rack-display-mode') as DisplayMode | null;
-    if (saved === 'operation' || saved === 'field') setDisplayMode(saved);
+    if (saved === 'operation' || saved === 'field' || saved === 'status') setDisplayMode(saved);
   }, []);
 
   function setAndSaveDisplayMode(mode: DisplayMode) {
@@ -176,8 +177,8 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     const isSelected = panelSlot?.slotNum === slotNum && panelSlot?.side === side;
     const isSource = !!moveSource && rows.some(r => r.id === moveSource.rowId);
     const hasEmpty = rows.some(r => !slotIsFilled(r));
-    const isValidTarget = !!moveSource && !isSource && hasEmpty;
-    const isInvalidTarget = !!moveSource && !isSource && !hasEmpty && isFilled;
+    const isValidTarget = tapToMove && !!moveSource && !isSource && hasEmpty;
+    const isInvalidTarget = tapToMove && !!moveSource && !isSource && !hasEmpty && isFilled;
 
     let borderColor = isSelected
       ? 'var(--accent-primary)'
@@ -192,7 +193,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     let borderWidth = '1px';
     const opacity = isInvalidTarget ? 0.35 : 1;
 
-    if (moveSource) {
+    if (tapToMove && moveSource) {
       if (isSource) {
         borderColor = 'var(--accent-primary)';
         borderWidth = '2px';
@@ -207,6 +208,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
       <div
         onClick={() => {
           if (moveSource) {
+            // In move mode: place or cancel
             if (isSource) {
               setMoveSource(null);
               return;
@@ -214,18 +216,27 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
             const destRow = rows.find(r => !slotIsFilled(r));
             if (!destRow) return;
             handleMove(destRow);
-          } else {
-            const filledRow = rows.find(r => slotIsFilled(r));
-            if (filledRow) {
+          } else if (tapToMove) {
+            // Tap-to-move is active
+            const filledRows = rows.filter(r => slotIsFilled(r));
+            if (filledRows.length === 0) {
+              // Empty slot — open panel to assign
+              openSlot(rows, slotNum, side);
+            } else if (filledRows.length === 1) {
+              // Single probe — pick it up directly
               closePanel();
               setMoveSource({
-                rowId: filledRow.id,
-                probeId: filledRow.probe![0].id,
-                serialNumber: filledRow.probe![0].value,
+                rowId: filledRows[0].id,
+                probeId: filledRows[0].probe![0].id,
+                serialNumber: filledRows[0].probe![0].value,
               });
             } else {
+              // Both positions filled — open panel so user can choose which to move
               openSlot(rows, slotNum, side);
             }
+          } else {
+            // Default: open assignment panel
+            openSlot(rows, slotNum, side);
           }
         }}
         style={{
@@ -312,6 +323,25 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
             {slots.length} slots · {totalFilled} filled · {slots.length - totalFilled} empty
           </div>
         </div>
+        <button
+          onClick={() => {
+            setTapToMove(v => !v);
+            if (moveSource) setMoveSource(null);
+          }}
+          style={{
+            padding: '7px 14px',
+            borderRadius: 7,
+            border: tapToMove ? 'none' : '1px solid var(--border)',
+            background: tapToMove ? 'var(--accent-primary)' : 'transparent',
+            color: tapToMove ? '#fff' : 'var(--text-secondary)',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+            transition: 'all 0.12s ease',
+          }}
+        >
+          {tapToMove ? 'Cancel Move' : 'Tap to Move'}
+        </button>
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -543,24 +573,50 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                           {probeData.brand} · {probeData.status}
                         </div>
                       )}
-                      <button
-                        onClick={() => unassignProbe(row.id)}
-                        disabled={saving}
-                        style={{
-                          marginTop: 8,
-                          width: '100%',
-                          padding: '5px 0',
-                          background: 'var(--accent-red-dim)',
-                          color: 'var(--accent-red)',
-                          border: '1px solid rgba(220,38,38,0.2)',
-                          borderRadius: 6,
-                          cursor: saving ? 'not-allowed' : 'pointer',
-                          fontSize: 12,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {saving ? 'Saving…' : 'Unassign'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                        {tapToMove && (
+                          <button
+                            onClick={() => {
+                              closePanel();
+                              setMoveSource({
+                                rowId: row.id,
+                                probeId: probe.id,
+                                serialNumber: probe.value,
+                              });
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: '5px 0',
+                              background: 'var(--accent-primary)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 500,
+                            }}
+                          >
+                            Move
+                          </button>
+                        )}
+                        <button
+                          onClick={() => unassignProbe(row.id)}
+                          disabled={saving}
+                          style={{
+                            flex: 1,
+                            padding: '5px 0',
+                            background: 'var(--accent-red-dim)',
+                            color: 'var(--accent-red)',
+                            border: '1px solid rgba(220,38,38,0.2)',
+                            borderRadius: 6,
+                            cursor: saving ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: 500,
+                          }}
+                        >
+                          {saving ? 'Saving…' : 'Unassign'}
+                        </button>
+                      </div>
                     </div>
                   );
                 }
