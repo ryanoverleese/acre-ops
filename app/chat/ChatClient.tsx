@@ -19,7 +19,9 @@ export default function ChatClient() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [images, setImages] = useState<ImageAttachment[]>([]);
+  const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +100,8 @@ export default function ChatClient() {
     const newUserMsg: Message = { role: 'user', content: userMessage, images: userImages };
     setMessages((prev) => [...prev, newUserMsg]);
     setIsLoading(true);
+    setElapsed(0);
+    elapsedRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
 
     try {
       // Build history without images (to keep payload reasonable)
@@ -128,7 +132,9 @@ export default function ChatClient() {
     } catch {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Failed to connect. Please try again.' }]);
     } finally {
+      if (elapsedRef.current) clearInterval(elapsedRef.current);
       setIsLoading(false);
+      setElapsed(0);
       inputRef.current?.focus();
     }
   };
@@ -253,6 +259,10 @@ export default function ChatClient() {
                 <div className="chat-msg-content">
                   <div className="chat-loading">
                     <span></span><span></span><span></span>
+                  </div>
+                  <div className="chat-loading-status">
+                    {elapsed < 5 ? 'Thinking…' : elapsed < 15 ? 'Looking up data…' : elapsed < 30 ? 'Still working…' : 'This is taking a while…'}
+                    <span className="chat-loading-elapsed">{elapsed}s</span>
                   </div>
                 </div>
               </div>
