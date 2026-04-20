@@ -1408,8 +1408,8 @@ function MapScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-              background: selected.status.toLowerCase() === 'installed' ? 'var(--field-green)' : 'var(--sage-wash)',
-              color: selected.status.toLowerCase() === 'installed' ? 'var(--bone)' : 'var(--field-green)',
+              background: selected.status.toLowerCase() === 'installed' ? 'var(--stone-100)' : 'var(--ink)',
+              color: selected.status.toLowerCase() === 'installed' ? 'var(--stone-400)' : 'var(--bone)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
             }}>

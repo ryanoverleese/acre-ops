@@ -10121,7 +10121,7 @@ tr.expanded-row:hover {
   background: var(--stone-50); color: var(--stone-700);
   white-space: nowrap;
 }
-.af-chip--installed { background: var(--field-green); color: var(--bone); }
+.af-chip--installed { background: var(--stone-100); color: var(--stone-500); }
 .af-chip--todo { background: #FDEBD3; color: #8A4E14; }
 
 /* Segmented filter */
