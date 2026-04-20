@@ -189,12 +189,20 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
   const [loading, setLoading] = useState(false);
   const currentYear = new Date().getFullYear();
 
-  const handleDigit = (d: string) => { if (pin.length < 6) setPin(p => p + d); };
+  const handleDigit = (d: string) => { if (pin.length < 4) setPin(p => p + d); };
   const handleDelete = () => setPin(p => p.slice(0, -1));
+
+  // Auto-submit when 4th digit is entered
+  useEffect(() => {
+    if (pin.length === 4 && installer && !loading) {
+      handleSubmit();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pin]);
 
   const handleSubmit = async () => {
     if (!installer) { setError('Select your name'); return; }
-    if (pin.length < 4) { setError('PIN must be at least 4 digits'); return; }
+    if (pin.length < 4) { setError('Enter your 4-digit PIN'); return; }
     setLoading(true); setError('');
     try {
       const res = await fetch('/api/installer-auth', {
@@ -271,7 +279,7 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
             PIN
           </div>
           <div className="af-pin-dots">
-            {[0,1,2,3,4,5].map(i => (
+            {[0,1,2,3].map(i => (
               <div key={i} className={`af-pin-dot${i < pin.length ? ' filled' : ''}`} />
             ))}
           </div>
@@ -288,13 +296,11 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
 
         {error && <div className="af-error-msg">{error}</div>}
 
-        <button
-          className="af-btn af-btn--primary af-btn--xl af-btn--block"
-          onClick={handleSubmit}
-          disabled={loading || pin.length < 4 || !installer}
-        >
-          {loading ? 'Signing in…' : 'Sign In'}
-        </button>
+        {loading && (
+          <div style={{ textAlign: 'center', fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>
+            Signing in…
+          </div>
+        )}
       </div>
     </div>
   );
