@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Acre Field',
+  title: 'Probe Installer',
   manifest: '/installer-manifest.json',
   appleWebApp: {
-    title: 'Acre Field',
+    title: 'Probe Installer',
     statusBarStyle: 'black-translucent',
     capable: true,
   },

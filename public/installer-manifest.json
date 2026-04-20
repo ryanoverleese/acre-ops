@@ -1,7 +1,7 @@
 {
-  "name": "Acre Field",
-  "short_name": "Acre Field",
-  "description": "Acre field installer app",
+  "name": "Probe Installer",
+  "short_name": "Probe Installer",
+  "description": "Acre probe field installer app",
   "start_url": "/installer",
   "scope": "/installer",
   "display": "standalone",
