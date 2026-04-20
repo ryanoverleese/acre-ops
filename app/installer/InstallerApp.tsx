@@ -1439,12 +1439,13 @@ function MapScreen({
 
 // ─── Loadout Screen ───────────────────────────────────────────────────────────
 
-const SUPPLY_PALETTE = [
-  { bg: 'var(--sage-wash)',           fg: 'var(--field-green)' },
-  { bg: 'rgba(196,130,30,0.11)',      fg: '#9A6810' },
-  { bg: 'rgba(59,120,196,0.11)',      fg: '#2E6BAF' },
-  { bg: 'rgba(160,64,48,0.10)',       fg: '#A03828' },
-];
+function supplyColor(type: string): { bg: string; fg: string } {
+  const t = type.toLowerCase();
+  if (t.includes('sentek'))  return { bg: 'rgba(196,130,30,0.11)',  fg: '#9A6810' }; // amber
+  if (t.includes('cropx'))   return { bg: 'rgba(59,120,196,0.11)',  fg: '#2E6BAF' }; // blue
+  if (t.includes('aquaspy')) return { bg: 'rgba(140,64,180,0.10)',  fg: '#7A3AAF' }; // purple
+  return { bg: 'var(--sage-wash)', fg: 'var(--field-green)' };                       // default green
+}
 
 type LoadedMap = Record<string, boolean>;
 const LOADED_KEY = 'af-loaded';
@@ -1696,10 +1697,10 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         {/* Antennas */}
         <SectionCard title="Antennas" count={totalProbes} icon={<WifiIcon />}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-            {Object.entries(antennas).sort().map(([type, count], i) => (
+            {Object.entries(antennas).sort().map(([type, count]) => (
               <div key={type} style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].bg, color: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: supplyColor(type).bg, color: supplyColor(type).fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <WifiIcon size={16} />
                   </div>
                   <div>
@@ -1719,10 +1720,10 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         {/* Batteries */}
         <SectionCard title="Batteries" count={totalBatteries} icon={<BoltIcon />}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-            {Object.entries(batteries).sort().map(([type, count], i) => (
+            {Object.entries(batteries).sort().map(([type, count]) => (
               <div key={type} style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].bg, color: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: supplyColor(type).bg, color: supplyColor(type).fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <BoltIcon size={16} />
                   </div>
                   <div>
