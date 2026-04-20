@@ -108,26 +108,38 @@ export async function GET(request: NextRequest) {
         const probe = probeId ? probeMap.get(probeId) : null;
         const rackInfo = probeId ? probeRackMap.get(probeId) : null;
 
+        // Baserow can return numeric fields as strings — coerce defensively.
+        const toNum = (v: unknown): number => {
+          if (typeof v === 'number') return v;
+          if (typeof v === 'string' && v.trim() !== '') {
+            const n = Number(v);
+            return Number.isFinite(n) ? n : 0;
+          }
+          return 0;
+        };
+        const lat = toNum(pa.placement_lat ?? field?.lat);
+        const lng = toNum(pa.placement_lng ?? field?.lng);
+
         return {
           id: pa.id,
           fieldSeasonId: fsId,
           fieldId: field?.id ?? 0,
           fieldName: field?.name ?? 'Unknown Field',
           operation: operationName,
-          lat: pa.placement_lat ?? field?.lat ?? 0,
-          lng: pa.placement_lng ?? field?.lng ?? 0,
+          lat,
+          lng,
           crop: fs.crop?.value ?? '',
           sideDress: (fs.side_dress?.value ?? ''),
           rowDirection: field?.row_direction?.value ?? '',
-          routeOrder: fs.route_order ?? 999,
+          routeOrder: toNum(fs.route_order) || 999,
           plannedInstaller: fs.planned_installer?.value ?? '',
-          probeNumber: pa.probe_number ?? 1,
+          probeNumber: toNum(pa.probe_number) || 1,
           label: pa.label ?? '',
           probeId,
           probeSerial: probe?.serial_number?.toString() ?? '',
           probeBrand: probe?.brand?.value ?? '',
           probeRack: rackInfo ? rackInfo.rack : '',
-          probeRackSlot: rackInfo ? rackInfo.slot : null,
+          probeRackSlot: rackInfo ? (toNum(rackInfo.slot) || null) : null,
           antennaType: pa.antenna_type?.value ?? '',
           batteryType: pa.battery_type?.value ?? '',
           fieldNotes: fs.notes ?? '',
