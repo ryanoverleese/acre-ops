@@ -1,4 +1,4 @@
-import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations, getProbeAssignments } from '@/lib/baserow';
+import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations, getProbeAssignments, getRows, ProbeRackSlot } from '@/lib/baserow';
 import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
@@ -14,7 +14,7 @@ async function getProbesData(): Promise<{
   probeFieldAssignments: ProbeFieldAssignment[];
 }> {
   try {
-    const [probes, billingEntities, fieldSeasons, fields, contacts, operations, probeAssignments] = await Promise.all([
+    const [probes, billingEntities, fieldSeasons, fields, contacts, operations, probeAssignments, rackSlots] = await Promise.all([
       getProbes(),
       getBillingEntities(),
       getFieldSeasons(),
@@ -22,7 +22,17 @@ async function getProbesData(): Promise<{
       getContacts(),
       getOperations(),
       getProbeAssignments(),
+      getRows<ProbeRackSlot>('probe_rack'),
     ]);
+
+    // Build probeId → {rack, slot} from probe_rack table
+    const probeRackMap = new Map<number, { rack: string; slot: number }>();
+    for (const slot of rackSlots) {
+      const probeLink = slot.probe?.[0];
+      if (probeLink?.id) {
+        probeRackMap.set(probeLink.id, { rack: slot.rack, slot: slot.rack_slot });
+      }
+    }
 
     const billingEntityMap = buildBillingEntityMap(billingEntities);
     const operationMap = buildOperationMap(operations);
@@ -42,8 +52,8 @@ async function getProbesData(): Promise<{
         rawSerialNumber: probe.serial_number || '',
         brand: probe.brand?.value || 'Unknown',
         status: probe.status?.value || 'Unknown',
-        rack: probe.rack?.value || '—',
-        rackSlot: probe.rack_slot?.toString() || '—',
+        rack: probeRackMap.get(probe.id)?.rack || '—',
+        rackSlot: probeRackMap.get(probe.id)?.slot?.toString() || '—',
         yearNew: probe.year_new,
         notes: probe.notes,
         damagesRepairs: probe.damages_repairs,

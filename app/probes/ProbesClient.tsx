@@ -72,13 +72,6 @@ const STATUS_OPTIONS = [
   'Lost',
 ];
 
-// Rack options: 1A, 1B, 2A, 2B, ... 15A, 15B
-const RACK_OPTIONS = [
-  '1A', '1B', '2A', '2B', '3A', '3B', '4A', '4B', '5A', '5B',
-  '6A', '6B', '7A', '7B', '8A', '8B', '9A', '9B', '10A', '10B',
-  '11A', '11B', '12A', '12B', '13A', '13B', '14A', '14B', '15A', '15B',
-];
-
 // Column picker types and definitions
 type ProbeColumnKey = 'serialNumber' | 'brand' | 'status' | 'field' | 'rack' | 'operation' | 'yearNew' | 'billingEntity' | 'tradeYear' | 'notes' | 'damagesRepairs' | 'dateCreated';
 
@@ -131,8 +124,6 @@ const initialAddForm = {
   contact: '',
   year_new: '',
   status: 'In Stock',
-  rack: '',
-  rack_slot: '',
   notes: '',
   damages_repairs: '',
 };
@@ -515,8 +506,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       if (addForm.contact) payload.contact = parseInt(addForm.contact, 10);
       if (addForm.year_new) payload.year_new = parseInt(addForm.year_new, 10);
       if (addForm.status) payload.status = addForm.status;
-      if (addForm.rack) payload.rack = addForm.rack;
-      if (addForm.rack_slot) payload.rack_slot = addForm.rack_slot;
       if (addForm.notes) payload.notes = addForm.notes;
       if (addForm.damages_repairs) payload.damages_repairs = addForm.damages_repairs;
 
@@ -594,8 +583,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         contact: editForm.contact ? parseInt(editForm.contact, 10) : null,
         year_new: editForm.year_new ? parseInt(editForm.year_new, 10) : null,
         status: editForm.status || null,
-        rack: editForm.rack || null,
-        rack_slot: editForm.rack_slot || null,
         notes: editForm.notes || null,
         damages_repairs: editForm.damages_repairs || null,
       };
@@ -734,8 +721,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       contact: probe.contactId?.toString() || '',
       year_new: probe.yearNew?.toString() || '',
       status: probe.status,
-      rack: probe.rack === '—' ? '' : probe.rack,
-      rack_slot: probe.rackSlot === '—' ? '' : probe.rackSlot,
       notes: probe.notes || '',
       damages_repairs: probe.damagesRepairs || '',
     });
@@ -1405,25 +1390,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                   />
                 </div>
                 <div className="form-group">
-                  <label>Rack</label>
-                  <SearchableSelect
-                    value={addForm.rack}
-                    onChange={(v) => setAddForm({ ...addForm, rack: v })}
-                    options={RACK_OPTIONS.map((r) => ({ value: r, label: r }))}
-                    placeholder="Select rack..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Rack Slot</label>
-                  <input
-                    type="number"
-                    value={addForm.rack_slot}
-                    onChange={(e) => setAddForm({ ...addForm, rack_slot: e.target.value })}
-                    placeholder="e.g. 1, 2, 3"
-                    min="1"
-                  />
-                </div>
-                <div className="form-group">
                   <label>Notes</label>
                   <textarea
                     value={addForm.notes}
@@ -1541,25 +1507,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                       ...STATUS_OPTIONS.map((s) => ({ value: s, label: s })),
                     ]}
                     placeholder="Select status..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Rack</label>
-                  <SearchableSelect
-                    value={editForm.rack}
-                    onChange={(v) => setEditForm({ ...editForm, rack: v })}
-                    options={RACK_OPTIONS.map((r) => ({ value: r, label: r }))}
-                    placeholder="Select rack..."
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Rack Slot</label>
-                  <input
-                    type="number"
-                    value={editForm.rack_slot}
-                    onChange={(e) => setEditForm({ ...editForm, rack_slot: e.target.value })}
-                    placeholder="e.g. 1, 2, 3"
-                    min="1"
                   />
                 </div>
                 <div className="form-group">
