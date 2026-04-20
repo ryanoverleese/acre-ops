@@ -651,6 +651,11 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
         {/* Decorative green header strip */}
         <div className="af-field-hero" style={{ height: 90 }}>
           <TopoDeco />
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', padding: '0 20px 16px', color: 'var(--bone)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>
+              Field Info
+            </div>
+          </div>
         </div>
 
         {/* Title */}
