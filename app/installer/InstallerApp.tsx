@@ -1607,8 +1607,9 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                   <div style={{ flex: 1, minWidth: 0, padding: '12px 10px 12px 14px', display: 'flex', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color: 'var(--ink)',
+                        fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--ink)',
                         fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+                        letterSpacing: '0.01em',
                         textDecoration: isLoaded ? 'line-through' : 'none',
                         textDecorationColor: 'var(--stone-500)', textDecorationThickness: '1.5px',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
