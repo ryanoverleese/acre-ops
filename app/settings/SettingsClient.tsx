@@ -243,6 +243,12 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
   const [dragSource, setDragSource] = useState<{ tableName: string; fieldName: string; index: number } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
+  // Installer PINs state
+  const [installerPins, setInstallerPins] = useState<Record<string, string>>({});
+  const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
+  const [savingPin, setSavingPin] = useState<string | null>(null);
+  const [savedPin, setSavedPin] = useState<string | null>(null);
+
   const saveFieldOptions = async (tableName: string, fieldName: string, options: (SelectOption | { value: string; color: string })[]) => {
     const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
     const fieldMeta = tableOpts?.[fieldName];
@@ -400,6 +406,17 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     setDragSource(null);
     setDragOverIndex(null);
   };
+
+  // Load installer PINs from server on mount
+  useEffect(() => {
+    fetch('/api/installer-pins')
+      .then(r => r.json())
+      .then((pins: Record<string, string>) => {
+        setInstallerPins(pins);
+        setPinInputs(pins);
+      })
+      .catch(() => {});
+  }, []);
 
   // Load global season from localStorage on mount
   useEffect(() => {
@@ -659,6 +676,39 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
       }
     } catch (error) {
       console.error('Error updating status:', error);
+    }
+  };
+
+  const handleSavePin = async (installer: string) => {
+    const pin = (pinInputs[installer] || '').trim();
+    if (pin !== '' && !/^\d{4,6}$/.test(pin)) {
+      alert('PIN must be 4–6 digits');
+      return;
+    }
+    setSavingPin(installer);
+    try {
+      const res = await fetch('/api/installer-pins', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ installer, pin }),
+      });
+      if (res.ok) {
+        setInstallerPins(prev => {
+          const next = { ...prev };
+          if (pin === '') delete next[installer];
+          else next[installer] = pin;
+          return next;
+        });
+        setSavedPin(installer);
+        setTimeout(() => setSavedPin(p => p === installer ? null : p), 2000);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to save PIN');
+      }
+    } catch {
+      alert('Failed to save PIN');
+    } finally {
+      setSavingPin(null);
     }
   };
 
@@ -1369,7 +1419,90 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           )}
         </div>
 
-        {/* Data Cleanup - REMOVED: bulk status update was unsafe */}
+        {/* Installer PINs */}
+        <div className="table-container settings-section">
+          <div className="table-header settings-section-toggle" onClick={() => toggleSection('installerPins')}>
+            <h3 className="table-title">Installer PINs</h3>
+            <svg
+              fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+              className={`settings-chevron${openSections.has('installerPins') ? ' open' : ''}`}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+
+          {openSections.has('installerPins') && (
+            <div className="settings-section-content">
+              <p className="section-description">
+                Set a numeric PIN (4–6 digits) for each installer. They&apos;ll enter this on their phone to access their daily route.
+              </p>
+              {(() => {
+                const installerOptions = localOptions.probe_assignments?.planned_installer?.options || [];
+                if (installerOptions.length === 0) {
+                  return (
+                    <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+                      No installer names found. Add them in Dropdown Options → Probe Assignments → Planned Installer first.
+                    </p>
+                  );
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {installerOptions.map((opt) => {
+                      const name = opt.value;
+                      const isSaving = savingPin === name;
+                      const isSaved = savedPin === name;
+                      const currentPin = pinInputs[name] || '';
+                      const hasChanged = currentPin !== (installerPins[name] || '');
+                      return (
+                        <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <span style={{ minWidth: 140, fontSize: 14, fontWeight: 500 }}>{name}</span>
+                          <input
+                            type="password"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="PIN (4–6 digits)"
+                            value={currentPin}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                              setPinInputs(prev => ({ ...prev, [name]: val }));
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSavePin(name);
+                            }}
+                            style={{
+                              width: 130,
+                              padding: '6px 10px',
+                              border: '1px solid var(--border)',
+                              borderRadius: 6,
+                              fontSize: 14,
+                              background: 'var(--bg-primary)',
+                              color: 'var(--text-primary)',
+                              letterSpacing: '0.2em',
+                            }}
+                          />
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleSavePin(name)}
+                            disabled={isSaving || !hasChanged}
+                            style={{ minWidth: 60 }}
+                          >
+                            {isSaving ? '...' : 'Save'}
+                          </button>
+                          {isSaved && (
+                            <span style={{ fontSize: 13, color: 'var(--accent-primary)', fontWeight: 500 }}>Saved ✓</span>
+                          )}
+                          {installerPins[name] && !isSaved && (
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>PIN set</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+        </div>
 
         {/* Color Theme */}
         <ColorThemePicker />
