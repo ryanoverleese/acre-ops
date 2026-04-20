@@ -246,7 +246,8 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
                       type="text"
                       value={regSerial}
                       onChange={(e) => setRegSerial(e.target.value)}
-                      placeholder="e.g. CX-12345"
+                      placeholder="e.g. 12345"
+                      inputMode="numeric"
                       autoFocus
                       style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
                     />
