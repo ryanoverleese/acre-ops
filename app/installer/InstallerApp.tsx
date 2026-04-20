@@ -143,39 +143,84 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
 
   return (
     <div className="af-app" data-theme="standard">
-      {screen === 'login' && (
-        <LoginScreen installerNames={installerNames} onLogin={handleLogin} />
-      )}
-      {screen === 'route' && session && (
-        <RouteScreen
-          session={session}
-          assignments={assignments}
-          loading={loadingAssignments}
-          filter={filter}
-          onFilterChange={setFilter}
-          onSelect={handleSelectAssignment}
-          onLogout={handleLogout}
-          onRefresh={() => fetchAssignments(session)}
+      {/* Screen wrapper — af-screen uses position:absolute inset:0 relative to this */}
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+        {screen === 'login' && (
+          <LoginScreen installerNames={installerNames} onLogin={handleLogin} />
+        )}
+        {screen === 'route' && session && (
+          <RouteScreen
+            session={session}
+            assignments={assignments}
+            loading={loadingAssignments}
+            filter={filter}
+            onFilterChange={setFilter}
+            onSelect={handleSelectAssignment}
+            onLogout={handleLogout}
+            onRefresh={() => fetchAssignments(session)}
+          />
+        )}
+        {screen === 'field' && selected && (
+          <FieldScreen
+            assignment={selected}
+            onBack={() => setScreen('route')}
+            onStartInstall={() => setScreen('install')}
+          />
+        )}
+        {screen === 'install' && selected && session && (
+          <InstallScreen
+            assignment={selected}
+            installer={session.installer}
+            onBack={() => setScreen('field')}
+            onSuccess={handleInstallSuccess}
+          />
+        )}
+        {screen === 'success' && successData && (
+          <SuccessScreen data={successData} onBack={handleBackToRoute} />
+        )}
+      </div>
+
+      {/* Bottom nav — hidden on login */}
+      {screen !== 'login' && (
+        <BottomBar
+          current={screen}
+          onRoute={() => setScreen('route')}
         />
       )}
-      {screen === 'field' && selected && (
-        <FieldScreen
-          assignment={selected}
-          onBack={() => setScreen('route')}
-          onStartInstall={() => setScreen('install')}
-        />
-      )}
-      {screen === 'install' && selected && session && (
-        <InstallScreen
-          assignment={selected}
-          installer={session.installer}
-          onBack={() => setScreen('field')}
-          onSuccess={handleInstallSuccess}
-        />
-      )}
-      {screen === 'success' && successData && (
-        <SuccessScreen data={successData} onBack={handleBackToRoute} />
-      )}
+    </div>
+  );
+}
+
+function BottomBar({ current, onRoute }: { current: Screen; onRoute: () => void }) {
+  const isRoute = current === 'route' || current === 'field' || current === 'install' || current === 'success';
+  return (
+    <div className="af-bottombar">
+      <button className="af-tab" aria-current={isRoute ? 'true' : undefined} onClick={onRoute}>
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+        Route
+      </button>
+      <button className="af-tab" style={{ opacity: 0.35, cursor: 'default', pointerEvents: 'none' }}>
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
+          <line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
+        </svg>
+        Map
+      </button>
+      <button className="af-tab" style={{ opacity: 0.35, cursor: 'default', pointerEvents: 'none' }}>
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+        </svg>
+        Loadout
+      </button>
+      <button className="af-tab" style={{ opacity: 0.35, cursor: 'default', pointerEvents: 'none' }}>
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+        </svg>
+        Me
+      </button>
     </div>
   );
 }
