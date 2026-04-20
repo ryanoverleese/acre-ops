@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 
 // Leaflet needs window — render only on the client
 const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: false });
+const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -798,8 +799,23 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
 }) {
   const [probeSerial, setProbeSerial] = useState(a.probeSerial);
   const [gps, setGps] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
+  const [livePos, setLivePos] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState('');
+
+  // Continuous live-location watch so the blue dot on the map updates
+  // as the installer walks to the probe location.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        setLivePos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy });
+      },
+      () => { /* silently ignore watch errors; capture button still works */ },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 20000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
   const [cropConfirmed, setCropConfirmed] = useState<null | true | false>(null);
   const [cropChanged, setCropChanged] = useState('');
   const [rowDir, setRowDir] = useState<string | null>(null);
@@ -824,10 +840,22 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const canSubmit = completedCount === requiredKeys.length;
 
   const captureGps = () => {
+    // Prefer the continuously-watched livePos (already warm) — instant lock.
+    if (livePos) {
+      setGps({ lat: livePos.lat, lng: livePos.lng, acc: livePos.acc });
+      setGpsError('');
+      return;
+    }
+    // Fall back to a one-shot fix if the watcher hasn't produced one yet.
     if (!navigator.geolocation) { setGpsError('GPS not available on this device'); return; }
     setGpsLoading(true); setGpsError('');
     navigator.geolocation.getCurrentPosition(
-      (pos) => { setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy }); setGpsLoading(false); },
+      (pos) => {
+        const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy };
+        setGps(p);
+        setLivePos(p);
+        setGpsLoading(false);
+      },
       () => { setGpsError('Could not get location — check permissions'); setGpsLoading(false); },
       { enableHighAccuracy: true, timeout: 15000 }
     );
@@ -932,34 +960,42 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         {/* Section 2: GPS */}
         <InstallSection num={2} title="GPS location" done={doneMap.gps} hint="Stand at the probe, then capture.">
           <div className="af-gps-cap">
-            {/* Mini map */}
-            <div className={`af-minimap${gpsLoading ? ' af-capturing' : ''}`}>
-              <div className="grid" />
-              <svg style={{ position: 'absolute', inset: 0 }} viewBox="0 0 100 100" preserveAspectRatio="none">
-                <g stroke="rgba(107,100,86,0.3)" strokeWidth="0.5" fill="none">
-                  <path d="M 0 35 L 100 38" /><path d="M 0 70 L 100 68" />
-                  <path d="M 35 0 L 37 100" /><path d="M 72 0 L 70 100" />
-                </g>
-                <rect x="25" y="20" width="50" height="50" fill="rgba(31,64,42,0.12)" stroke="var(--field-green)" strokeWidth="0.8" strokeDasharray="2 1.5" />
-                <text x="50" y="16" textAnchor="middle" fontSize="3" fill="var(--field-green)" fontFamily="monospace" fontWeight="600">
-                  {a.fieldName.toUpperCase().slice(0, 20)}
-                </text>
-              </svg>
-              <div className="user-dot">
-                <div className="pulse" />
-                <div className="core" />
-              </div>
-              {gps && (
-                <div className="probe-pin">
-                  <div className="inner">
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
-                    </svg>
-                  </div>
+            {/* Real satellite map with live blue dot + captured pin */}
+            <div style={{ position: 'relative' }}>
+              <InstallGpsMap
+                fallbackLat={a.lat}
+                fallbackLng={a.lng}
+                captured={gps}
+                userPos={livePos}
+              />
+              {/* Accuracy badge overlay */}
+              {livePos && livePos.acc != null && (
+                <div style={{
+                  position: 'absolute', top: 8, left: 8, zIndex: 500,
+                  background: 'rgba(255,255,255,0.94)',
+                  borderRadius: 999, padding: '3px 10px',
+                  fontFamily: 'var(--font-display)', fontSize: 10, fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: 'var(--field-green)',
+                  border: '1px solid var(--border-1)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                }}>
+                  ±{livePos.acc.toFixed(1)} m
                 </div>
               )}
-              {gps && gps.acc && (
-                <div className="acc-badge">±{gps.acc.toFixed(1)} m</div>
+              {/* Waiting-for-GPS overlay */}
+              {!livePos && (
+                <div style={{
+                  position: 'absolute', inset: 0, zIndex: 500,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'rgba(31,64,42,0.35)',
+                  color: 'var(--bone)',
+                  fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 600,
+                  letterSpacing: '0.12em', textTransform: 'uppercase',
+                  pointerEvents: 'none',
+                }}>
+                  Acquiring GPS…
+                </div>
               )}
             </div>
             {/* Coords row */}
