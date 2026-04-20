@@ -252,7 +252,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
       <UserLocation />
       <FitBounds points={valid} />
       <RecenterListener getUserPos={() => userPosRef.current} />
-      <ZoomLabelGate threshold={12} />
+      <ZoomLabelGate threshold={10} />
     </MapContainer>
   );
 }
