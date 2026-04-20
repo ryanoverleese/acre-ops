@@ -16,13 +16,12 @@ export interface UninstallProbeData {
 
 interface WorkflowsClientProps {
   installedProbes: UninstallProbeData[];
+  brandOptions: string[];
 }
 
 type Step = 'select' | 'confirm' | 'done';
 
-const PROBE_TYPES = ['CropX V4', 'CropX V3', 'Sentek', 'IrriMax'];
-
-export default function WorkflowsClient({ installedProbes }: WorkflowsClientProps) {
+export default function WorkflowsClient({ installedProbes, brandOptions }: WorkflowsClientProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
@@ -34,7 +33,7 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
 
   // Register probe state
   const [regSerial, setRegSerial] = useState('');
-  const [regType, setRegType] = useState('CropX V4');
+  const [regType, setRegType] = useState(() => brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
   const [regYearNew, setRegYearNew] = useState(() => String(new Date().getFullYear()));
   const [regCreatedSerial, setRegCreatedSerial] = useState('');
 
@@ -126,7 +125,7 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
 
   const resetRegister = () => {
     setRegSerial('');
-    setRegType('CropX V4');
+    setRegType(brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
     setRegYearNew(String(new Date().getFullYear()));
     setRegCreatedSerial('');
     setError('');
@@ -259,7 +258,7 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
                       onChange={(e) => setRegType(e.target.value)}
                       style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
                     >
-                      {PROBE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      {brandOptions.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
                   <div>

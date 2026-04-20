@@ -4,7 +4,7 @@ import WorkflowsClient, { UninstallProbeData } from './WorkflowsClient';
 
 export const dynamic = 'force-dynamic';
 
-async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[] }> {
+async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[]; brandOptions: string[] }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 300),
@@ -53,14 +53,16 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 
-    return { installedProbes };
+    const brandOptions = Array.from(new Set(probes.map(p => p.brand?.value).filter(Boolean) as string[])).sort();
+
+    return { installedProbes, brandOptions };
   } catch (error) {
     console.error('Error fetching workflow data:', error);
-    return { installedProbes: [] };
+    return { installedProbes: [], brandOptions: [] };
   }
 }
 
 export default async function WorkflowsPage() {
-  const { installedProbes } = await getWorkflowData();
-  return <WorkflowsClient installedProbes={installedProbes} />;
+  const { installedProbes, brandOptions } = await getWorkflowData();
+  return <WorkflowsClient installedProbes={installedProbes} brandOptions={brandOptions} />;
 }
