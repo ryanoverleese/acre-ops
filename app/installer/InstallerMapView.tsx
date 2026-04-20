@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -65,6 +65,9 @@ const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 const SAT_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const SAT_ATTR = 'Imagery &copy; Esri';
+// Transparent labels overlay with roads + place names, composited over satellite
+const LABELS_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}';
+const PLACES_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
 
 // Fit bounds to all points once on mount, or re-fit when points change.
 function FitBounds({ points }: { points: MapPoint[] }) {
@@ -172,9 +175,6 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
   // Default center: first point or Nebraska center as a fallback
   const center: [number, number] = valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
 
-  const todoPts = valid.filter(p => p.status.toLowerCase() !== 'installed');
-  const routeLine = todoPts.map(p => [p.lat, p.lng] as [number, number]);
-
   return (
     <MapContainer
       center={center}
@@ -189,12 +189,12 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
         maxZoom={19}
       />
 
-      {/* Route line through remaining stops */}
-      {routeLine.length > 1 && (
-        <Polyline
-          positions={routeLine}
-          pathOptions={{ color: '#1F402A', weight: 4, opacity: 0.85, dashArray: '6 8', lineCap: 'round' }}
-        />
+      {/* Road + place label overlay on satellite view */}
+      {layer === 'satellite' && (
+        <>
+          <TileLayer url={LABELS_URL} maxZoom={19} />
+          <TileLayer url={PLACES_URL} maxZoom={19} />
+        </>
       )}
 
       {/* Stop pins */}
