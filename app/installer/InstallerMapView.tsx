@@ -28,9 +28,9 @@ interface Props {
 // When routeOrder is unknown, fall back to a smaller plain dot pin (no '?').
 function makePin(label: string, installed: boolean, selected: boolean) {
   const hasOrder = label && label !== '?';
-  const bg = installed ? '#1F402A' : selected ? '#0A0A0A' : '#FFFFFF';
-  const fg = installed || selected ? '#F6F2EA' : '#0A0A0A';
-  const stroke = installed ? '#1F402A' : '#0A0A0A';
+  const bg = installed ? '#C8CDD5' : selected ? '#0A0A0A' : '#FFFFFF';
+  const fg = installed ? '#6B7280' : selected ? '#F6F2EA' : '#0A0A0A';
+  const stroke = installed ? '#9CA3AF' : '#0A0A0A';
 
   // Plain dot pin (for stops without a route order)
   if (!hasOrder && !installed) {

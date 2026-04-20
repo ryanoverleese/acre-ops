@@ -9958,9 +9958,9 @@ tr.expanded-row:hover {
   display: none;
 }
 .af-map-label.is-installed.leaflet-tooltip {
-  background: rgba(31, 64, 42, 0.95);
-  color: #F6F2EA;
-  border-color: rgba(31, 64, 42, 0.4);
+  background: rgba(200, 205, 213, 0.95);
+  color: #6B7280;
+  border-color: rgba(156, 163, 175, 0.4);
 }
 .af-map-label.is-selected.leaflet-tooltip {
   background: #0A0A0A;
@@ -10168,15 +10168,15 @@ tr.expanded-row:hover {
   position: relative; text-align: left;
 }
 .af-stop:active { transform: scale(0.995); }
-.af-stop[data-status="installed"] { opacity: 0.7; }
-.af-stop[data-status="installed"] .af-stop-order { background: var(--field-green); color: var(--bone); }
-.af-stop[data-status="todo"] .af-stop-order { background: var(--sage-wash); color: var(--field-green); }
+.af-stop[data-status="installed"] { opacity: 0.55; }
+.af-stop[data-status="installed"] .af-stop-order { background: var(--stone-100); color: var(--stone-400); }
+.af-stop[data-status="todo"] .af-stop-order { background: var(--ink); color: var(--bone); }
 .af-stop::before {
   content: ""; position: absolute; left: 0; top: 10px; bottom: 10px;
   width: 3px; border-radius: 2px; background: var(--stone-100);
 }
-.af-stop[data-status="installed"]::before { background: var(--field-green); }
-.af-stop[data-status="todo"]::before { background: var(--dry); }
+.af-stop[data-status="installed"]::before { background: var(--stone-200); }
+.af-stop[data-status="todo"]::before { background: var(--field-green); }
 
 .af-stop-order {
   border-radius: var(--r-md); margin: 0 14px;
