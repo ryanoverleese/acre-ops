@@ -26,7 +26,7 @@ export interface InstallerAssignment {
   status: string;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me';
 type Filter = 'todo' | 'done' | 'all';
 
 interface Session {
@@ -186,6 +186,25 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onRefresh={() => fetchAssignments(session)}
           />
         )}
+        {screen === 'map' && session && (
+          <MapScreen
+            assignments={assignments}
+            onOpenField={(a) => { setSelected(a); setScreen('field'); }}
+            onBack={() => setScreen('route')}
+          />
+        )}
+        {screen === 'loadout' && session && (
+          <LoadoutScreen
+            session={session}
+            assignments={assignments}
+          />
+        )}
+        {screen === 'me' && session && (
+          <MeScreen
+            session={session}
+            onLogout={handleLogout}
+          />
+        )}
         {screen === 'field' && selected && (
           <FieldScreen
             assignment={selected}
@@ -210,38 +229,38 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
       {screen !== 'login' && (
         <BottomBar
           current={screen}
-          onRoute={() => setScreen('route')}
+          onNav={setScreen}
         />
       )}
     </div>
   );
 }
 
-function BottomBar({ current, onRoute }: { current: Screen; onRoute: () => void }) {
+function BottomBar({ current, onNav }: { current: Screen; onNav: (s: Screen) => void }) {
   const isRoute = current === 'route' || current === 'field' || current === 'install' || current === 'success';
   return (
     <div className="af-bottombar">
-      <button className="af-tab" aria-current={isRoute ? 'true' : undefined} onClick={onRoute}>
+      <button className="af-tab" aria-current={isRoute ? 'true' : undefined} onClick={() => onNav('route')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
           <line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
         </svg>
         Route
       </button>
-      <button className="af-tab" style={{ opacity: 0.35, cursor: 'default', pointerEvents: 'none' }}>
+      <button className="af-tab" aria-current={current === 'map' ? 'true' : undefined} onClick={() => onNav('map')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
           <line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
         </svg>
         Map
       </button>
-      <button className="af-tab" style={{ opacity: 0.35, cursor: 'default', pointerEvents: 'none' }}>
+      <button className="af-tab" aria-current={current === 'loadout' ? 'true' : undefined} onClick={() => onNav('loadout')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
         </svg>
         Loadout
       </button>
-      <button className="af-tab" style={{ opacity: 0.35, cursor: 'default', pointerEvents: 'none' }}>
+      <button className="af-tab" aria-current={current === 'me' ? 'true' : undefined} onClick={() => onNav('me')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
         </svg>
@@ -1124,6 +1143,384 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
           <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
             <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
           </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Map Screen ───────────────────────────────────────────────────────────────
+
+function MapScreen({
+  assignments,
+  onOpenField,
+  onBack,
+}: {
+  assignments: InstallerAssignment[];
+  onOpenField: (a: InstallerAssignment) => void;
+  onBack: () => void;
+}) {
+  const [selected, setSelected] = useState<InstallerAssignment | null>(
+    assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0] ?? null
+  );
+
+  const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
+
+  // Project lat/lng to x/y percentage within a padded bounding box
+  const withCoords = assignments.filter(a => a.lat && a.lng);
+  const proj = (() => {
+    if (withCoords.length === 0) return () => ({ x: 50, y: 50 });
+    const lats = withCoords.map(a => a.lat);
+    const lngs = withCoords.map(a => a.lng);
+    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
+    const pad = 0.05;
+    return (lat: number, lng: number) => ({
+      x: 8 + ((lng - minLng + pad) / (maxLng - minLng + pad * 2)) * 84,
+      y: 8 + (1 - (lat - minLat + pad) / (maxLat - minLat + pad * 2)) * 76,
+    });
+  })();
+
+  const points = withCoords.map(a => ({ ...a, ...proj(a.lat, a.lng) }));
+  const todoPts = points.filter(p => p.status.toLowerCase() !== 'installed');
+  const donePts = points.filter(p => p.status.toLowerCase() === 'installed');
+
+  return (
+    <div className="af-screen">
+      <div className="af-topbar">
+        <button
+          onClick={onBack}
+          style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--field-green)', fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)', letterSpacing: '0.08em', textTransform: 'uppercase', background: 'none', border: 'none', cursor: 'pointer' }}
+        >
+          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+          Route
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Today&apos;s map</div>
+          <div className="af-topbar-sub">{todo.length} stop{todo.length !== 1 ? 's' : ''} remaining</div>
+        </div>
+        <div style={{ width: 60 }} />
+      </div>
+
+      {/* Map area */}
+      <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at 30% 30%, #cfe3d2 0%, transparent 60%), radial-gradient(ellipse at 70% 70%, #e8e0c9 0%, transparent 60%), linear-gradient(180deg, #eef2e4 0%, #dde5d0 100%)',
+          overflow: 'hidden',
+        }}>
+          {/* Grid */}
+          <div style={{
+            position: 'absolute', inset: 0, opacity: 0.5,
+            backgroundImage: 'linear-gradient(rgba(31,64,42,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(31,64,42,0.1) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }} />
+
+          {/* Route line through todo stops */}
+          {todoPts.length > 0 && (
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} preserveAspectRatio="none" viewBox="0 0 100 100">
+              <g stroke="rgba(107,100,86,0.25)" strokeWidth="0.4" fill="none">
+                <path d="M 0 20 L 100 18" /><path d="M 0 55 L 100 53" /><path d="M 20 0 L 22 100" /><path d="M 70 0 L 68 100" />
+              </g>
+              {todoPts.length > 1 && (
+                <polyline
+                  points={todoPts.map(p => `${p.x},${p.y}`).join(' ')}
+                  stroke="var(--field-green)" strokeWidth="0.8" fill="none"
+                  strokeDasharray="1.5 1" strokeLinecap="round"
+                />
+              )}
+              {donePts.map((p, i) => (
+                <line key={i} x1={p.x} y1={p.y} x2={p.x} y2={p.y} stroke="var(--field-green)" strokeWidth="1" />
+              ))}
+            </svg>
+          )}
+
+          {/* Stop pins */}
+          {points.map(p => {
+            const isInstalled = p.status.toLowerCase() === 'installed';
+            const isSel = selected?.id === p.id;
+            const orderLabel = p.routeOrder !== 999 ? String(p.routeOrder) : '?';
+            return (
+              <button
+                key={p.id}
+                onClick={() => setSelected(p)}
+                style={{
+                  position: 'absolute',
+                  left: `${p.x}%`, top: `${p.y}%`,
+                  transform: 'translate(-50%, -100%)',
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                }}
+              >
+                <div style={{
+                  minWidth: 36, height: 36, padding: '0 8px', borderRadius: 18,
+                  background: isInstalled ? 'var(--field-green)' : isSel ? 'var(--ink)' : 'var(--bone-raised)',
+                  color: isInstalled || isSel ? 'var(--bone)' : 'var(--ink)',
+                  border: `2px solid ${isInstalled ? 'var(--field-green)' : 'var(--ink)'}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14,
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.18)',
+                  position: 'relative',
+                }}>
+                  {isInstalled ? (
+                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                  ) : orderLabel}
+                  {/* Pin tail */}
+                  <div style={{
+                    position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%) rotate(45deg)',
+                    width: 10, height: 10,
+                    background: isInstalled ? 'var(--field-green)' : isSel ? 'var(--ink)' : 'var(--bone-raised)',
+                    borderRight: `2px solid ${isInstalled ? 'var(--field-green)' : 'var(--ink)'}`,
+                    borderBottom: `2px solid ${isInstalled ? 'var(--field-green)' : 'var(--ink)'}`,
+                  }} />
+                </div>
+              </button>
+            );
+          })}
+
+          {/* Legend */}
+          <div style={{
+            position: 'absolute', top: 14, left: 14,
+            background: 'rgba(246,242,234,0.92)', backdropFilter: 'blur(10px)',
+            border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)',
+            padding: '8px 12px', display: 'flex', gap: 14,
+            fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 600,
+            letterSpacing: '0.1em', textTransform: 'uppercase',
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--ink)', display: 'inline-block' }} /> To go
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--field-green)', display: 'inline-block' }} /> Done
+            </span>
+          </div>
+
+          {/* No coords fallback */}
+          {withCoords.length === 0 && (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
+              <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
+              </svg>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>No coordinates available</div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Selected stop card */}
+      {selected && (
+        <div style={{ padding: '14px 14px 16px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+              background: selected.status.toLowerCase() === 'installed' ? 'var(--field-green)' : 'var(--sage-wash)',
+              color: selected.status.toLowerCase() === 'installed' ? 'var(--bone)' : 'var(--field-green)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
+            }}>
+              {selected.status.toLowerCase() === 'installed' ? (
+                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : selected.routeOrder !== 999 ? selected.routeOrder : '?'}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {selected.fieldName}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>{selected.operation}</div>
+            </div>
+            <button
+              className="af-btn af-btn--primary"
+              style={{ minHeight: 40, padding: '0 14px', fontSize: 12 }}
+              onClick={() => onOpenField(selected)}
+            >
+              Open
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Loadout Screen ───────────────────────────────────────────────────────────
+
+function LoadoutScreen({ session, assignments }: { session: Session; assignments: InstallerAssignment[] }) {
+  const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
+  const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
+
+  // Total flags needed for all remaining stops
+  const totalFlags = todo.reduce(
+    (acc, a) => {
+      const f = calcFlags(a.antennaType, a.sideDress);
+      return { pink: acc.pink + f.pink, blue: acc.blue + f.blue, white: acc.white + f.white };
+    },
+    { pink: 0, blue: 0, white: 0 }
+  );
+
+  // Per-stop breakdown
+  const stopFlags = assignments.map(a => ({ ...a, flags: calcFlags(a.antennaType, a.sideDress) }));
+
+  return (
+    <div className="af-screen">
+      {/* Green header */}
+      <div className="af-progress-header">
+        <TopoDeco />
+        <div style={{ position: 'relative' }}>
+          <div className="greeting">Loadout · {session.installer}</div>
+          <div className="date">Flag Stakes</div>
+          <div className="subdate">{todo.length} stops remaining · {session.season} season</div>
+        </div>
+
+        {/* Summary totals */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18, position: 'relative' }}>
+          {[
+            { count: totalFlags.pink, label: 'Pink', color: '#f472b6' },
+            { count: totalFlags.blue, label: 'Blue', color: '#60a5fa' },
+            { count: totalFlags.white, label: 'White', color: 'rgba(246,242,234,0.85)' },
+          ].map(f => (
+            <div key={f.label} style={{ textAlign: 'left' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ width: 12, height: 12, borderRadius: 3, background: f.color, flexShrink: 0 }} />
+                <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.72, fontFamily: 'var(--font-display)', fontWeight: 600 }}>{f.label}</div>
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 44, lineHeight: 0.9, fontVariantNumeric: 'tabular-nums' }}>{f.count}</div>
+            </div>
+          ))}
+        </div>
+        <div className="af-pb-bar" style={{ marginTop: 18 }}>
+          <div className="fill" style={{ width: `${assignments.length > 0 ? (done.length / assignments.length) * 100 : 0}%` }} />
+        </div>
+      </div>
+
+      {/* Per-stop breakdown */}
+      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--stone-500)', padding: '4px 0 8px' }}>
+          Per stop
+        </div>
+        {stopFlags.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--stone-500)' }}>No assignments loaded.</div>
+        )}
+        {stopFlags.map(a => {
+          const isInstalled = a.status.toLowerCase() === 'installed';
+          return (
+            <div key={a.id} style={{
+              background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+              borderRadius: 'var(--r-lg)', padding: '12px 14px',
+              opacity: isInstalled ? 0.55 : 1,
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              {/* Order badge */}
+              <div style={{
+                width: 36, height: 36, borderRadius: 8, flexShrink: 0,
+                background: isInstalled ? 'var(--field-green)' : 'var(--sage-wash)',
+                color: isInstalled ? 'var(--bone)' : 'var(--field-green)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18,
+              }}>
+                {isInstalled ? (
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                ) : a.routeOrder !== 999 ? a.routeOrder : '?'}
+              </div>
+              {/* Field name */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {a.fieldName}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{a.antennaType || 'Standard'}</div>
+              </div>
+              {/* Flag counts */}
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+                {[
+                  { count: a.flags.pink, color: '#f472b6' },
+                  { count: a.flags.blue, color: '#60a5fa' },
+                  { count: a.flags.white, color: '#e5e7eb', border: '1px solid #9ca3af' },
+                ].map((f, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 10, height: 10, borderRadius: 2, background: f.color, border: f.border }} />
+                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>{f.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Me Screen ────────────────────────────────────────────────────────────────
+
+function MeScreen({ session, onLogout }: { session: Session; onLogout: () => void }) {
+  const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  return (
+    <div className="af-screen">
+      <div className="af-topbar" style={{ justifyContent: 'center' }}>
+        <div className="af-topbar-title">Me</div>
+      </div>
+
+      <div className="af-body" style={{ padding: '32px 20px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+        {/* Avatar */}
+        <div style={{
+          width: 96, height: 96, borderRadius: '50%',
+          background: 'var(--field-green)', color: 'var(--bone)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 36,
+          letterSpacing: '0.04em', marginBottom: 16,
+        }}>
+          {initials}
+        </div>
+
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1 }}>
+          {session.installer}
+        </div>
+        <div style={{ marginTop: 6, fontSize: 13, color: 'var(--stone-500)', letterSpacing: '0.04em' }}>
+          {session.season} season · Field installer
+        </div>
+
+        {/* Info card */}
+        <div style={{
+          width: '100%', marginTop: 32,
+          background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+          borderRadius: 'var(--r-lg)', overflow: 'hidden',
+        }}>
+          {[
+            { label: 'App', value: 'Acre Field' },
+            { label: 'Season', value: String(session.season) },
+            { label: 'Version', value: '1.0' },
+          ].map((row, i, arr) => (
+            <div key={row.label} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 16px',
+              borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+            }}>
+              <span style={{ fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>
+                {row.label}
+              </span>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>
+                {row.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Logout */}
+        <button
+          className="af-btn af-btn--block"
+          onClick={onLogout}
+          style={{
+            marginTop: 32, minHeight: 56,
+            background: 'var(--bone-raised)', color: '#B23A2A',
+            border: '1px solid color-mix(in oklab, #B23A2A 30%, transparent)',
+            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+          }}
+        >
+          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Sign out
         </button>
       </div>
     </div>
