@@ -22,6 +22,7 @@ Available tools:
 - get_probe_counts - Get summary counts (how many by status, by brand, etc.)
 - search_operations - Find operations with their linked contacts and billing entities.
 - search_by_name - Searches across contacts, operations, and billing entities. Use this when looking up a grower, farm, or person by name.
+- search_rack_slots - The source of truth for probe rack/slot location. Use this for ANY question about where a probe is physically stored, empty slots, or rack inventory. Supports filtering by rack number, serial number, filled/empty.
 
 How to behave:
 
@@ -173,7 +174,7 @@ const TOOLS = [
   },
   {
     name: "update_probe",
-    description: "Update a probe record. Use to change status, rack, rack_slot, notes, etc. ALWAYS confirm with user before calling.",
+    description: "Update a probe record. Use to change status, notes, billing_entity, brand, etc. Do NOT use this to change rack location — rack placement is managed on the Racks page. ALWAYS confirm with user before calling.",
     input_schema: {
       type: "object",
       properties: {
@@ -209,13 +210,17 @@ const TOOLS = [
   },
   {
     name: "search_rack_slots",
-    description: "Query probe rack slots. Use this for questions about rack inventory: how many slots are empty or filled in a specific rack, which probes are in a rack, etc. Racks 1-5 have 10 slots (1 probe each), rack 6 has 34 slots, racks 7-13 have 13 slots (2 probe positions each).",
+    description: "Query probe rack slots. Use this for ANY question about where a probe is stored, rack inventory, empty/filled slots, or which probes are in a rack. This is the source of truth for probe rack location — do NOT use rack/rack_slot fields on probes, use this tool instead. Racks 1-5 have 10 slots (1 probe each), rack 6 has 34 slots, racks 7-13 have 13 slots (2 probe positions each).",
     input_schema: {
       type: "object",
       properties: {
         rack_number: {
           type: "number",
           description: "Filter to a specific rack number (1-13)"
+        },
+        serial_number_contains: {
+          type: "string",
+          description: "Find which rack/slot a probe is in by partial serial number match"
         },
         filled_only: {
           type: "boolean",
@@ -395,8 +400,6 @@ async function executeSearchProbes(params: { serial_number?: string; status?: st
       serial_number: p.serial_number,
       brand: p.brand?.value,
       status: p.status?.value,
-      rack: p.rack?.value,
-      rack_slot: p.rack_slot,
       billing_entity: p.billing_entity?.[0]?.value,
       year_new: p.year_new
     }))
@@ -584,8 +587,6 @@ async function executeSearchByName(params: { name: string }) {
       list: growerProbes.slice(0, 30).map(p => ({
         serial_number: p.serial_number,
         status: p.status?.value,
-        rack: p.rack?.value,
-        slot: p.rack_slot
       }))
     }
   };
@@ -634,7 +635,7 @@ async function executeCreateRepair(params: { field_season_id?: number; probe_ass
   }
 }
 
-async function executeSearchRackSlots(params: { rack_number?: number; filled_only?: boolean; empty_only?: boolean }) {
+async function executeSearchRackSlots(params: { rack_number?: number; serial_number_contains?: string; filled_only?: boolean; empty_only?: boolean }) {
   const slots = await getRows<ProbeRackSlot>('probe_rack');
   const isFilled = (s: ProbeRackSlot) => Array.isArray(s.probe) && s.probe.some(p => !!p.value);
 
@@ -642,10 +643,25 @@ async function executeSearchRackSlots(params: { rack_number?: number; filled_onl
   if (params.rack_number !== undefined) {
     results = results.filter(s => s.rack.startsWith(String(params.rack_number)));
   }
+  if (params.serial_number_contains) {
+    const sn = params.serial_number_contains.toLowerCase();
+    results = results.filter(s => s.probe?.some(p => p.value?.toLowerCase().includes(sn)));
+  }
   if (params.filled_only) results = results.filter(isFilled);
   if (params.empty_only) results = results.filter(s => !isFilled(s));
 
-  // Summarize by rack
+  // If searching by serial number, return slot-level detail
+  if (params.serial_number_contains) {
+    return {
+      matches: results.map(s => ({
+        rack: s.rack,
+        slot: s.rack_slot,
+        probes: s.probe?.filter(p => !!p.value).map(p => p.value) ?? [],
+      })),
+    };
+  }
+
+  // Otherwise summarize by rack
   const byRack: Record<string, { filled: number; empty: number; probes: string[] }> = {};
   for (const s of results) {
     if (!byRack[s.rack]) byRack[s.rack] = { filled: 0, empty: 0, probes: [] };
