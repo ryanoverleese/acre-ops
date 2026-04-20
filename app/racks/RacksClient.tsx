@@ -260,7 +260,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
           const linked = row.probe?.[0];
           const sn = linked?.value;
           const probeId = linked?.id;
-          const secondLine = probeId && displayMode !== 'serial'
+          const secondLine = sn && probeId && displayMode !== 'serial'
             ? probeLabels[probeId]?.[displayMode as 'operation' | 'field' | 'status'] || null
             : null;
           return (
