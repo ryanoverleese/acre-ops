@@ -445,7 +445,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                 const probe = row.probe?.[0];
                 const showPositionLabel = slotModal.rows.length > 1;
 
-                if (probe) {
+                if (probe?.value) {
                   const probeData = probes.find(p => p.id === probe.id);
                   return (
                     <div key={row.id} style={{ padding: 12, borderRadius: 10, background: 'rgba(74,122,91,0.07)', border: '1px solid rgba(74,122,91,0.2)' }}>
