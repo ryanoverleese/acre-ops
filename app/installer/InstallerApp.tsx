@@ -1563,18 +1563,18 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
               return (
                 <div key={s.probeSerial + s.id} style={{
                   display: 'flex', alignItems: 'stretch',
-                  background: isLoaded ? 'color-mix(in oklab, var(--sage-wash) 55%, white)' : 'var(--bone-raised)',
-                  border: '1px solid ' + (isLoaded ? 'color-mix(in oklab, var(--field-green) 35%, var(--border-1))' : 'var(--border-1)'),
+                  background: isLoaded ? 'var(--stone-50)' : 'var(--bone-raised)',
+                  border: '1px solid var(--border-1)',
                   borderRadius: 'var(--r-md)', overflow: 'hidden',
                   transition: 'all 200ms var(--ease-out)',
-                  opacity: isLoaded ? 0.78 : 1,
+                  opacity: isLoaded ? 0.5 : 1,
                 }}>
                   {/* Big rack location badge — acts as a physical shelf marker */}
                   <div style={{
                     width: 88, flexShrink: 0,
-                    background: isLoaded ? 'var(--field-green)' : 'var(--stone-50)',
-                    color: isLoaded ? 'var(--bone)' : 'var(--field-green)',
-                    borderRight: '1px solid ' + (isLoaded ? 'var(--field-green)' : 'var(--border-1)'),
+                    background: isLoaded ? 'var(--stone-100)' : 'var(--stone-50)',
+                    color: isLoaded ? 'var(--stone-500)' : 'var(--field-green)',
+                    borderRight: '1px solid var(--border-1)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     gap: 4, padding: '10px 6px',
                   }}>
@@ -1607,7 +1607,8 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                   <div style={{ flex: 1, minWidth: 0, padding: '12px 10px 12px 14px', display: 'flex', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{
-                        fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--ink)',
+                        fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700,
+                        color: isLoaded ? 'var(--stone-500)' : 'var(--ink)',
                         fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
                         letterSpacing: '0.01em',
                         textDecoration: isLoaded ? 'line-through' : 'none',
@@ -1621,7 +1622,8 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                           <span style={{
                             fontFamily: 'var(--font-display)', fontWeight: 600,
                             fontSize: 10, letterSpacing: '0.1em',
-                            color: badgeColors.fg, background: badgeColors.bg,
+                            color: isLoaded ? 'var(--stone-500)' : badgeColors.fg,
+                            background: isLoaded ? 'var(--stone-100)' : badgeColors.bg,
                             padding: '2px 6px', borderRadius: 3,
                             textTransform: 'uppercase', display: 'inline-block',
                           }}>
@@ -1637,26 +1639,32 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                     aria-label={isLoaded ? 'Mark not loaded' : 'Mark loaded'}
                     style={{
                       width: 60, flexShrink: 0,
-                      background: isLoaded ? 'var(--field-green)' : 'transparent',
-                      border: 'none', borderLeft: '1px solid ' + (isLoaded ? 'var(--field-green)' : 'var(--border-1)'),
+                      background: 'transparent',
+                      border: 'none', borderLeft: '1px solid var(--border-1)',
                       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-                      cursor: 'pointer', color: isLoaded ? 'var(--bone)' : 'var(--stone-500)',
+                      cursor: 'pointer',
+                      color: isLoaded ? 'var(--stone-500)' : 'var(--stone-500)',
                       transition: 'background 150ms',
                     }}>
                     <div style={{
                       width: 26, height: 26, borderRadius: 6,
-                      background: isLoaded ? 'var(--bone)' : 'transparent',
-                      border: isLoaded ? 'none' : '2px solid var(--stone-300)',
+                      background: isLoaded ? 'var(--sage-wash)' : 'transparent',
+                      border: isLoaded ? '1px solid color-mix(in oklab, var(--field-green) 30%, transparent)' : '2px solid var(--stone-300)',
                       color: 'var(--field-green)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       {isLoaded && (
-                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                           <polyline points="20 6 9 17 4 12" />
                         </svg>
                       )}
                     </div>
-                    <span style={{ fontSize: 8, letterSpacing: '0.14em', fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', opacity: isLoaded ? 0.9 : 0.55 }}>
+                    <span style={{
+                      fontSize: 8, letterSpacing: '0.14em',
+                      fontFamily: 'var(--font-display)', fontWeight: 700,
+                      textTransform: 'uppercase',
+                      opacity: 0.55,
+                    }}>
                       {isLoaded ? 'Loaded' : 'Load'}
                     </span>
                   </button>
