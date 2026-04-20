@@ -644,75 +644,14 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
             {a.routeOrder !== 999 ? `Stop ${a.routeOrder}` : 'Field Detail'}
           </div>
         </div>
-        {mapsUrl ? (
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--field-green)', padding: 6, display: 'flex', alignItems: 'center' }}
-          >
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <path d="M3 11l19-9-9 19-2-8-8-2z" />
-            </svg>
-          </a>
-        ) : <div style={{ width: 32 }} />}
+        <div style={{ width: 32 }} />
       </div>
 
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
-        {/* Hero — green splash with integrated Open in Maps CTA */}
-        {mapsUrl ? (
-          <a
-            href={mapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="af-field-hero"
-            style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
-            aria-label="Open in maps"
-          >
-            <TopoDeco />
-            <div style={{ position: 'absolute', inset: 0, padding: '20px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: 'var(--bone)' }}>
-              {/* Top row: eyebrow */}
-              <div style={{ fontSize: 10, letterSpacing: '0.2em', fontFamily: 'var(--font-display)', fontWeight: 600, opacity: 0.72, textTransform: 'uppercase' }}>
-                Location
-              </div>
-              {/* Bottom row: pin + label + arrow */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                <div style={{
-                  width: 52, height: 52, borderRadius: 14, flexShrink: 0,
-                  background: 'rgba(246,242,234,0.18)',
-                  border: '1px solid rgba(246,242,234,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  backdropFilter: 'blur(6px)',
-                }}>
-                  <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                    <circle cx="12" cy="10" r="3" />
-                  </svg>
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1 }}>
-                    Open in Maps
-                  </div>
-                  {a.lat && a.lng && (
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginTop: 5, opacity: 0.82 }}>
-                      {a.lat.toFixed(5)}°N · {Math.abs(a.lng).toFixed(5)}°W
-                    </div>
-                  )}
-                </div>
-                <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0, opacity: 0.85 }}>
-                  <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
-                </svg>
-              </div>
-            </div>
-          </a>
-        ) : (
-          <div className="af-field-hero">
-            <TopoDeco />
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bone)', opacity: 0.7, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
-              No coordinates available
-            </div>
-          </div>
-        )}
+        {/* Decorative green header strip */}
+        <div className="af-field-hero" style={{ height: 90 }}>
+          <TopoDeco />
+        </div>
 
         {/* Title */}
         <div style={{ padding: '18px 18px 14px' }}>
@@ -759,6 +698,49 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
               <div className="note-label">Install Note</div>
               <div style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--ink)', fontWeight: 500 }}>{a.fieldNotes}</div>
             </div>
+          </div>
+        )}
+
+        {/* Open in Maps — secondary action near thumb zone */}
+        {mapsUrl && (
+          <div style={{ padding: '20px 14px 0' }}>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '14px 16px',
+                background: 'var(--bone-raised)',
+                border: '1.5px solid var(--border-1)',
+                borderRadius: 'var(--r-lg)',
+                textDecoration: 'none',
+                color: 'var(--field-green)',
+              }}
+            >
+              <div style={{
+                width: 42, height: 42, borderRadius: 10, flexShrink: 0,
+                background: 'var(--sage-wash)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+                </svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
+                  Open in Maps
+                </div>
+                {a.lat && a.lng && (
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--stone-500)', marginTop: 4 }}>
+                    {a.lat.toFixed(5)}°N · {Math.abs(a.lng).toFixed(5)}°W
+                  </div>
+                )}
+              </div>
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0, opacity: 0.5 }}>
+                <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
+              </svg>
+            </a>
           </div>
         )}
       </div>
@@ -1457,6 +1439,13 @@ function MapScreen({
 
 // ─── Loadout Screen ───────────────────────────────────────────────────────────
 
+const SUPPLY_PALETTE = [
+  { bg: 'var(--sage-wash)',           fg: 'var(--field-green)' },
+  { bg: 'rgba(196,130,30,0.11)',      fg: '#9A6810' },
+  { bg: 'rgba(59,120,196,0.11)',      fg: '#2E6BAF' },
+  { bg: 'rgba(160,64,48,0.10)',       fg: '#A03828' },
+];
+
 type LoadedMap = Record<string, boolean>;
 const LOADED_KEY = 'af-loaded';
 
@@ -1707,10 +1696,10 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         {/* Antennas */}
         <SectionCard title="Antennas" count={totalProbes} icon={<WifiIcon />}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-            {Object.entries(antennas).sort().map(([type, count]) => (
+            {Object.entries(antennas).sort().map(([type, count], i) => (
               <div key={type} style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].bg, color: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <WifiIcon size={16} />
                   </div>
                   <div>
@@ -1730,10 +1719,10 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         {/* Batteries */}
         <SectionCard title="Batteries" count={totalBatteries} icon={<BoltIcon />}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
-            {Object.entries(batteries).sort().map(([type, count]) => (
+            {Object.entries(batteries).sort().map(([type, count], i) => (
               <div key={type} style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].bg, color: SUPPLY_PALETTE[i % SUPPLY_PALETTE.length].fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <BoltIcon size={16} />
                   </div>
                   <div>
