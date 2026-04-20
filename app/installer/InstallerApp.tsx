@@ -21,6 +21,8 @@ export interface InstallerAssignment {
   probeId: number | null;
   probeSerial: string;
   probeBrand: string;
+  probeRack: string;
+  probeRackSlot: number | null;
   antennaType: string;
   fieldNotes: string;
   status: string;
@@ -1344,108 +1346,353 @@ function MapScreen({
 
 // ─── Loadout Screen ───────────────────────────────────────────────────────────
 
+type LoadedMap = Record<string, boolean>;
+const LOADED_KEY = 'af-loaded';
+
 function LoadoutScreen({ session, assignments }: { session: Session; assignments: InstallerAssignment[] }) {
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
-  const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
 
-  // Total flags needed for all remaining stops
-  const totalFlags = todo.reduce(
-    (acc, a) => {
-      const f = calcFlags(a.antennaType, a.sideDress);
-      return { pink: acc.pink + f.pink, blue: acc.blue + f.blue, white: acc.white + f.white };
-    },
-    { pink: 0, blue: 0, white: 0 }
-  );
+  // Persisted "loaded" state per probe serial
+  const [loaded, setLoaded] = useState<LoadedMap>(() => {
+    try { return JSON.parse(localStorage.getItem(LOADED_KEY) || '{}'); } catch { return {}; }
+  });
+  const toggleLoaded = (serial: string) => {
+    setLoaded(prev => {
+      const next = { ...prev, [serial]: !prev[serial] };
+      localStorage.setItem(LOADED_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
 
-  // Per-stop breakdown
-  const stopFlags = assignments.map(a => ({ ...a, flags: calcFlags(a.antennaType, a.sideDress) }));
+  // Today's probes: one row per todo assignment with a serial
+  const probeStops = todo.filter(a => a.probeSerial);
+  const totalProbes = probeStops.length;
+  const loadedCount = probeStops.filter(s => loaded[s.probeSerial]).length;
+
+  // Aggregate supplies over todo only
+  const antennas: Record<string, number> = {};
+  let batteries = 0;
+  const flags = { pink: 0, blue: 0, white: 0 };
+  let gatewayCount = 0;
+  for (const a of todo) {
+    const ant = a.antennaType || 'Standard';
+    antennas[ant] = (antennas[ant] || 0) + 1;
+    batteries += 2;
+    const f = calcFlags(a.antennaType, a.sideDress);
+    flags.pink += f.pink; flags.blue += f.blue; flags.white += f.white;
+    // Gateway rule: 1 per Sentek probe
+    if (/sentek/i.test(a.probeBrand)) gatewayCount += 1;
+  }
+
+  const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <div className="af-screen">
-      {/* Green header */}
-      <div className="af-progress-header">
-        <TopoDeco />
-        <div style={{ position: 'relative' }}>
-          <div className="greeting">Loadout · {session.installer}</div>
-          <div className="date">Flag Stakes</div>
-          <div className="subdate">{todo.length} stops remaining · {session.season} season</div>
+      <div className="af-topbar">
+        <div style={{ fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>
+          {todayStr}
         </div>
-
-        {/* Summary totals */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14, marginTop: 18, position: 'relative' }}>
-          {[
-            { count: totalFlags.pink, label: 'Pink', color: '#f472b6' },
-            { count: totalFlags.blue, label: 'Blue', color: '#60a5fa' },
-            { count: totalFlags.white, label: 'White', color: 'rgba(246,242,234,0.85)' },
-          ].map(f => (
-            <div key={f.label} style={{ textAlign: 'left' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <div style={{ width: 12, height: 12, borderRadius: 3, background: f.color, flexShrink: 0 }} />
-                <div style={{ fontSize: 10, letterSpacing: '0.18em', textTransform: 'uppercase', opacity: 0.72, fontFamily: 'var(--font-display)', fontWeight: 600 }}>{f.label}</div>
-              </div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 44, lineHeight: 0.9, fontVariantNumeric: 'tabular-nums' }}>{f.count}</div>
-            </div>
-          ))}
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Loadout</div>
+          <div className="af-topbar-sub">{todo.length} install{todo.length !== 1 ? 's' : ''} today</div>
         </div>
-        <div className="af-pb-bar" style={{ marginTop: 18 }}>
-          <div className="fill" style={{ width: `${assignments.length > 0 ? (done.length / assignments.length) * 100 : 0}%` }} />
+        <div style={{ width: 40, textAlign: 'right', fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--field-green)' }}>
+          {initials}
         </div>
       </div>
 
-      {/* Per-stop breakdown */}
-      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ fontSize: 10, letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--stone-500)', padding: '4px 0 8px' }}>
-          Per stop
-        </div>
-        {stopFlags.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--stone-500)' }}>No assignments loaded.</div>
-        )}
-        {stopFlags.map(a => {
-          const isInstalled = a.status.toLowerCase() === 'installed';
-          return (
-            <div key={a.id} style={{
-              background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-              borderRadius: 'var(--r-lg)', padding: '12px 14px',
-              opacity: isInstalled ? 0.55 : 1,
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-              {/* Order badge */}
-              <div style={{
-                width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-                background: isInstalled ? 'var(--field-green)' : 'var(--sage-wash)',
-                color: isInstalled ? 'var(--bone)' : 'var(--field-green)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18,
-              }}>
-                {isInstalled ? (
-                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-                ) : a.routeOrder !== 999 ? a.routeOrder : '?'}
-              </div>
-              {/* Field name */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {a.fieldName}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{a.antennaType || 'Standard'}</div>
-              </div>
-              {/* Flag counts */}
-              <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
-                {[
-                  { count: a.flags.pink, color: '#f472b6' },
-                  { count: a.flags.blue, color: '#60a5fa' },
-                  { count: a.flags.white, color: '#e5e7eb', border: '1px solid #9ca3af' },
-                ].map((f, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <div style={{ width: 10, height: 10, borderRadius: 2, background: f.color, border: f.border }} />
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>{f.count}</span>
-                  </div>
-                ))}
-              </div>
+      <div className="af-body" style={{ padding: '0 0 24px', background: '#FFFFFF' }}>
+        {/* Hero card */}
+        <div style={{
+          margin: '14px 14px 0', padding: '18px 18px 20px',
+          background: 'var(--field-green)', color: 'var(--bone)',
+          borderRadius: 'var(--r-xl)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <TopoDeco />
+          <div style={{ position: 'relative' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.18em', opacity: 0.72, fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase' }}>
+              Morning, {session.installer}
             </div>
-          );
-        })}
+            <div className="af-display-text" style={{ fontSize: 26, marginTop: 4, lineHeight: 1, color: 'var(--bone)' }}>
+              Pack the truck
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 12, fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+              <span style={{ fontSize: 40, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{loadedCount}</span>
+              <span style={{ fontSize: 18, opacity: 0.55, fontVariantNumeric: 'tabular-nums' }}>/ {totalProbes}</span>
+              <span style={{ fontSize: 11, letterSpacing: '0.14em', opacity: 0.8, marginLeft: 6, textTransform: 'uppercase' }}>probes loaded</span>
+            </div>
+            <div style={{ height: 5, background: 'rgba(246,242,234,0.2)', borderRadius: 3, marginTop: 10, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(loadedCount / Math.max(totalProbes, 1)) * 100}%`, background: 'var(--bone)', transition: 'width 300ms var(--ease-out)' }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Today's probes */}
+        <SectionCard title="Today's probes" count={`${loadedCount}/${totalProbes}`} countLabel="LOADED" icon={<RackIcon />} collapsible defaultExpanded>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {probeStops.length === 0 && (
+              <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)', padding: 14, fontSize: 12, color: 'var(--stone-500)', textAlign: 'center' }}>
+                No probes assigned yet.
+              </div>
+            )}
+            {[...probeStops].sort((a, b) => {
+              const aL = loaded[a.probeSerial] ? 1 : 0;
+              const bL = loaded[b.probeSerial] ? 1 : 0;
+              if (aL !== bL) return aL - bL;
+              return (a.probeRack || '').localeCompare(b.probeRack || '', undefined, { numeric: true });
+            }).map(s => {
+              const isLoaded = !!loaded[s.probeSerial];
+              const isSentek = /sentek/i.test(s.probeBrand);
+              const rackLabel = s.probeRack ? `${s.probeRack}${s.probeRackSlot != null ? ` · ${s.probeRackSlot}` : ''}` : '—';
+              return (
+                <div key={s.probeSerial + s.id} style={{
+                  display: 'flex', alignItems: 'stretch',
+                  background: isLoaded ? 'color-mix(in oklab, var(--sage-wash) 55%, white)' : 'var(--bone-raised)',
+                  border: '1px solid ' + (isLoaded ? 'color-mix(in oklab, var(--field-green) 35%, var(--border-1))' : 'var(--border-1)'),
+                  borderRadius: 'var(--r-md)', overflow: 'hidden',
+                  transition: 'all 200ms var(--ease-out)',
+                  opacity: isLoaded ? 0.78 : 1,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0, padding: '12px 10px 12px 14px', display: 'flex', alignItems: 'center' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, color: 'var(--ink)',
+                          fontVariantNumeric: 'tabular-nums',
+                          textDecoration: isLoaded ? 'line-through' : 'none',
+                          textDecorationColor: 'var(--stone-500)', textDecorationThickness: '1px',
+                        }}>
+                          #{s.probeSerial}
+                        </span>
+                        {s.probeBrand && (
+                          <span style={{
+                            fontFamily: 'var(--font-display)', fontWeight: 600,
+                            fontSize: 10, letterSpacing: '0.1em',
+                            color: isSentek ? '#8A4E14' : 'var(--field-green)',
+                            background: isSentek ? '#FDEBD3' : 'var(--sage-wash)',
+                            padding: '2px 6px', borderRadius: 3,
+                            textTransform: 'uppercase', flexShrink: 0,
+                          }}>
+                            {s.probeBrand}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: 'var(--stone-500)' }}>
+                        <RackIcon size={11} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{rackLabel}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleLoaded(s.probeSerial)}
+                    aria-pressed={isLoaded}
+                    aria-label={isLoaded ? 'Mark not loaded' : 'Mark loaded'}
+                    style={{
+                      width: 60, flexShrink: 0,
+                      background: isLoaded ? 'var(--field-green)' : 'transparent',
+                      border: 'none', borderLeft: '1px solid ' + (isLoaded ? 'var(--field-green)' : 'var(--border-1)'),
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                      cursor: 'pointer', color: isLoaded ? 'var(--bone)' : 'var(--stone-500)',
+                      transition: 'background 150ms',
+                    }}>
+                    <div style={{
+                      width: 26, height: 26, borderRadius: 6,
+                      background: isLoaded ? 'var(--bone)' : 'transparent',
+                      border: isLoaded ? 'none' : '2px solid var(--stone-300)',
+                      color: 'var(--field-green)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {isLoaded && (
+                        <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 8, letterSpacing: '0.14em', fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', opacity: isLoaded ? 0.9 : 0.55 }}>
+                      {isLoaded ? 'Loaded' : 'Load'}
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </SectionCard>
+
+        {/* CropX Gateways */}
+        <SectionCard title="CropX Gateways" count={gatewayCount} icon={<WifiIcon />}>
+          {gatewayCount === 0 ? (
+            <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)', padding: 14, fontSize: 12, color: 'var(--stone-500)', textAlign: 'center' }}>
+              All probes today are CropX V4 — no gateways needed.
+            </div>
+          ) : (
+            <div style={{
+              background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+              borderRadius: 'var(--r-md)', padding: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <WifiIcon size={18} />
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    LTE-M Gateways
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                    1 per Sentek probe · CropX V4 doesn&apos;t need one
+                  </div>
+                </div>
+              </div>
+              <BigCount n={gatewayCount} />
+            </div>
+          )}
+        </SectionCard>
+
+        {/* Antennas */}
+        <SectionCard title="Antennas" count={totalProbes} icon={<WifiIcon />}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+            {Object.entries(antennas).sort().map(([type, count]) => (
+              <div key={type} style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <WifiIcon size={16} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{type}</div>
+                    <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{count === 1 ? '1 unit' : `${count} units`}</div>
+                  </div>
+                </div>
+                <BigCount n={count} />
+              </div>
+            ))}
+            {Object.keys(antennas).length === 0 && (
+              <div style={{ background: 'var(--bone-raised)', padding: 14, fontSize: 12, color: 'var(--stone-500)', textAlign: 'center' }}>No antennas needed.</div>
+            )}
+          </div>
+        </SectionCard>
+
+        {/* Batteries */}
+        <SectionCard title="Batteries" count={batteries} icon={<BoltIcon />}>
+          <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)', padding: '16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>D-cell packs</div>
+              <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>2 per probe × {todo.length} probe{todo.length !== 1 ? 's' : ''}</div>
+            </div>
+            <BigCount n={batteries} />
+          </div>
+        </SectionCard>
+
+        {/* Flags */}
+        <SectionCard title="Marker flags" count={flags.pink + flags.blue + flags.white} icon={<FlagIcon />}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+            <FlagRow color="#E85A9E" name="Pink flags" sub="Probe location" count={flags.pink} />
+            <FlagRow color="#3F7BCC" name="Blue flags" sub="Antenna placement" count={flags.blue} />
+            <FlagRow color="#FFFFFF" name="White flags" sub="Row-end markers" count={flags.white} border />
+          </div>
+        </SectionCard>
       </div>
     </div>
+  );
+}
+
+function SectionCard({
+  title, count, countLabel = 'TOTAL', icon, children, collapsible = false, defaultExpanded = true,
+}: {
+  title: string; count: number | string; countLabel?: string;
+  icon: React.ReactNode; children: React.ReactNode;
+  collapsible?: boolean; defaultExpanded?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  const canCollapse = collapsible;
+  return (
+    <div style={{ padding: '18px 14px 4px' }}>
+      <div
+        role={canCollapse ? 'button' : undefined}
+        tabIndex={canCollapse ? 0 : undefined}
+        onClick={canCollapse ? () => setExpanded(e => !e) : undefined}
+        onKeyDown={canCollapse ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(x => !x); } } : undefined}
+        style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          marginBottom: expanded ? 10 : 0, padding: '0 2px',
+          cursor: canCollapse ? 'pointer' : 'default',
+          userSelect: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: 'var(--field-green)', display: 'inline-flex' }}>{icon}</span>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.12em', margin: 0 }}>
+            {title}
+          </h3>
+          {canCollapse && (
+            <span style={{ color: 'var(--stone-500)', transition: 'transform 180ms var(--ease-out)', transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)', display: 'inline-flex', alignItems: 'center', marginLeft: 2 }}>
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9" /></svg>
+            </span>
+          )}
+        </div>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, color: 'var(--stone-500)', letterSpacing: '0.06em', fontVariantNumeric: 'tabular-nums' }}>
+          {count} {countLabel}
+        </div>
+      </div>
+      {(!canCollapse || expanded) && children}
+    </div>
+  );
+}
+
+function BigCount({ n }: { n: number }) {
+  return (
+    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 32, lineHeight: 1, color: 'var(--field-green)', fontVariantNumeric: 'tabular-nums' }}>
+      {n}
+    </div>
+  );
+}
+
+function FlagRow({ color, name, sub, count, border }: { color: string; name: string; sub: string; count: number; border?: boolean }) {
+  return (
+    <div style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <svg width="28" height="32" viewBox="0 0 28 32" style={{ flexShrink: 0 }}>
+          <line x1="6" y1="2" x2="6" y2="30" stroke="var(--stone-700)" strokeWidth="1.5" strokeLinecap="round" />
+          <path d="M 6 4 L 24 4 L 20 10 L 24 16 L 6 16 Z" fill={color} stroke={border ? 'var(--stone-500)' : 'none'} strokeWidth={border ? 0.8 : 0} />
+        </svg>
+        <div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{name}</div>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{sub}</div>
+        </div>
+      </div>
+      <BigCount n={count} />
+    </div>
+  );
+}
+
+// Small inline icons for the Loadout screen
+function RackIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="16" height="4" rx="1" /><rect x="4" y="10" width="16" height="4" rx="1" /><rect x="4" y="16" width="16" height="4" rx="1" />
+    </svg>
+  );
+}
+function WifiIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <path d="M5 13a10 10 0 0114 0" /><path d="M8.5 16.5a5 5 0 017 0" /><line x1="12" y1="20" x2="12.01" y2="20" /><path d="M1.42 9a16 16 0 0121.16 0" />
+    </svg>
+  );
+}
+function BoltIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  );
+}
+function FlagIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" y1="22" x2="4" y2="15" />
+    </svg>
   );
 }
 

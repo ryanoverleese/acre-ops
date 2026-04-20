@@ -8,6 +8,7 @@ import {
   type Operation,
   type BillingEntity,
   type Contact,
+  type ProbeRackSlot,
 } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] =
+    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts, rackSlots] =
       await Promise.all([
         getCachedRows<Field>('fields', undefined, 120),
         getCachedRows<FieldSeason>('field_seasons', undefined, 60),
@@ -33,6 +34,7 @@ export async function GET(request: NextRequest) {
         getCachedRows<Operation>('operations', undefined, 300),
         getProbeAssignments(),
         getCachedRows<Contact>('contacts', undefined, 300),
+        getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
       ]);
 
     const operationMap = buildOperationMap(operations);
@@ -40,6 +42,12 @@ export async function GET(request: NextRequest) {
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    // Map probe id → { rack, slot }
+    const probeRackMap = new Map<number, { rack: string; slot: number }>();
+    for (const rs of rackSlots) {
+      const probeId = rs.probe?.[0]?.id;
+      if (probeId) probeRackMap.set(probeId, { rack: rs.rack, slot: rs.rack_slot });
+    }
 
     // Diagnostic counters
     const stepCounts = { totalPA: probeAssignments.length, withFS: 0, inSeason: 0, matchedInstaller: 0 };
@@ -76,6 +84,7 @@ export async function GET(request: NextRequest) {
 
         const probeId = pa.probe?.[0]?.id ?? null;
         const probe = probeId ? probeMap.get(probeId) : null;
+        const rackInfo = probeId ? probeRackMap.get(probeId) : null;
 
         return {
           id: pa.id,
@@ -95,6 +104,8 @@ export async function GET(request: NextRequest) {
           probeId,
           probeSerial: probe?.serial_number?.toString() ?? '',
           probeBrand: probe?.brand?.value ?? '',
+          probeRack: rackInfo ? rackInfo.rack : '',
+          probeRackSlot: rackInfo ? rackInfo.slot : null,
           antennaType: pa.antenna_type?.value ?? '',
           fieldNotes: fs.notes ?? '',
           status: pa.probe_status?.value ?? 'Assigned',
