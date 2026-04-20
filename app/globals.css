@@ -9937,6 +9937,37 @@ tr.expanded-row:hover {
 
 /* ─── Acre Field Installer App (af- design system) ──────────────────────────── */
 
+/* Field-name labels on the Leaflet map (Tooltip permanent) */
+.af-map-label.leaflet-tooltip {
+  background: rgba(246, 242, 234, 0.95);
+  color: #0A0A0A;
+  border: 1px solid rgba(31, 64, 42, 0.2);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: 'Barlow Condensed', 'Oswald', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  pointer-events: none;
+}
+.af-map-label.leaflet-tooltip::before {
+  display: none;
+}
+.af-map-label.is-installed.leaflet-tooltip {
+  background: rgba(31, 64, 42, 0.95);
+  color: #F6F2EA;
+  border-color: rgba(31, 64, 42, 0.4);
+}
+.af-map-label.is-selected.leaflet-tooltip {
+  background: #0A0A0A;
+  color: #F6F2EA;
+  border-color: #0A0A0A;
+}
+
 /* Brand vars scoped to the installer app wrapper */
 .af-app {
   --field-green:        #1F402A;

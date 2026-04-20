@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -208,7 +208,16 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
             position={[p.lat, p.lng]}
             icon={makePin(label, installed, selected)}
             eventHandlers={{ click: () => onSelect(p.id) }}
-          />
+          >
+            <Tooltip
+              permanent
+              direction="bottom"
+              offset={[0, -2]}
+              className={`af-map-label${selected ? ' is-selected' : ''}${installed ? ' is-installed' : ''}`}
+            >
+              {p.fieldName}
+            </Tooltip>
+          </Marker>
         );
       })}
 
