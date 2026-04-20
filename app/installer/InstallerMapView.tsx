@@ -1,0 +1,220 @@
+'use client';
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+export interface MapPoint {
+  id: number;
+  lat: number;
+  lng: number;
+  routeOrder: number;
+  status: string;
+  fieldName: string;
+  operation: string;
+}
+
+type Layer = 'street' | 'satellite';
+
+interface Props {
+  points: MapPoint[];
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  layer: Layer;
+}
+
+// Build a numbered "pin" as an inline SVG divIcon.
+function makePin(label: string, installed: boolean, selected: boolean) {
+  const bg = installed ? '#1F402A' : selected ? '#0A0A0A' : '#FFFFFF';
+  const fg = installed || selected ? '#F6F2EA' : '#0A0A0A';
+  const stroke = installed ? '#1F402A' : '#0A0A0A';
+  const content = installed
+    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+    : label;
+
+  const html = `
+    <div style="
+      min-width:36px;height:36px;padding:0 8px;border-radius:18px;
+      background:${bg};color:${fg};border:2px solid ${stroke};
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:700;font-size:14px;
+      box-shadow:0 4px 10px rgba(0,0,0,0.25);
+      position:relative;transform:translateY(-2px);
+    ">
+      ${content}
+      <div style="
+        position:absolute;bottom:-7px;left:50%;
+        transform:translateX(-50%) rotate(45deg);
+        width:10px;height:10px;background:${bg};
+        border-right:2px solid ${stroke};border-bottom:2px solid ${stroke};
+      "></div>
+    </div>
+  `;
+
+  return L.divIcon({
+    className: 'af-leaflet-pin',
+    html,
+    iconSize: [36, 44],
+    iconAnchor: [18, 44],
+  });
+}
+
+// Tile URL templates
+const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const SAT_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+const SAT_ATTR = 'Imagery &copy; Esri';
+
+// Fit bounds to all points once on mount, or re-fit when points change.
+function FitBounds({ points }: { points: MapPoint[] }) {
+  const map = useMap();
+  const didFit = useRef(false);
+  useEffect(() => {
+    if (didFit.current) return;
+    const valid = points.filter(p => p.lat && p.lng);
+    if (valid.length === 0) return;
+    if (valid.length === 1) {
+      map.setView([valid[0].lat, valid[0].lng], 13);
+    } else {
+      const bounds = L.latLngBounds(valid.map(p => [p.lat, p.lng] as [number, number]));
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+    didFit.current = true;
+  }, [map, points]);
+  return null;
+}
+
+// Live user location — blue dot that updates as watchPosition fires.
+function UserLocation() {
+  const map = useMap();
+  const [pos, setPos] = useState<{ lat: number; lng: number; acc: number } | null>(null);
+  const hasCentered = useRef(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        setPos({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy });
+      },
+      () => { /* silently ignore; user may have denied */ },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
+  // Re-center map once we first get a fix, but not if user has panned
+  useEffect(() => {
+    if (pos && !hasCentered.current) {
+      // Only auto-recenter if no other fit has happened and bounds don't contain us
+      const current = map.getBounds();
+      if (!current.contains([pos.lat, pos.lng])) {
+        // pan gently without zooming out
+        map.panTo([pos.lat, pos.lng], { animate: true });
+      }
+      hasCentered.current = true;
+    }
+  }, [pos, map]);
+
+  if (!pos) return null;
+
+  const icon = L.divIcon({
+    className: 'af-leaflet-user-dot',
+    html: `
+      <div style="position:relative;width:20px;height:20px;">
+        <div style="
+          position:absolute;inset:-8px;border-radius:50%;
+          background:rgba(47,107,176,0.22);
+        "></div>
+        <div style="
+          width:20px;height:20px;border-radius:50%;
+          background:#2F6BB0;border:3px solid #FFFFFF;
+          box-shadow:0 2px 6px rgba(0,0,0,0.4);
+        "></div>
+      </div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  });
+
+  return <Marker position={[pos.lat, pos.lng]} icon={icon} interactive={false} />;
+}
+
+// Control from outside: "recenter on me" button emits a window event.
+function RecenterListener({ getUserPos }: { getUserPos: () => { lat: number; lng: number } | null }) {
+  const map = useMap();
+  useEffect(() => {
+    const handler = () => {
+      const p = getUserPos();
+      if (p) map.setView([p.lat, p.lng], Math.max(map.getZoom(), 14));
+    };
+    window.addEventListener('af-recenter-me', handler);
+    return () => window.removeEventListener('af-recenter-me', handler);
+  }, [map, getUserPos]);
+  return null;
+}
+
+export default function InstallerMapView({ points, selectedId, onSelect, layer }: Props) {
+  const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
+
+  // Expose current user location through a ref so the recenter listener can read it
+  const userPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => { userPosRef.current = { lat: p.coords.latitude, lng: p.coords.longitude }; },
+      undefined,
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
+
+  // Default center: first point or Nebraska center as a fallback
+  const center: [number, number] = valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
+
+  const todoPts = valid.filter(p => p.status.toLowerCase() !== 'installed');
+  const routeLine = todoPts.map(p => [p.lat, p.lng] as [number, number]);
+
+  return (
+    <MapContainer
+      center={center}
+      zoom={11}
+      style={{ position: 'absolute', inset: 0, background: '#dde5d0' }}
+      zoomControl={false}
+      attributionControl
+    >
+      <TileLayer
+        url={layer === 'satellite' ? SAT_URL : OSM_URL}
+        attribution={layer === 'satellite' ? SAT_ATTR : OSM_ATTR}
+        maxZoom={19}
+      />
+
+      {/* Route line through remaining stops */}
+      {routeLine.length > 1 && (
+        <Polyline
+          positions={routeLine}
+          pathOptions={{ color: '#1F402A', weight: 4, opacity: 0.85, dashArray: '6 8', lineCap: 'round' }}
+        />
+      )}
+
+      {/* Stop pins */}
+      {valid.map(p => {
+        const installed = p.status.toLowerCase() === 'installed';
+        const selected = selectedId === p.id;
+        const label = p.routeOrder !== 999 ? String(p.routeOrder) : '?';
+        return (
+          <Marker
+            key={p.id}
+            position={[p.lat, p.lng]}
+            icon={makePin(label, installed, selected)}
+            eventHandlers={{ click: () => onSelect(p.id) }}
+          />
+        );
+      })}
+
+      <UserLocation />
+      <FitBounds points={valid} />
+      <RecenterListener getUserPos={() => userPosRef.current} />
+    </MapContainer>
+  );
+}

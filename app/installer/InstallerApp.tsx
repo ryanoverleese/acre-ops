@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+
+// Leaflet needs window — render only on the client
+const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1189,30 +1193,24 @@ function MapScreen({
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
 }) {
-  const [selected, setSelected] = useState<InstallerAssignment | null>(
-    assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0] ?? null
+  const [selectedId, setSelectedId] = useState<number | null>(
+    (assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0])?.id ?? null
   );
+  const [layer, setLayer] = useState<'street' | 'satellite'>('street');
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
-
-  // Project lat/lng to x/y percentage within a padded bounding box
   const withCoords = assignments.filter(a => a.lat && a.lng);
-  const proj = (() => {
-    if (withCoords.length === 0) return () => ({ x: 50, y: 50 });
-    const lats = withCoords.map(a => a.lat);
-    const lngs = withCoords.map(a => a.lng);
-    const minLat = Math.min(...lats), maxLat = Math.max(...lats);
-    const minLng = Math.min(...lngs), maxLng = Math.max(...lngs);
-    const pad = 0.05;
-    return (lat: number, lng: number) => ({
-      x: 8 + ((lng - minLng + pad) / (maxLng - minLng + pad * 2)) * 84,
-      y: 8 + (1 - (lat - minLat + pad) / (maxLat - minLat + pad * 2)) * 76,
-    });
-  })();
+  const selected = assignments.find(a => a.id === selectedId) ?? null;
 
-  const points = withCoords.map(a => ({ ...a, ...proj(a.lat, a.lng) }));
-  const todoPts = points.filter(p => p.status.toLowerCase() !== 'installed');
-  const donePts = points.filter(p => p.status.toLowerCase() === 'installed');
+  const mapPoints = withCoords.map(a => ({
+    id: a.id,
+    lat: a.lat,
+    lng: a.lng,
+    routeOrder: a.routeOrder,
+    status: a.status,
+    fieldName: a.fieldName,
+    operation: a.operation,
+  }));
 
   return (
     <div className="af-screen">
@@ -1232,107 +1230,73 @@ function MapScreen({
       </div>
 
       {/* Map area */}
-      <div style={{ flex: 1, position: 'relative' }}>
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(ellipse at 30% 30%, #cfe3d2 0%, transparent 60%), radial-gradient(ellipse at 70% 70%, #e8e0c9 0%, transparent 60%), linear-gradient(180deg, #eef2e4 0%, #dde5d0 100%)',
-          overflow: 'hidden',
-        }}>
-          {/* Grid */}
-          <div style={{
-            position: 'absolute', inset: 0, opacity: 0.5,
-            backgroundImage: 'linear-gradient(rgba(31,64,42,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(31,64,42,0.1) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }} />
-
-          {/* Route line through todo stops */}
-          {todoPts.length > 0 && (
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} preserveAspectRatio="none" viewBox="0 0 100 100">
-              <g stroke="rgba(107,100,86,0.25)" strokeWidth="0.4" fill="none">
-                <path d="M 0 20 L 100 18" /><path d="M 0 55 L 100 53" /><path d="M 20 0 L 22 100" /><path d="M 70 0 L 68 100" />
-              </g>
-              {todoPts.length > 1 && (
-                <polyline
-                  points={todoPts.map(p => `${p.x},${p.y}`).join(' ')}
-                  stroke="var(--field-green)" strokeWidth="0.8" fill="none"
-                  strokeDasharray="1.5 1" strokeLinecap="round"
-                />
-              )}
-              {donePts.map((p, i) => (
-                <line key={i} x1={p.x} y1={p.y} x2={p.x} y2={p.y} stroke="var(--field-green)" strokeWidth="1" />
-              ))}
+      <div style={{ flex: 1, position: 'relative', background: '#dde5d0' }}>
+        {withCoords.length === 0 ? (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
+            <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
             </svg>
-          )}
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>No coordinates available</div>
+          </div>
+        ) : (
+          <InstallerMapView
+            points={mapPoints}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            layer={layer}
+          />
+        )}
 
-          {/* Stop pins */}
-          {points.map(p => {
-            const isInstalled = p.status.toLowerCase() === 'installed';
-            const isSel = selected?.id === p.id;
-            const orderLabel = p.routeOrder !== 999 ? String(p.routeOrder) : '?';
-            return (
+        {/* Layer toggle */}
+        {withCoords.length > 0 && (
+          <div style={{
+            position: 'absolute', top: 14, right: 14, zIndex: 400,
+            background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
+            border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
+            padding: 3, display: 'flex', gap: 2,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+          }}>
+            {(['street', 'satellite'] as const).map(lyr => (
               <button
-                key={p.id}
-                onClick={() => setSelected(p)}
+                key={lyr}
+                onClick={() => setLayer(lyr)}
+                aria-pressed={layer === lyr ? 'true' : 'false'}
                 style={{
-                  position: 'absolute',
-                  left: `${p.x}%`, top: `${p.y}%`,
-                  transform: 'translate(-50%, -100%)',
-                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  minHeight: 32, padding: '0 12px', borderRadius: 999,
+                  fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  background: layer === lyr ? 'var(--field-green)' : 'transparent',
+                  color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
+                  border: 'none', cursor: 'pointer',
                 }}
               >
-                <div style={{
-                  minWidth: 36, height: 36, padding: '0 8px', borderRadius: 18,
-                  background: isInstalled ? 'var(--field-green)' : isSel ? 'var(--ink)' : 'var(--bone-raised)',
-                  color: isInstalled || isSel ? 'var(--bone)' : 'var(--ink)',
-                  border: `2px solid ${isInstalled ? 'var(--field-green)' : 'var(--ink)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14,
-                  boxShadow: '0 4px 10px rgba(0,0,0,0.18)',
-                  position: 'relative',
-                }}>
-                  {isInstalled ? (
-                    <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-                  ) : orderLabel}
-                  {/* Pin tail */}
-                  <div style={{
-                    position: 'absolute', bottom: -7, left: '50%', transform: 'translateX(-50%) rotate(45deg)',
-                    width: 10, height: 10,
-                    background: isInstalled ? 'var(--field-green)' : isSel ? 'var(--ink)' : 'var(--bone-raised)',
-                    borderRight: `2px solid ${isInstalled ? 'var(--field-green)' : 'var(--ink)'}`,
-                    borderBottom: `2px solid ${isInstalled ? 'var(--field-green)' : 'var(--ink)'}`,
-                  }} />
-                </div>
+                {lyr === 'street' ? 'Map' : 'Satellite'}
               </button>
-            );
-          })}
-
-          {/* Legend */}
-          <div style={{
-            position: 'absolute', top: 14, left: 14,
-            background: 'rgba(246,242,234,0.92)', backdropFilter: 'blur(10px)',
-            border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)',
-            padding: '8px 12px', display: 'flex', gap: 14,
-            fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 600,
-            letterSpacing: '0.1em', textTransform: 'uppercase',
-          }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--ink)', display: 'inline-block' }} /> To go
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--field-green)', display: 'inline-block' }} /> Done
-            </span>
+            ))}
           </div>
+        )}
 
-          {/* No coords fallback */}
-          {withCoords.length === 0 && (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
-              <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
-              </svg>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>No coordinates available</div>
-            </div>
-          )}
-        </div>
+        {/* Recenter on me */}
+        {withCoords.length > 0 && (
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-me'))}
+            aria-label="Recenter on my location"
+            style={{
+              position: 'absolute', bottom: 14, right: 14, zIndex: 400,
+              width: 48, height: 48, borderRadius: '50%',
+              background: 'var(--bone-raised)', color: 'var(--field-green)',
+              border: '1px solid var(--border-1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.18)', cursor: 'pointer',
+            }}
+          >
+            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+              <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Selected stop card */}
@@ -1966,7 +1930,10 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
   };
   const fmtTime = (iso: string) => {
-    if (!iso) return '';
+    // Baserow date-only fields return "YYYY-MM-DD" (no time). Parsing that
+    // with new Date() treats it as UTC midnight and renders as the previous
+    // evening locally. Only show a time if the string actually has one.
+    if (!iso || !iso.includes('T')) return '';
     const d = new Date(iso);
     if (isNaN(d.getTime())) return '';
     return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
