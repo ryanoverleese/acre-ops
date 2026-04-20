@@ -243,10 +243,15 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
   const [dragSource, setDragSource] = useState<{ tableName: string; fieldName: string; index: number } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Installer PINs state (managed via INSTALLER_PINS env var — UI builds the JSON)
-  const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
-  const [pinJsonCopied, setPinJsonCopied] = useState(false);
-  const [configuredInstallers, setConfiguredInstallers] = useState<Record<string, boolean>>({});
+  // Installer PINs state (live Baserow table)
+  interface InstallerRow { id: number; name: string; pinSet: boolean; }
+  const [installerRows, setInstallerRows] = useState<InstallerRow[]>([]);
+  const [pinInputs, setPinInputs] = useState<Record<number, string>>({});
+  const [savingPinId, setSavingPinId] = useState<number | null>(null);
+  const [savedPinId, setSavedPinId] = useState<number | null>(null);
+  const [newInstallerName, setNewInstallerName] = useState('');
+  const [newInstallerPin, setNewInstallerPin] = useState('');
+  const [addingInstaller, setAddingInstaller] = useState(false);
 
   const saveFieldOptions = async (tableName: string, fieldName: string, options: (SelectOption | { value: string; color: string })[]) => {
     const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
@@ -406,12 +411,12 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     setDragOverIndex(null);
   };
 
-  // Load which installers have PINs configured (from env var)
+  // Load installers from Baserow
   useEffect(() => {
     fetch('/api/installer-pins')
       .then(r => r.json())
-      .then((data: { configured: Record<string, boolean> }) => {
-        setConfiguredInstallers(data.configured ?? {});
+      .then((rows: { id: number; name: string; pinSet: boolean }[]) => {
+        if (Array.isArray(rows)) setInstallerRows(rows);
       })
       .catch(() => {});
   }, []);
@@ -677,21 +682,62 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     }
   };
 
-  const buildPinJson = () => {
-    const installerOptions = localOptions.probe_assignments?.planned_installer?.options || [];
-    const result: Record<string, string> = {};
-    for (const opt of installerOptions) {
-      const pin = (pinInputs[opt.value] || '').trim();
-      if (pin) result[opt.value] = pin;
-    }
-    return JSON.stringify(result);
+  const handleSavePin = async (row: { id: number; name: string; pinSet: boolean }) => {
+    const pin = (pinInputs[row.id] || '').trim();
+    if (pin && !/^\d{4,6}$/.test(pin)) { alert('PIN must be 4–6 digits'); return; }
+    setSavingPinId(row.id);
+    try {
+      const res = await fetch('/api/installer-pins', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: row.id, pin }),
+      });
+      if (res.ok) {
+        setInstallerRows(prev => prev.map(r => r.id === row.id ? { ...r, pinSet: !!pin } : r));
+        setSavedPinId(row.id);
+        setTimeout(() => setSavedPinId(p => p === row.id ? null : p), 2000);
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Failed to save');
+      }
+    } catch { alert('Failed to save'); }
+    finally { setSavingPinId(null); }
   };
 
-  const handleCopyPinJson = () => {
-    navigator.clipboard.writeText(buildPinJson()).then(() => {
-      setPinJsonCopied(true);
-      setTimeout(() => setPinJsonCopied(false), 2500);
-    });
+  const handleAddInstaller = async () => {
+    if (!newInstallerName.trim()) { alert('Name is required'); return; }
+    if (newInstallerPin && !/^\d{4,6}$/.test(newInstallerPin)) { alert('PIN must be 4–6 digits'); return; }
+    setAddingInstaller(true);
+    try {
+      const res = await fetch('/api/installer-pins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newInstallerName.trim(), pin: newInstallerPin }),
+      });
+      if (res.ok) {
+        const row = await res.json();
+        setInstallerRows(prev => [...prev, row]);
+        setNewInstallerName('');
+        setNewInstallerPin('');
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Failed to add');
+      }
+    } catch { alert('Failed to add'); }
+    finally { setAddingInstaller(false); }
+  };
+
+  const handleDeleteInstaller = async (id: number, name: string) => {
+    if (!confirm(`Remove installer "${name}"?`)) return;
+    try {
+      const res = await fetch('/api/installer-pins', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) setInstallerRows(prev => prev.filter(r => r.id !== id));
+      else alert('Failed to delete');
+    } catch { alert('Failed to delete'); }
   };
 
   const activeRates = productsServices.filter((sr) => sr.status === 'Active');
@@ -1404,11 +1450,9 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
         {/* Installer PINs */}
         <div className="table-container settings-section">
           <div className="table-header settings-section-toggle" onClick={() => toggleSection('installerPins')}>
-            <h3 className="table-title">Installer PINs</h3>
-            <svg
-              fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
-              className={`settings-chevron${openSections.has('installerPins') ? ' open' : ''}`}
-            >
+            <h3 className="table-title">Installers &amp; PINs</h3>
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20"
+              className={`settings-chevron${openSections.has('installerPins') ? ' open' : ''}`}>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </div>
@@ -1416,90 +1460,101 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           {openSections.has('installerPins') && (
             <div className="settings-section-content">
               <p className="section-description">
-                Set a numeric PIN (4–6 digits) for each installer. When done, copy the generated value and paste it into your Netlify environment variable <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 3, fontSize: 12 }}>INSTALLER_PINS</code>.
+                Manage installer names and their PINs for the Acre Field app. Changes save instantly.
               </p>
-              {(() => {
-                const installerOptions = localOptions.probe_assignments?.planned_installer?.options || [];
-                if (installerOptions.length === 0) {
-                  return (
-                    <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-                      No installer names found. Add them in Dropdown Options → Probe Assignments → Planned Installer first.
-                    </p>
-                  );
-                }
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      {installerOptions.map((opt) => {
-                        const name = opt.value;
-                        const isConfigured = configuredInstallers[name];
-                        return (
-                          <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ minWidth: 140, fontSize: 14, fontWeight: 500 }}>{name}</span>
-                            <input
-                              type="password"
-                              inputMode="numeric"
-                              maxLength={6}
-                              placeholder="4–6 digits"
-                              value={pinInputs[name] || ''}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                                setPinInputs(prev => ({ ...prev, [name]: val }));
-                              }}
-                              style={{
-                                width: 120,
-                                padding: '6px 10px',
-                                border: '1px solid var(--border)',
-                                borderRadius: 6,
-                                fontSize: 14,
-                                background: 'var(--bg-primary)',
-                                color: 'var(--text-primary)',
-                                letterSpacing: '0.2em',
-                              }}
-                            />
-                            {isConfigured && (
-                              <span style={{ fontSize: 12, color: 'var(--accent-primary)', fontWeight: 500 }}>✓ Active</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        Generated value for <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 3 }}>INSTALLER_PINS</code>
-                      </label>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <table className="desktop-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>PIN (4–6 digits)</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {installerRows.length === 0 && (
+                    <tr><td colSpan={4} className="entity-empty">No installers yet. Add one below.</td></tr>
+                  )}
+                  {installerRows.map(row => (
+                    <tr key={row.id}>
+                      <td className="operation-name">{row.name}</td>
+                      <td>
                         <input
-                          type="text"
-                          readOnly
-                          value={buildPinJson()}
-                          style={{
-                            flex: 1,
-                            padding: '8px 10px',
-                            border: '1px solid var(--border)',
-                            borderRadius: 6,
-                            fontSize: 13,
-                            background: 'var(--bg-hover)',
-                            color: 'var(--text-secondary)',
-                            fontFamily: 'monospace',
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="Enter PIN"
+                          value={pinInputs[row.id] ?? ''}
+                          onChange={e => {
+                            const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                            setPinInputs(prev => ({ ...prev, [row.id]: val }));
                           }}
+                          onKeyDown={e => { if (e.key === 'Enter') handleSavePin(row); }}
+                          style={{ width: 120, padding: '5px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 14, letterSpacing: '0.2em', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                         />
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={handleCopyPinJson}
-                          style={{ whiteSpace: 'nowrap' }}
-                        >
-                          {pinJsonCopied ? 'Copied ✓' : 'Copy'}
-                        </button>
-                      </div>
-                      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
-                        Netlify → Site configuration → Environment variables → <strong>INSTALLER_PINS</strong> → paste this value. A redeploy happens automatically.
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
+                      </td>
+                      <td>
+                        {savedPinId === row.id
+                          ? <span style={{ color: 'var(--accent-primary)', fontWeight: 600, fontSize: 13 }}>Saved ✓</span>
+                          : row.pinSet
+                            ? <span className="status-badge installed"><span className="status-dot" />PIN set</span>
+                            : <span className="status-badge pending"><span className="status-dot" />No PIN</span>
+                        }
+                      </td>
+                      <td>
+                        <div className="table-actions">
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => handleSavePin(row)}
+                            disabled={savingPinId === row.id || !pinInputs[row.id]}
+                          >
+                            {savingPinId === row.id ? '…' : 'Save'}
+                          </button>
+                          <button className="action-btn" title="Remove" onClick={() => handleDeleteInstaller(row.id, row.name)}>
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Add new installer row */}
+                  <tr>
+                    <td>
+                      <input
+                        type="text"
+                        placeholder="Installer name"
+                        value={newInstallerName}
+                        onChange={e => setNewInstallerName(e.target.value)}
+                        className="form-group input"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={6}
+                        placeholder="PIN (optional)"
+                        value={newInstallerPin}
+                        onChange={e => setNewInstallerPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        style={{ width: 120, padding: '5px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 14, letterSpacing: '0.2em', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                      />
+                    </td>
+                    <td colSpan={2}>
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={handleAddInstaller}
+                        disabled={addingInstaller || !newInstallerName.trim()}
+                      >
+                        {addingInstaller ? '…' : '+ Add'}
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           )}
         </div>

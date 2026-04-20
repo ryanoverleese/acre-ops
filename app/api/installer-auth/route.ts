@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { readPins } from '@/app/api/installer-pins/route';
+import { getInstallerByName } from '@/app/api/installer-pins/route';
 
 export async function POST(request: Request) {
   try {
@@ -7,11 +7,14 @@ export async function POST(request: Request) {
     if (!installer || !pin) {
       return NextResponse.json({ error: 'installer and pin required' }, { status: 400 });
     }
-    const pins = readPins();
-    if (!pins[installer]) {
+    const row = await getInstallerByName(installer);
+    if (!row) {
+      return NextResponse.json({ error: 'Installer not found' }, { status: 401 });
+    }
+    if (!row.pin) {
       return NextResponse.json({ error: 'No PIN configured for this installer' }, { status: 401 });
     }
-    if (pins[installer] !== String(pin)) {
+    if (row.pin !== String(pin)) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
     return NextResponse.json({ ok: true });

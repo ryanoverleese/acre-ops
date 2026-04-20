@@ -71,6 +71,7 @@ export const TABLE_IDS = {
   notifications: 854433,
   documents: 861653,
   probe_rack: 934076,
+  installers: 939826,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
@@ -483,6 +484,12 @@ export interface InvoiceLine {
   service_type?: string;
   rate?: number;
   quantity?: number;
+}
+
+export interface Installer {
+  id: number;
+  name?: string;
+  pin?: string;
 }
 
 export interface ProbeRackSlot {
