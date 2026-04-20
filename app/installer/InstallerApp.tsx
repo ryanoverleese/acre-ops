@@ -42,6 +42,31 @@ interface SuccessData {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+function playSuccessSound() {
+  try {
+    const AudioCtx = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const note = (freq: number, startOffset: number, duration: number, vol = 0.25) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, ctx.currentTime + startOffset);
+      gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + startOffset + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startOffset + duration);
+      osc.start(ctx.currentTime + startOffset);
+      osc.stop(ctx.currentTime + startOffset + duration + 0.05);
+    };
+    // Ascending C–E–G major arpeggio
+    note(523, 0,    0.18); // C5
+    note(659, 0.12, 0.18); // E5
+    note(784, 0.24, 0.40); // G5
+  } catch { /* silently ignore if audio unavailable */ }
+}
+
 function calcFlags(antennaType: string, sideDress: string) {
   const antenna = antennaType.toLowerCase();
   const sd = sideDress.toLowerCase();
@@ -135,6 +160,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const handleLogout = () => { clearSession(); setSession(null); setAssignments([]); setScreen('login'); };
   const handleSelectAssignment = (a: InstallerAssignment) => { setSelected(a); setScreen('field'); };
   const handleInstallSuccess = (data: SuccessData, assignmentId: number) => {
+    playSuccessSound();
     setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: 'Installed' } : a));
     setSuccessData(data);
     setScreen('success');
