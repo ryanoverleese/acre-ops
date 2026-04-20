@@ -28,7 +28,19 @@ export interface InstallerAssignment {
   status: string;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'settings';
+
+type MapProvider = 'google' | 'apple';
+const MAP_PROVIDER_KEY = 'af-map-provider';
+function getMapProvider(): MapProvider {
+  if (typeof window === 'undefined') return 'google';
+  const v = localStorage.getItem(MAP_PROVIDER_KEY);
+  return v === 'apple' ? 'apple' : 'google';
+}
+function mapsUrlFor(lat: number, lng: number, provider: MapProvider): string {
+  if (provider === 'apple') return `https://maps.apple.com/?q=${lat},${lng}&ll=${lat},${lng}`;
+  return `https://maps.google.com/?daddr=${lat},${lng}`;
+}
 type Filter = 'todo' | 'done' | 'all';
 
 interface Session {
@@ -207,10 +219,17 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             assignments={assignments}
             onLogout={handleLogout}
             onOpenHistory={() => setScreen('history')}
+            onOpenSettings={() => setScreen('settings')}
           />
         )}
         {screen === 'history' && session && (
           <HistoryScreen
+            session={session}
+            onBack={() => setScreen('me')}
+          />
+        )}
+        {screen === 'settings' && session && (
+          <SettingsScreen
             session={session}
             onBack={() => setScreen('me')}
           />
@@ -564,7 +583,7 @@ function RouteScreen({
 function FieldScreen({ assignment: a, onBack, onStartInstall }: {
   assignment: InstallerAssignment; onBack: () => void; onStartInstall: () => void;
 }) {
-  const mapsUrl = a.lat && a.lng ? `https://maps.google.com/?daddr=${a.lat},${a.lng}` : null;
+  const mapsUrl = a.lat && a.lng ? mapsUrlFor(a.lat, a.lng, getMapProvider()) : null;
   const isDone = a.status.toLowerCase() === 'installed';
 
   return (
@@ -1707,12 +1726,13 @@ function FlagIcon({ size = 20 }: { size?: number }) {
 // ─── Me Screen ────────────────────────────────────────────────────────────────
 
 function MeScreen({
-  session, assignments, onLogout, onOpenHistory,
+  session, assignments, onLogout, onOpenHistory, onOpenSettings,
 }: {
   session: Session;
   assignments: InstallerAssignment[];
   onLogout: () => void;
   onOpenHistory: () => void;
+  onOpenSettings: () => void;
 }) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const installed = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
@@ -1784,6 +1804,21 @@ function MeScreen({
               label="Install history"
               sub="All my installs this season"
               onClick={onOpenHistory}
+              showChevron
+              last
+            />
+          </MenuGroup>
+          <MenuGroup label="App">
+            <MenuRow
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+                </svg>
+              }
+              label="Settings"
+              sub="Map provider, preferences"
+              onClick={onOpenSettings}
               showChevron
               last
             />
@@ -2054,6 +2089,125 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Screen ──────────────────────────────────────────────────────────
+
+function SettingsScreen({ session, onBack }: { session: Session; onBack: () => void }) {
+  const [mapProvider, setMapProvider] = useState<MapProvider>('google');
+
+  useEffect(() => {
+    setMapProvider(getMapProvider());
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(MAP_PROVIDER_KEY, mapProvider);
+  }, [mapProvider]);
+
+  return (
+    <div className="af-screen">
+      <div className="af-topbar">
+        <button
+          onClick={onBack}
+          style={{ color: 'var(--field-green)', padding: 6, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Back"
+        >
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Settings</div>
+        </div>
+        <div style={{ width: 40 }} />
+      </div>
+
+      <div className="af-body" style={{ padding: '14px 14px 40px', background: '#FFFFFF' }}>
+        {/* Map provider */}
+        <div style={{ marginBottom: 22 }}>
+          <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Map provider</div>
+          <div style={{
+            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+            borderRadius: 'var(--r-lg)', overflow: 'hidden',
+          }}>
+            {[
+              { id: 'google' as const, label: 'Google Maps', sub: 'maps.google.com' },
+              { id: 'apple' as const, label: 'Apple Maps', sub: 'maps.apple.com · iOS default' },
+            ].map((opt, i, arr) => (
+              <button
+                key={opt.id}
+                onClick={() => setMapProvider(opt.id)}
+                style={{
+                  width: '100%', padding: '14px 14px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: 'transparent', border: 'none',
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  border: mapProvider === opt.id ? '7px solid var(--field-green)' : '2px solid var(--stone-300)',
+                  flexShrink: 0, transition: 'border-width 0.1s',
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
+                    {opt.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                    {opt.sub}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 8, padding: '0 4px', lineHeight: 1.4 }}>
+            Used when you tap &ldquo;Get directions&rdquo; from a field.
+          </div>
+        </div>
+
+        {/* Signed in as */}
+        <div style={{ marginBottom: 22 }}>
+          <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Signed in as</div>
+          <div style={{
+            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+            borderRadius: 'var(--r-lg)', padding: '14px 14px',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: 10,
+              background: 'var(--sage-wash)', color: 'var(--field-green)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
+            }}>
+              {session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
+                {session.installer}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                {session.season} season
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 8, padding: '0 4px', lineHeight: 1.4 }}>
+            Sign out from the Account screen to switch installer.
+          </div>
+        </div>
+
+        {/* App info */}
+        <div style={{
+          padding: '14px', borderTop: '1px solid var(--border-1)',
+          textAlign: 'center', color: 'var(--stone-500)', fontSize: 11,
+          lineHeight: 1.6, marginTop: 8,
+        }}>
+          <div style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>ACRE FIELD · v1.0</div>
+          <div>Acre Insights · {session.season} season</div>
+        </div>
       </div>
     </div>
   );
