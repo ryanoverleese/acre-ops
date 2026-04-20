@@ -243,11 +243,10 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
   const [dragSource, setDragSource] = useState<{ tableName: string; fieldName: string; index: number } | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
-  // Installer PINs state
-  const [installerPins, setInstallerPins] = useState<Record<string, string>>({});
+  // Installer PINs state (managed via INSTALLER_PINS env var — UI builds the JSON)
   const [pinInputs, setPinInputs] = useState<Record<string, string>>({});
-  const [savingPin, setSavingPin] = useState<string | null>(null);
-  const [savedPin, setSavedPin] = useState<string | null>(null);
+  const [pinJsonCopied, setPinJsonCopied] = useState(false);
+  const [configuredInstallers, setConfiguredInstallers] = useState<Record<string, boolean>>({});
 
   const saveFieldOptions = async (tableName: string, fieldName: string, options: (SelectOption | { value: string; color: string })[]) => {
     const tableOpts = localOptions[tableName as keyof SerializedSelectOptionsWithMeta];
@@ -407,13 +406,12 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     setDragOverIndex(null);
   };
 
-  // Load installer PINs from server on mount
+  // Load which installers have PINs configured (from env var)
   useEffect(() => {
     fetch('/api/installer-pins')
       .then(r => r.json())
-      .then((pins: Record<string, string>) => {
-        setInstallerPins(pins);
-        setPinInputs(pins);
+      .then((data: { configured: Record<string, boolean> }) => {
+        setConfiguredInstallers(data.configured ?? {});
       })
       .catch(() => {});
   }, []);
@@ -679,37 +677,21 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     }
   };
 
-  const handleSavePin = async (installer: string) => {
-    const pin = (pinInputs[installer] || '').trim();
-    if (pin !== '' && !/^\d{4,6}$/.test(pin)) {
-      alert('PIN must be 4–6 digits');
-      return;
+  const buildPinJson = () => {
+    const installerOptions = localOptions.probe_assignments?.planned_installer?.options || [];
+    const result: Record<string, string> = {};
+    for (const opt of installerOptions) {
+      const pin = (pinInputs[opt.value] || '').trim();
+      if (pin) result[opt.value] = pin;
     }
-    setSavingPin(installer);
-    try {
-      const res = await fetch('/api/installer-pins', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ installer, pin }),
-      });
-      if (res.ok) {
-        setInstallerPins(prev => {
-          const next = { ...prev };
-          if (pin === '') delete next[installer];
-          else next[installer] = pin;
-          return next;
-        });
-        setSavedPin(installer);
-        setTimeout(() => setSavedPin(p => p === installer ? null : p), 2000);
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to save PIN');
-      }
-    } catch {
-      alert('Failed to save PIN');
-    } finally {
-      setSavingPin(null);
-    }
+    return JSON.stringify(result);
+  };
+
+  const handleCopyPinJson = () => {
+    navigator.clipboard.writeText(buildPinJson()).then(() => {
+      setPinJsonCopied(true);
+      setTimeout(() => setPinJsonCopied(false), 2500);
+    });
   };
 
   const activeRates = productsServices.filter((sr) => sr.status === 'Active');
@@ -1434,7 +1416,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
           {openSections.has('installerPins') && (
             <div className="settings-section-content">
               <p className="section-description">
-                Set a numeric PIN (4–6 digits) for each installer. They&apos;ll enter this on their phone to access their daily route.
+                Set a numeric PIN (4–6 digits) for each installer. When done, copy the generated value and paste it into your Netlify environment variable <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 3, fontSize: 12 }}>INSTALLER_PINS</code>.
               </p>
               {(() => {
                 const installerOptions = localOptions.probe_assignments?.planned_installer?.options || [];
@@ -1446,57 +1428,75 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
                   );
                 }
                 return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {installerOptions.map((opt) => {
-                      const name = opt.value;
-                      const isSaving = savingPin === name;
-                      const isSaved = savedPin === name;
-                      const currentPin = pinInputs[name] || '';
-                      const hasChanged = currentPin !== (installerPins[name] || '');
-                      return (
-                        <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <span style={{ minWidth: 140, fontSize: 14, fontWeight: 500 }}>{name}</span>
-                          <input
-                            type="password"
-                            inputMode="numeric"
-                            maxLength={6}
-                            placeholder="PIN (4–6 digits)"
-                            value={currentPin}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                              setPinInputs(prev => ({ ...prev, [name]: val }));
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSavePin(name);
-                            }}
-                            style={{
-                              width: 130,
-                              padding: '6px 10px',
-                              border: '1px solid var(--border)',
-                              borderRadius: 6,
-                              fontSize: 14,
-                              background: 'var(--bg-primary)',
-                              color: 'var(--text-primary)',
-                              letterSpacing: '0.2em',
-                            }}
-                          />
-                          <button
-                            className="btn btn-primary btn-sm"
-                            onClick={() => handleSavePin(name)}
-                            disabled={isSaving || !hasChanged}
-                            style={{ minWidth: 60 }}
-                          >
-                            {isSaving ? '...' : 'Save'}
-                          </button>
-                          {isSaved && (
-                            <span style={{ fontSize: 13, color: 'var(--accent-primary)', fontWeight: 500 }}>Saved ✓</span>
-                          )}
-                          {installerPins[name] && !isSaved && (
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>PIN set</span>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {installerOptions.map((opt) => {
+                        const name = opt.value;
+                        const isConfigured = configuredInstallers[name];
+                        return (
+                          <div key={opt.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <span style={{ minWidth: 140, fontSize: 14, fontWeight: 500 }}>{name}</span>
+                            <input
+                              type="password"
+                              inputMode="numeric"
+                              maxLength={6}
+                              placeholder="4–6 digits"
+                              value={pinInputs[name] || ''}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                                setPinInputs(prev => ({ ...prev, [name]: val }));
+                              }}
+                              style={{
+                                width: 120,
+                                padding: '6px 10px',
+                                border: '1px solid var(--border)',
+                                borderRadius: 6,
+                                fontSize: 14,
+                                background: 'var(--bg-primary)',
+                                color: 'var(--text-primary)',
+                                letterSpacing: '0.2em',
+                              }}
+                            />
+                            {isConfigured && (
+                              <span style={{ fontSize: 12, color: 'var(--accent-primary)', fontWeight: 500 }}>✓ Active</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                        Generated value for <code style={{ background: 'var(--bg-hover)', padding: '1px 5px', borderRadius: 3 }}>INSTALLER_PINS</code>
+                      </label>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          readOnly
+                          value={buildPinJson()}
+                          style={{
+                            flex: 1,
+                            padding: '8px 10px',
+                            border: '1px solid var(--border)',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            background: 'var(--bg-hover)',
+                            color: 'var(--text-secondary)',
+                            fontFamily: 'monospace',
+                          }}
+                        />
+                        <button
+                          className="btn btn-primary btn-sm"
+                          onClick={handleCopyPinJson}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          {pinJsonCopied ? 'Copied ✓' : 'Copy'}
+                        </button>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>
+                        Netlify → Site configuration → Environment variables → <strong>INSTALLER_PINS</strong> → paste this value. A redeploy happens automatically.
+                      </p>
+                    </div>
                   </div>
                 );
               })()}

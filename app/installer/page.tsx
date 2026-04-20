@@ -1,6 +1,5 @@
-import fs from 'fs';
-import path from 'path';
 import { getAllSelectOptionsWithMeta } from '@/lib/baserow';
+import { readPins } from '@/app/api/installer-pins/route';
 import InstallerApp from './InstallerApp';
 
 export const dynamic = 'force-dynamic';
@@ -15,24 +14,16 @@ async function getInstallerNames(): Promise<string[]> {
   }
 }
 
-function getConfiguredInstallers(): string[] {
-  try {
-    const raw = fs.readFileSync(path.join(process.cwd(), 'installer-pins.json'), 'utf-8');
-    return Object.keys(JSON.parse(raw));
-  } catch {
-    return [];
-  }
-}
-
 export default async function InstallerPage() {
-  const [installerNames, configuredInstallers] = await Promise.all([
+  const [installerNames, pins] = await Promise.all([
     getInstallerNames(),
-    Promise.resolve(getConfiguredInstallers()),
+    Promise.resolve(readPins()),
   ]);
 
-  // Show installers that have a PIN configured; fall back to all names if none configured
-  const withPins = installerNames.filter((n) => configuredInstallers.includes(n));
-  const displayNames = withPins.length > 0 ? withPins : installerNames;
+  // Only show installers that have a PIN configured
+  const configuredNames = installerNames.filter((n) => !!pins[n]);
+  // Fall back to all names if none have PINs yet (dev/setup mode)
+  const displayNames = configuredNames.length > 0 ? configuredNames : installerNames;
 
   return <InstallerApp installerNames={displayNames} />;
 }

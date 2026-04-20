@@ -1,16 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
-
-const PINS_FILE = path.join(process.cwd(), 'installer-pins.json');
-
-function readPins(): Record<string, string> {
-  try {
-    return JSON.parse(fs.readFileSync(PINS_FILE, 'utf-8'));
-  } catch {
-    return {};
-  }
-}
+import { readPins } from '@/app/api/installer-pins/route';
 
 export async function POST(request: Request) {
   try {
