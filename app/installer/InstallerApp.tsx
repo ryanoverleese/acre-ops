@@ -28,6 +28,7 @@ export interface InstallerAssignment {
   probeRack: string;
   probeRackSlot: number | null;
   antennaType: string;
+  batteryType: string;
   fieldNotes: string;
   status: string;
 }
@@ -1362,18 +1363,20 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
 
   // Aggregate supplies over todo only
   const antennas: Record<string, number> = {};
-  let batteries = 0;
+  const batteries: Record<string, number> = {};
   const flags = { pink: 0, blue: 0, white: 0 };
   let gatewayCount = 0;
   for (const a of todo) {
     const ant = a.antennaType || 'Standard';
     antennas[ant] = (antennas[ant] || 0) + 1;
-    batteries += 2;
+    const bat = a.batteryType || 'Unspecified';
+    batteries[bat] = (batteries[bat] || 0) + 1;
     const f = calcFlags(a.antennaType, a.sideDress);
     flags.pink += f.pink; flags.blue += f.blue; flags.white += f.white;
     // Gateway rule: 1 per Sentek probe
     if (/sentek/i.test(a.probeBrand)) gatewayCount += 1;
   }
+  const totalBatteries = Object.values(batteries).reduce((s, n) => s + n, 0);
 
   const todayStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -1565,13 +1568,25 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         </SectionCard>
 
         {/* Batteries */}
-        <SectionCard title="Batteries" count={batteries} icon={<BoltIcon />}>
-          <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)', padding: '16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>D-cell packs</div>
-              <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>2 per probe × {todo.length} probe{todo.length !== 1 ? 's' : ''}</div>
-            </div>
-            <BigCount n={batteries} />
+        <SectionCard title="Batteries" count={totalBatteries} icon={<BoltIcon />}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, background: 'var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
+            {Object.entries(batteries).sort().map(([type, count]) => (
+              <div key={type} style={{ background: 'var(--bone-raised)', padding: '12px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <BoltIcon size={16} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{type}</div>
+                    <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{count === 1 ? '1 probe' : `${count} probes`}</div>
+                  </div>
+                </div>
+                <BigCount n={count} />
+              </div>
+            ))}
+            {Object.keys(batteries).length === 0 && (
+              <div style={{ background: 'var(--bone-raised)', padding: 14, fontSize: 12, color: 'var(--stone-500)', textAlign: 'center' }}>No batteries needed.</div>
+            )}
           </div>
         </SectionCard>
 

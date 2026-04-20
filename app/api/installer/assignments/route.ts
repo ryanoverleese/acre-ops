@@ -107,6 +107,7 @@ export async function GET(request: NextRequest) {
           probeRack: rackInfo ? rackInfo.rack : '',
           probeRackSlot: rackInfo ? rackInfo.slot : null,
           antennaType: pa.antenna_type?.value ?? '',
+          batteryType: pa.battery_type?.value ?? '',
           fieldNotes: fs.notes ?? '',
           status: pa.probe_status?.value ?? 'Assigned',
         };
