@@ -1718,9 +1718,63 @@ function MeScreen({
   onOpenSettings: () => void;
 }) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const installed = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
-  const total = assignments.length;
-  const remaining = total - installed;
+  const installedToday = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
+  const totalToday = assignments.length;
+
+  // Fetch season history to compute Season / Streak / Avg per day
+  const [seasonCount, setSeasonCount] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number | null>(null);
+  const [avgPerDay, setAvgPerDay] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/installer/history?installer=${encodeURIComponent(session.installer)}&season=${session.season}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const entries: Array<{ installDate?: string }> = data.history ?? [];
+        const count = entries.length;
+        setSeasonCount(count);
+
+        // Unique install dates (YYYY-MM-DD), newest first
+        const uniqueDays = Array.from(new Set(
+          entries.map(h => (h.installDate || '').slice(0, 10)).filter(Boolean)
+        )).sort().reverse();
+
+        // Average per active day
+        setAvgPerDay(uniqueDays.length > 0 ? (count / uniqueDays.length).toFixed(1) : '0');
+
+        // Streak: consecutive days back from latest install, only "active" if
+        // the most recent install was today or yesterday.
+        if (uniqueDays.length === 0) {
+          setStreak(0);
+        } else {
+          const today = new Date();
+          today.setHours(12, 0, 0, 0);
+          const latest = new Date(uniqueDays[0] + 'T12:00:00');
+          const daysSince = Math.round((today.getTime() - latest.getTime()) / 86400000);
+          if (daysSince > 1) {
+            setStreak(0);
+          } else {
+            let s = 1;
+            for (let i = 1; i < uniqueDays.length; i++) {
+              const prev = new Date(uniqueDays[i - 1] + 'T12:00:00');
+              const curr = new Date(uniqueDays[i] + 'T12:00:00');
+              const gap = Math.round((prev.getTime() - curr.getTime()) / 86400000);
+              if (gap === 1) s++; else break;
+            }
+            setStreak(s);
+          }
+        }
+      } catch {
+        if (!cancelled) { setSeasonCount(0); setStreak(0); setAvgPerDay('0'); }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.installer, session.season]);
+
+  const val = (v: number | string | null) => (v == null ? '—' : String(v));
 
   return (
     <div className="af-screen">
@@ -1768,10 +1822,10 @@ function MeScreen({
         {/* Stats grid */}
         <div style={{ padding: '16px 14px 0' }}>
           <div className="af-statgrid">
-            <div className="stat"><span className="lbl">Today</span><span className="val">{installed}/{total}</span></div>
-            <div className="stat"><span className="lbl">Remaining</span><span className="val">{remaining}</span></div>
-            <div className="stat"><span className="lbl">Installed</span><span className="val">{installed}</span></div>
-            <div className="stat"><span className="lbl">Season</span><span className="val">{session.season}</span></div>
+            <div className="stat"><span className="lbl">Today</span><span className="val">{installedToday}/{totalToday}</span></div>
+            <div className="stat"><span className="lbl">Season</span><span className="val">{val(seasonCount)}</span></div>
+            <div className="stat"><span className="lbl">Streak</span><span className="val">{streak != null ? `${streak}d` : '—'}</span></div>
+            <div className="stat"><span className="lbl">Avg / day</span><span className="val">{val(avgPerDay)}</span></div>
           </div>
         </div>
 
