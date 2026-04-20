@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const installer = searchParams.get('installer');
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
+  const debug = searchParams.get('debug') === '1';
 
   if (!installer) {
     return NextResponse.json({ error: 'installer param required' }, { status: 400 });
@@ -40,13 +41,25 @@ export async function GET(request: NextRequest) {
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
+    // Diagnostic counters
+    const stepCounts = { totalPA: probeAssignments.length, withFS: 0, inSeason: 0, matchedInstaller: 0 };
+    const seenInstallers = new Set<string>();
+    const seenSeasons = new Set<number>();
+    const droppedExamples: Array<{ paId: number; reason: string; fsInstaller?: string; fsSeason?: number }> = [];
+
     const assignments = probeAssignments
       .filter((pa) => {
         const fsId = pa.field_season?.[0]?.id;
-        if (!fsId) return false;
+        if (!fsId) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'no field_season link' }); return false; }
+        stepCounts.withFS++;
         const fs = fieldSeasonMap.get(fsId);
-        if (!fs || fs.season !== season) return false;
-        if (fs.planned_installer?.value !== installer) return false;
+        if (!fs) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'field_season not found' }); return false; }
+        if (fs.season != null) seenSeasons.add(fs.season);
+        if (fs.planned_installer?.value) seenInstallers.add(fs.planned_installer.value);
+        if (fs.season !== season) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'season mismatch', fsSeason: fs.season }); return false; }
+        stepCounts.inSeason++;
+        if (fs.planned_installer?.value !== installer) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'installer mismatch', fsInstaller: fs.planned_installer?.value }); return false; }
+        stepCounts.matchedInstaller++;
         return true;
       })
       .map((pa) => {
@@ -91,6 +104,18 @@ export async function GET(request: NextRequest) {
         if (a.routeOrder !== b.routeOrder) return a.routeOrder - b.routeOrder;
         return a.fieldName.localeCompare(b.fieldName);
       });
+
+    if (debug) {
+      return NextResponse.json({
+        assignments,
+        season,
+        requestedInstaller: installer,
+        stepCounts,
+        seenInstallers: Array.from(seenInstallers).sort(),
+        seenSeasons: Array.from(seenSeasons).sort(),
+        droppedExamples,
+      });
+    }
 
     return NextResponse.json({ assignments, season });
   } catch (error) {
