@@ -63,10 +63,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Diagnostic counters
-    const stepCounts = { totalPA: probeAssignments.length, withFS: 0, inSeason: 0, matchedInstaller: 0 };
+    const stepCounts = { totalPA: probeAssignments.length, withFS: 0, inSeason: 0, matchedInstaller: 0, readyOrInstalled: 0 };
     const seenInstallers = new Set<string>();
     const seenSeasons = new Set<number | string>();
-    const droppedExamples: Array<{ paId: number; reason: string; fsInstaller?: string; fsSeason?: number | string }> = [];
+    const droppedExamples: Array<{ paId: number; reason: string; fsInstaller?: string; fsSeason?: number | string; ready?: unknown; status?: string }> = [];
 
     const assignments = probeAssignments
       .filter((pa) => {
@@ -81,6 +81,15 @@ export async function GET(request: NextRequest) {
         stepCounts.inSeason++;
         if (fs.planned_installer?.value !== installer) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'installer mismatch', fsInstaller: fs.planned_installer?.value }); return false; }
         stepCounts.matchedInstaller++;
+        // Must be marked ready_to_install on the field_season, OR already installed
+        // (keep installed ones visible so they show under the Done filter).
+        const status = (pa.probe_status?.value ?? '').toLowerCase();
+        const isInstalled = status === 'installed';
+        if (!fs.ready_to_install && !isInstalled) {
+          if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'not ready_to_install', ready: fs.ready_to_install, status });
+          return false;
+        }
+        stepCounts.readyOrInstalled++;
         return true;
       })
       .map((pa) => {
