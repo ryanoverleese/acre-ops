@@ -165,10 +165,11 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchAssignments = useCallback(async (s: Session) => {
+  const fetchAssignments = useCallback(async (s: Session, fresh = false) => {
     setLoadingAssignments(true);
     try {
-      const res = await fetch(`/api/installer/assignments?installer=${encodeURIComponent(s.installer)}&season=${s.season}`);
+      const url = `/api/installer/assignments?installer=${encodeURIComponent(s.installer)}&season=${s.season}${fresh ? '&fresh=1' : ''}`;
+      const res = await fetch(url, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       setAssignments(data.assignments ?? []);
     } catch { setAssignments([]); }
@@ -202,7 +203,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onFilterChange={setFilter}
             onSelect={handleSelectAssignment}
             onLogout={handleLogout}
-            onRefresh={() => fetchAssignments(session)}
+            onRefresh={() => fetchAssignments(session, true)}
           />
         )}
         {screen === 'map' && session && (

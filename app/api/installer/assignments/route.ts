@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCachedRows,
+  getRows,
   getProbeAssignments,
   type Field,
   type FieldSeason,
@@ -19,22 +20,34 @@ export async function GET(request: NextRequest) {
   const installer = searchParams.get('installer');
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
   const debug = searchParams.get('debug') === '1';
+  const fresh = searchParams.get('fresh') === '1';
 
   if (!installer) {
     return NextResponse.json({ error: 'installer param required' }, { status: 400 });
   }
 
   try {
+    // When fresh=1, skip the cache so updates in Baserow (planned_installer,
+    // route_order, etc.) show up immediately when the user taps refresh.
+    const read = {
+      fields: fresh ? getRows<Field>('fields') : getCachedRows<Field>('fields', undefined, 120),
+      fieldSeasons: fresh ? getRows<FieldSeason>('field_seasons') : getCachedRows<FieldSeason>('field_seasons', undefined, 60),
+      probes: fresh ? getRows<Probe>('probes') : getCachedRows<Probe>('probes', undefined, 120),
+      billingEntities: fresh ? getRows<BillingEntity>('billing_entities') : getCachedRows<BillingEntity>('billing_entities', undefined, 300),
+      operations: fresh ? getRows<Operation>('operations') : getCachedRows<Operation>('operations', undefined, 300),
+      contacts: fresh ? getRows<Contact>('contacts') : getCachedRows<Contact>('contacts', undefined, 300),
+      rackSlots: fresh ? getRows<ProbeRackSlot>('probe_rack') : getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
+    };
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts, rackSlots] =
       await Promise.all([
-        getCachedRows<Field>('fields', undefined, 120),
-        getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-        getCachedRows<Probe>('probes', undefined, 120),
-        getCachedRows<BillingEntity>('billing_entities', undefined, 300),
-        getCachedRows<Operation>('operations', undefined, 300),
+        read.fields,
+        read.fieldSeasons,
+        read.probes,
+        read.billingEntities,
+        read.operations,
         getProbeAssignments(),
-        getCachedRows<Contact>('contacts', undefined, 300),
-        getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
+        read.contacts,
+        read.rackSlots,
       ]);
 
     const operationMap = buildOperationMap(operations);
