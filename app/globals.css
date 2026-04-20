@@ -10375,7 +10375,7 @@ tr.expanded-row:hover {
 .af-cta-bar {
   position: sticky; bottom: 0;
   padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, color-mix(in oklab, var(--bone) 0%, transparent) 0%, var(--bone) 30%);
+  background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #FFFFFF 30%);
   display: flex; gap: 10px; flex-shrink: 0;
   box-shadow: 0 -4px 20px rgba(31,64,42,0.06);
 }

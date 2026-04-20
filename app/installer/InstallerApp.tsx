@@ -517,7 +517,7 @@ function RouteScreen({
       </div>
 
       {/* List */}
-      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10, background: '#FFFFFF' }}>
         {loading && (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)', fontFamily: 'var(--font-display)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Loading route…
@@ -635,7 +635,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
         ) : <div style={{ width: 32 }} />}
       </div>
 
-      <div className="af-body" style={{ paddingBottom: 100 }}>
+      <div className="af-body" style={{ paddingBottom: 100, background: '#FFFFFF' }}>
         {/* Hero */}
         <div className="af-field-hero">
           <TopoDeco />
@@ -824,7 +824,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         <div style={{ position: 'absolute', inset: 0, right: 'auto', width: `${progress * 100}%`, background: 'var(--field-green)', transition: 'width 200ms var(--ease-out)' }} />
       </div>
 
-      <div className="af-body" style={{ paddingBottom: 120 }}>
+      <div className="af-body" style={{ paddingBottom: 120, background: '#FFFFFF' }}>
         {/* Compact field header */}
         <div style={{ background: 'var(--field-green)', color: 'var(--bone)', padding: '14px 18px 16px', position: 'relative', overflow: 'hidden' }}>
           <TopoDeco />
