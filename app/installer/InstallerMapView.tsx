@@ -25,10 +25,31 @@ interface Props {
 }
 
 // Build a numbered "pin" as an inline SVG divIcon.
+// When routeOrder is unknown, fall back to a smaller plain dot pin (no '?').
 function makePin(label: string, installed: boolean, selected: boolean) {
+  const hasOrder = label && label !== '?';
   const bg = installed ? '#1F402A' : selected ? '#0A0A0A' : '#FFFFFF';
   const fg = installed || selected ? '#F6F2EA' : '#0A0A0A';
   const stroke = installed ? '#1F402A' : '#0A0A0A';
+
+  // Plain dot pin (for stops without a route order)
+  if (!hasOrder && !installed) {
+    const html = `
+      <div style="
+        width:20px;height:20px;border-radius:50%;
+        background:${bg};border:2px solid ${stroke};
+        box-shadow:0 3px 8px rgba(0,0,0,0.25);
+        position:relative;transform:translateY(-2px);
+      "></div>
+    `;
+    return L.divIcon({
+      className: 'af-leaflet-pin',
+      html,
+      iconSize: [20, 22],
+      iconAnchor: [10, 22],
+    });
+  }
+
   const content = installed
     ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
     : label;
@@ -68,6 +89,23 @@ const SAT_ATTR = 'Imagery &copy; Esri';
 // Transparent labels overlay with roads + place names, composited over satellite
 const LABELS_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}';
 const PLACES_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+
+// Toggle a CSS class on the map container based on zoom so labels can
+// hide themselves when zoomed out too far to space them out.
+function ZoomLabelGate({ threshold = 12 }: { threshold?: number }) {
+  const map = useMap();
+  useEffect(() => {
+    const update = () => {
+      const container = map.getContainer();
+      if (map.getZoom() < threshold) container.classList.add('af-hide-labels');
+      else container.classList.remove('af-hide-labels');
+    };
+    update();
+    map.on('zoomend', update);
+    return () => { map.off('zoomend', update); };
+  }, [map, threshold]);
+  return null;
+}
 
 // Fit bounds to all points once on mount, or re-fit when points change.
 function FitBounds({ points }: { points: MapPoint[] }) {
@@ -224,6 +262,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
       <UserLocation />
       <FitBounds points={valid} />
       <RecenterListener getUserPos={() => userPosRef.current} />
+      <ZoomLabelGate threshold={12} />
     </MapContainer>
   );
 }

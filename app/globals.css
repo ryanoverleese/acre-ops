@@ -9967,6 +9967,8 @@ tr.expanded-row:hover {
   color: #F6F2EA;
   border-color: #0A0A0A;
 }
+/* Hide labels when zoomed out — they overlap and add clutter */
+.leaflet-container.af-hide-labels .af-map-label.leaflet-tooltip { display: none; }
 
 /* Brand vars scoped to the installer app wrapper */
 .af-app {
