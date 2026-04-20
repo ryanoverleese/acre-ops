@@ -1313,7 +1313,11 @@ function MapScreen({
             }}>
               {selected.status.toLowerCase() === 'installed' ? (
                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-              ) : selected.routeOrder !== 999 ? selected.routeOrder : '?'}
+              ) : selected.routeOrder !== 999 ? (
+                selected.routeOrder
+              ) : (
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'currentColor' }} />
+              )}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
