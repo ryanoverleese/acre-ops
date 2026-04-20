@@ -644,32 +644,64 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
         ) : <div style={{ width: 32 }} />}
       </div>
 
-      <div className="af-body" style={{ paddingBottom: 100, background: '#FFFFFF' }}>
-        {/* Hero */}
-        <div className="af-field-hero">
-          <TopoDeco />
-          <div style={{ position: 'absolute', left: 18, bottom: 18, color: 'var(--bone)' }}>
-            <div style={{ fontSize: 10, letterSpacing: '0.18em', fontFamily: 'var(--font-display)', fontWeight: 600, opacity: 0.72, textTransform: 'uppercase' }}>
-              Field location
-            </div>
-            {a.lat && a.lng && (
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, marginTop: 4, opacity: 0.85 }}>
-                {a.lat.toFixed(4)}°N · {Math.abs(a.lng).toFixed(4)}°W
+      <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
+        {/* Hero — green splash with integrated Open in Maps CTA */}
+        {mapsUrl ? (
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="af-field-hero"
+            style={{ textDecoration: 'none', color: 'inherit', display: 'block', cursor: 'pointer' }}
+            aria-label="Open in maps"
+          >
+            <TopoDeco />
+            <div style={{ position: 'absolute', inset: 0, padding: '20px 20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', color: 'var(--bone)' }}>
+              {/* Top row: eyebrow */}
+              <div style={{ fontSize: 10, letterSpacing: '0.2em', fontFamily: 'var(--font-display)', fontWeight: 600, opacity: 0.72, textTransform: 'uppercase' }}>
+                Location
               </div>
-            )}
-          </div>
-          {mapsUrl && (
-            <div style={{ position: 'absolute', right: 18, bottom: 18, color: 'var(--bone)', opacity: 0.7, fontSize: 10, letterSpacing: '0.14em', fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase' }}>
-              Tap for maps ►
+              {/* Bottom row: pin + label + arrow */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: 14, flexShrink: 0,
+                  background: 'rgba(246,242,234,0.18)',
+                  border: '1px solid rgba(246,242,234,0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(6px)',
+                }}>
+                  <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1 }}>
+                    Open in Maps
+                  </div>
+                  {a.lat && a.lng && (
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, marginTop: 5, opacity: 0.82 }}>
+                      {a.lat.toFixed(5)}°N · {Math.abs(a.lng).toFixed(5)}°W
+                    </div>
+                  )}
+                </div>
+                <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0, opacity: 0.85 }}>
+                  <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
+                </svg>
+              </div>
             </div>
-          )}
-          {mapsUrl && (
-            <a href={mapsUrl} target="_blank" rel="noopener noreferrer" style={{ position: 'absolute', inset: 0 }} aria-label="Open in maps" />
-          )}
-        </div>
+          </a>
+        ) : (
+          <div className="af-field-hero">
+            <TopoDeco />
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bone)', opacity: 0.7, fontFamily: 'var(--font-display)', fontSize: 13, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+              No coordinates available
+            </div>
+          </div>
+        )}
 
         {/* Title */}
-        <div style={{ padding: '18px 18px 8px' }}>
+        <div style={{ padding: '18px 18px 14px' }}>
           <div className="af-eyebrow">{a.operation}</div>
           <div className="af-display-text" style={{ fontSize: 32, marginTop: 6, textTransform: 'uppercase' }}>{a.fieldName}</div>
           {isDone && (
@@ -677,65 +709,6 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
               <svg width="12" height="12" stroke="currentColor" strokeWidth="3" fill="none" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
               Installed
             </span>
-          )}
-        </div>
-
-        {/* Location card — prominent, tappable to open directions */}
-        <div style={{ padding: '0 14px 16px' }}>
-          <div className="af-eyebrow" style={{ marginBottom: 8 }}>Location</div>
-          {mapsUrl ? (
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '16px 16px',
-                background: 'var(--bone-raised)',
-                border: '1px solid var(--border-1)',
-                borderLeft: '4px solid var(--field-green)',
-                borderRadius: 'var(--r-md)',
-                textDecoration: 'none', color: 'inherit',
-                boxShadow: 'var(--shadow-1)',
-              }}
-            >
-              <div style={{
-                width: 44, height: 44, borderRadius: 12, flexShrink: 0,
-                background: 'var(--field-green)', color: 'var(--bone)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'var(--shadow-1)',
-              }}>
-                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontFamily: 'var(--font-display)', fontWeight: 700,
-                  fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em',
-                  color: 'var(--ink)', lineHeight: 1.1,
-                }}>
-                  Open in Maps
-                </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--stone-500)', marginTop: 4 }}>
-                  {a.lat.toFixed(5)}°N · {Math.abs(a.lng).toFixed(5)}°W
-                </div>
-              </div>
-              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--field-green)', flexShrink: 0 }}>
-                <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
-              </svg>
-            </a>
-          ) : (
-            <div style={{
-              padding: '14px 16px',
-              background: 'var(--bone-raised)',
-              border: '1px solid var(--border-1)',
-              borderRadius: 'var(--r-md)',
-              fontSize: 13, color: 'var(--stone-500)',
-            }}>
-              No coordinates available
-            </div>
           )}
         </div>
 
@@ -776,16 +749,29 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
         )}
       </div>
 
-      {/* CTA */}
+      {/* CTA — edge-to-edge bold green bar, no gap to bottom nav */}
       {!isDone && (
-        <div className="af-cta-bar">
-          <button className="af-btn af-btn--primary af-btn--xl af-btn--block" onClick={onStartInstall}>
-            Start Install
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        </div>
+        <button
+          onClick={onStartInstall}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 14,
+            width: '100%', minHeight: 84,
+            padding: '0 24px', border: 'none', borderRadius: 0,
+            background: 'var(--field-green)', color: 'var(--bone)',
+            fontFamily: 'var(--font-display)', fontWeight: 700,
+            fontSize: 22, letterSpacing: '0.06em', textTransform: 'uppercase',
+            boxShadow: '0 -6px 20px rgba(31,64,42,0.18)',
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+        >
+          Start Install
+          <svg width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.75" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        </button>
       )}
     </div>
   );
