@@ -557,8 +557,16 @@ function RouteScreen({
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <div className="af-stop-field">{a.fieldName}</div>
                   {a.fieldNotes && (
-                    <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 9, letterSpacing: '0.16em', color: '#fff', background: '#B91C1C', padding: '2px 6px', borderRadius: 3, textTransform: 'uppercase' }}>
-                      Note
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      fontFamily: 'var(--font-display)', fontWeight: 800,
+                      fontSize: 10, letterSpacing: '0.16em',
+                      color: '#fff', background: '#B91C1C',
+                      padding: '3px 8px', borderRadius: 3,
+                      textTransform: 'uppercase',
+                      boxShadow: '0 0 0 2px #FEE2E2',
+                    }}>
+                      Install Note
                     </span>
                   )}
                 </div>

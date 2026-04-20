@@ -142,7 +142,10 @@ export async function GET(request: NextRequest) {
           probeRackSlot: rackInfo ? (toNum(rackInfo.slot) || null) : null,
           antennaType: pa.antenna_type?.value ?? '',
           batteryType: pa.battery_type?.value ?? '',
-          fieldNotes: fs.notes ?? '',
+          // Merge any access/install notes from either the field_season or
+          // the probe_assignment's placement_notes field so installers see
+          // all relevant notes.
+          fieldNotes: [fs.notes, pa.placement_notes].filter(Boolean).join('\n\n'),
           status: pa.probe_status?.value ?? 'Assigned',
         };
       })
