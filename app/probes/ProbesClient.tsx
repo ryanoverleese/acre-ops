@@ -15,6 +15,7 @@ export interface ProcessedProbe {
   status: string;
   rack: string;
   rackSlot: string;
+  rackSlotRowId?: number;
   yearNew?: number;
   notes?: string;
   damagesRepairs?: string;
@@ -25,6 +26,13 @@ export interface ProcessedProbe {
   contactId?: number;
   operation: string;
   tradeYear: string;
+}
+
+interface RackSlot {
+  id: number;
+  rack: string;
+  rack_slot: number;
+  probe?: { id: number; value: string }[];
 }
 
 export interface BillingEntityOption {
@@ -157,6 +165,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [savedBE, setSavedBE] = useState<Set<number>>(new Set());
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradingProbe, setTradingProbe] = useState<ProcessedProbe | null>(null);
+  const [editRackSlots, setEditRackSlots] = useState<RackSlot[] | null>(null);
+  const [editRackSlotsLoading, setEditRackSlotsLoading] = useState(false);
+  const [editRackSlotRowId, setEditRackSlotRowId] = useState<number | null>(null);
+  const [originalRackSlotRowId, setOriginalRackSlotRowId] = useState<number | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [showQuickHits, setShowQuickHits] = useState(false);
   const [quickStatusProbe, setQuickStatusProbe] = useState<ProcessedProbe | null>(null);
@@ -573,7 +585,6 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
 
   const handleEdit = async () => {
     if (!selectedProbe) return;
-    // Serial number is optional for On Order probes
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -587,19 +598,38 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         damages_repairs: editForm.damages_repairs || null,
       };
 
-      const response = await fetch(`/api/probes/${selectedProbe.id}`, {
+      const probeRes = await fetch(`/api/probes/${selectedProbe.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (response.ok) {
-        setShowEditModal(false);
-        setSelectedProbe(null);
-        window.location.reload();
-      } else {
-        const error = await response.json();
+      if (!probeRes.ok) {
+        const error = await probeRes.json();
         alert(error.error || 'Failed to update probe');
+        return;
       }
+
+      // Handle rack location change
+      if (editRackSlotRowId !== originalRackSlotRowId) {
+        if (originalRackSlotRowId) {
+          await fetch(`/api/probe-rack/${originalRackSlotRowId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ probe: null }),
+          });
+        }
+        if (editRackSlotRowId) {
+          await fetch(`/api/probe-rack/${editRackSlotRowId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ probe: selectedProbe.id }),
+          });
+        }
+      }
+
+      setShowEditModal(false);
+      setSelectedProbe(null);
+      window.location.reload();
     } catch (error) {
       console.error('Update error:', error);
       alert('Failed to update probe');
@@ -724,7 +754,18 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       notes: probe.notes || '',
       damages_repairs: probe.damagesRepairs || '',
     });
+    const currentRowId = probe.rackSlotRowId ?? null;
+    setEditRackSlotRowId(currentRowId);
+    setOriginalRackSlotRowId(currentRowId);
+    setEditRackSlots(null);
     setShowEditModal(true);
+    // Lazy-load rack slots
+    setEditRackSlotsLoading(true);
+    fetch('/api/probe-rack')
+      .then(r => r.json())
+      .then((slots: RackSlot[]) => setEditRackSlots(slots))
+      .catch(() => setEditRackSlots([]))
+      .finally(() => setEditRackSlotsLoading(false));
   };
 
   const getBrandBadge = (brand: string) => {
@@ -1508,6 +1549,38 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
                     ]}
                     placeholder="Select status..."
                   />
+                </div>
+                <div className="form-group">
+                  <label>Rack Location</label>
+                  {editRackSlotsLoading ? (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '6px 0' }}>Loading slots…</div>
+                  ) : (
+                    <SearchableSelect
+                      value={editRackSlotRowId?.toString() || ''}
+                      onChange={(v) => setEditRackSlotRowId(v ? Number(v) : null)}
+                      options={[
+                        { value: '', label: '— No rack —' },
+                        ...(editRackSlots ?? [])
+                          .filter(s => {
+                            const isCurrent = s.id === originalRackSlotRowId;
+                            const isEmpty = !s.probe?.some(p => !!p.value);
+                            return isCurrent || isEmpty;
+                          })
+                          .sort((a, b) => {
+                            const numA = parseInt(a.rack) || 0;
+                            const numB = parseInt(b.rack) || 0;
+                            if (numA !== numB) return numA - numB;
+                            if (a.rack !== b.rack) return a.rack.localeCompare(b.rack);
+                            return a.rack_slot - b.rack_slot;
+                          })
+                          .map(s => ({
+                            value: s.id.toString(),
+                            label: `${s.rack} - Slot ${s.rack_slot}${s.id === originalRackSlotRowId ? ' (current)' : ''}`,
+                          })),
+                      ]}
+                      placeholder="Select rack slot…"
+                    />
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Notes</label>

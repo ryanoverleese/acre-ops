@@ -25,12 +25,12 @@ async function getProbesData(): Promise<{
       getRows<ProbeRackSlot>('probe_rack'),
     ]);
 
-    // Build probeId → {rack, slot} from probe_rack table
-    const probeRackMap = new Map<number, { rack: string; slot: number }>();
+    // Build probeId → {rack, slot, rowId} from probe_rack table
+    const probeRackMap = new Map<number, { rack: string; slot: number; rowId: number }>();
     for (const slot of rackSlots) {
       const probeLink = slot.probe?.[0];
       if (probeLink?.id) {
-        probeRackMap.set(probeLink.id, { rack: slot.rack, slot: slot.rack_slot });
+        probeRackMap.set(probeLink.id, { rack: slot.rack, slot: slot.rack_slot, rowId: slot.id });
       }
     }
 
@@ -54,6 +54,7 @@ async function getProbesData(): Promise<{
         status: probe.status?.value || 'Unknown',
         rack: probeRackMap.get(probe.id)?.rack || '—',
         rackSlot: probeRackMap.get(probe.id)?.slot?.toString() || '—',
+        rackSlotRowId: probeRackMap.get(probe.id)?.rowId,
         yearNew: probe.year_new,
         notes: probe.notes,
         damagesRepairs: probe.damages_repairs,
