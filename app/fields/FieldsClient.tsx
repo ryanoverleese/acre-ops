@@ -546,6 +546,7 @@ export default function FieldsClient({
         (f.operation || '').toLowerCase().includes(query) ||
         (f.billingEntityName || '').toLowerCase().includes(query) ||
         (f.crop || '').toLowerCase().includes(query) ||
+        (f.plannedInstaller || '').toLowerCase().includes(query) ||
         f.probe?.toLowerCase().includes(query)
       );
     }
@@ -1887,7 +1888,7 @@ export default function FieldsClient({
                     </svg>
                     <input
                       type="text"
-                      placeholder="Search fields..."
+                      placeholder="Search field, operation, crop, installer…"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
