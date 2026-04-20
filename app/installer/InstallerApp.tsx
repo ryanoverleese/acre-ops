@@ -1467,40 +1467,34 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                 }}>
                   {/* Big rack location badge — acts as a physical shelf marker */}
                   <div style={{
-                    width: 72, flexShrink: 0,
+                    width: 88, flexShrink: 0,
                     background: isLoaded ? 'var(--field-green)' : 'var(--stone-50)',
                     color: isLoaded ? 'var(--bone)' : 'var(--field-green)',
                     borderRight: '1px solid ' + (isLoaded ? 'var(--field-green)' : 'var(--border-1)'),
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    gap: 2, padding: '10px 6px',
+                    gap: 4, padding: '10px 6px',
                   }}>
                     {hasRack ? (
-                      <>
-                        <span style={{
-                          fontFamily: 'var(--font-display)', fontWeight: 700,
-                          fontSize: 22, lineHeight: 1, letterSpacing: '0.02em',
-                          fontVariantNumeric: 'tabular-nums',
-                        }}>
-                          {s.probeRack}
-                        </span>
+                      <span style={{
+                        fontFamily: 'var(--font-display)', fontWeight: 700,
+                        fontSize: 22, lineHeight: 1, letterSpacing: '0.02em',
+                        fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap',
+                      }}>
+                        {s.probeRack}
                         {s.probeRackSlot != null && (
-                          <span style={{
-                            fontFamily: 'var(--font-display)', fontWeight: 700,
-                            fontSize: 15, lineHeight: 1,
-                            fontVariantNumeric: 'tabular-nums',
-                            opacity: 0.85,
-                          }}>
-                            ·{s.probeRackSlot}
-                          </span>
+                          <>
+                            <span style={{ margin: '0 3px', opacity: 0.55 }}>·</span>
+                            {s.probeRackSlot}
+                          </>
                         )}
-                      </>
+                      </span>
                     ) : (
                       <span style={{ fontSize: 22, opacity: 0.4 }}>—</span>
                     )}
                     <span style={{
                       fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
                       fontFamily: 'var(--font-display)', fontWeight: 700,
-                      opacity: 0.7, marginTop: 2,
+                      opacity: 0.7,
                     }}>
                       Rack
                     </span>
