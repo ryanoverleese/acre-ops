@@ -28,7 +28,7 @@ export interface InstallerAssignment {
   status: string;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history';
 type Filter = 'todo' | 'done' | 'all';
 
 interface Session {
@@ -206,6 +206,13 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             session={session}
             assignments={assignments}
             onLogout={handleLogout}
+            onOpenHistory={() => setScreen('history')}
+          />
+        )}
+        {screen === 'history' && session && (
+          <HistoryScreen
+            session={session}
+            onBack={() => setScreen('me')}
           />
         )}
         {screen === 'field' && selected && (
@@ -1700,11 +1707,12 @@ function FlagIcon({ size = 20 }: { size?: number }) {
 // ─── Me Screen ────────────────────────────────────────────────────────────────
 
 function MeScreen({
-  session, assignments, onLogout,
+  session, assignments, onLogout, onOpenHistory,
 }: {
   session: Session;
   assignments: InstallerAssignment[];
   onLogout: () => void;
+  onOpenHistory: () => void;
 }) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const installed = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
@@ -1766,6 +1774,20 @@ function MeScreen({
 
         {/* Menu */}
         <div style={{ padding: '20px 14px 0' }}>
+          <MenuGroup label="Work">
+            <MenuRow
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                </svg>
+              }
+              label="Install history"
+              sub="All my installs this season"
+              onClick={onOpenHistory}
+              showChevron
+              last
+            />
+          </MenuGroup>
           <MenuGroup label="Support">
             <a href="tel:4025121850" style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}>
               <MenuRow
@@ -1849,5 +1871,190 @@ function MenuRow({
         </svg>
       )}
     </button>
+  );
+}
+
+// ─── Install History Screen ───────────────────────────────────────────────────
+
+interface HistoryEntry {
+  id: number;
+  fieldName: string;
+  operation: string;
+  crop: string;
+  probeSerial: string;
+  installDate: string;
+  label: string;
+}
+
+function HistoryScreen({ session, onBack }: { session: Session; onBack: () => void }) {
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/installer/history?installer=${encodeURIComponent(session.installer)}&season=${session.season}`);
+        const data = await res.json();
+        if (!cancelled) setHistory(data.history ?? []);
+      } catch {
+        if (!cancelled) setHistory([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [session.installer, session.season]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? history.filter(h =>
+        h.fieldName.toLowerCase().includes(q) ||
+        h.operation.toLowerCase().includes(q) ||
+        h.probeSerial.toLowerCase().includes(q))
+    : history;
+
+  // Group by date portion (YYYY-MM-DD) of installDate
+  const groups: Record<string, HistoryEntry[]> = {};
+  for (const h of filtered) {
+    const date = (h.installDate || '').slice(0, 10) || 'unknown';
+    if (!groups[date]) groups[date] = [];
+    groups[date].push(h);
+  }
+  const dates = Object.keys(groups).filter(d => d !== 'unknown').sort().reverse();
+  if (groups['unknown']) dates.push('unknown');
+
+  const fmtDate = (iso: string) => {
+    if (iso === 'unknown') return 'Undated';
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+  };
+  const fmtTime = (iso: string) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+  };
+
+  return (
+    <div className="af-screen">
+      <div className="af-topbar">
+        <button
+          onClick={onBack}
+          style={{ color: 'var(--field-green)', padding: 6, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Back"
+        >
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Install history</div>
+          <div className="af-topbar-sub">{history.length} install{history.length !== 1 ? 's' : ''} · {session.season} season</div>
+        </div>
+        <div style={{ width: 40 }} />
+      </div>
+
+      <div className="af-body" style={{ padding: '12px 14px 24px', background: '#FFFFFF' }}>
+        {/* Search */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '10px 12px', background: 'var(--bone-raised)',
+          border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)',
+          marginBottom: 14,
+        }}>
+          <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--stone-500)', flexShrink: 0 }}>
+            <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Field, operation, or serial"
+            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit' }}
+          />
+          {query && (
+            <button
+              onClick={() => setQuery('')}
+              style={{ color: 'var(--stone-500)', padding: 4, background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}
+              aria-label="Clear"
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            </button>
+          )}
+        </div>
+
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)', fontFamily: 'var(--font-display)', fontSize: 14, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Loading history…
+          </div>
+        )}
+
+        {!loading && dates.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {q ? 'No installs match' : 'No installs yet this season'}
+            </div>
+          </div>
+        )}
+
+        {!loading && dates.map(date => (
+          <div key={date} style={{ marginBottom: 18 }}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline', gap: 10,
+              padding: '0 4px 8px', borderBottom: '1px solid var(--border-1)',
+              marginBottom: 8,
+            }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.08em', color: 'var(--ink)', textTransform: 'uppercase' }}>
+                {fmtDate(date)}
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--stone-500)', fontFamily: 'var(--font-display)', fontWeight: 600, letterSpacing: '0.12em' }}>
+                {groups[date].length} INSTALL{groups[date].length !== 1 ? 'S' : ''}
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {groups[date].map(h => (
+                <div key={h.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px',
+                  background: 'var(--bone-raised)',
+                  border: '1px solid var(--border-1)',
+                  borderRadius: 'var(--r-md)',
+                }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                    background: 'var(--sage-wash)', color: 'var(--field-green)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13, letterSpacing: '0.02em', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {h.fieldName}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, fontSize: 11, color: 'var(--stone-500)' }}>
+                      {h.operation && <span>{h.operation}</span>}
+                      {h.operation && h.crop && <span style={{ color: 'var(--stone-300)' }}>·</span>}
+                      {h.crop && <span>{h.crop}</span>}
+                      {h.label && <><span style={{ color: 'var(--stone-300)' }}>·</span><span>{h.label}</span></>}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    {fmtTime(h.installDate) && (
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmtTime(h.installDate)}
+                      </div>
+                    )}
+                    {h.probeSerial && (
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--stone-500)', marginTop: 2 }}>
+                        #{h.probeSerial}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
