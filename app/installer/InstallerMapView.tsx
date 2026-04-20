@@ -230,6 +230,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
         const installed = p.status.toLowerCase() === 'installed';
         const selected = selectedId === p.id;
         const label = p.routeOrder !== 999 ? String(p.routeOrder) : '?';
+        const hasOrder = p.routeOrder !== 999;
         return (
           <Marker
             key={p.id}
@@ -243,6 +244,21 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
               offset={[0, -2]}
               className={`af-map-label${selected ? ' is-selected' : ''}${installed ? ' is-installed' : ''}`}
             >
+              {hasOrder && (
+                <span style={{
+                  display: 'inline-block',
+                  marginRight: 6,
+                  paddingRight: 6,
+                  borderRight: '1px solid',
+                  borderColor: 'currentColor',
+                  opacity: 1,
+                  fontVariantNumeric: 'tabular-nums',
+                  color: 'inherit',
+                }}>
+                  <span style={{ opacity: 0.55, marginRight: 3, fontSize: '0.85em' }}>#</span>
+                  {p.routeOrder}
+                </span>
+              )}
               {p.fieldName}
             </Tooltip>
           </Marker>
