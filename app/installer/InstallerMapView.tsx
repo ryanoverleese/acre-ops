@@ -81,14 +81,12 @@ function makePin(label: string, installed: boolean, selected: boolean) {
   });
 }
 
-// Tile URL templates
-const OSM_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-const SAT_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
-const SAT_ATTR = 'Imagery &copy; Esri';
-// Transparent labels overlay with roads + place names, composited over satellite
-const LABELS_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}';
-const PLACES_URL = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+// Tile URL templates — using the same Google tile servers as the rest of
+// the Acre Insights app (see InstallsMap.tsx, WeatherStationsMap.tsx).
+// lyrs=m = roadmap (streets), lyrs=y = hybrid (satellite + labels)
+const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+const GOOGLE_ATTR = '&copy; Google';
 
 // Toggle a CSS class on the map container based on zoom so labels can
 // hide themselves when zoomed out too far to space them out.
@@ -222,18 +220,10 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
       attributionControl
     >
       <TileLayer
-        url={layer === 'satellite' ? SAT_URL : OSM_URL}
-        attribution={layer === 'satellite' ? SAT_ATTR : OSM_ATTR}
-        maxZoom={19}
+        url={layer === 'satellite' ? SAT_URL : STREET_URL}
+        attribution={GOOGLE_ATTR}
+        maxZoom={20}
       />
-
-      {/* Road + place label overlay on satellite view */}
-      {layer === 'satellite' && (
-        <>
-          <TileLayer url={LABELS_URL} maxZoom={19} />
-          <TileLayer url={PLACES_URL} maxZoom={19} />
-        </>
-      )}
 
       {/* Stop pins */}
       {valid.map(p => {
