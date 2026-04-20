@@ -679,6 +679,65 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
           )}
         </div>
 
+        {/* Location card — prominent, tappable to open directions */}
+        <div style={{ padding: '0 14px 16px' }}>
+          <div className="af-eyebrow" style={{ marginBottom: 8 }}>Location</div>
+          {mapsUrl ? (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 16px',
+                background: 'var(--bone-raised)',
+                border: '1px solid var(--border-1)',
+                borderLeft: '4px solid var(--field-green)',
+                borderRadius: 'var(--r-md)',
+                textDecoration: 'none', color: 'inherit',
+                boxShadow: 'var(--shadow-1)',
+              }}
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 12, flexShrink: 0,
+                background: 'var(--field-green)', color: 'var(--bone)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: 'var(--shadow-1)',
+              }}>
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontFamily: 'var(--font-display)', fontWeight: 700,
+                  fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em',
+                  color: 'var(--ink)', lineHeight: 1.1,
+                }}>
+                  Open in Maps
+                </div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--stone-500)', marginTop: 4 }}>
+                  {a.lat.toFixed(5)}°N · {Math.abs(a.lng).toFixed(5)}°W
+                </div>
+              </div>
+              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--field-green)', flexShrink: 0 }}>
+                <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
+              </svg>
+            </a>
+          ) : (
+            <div style={{
+              padding: '14px 16px',
+              background: 'var(--bone-raised)',
+              border: '1px solid var(--border-1)',
+              borderRadius: 'var(--r-md)',
+              fontSize: 13, color: 'var(--stone-500)',
+            }}>
+              No coordinates available
+            </div>
+          )}
+        </div>
+
         {/* Stat grid */}
         <div style={{ padding: '0 14px' }}>
           <div className="af-statgrid">
