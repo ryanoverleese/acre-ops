@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   --bg-primary: #f7f5f2;
@@ -9935,430 +9935,485 @@ tr.expanded-row:hover {
   cursor: not-allowed;
 }
 
-/* ─── Installer App ────────────────────────────────────────────────────────── */
+/* ─── Acre Field Installer App (af- design system) ──────────────────────────── */
 
-.installer-screen {
-  position: fixed;
-  inset: 0;
-  background: var(--bg-primary);
-  display: flex;
-  flex-direction: column;
+/* Brand vars scoped to the installer app wrapper */
+.af-app {
+  --field-green:        #1F402A;
+  --field-green-ink:    #163126;
+  --field-green-light:  #1F4736;
+  --sage:               #7A9380;
+  --sage-light:         #BCCBBE;
+  --sage-wash:          #E4EBE2;
+  --bone:               #F6F2EA;
+  --bone-raised:        #FFFFFF;
+  --stone-50:           #EDE8DD;
+  --stone-100:          #D9D2C4;
+  --stone-300:          #A89F8D;
+  --stone-500:          #6B6456;
+  --stone-700:          #3F3B33;
+  --ink:                #0A0A0A;
+  --moist:              #2F6BB0;
+  --dry:                #C97B2D;
+  --stressed:           #B23A2A;
+  --border-1:           color-mix(in oklab, #1F402A 12%, transparent);
+  --border-2:           color-mix(in oklab, #1F402A 24%, transparent);
+  --shadow-1:           0 1px 2px rgba(31,64,42,0.06), 0 0 0 0.5px rgba(31,64,42,0.04);
+  --shadow-2:           0 8px 24px rgba(31,64,42,0.10), 0 2px 6px rgba(31,64,42,0.06);
+  --font-display:       "Barlow Condensed", "Oswald", system-ui, sans-serif;
+  --font-body:          "Inter Tight", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:          "JetBrains Mono", "SF Mono", Menlo, monospace;
+  --r-sm: 4px; --r-md: 8px; --r-lg: 12px; --r-xl: 20px; --r-pill: 999px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 120ms; --dur-med: 200ms; --dur-slow: 320ms;
+  --card-pad: 16px;
+}
+
+/* App shell */
+.af-app, .af-app * { box-sizing: border-box; }
+.af-app button, .af-app input, .af-app textarea, .af-app select {
+  font-family: inherit; color: inherit; background: none; border: none;
+}
+.af-app button { cursor: pointer; }
+.af-app {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--bone);
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column;
   overflow: hidden;
-  z-index: 9999;
-  font-family: var(--font-sans, 'General Sans', sans-serif);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Header */
-.installer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border);
+/* Screen */
+.af-screen {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  background: var(--bone);
+  overflow: hidden;
+}
+
+/* Top bar */
+.af-topbar {
+  padding: 52px 18px 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  background: var(--bone);
+  position: relative; z-index: 2;
+  border-bottom: 1px solid var(--border-1);
   flex-shrink: 0;
 }
-.installer-header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.af-topbar-title {
+  font-family: var(--font-display);
+  font-weight: 700; text-transform: uppercase;
+  font-size: 22px; letter-spacing: 0.01em; line-height: 1;
 }
-.installer-header-logo { font-size: 20px; }
-.installer-header-name { font-weight: 600; font-size: 15px; color: var(--text-primary); }
-.installer-header-title { font-weight: 600; font-size: 14px; color: var(--text-secondary); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.installer-header-right { display: flex; gap: 8px; }
-
-.installer-icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-}
-.installer-icon-btn:hover { background: var(--bg-hover); }
-
-.installer-back-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--accent-primary);
-  font-size: 15px;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 0;
+.af-topbar-sub {
+  font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--stone-500); margin-top: 3px;
 }
 
-/* Login */
-.installer-login {
-  align-items: center;
-  justify-content: center;
-  padding: 24px 16px;
-  overflow-y: auto;
+/* Scrollable body */
+.af-body {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
-.installer-login-logo {
-  text-align: center;
-  margin-bottom: 32px;
-}
-.installer-logo-icon { font-size: 48px; line-height: 1; margin-bottom: 8px; }
-.installer-login-logo h1 { font-size: 28px; font-weight: 700; color: var(--text-primary); margin: 0; }
-.installer-login-logo p { color: var(--text-muted); font-size: 14px; margin: 4px 0 0; }
+.af-body::-webkit-scrollbar { width: 0; display: none; }
+.af-body { scrollbar-width: none; }
 
-.installer-login-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
-  width: 100%;
-  max-width: 360px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+/* Bottom nav */
+.af-bottombar {
+  display: flex; align-items: stretch; justify-content: space-around;
+  height: 76px; padding: 6px 8px 10px;
+  background: var(--bone);
+  border-top: 1px solid var(--border-1);
+  position: relative; z-index: 3;
+  flex-shrink: 0;
 }
-
-.installer-form-group { display: flex; flex-direction: column; gap: 8px; }
-.installer-form-group label { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
-
-.installer-select {
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 15px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  width: 100%;
+.af-tab {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px;
+  color: var(--stone-500);
+  font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+  font-weight: 600; font-family: var(--font-display);
+  border-radius: var(--r-md);
+  background: none; border: none; cursor: pointer;
 }
-
-.installer-pin-dots {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  padding: 8px 0;
-}
-.installer-pin-dot {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 2px solid var(--border);
-  background: var(--bg-primary);
-  transition: background 0.15s;
-}
-.installer-pin-dot.filled {
-  background: var(--accent-primary);
-  border-color: var(--accent-primary);
-}
-
-.installer-numpad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-.installer-numpad-btn {
-  height: 56px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: var(--bg-primary);
-  font-size: 22px;
-  font-weight: 500;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background 0.1s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.installer-numpad-btn:active { background: var(--bg-hover); }
-.installer-numpad-empty { background: transparent; border-color: transparent; cursor: default; }
-.installer-numpad-delete { font-size: 18px; }
+.af-tab svg { width: 22px; height: 22px; stroke-width: 2; }
+.af-tab[aria-current="true"] { color: var(--field-green); }
+.af-tab[aria-current="true"] svg { stroke-width: 2.5; }
 
 /* Buttons */
-.installer-btn-primary {
-  background: var(--accent-primary);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  padding: 14px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  width: 100%;
-  transition: opacity 0.15s;
+.af-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; min-height: 52px; padding: 0 20px;
+  font-family: var(--font-display);
+  font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; font-size: 15px;
+  border-radius: var(--r-md);
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+  border: none; cursor: pointer;
 }
-.installer-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.installer-btn-primary:active:not(:disabled) { opacity: 0.85; }
+.af-btn:active { transform: scale(0.98); }
+.af-btn--primary { background: var(--field-green); color: var(--bone); box-shadow: var(--shadow-1); }
+.af-btn--primary:active { background: var(--field-green-ink); }
+.af-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.af-btn--secondary { background: var(--bone-raised); color: var(--ink); border: 1px solid var(--border-2); }
+.af-btn--ghost { color: var(--field-green); background: transparent; }
+.af-btn--lg { min-height: 60px; font-size: 16px; padding: 0 20px; }
+.af-btn--xl { min-height: 72px; font-size: 20px; letter-spacing: 0.04em; }
+.af-btn--block { width: 100%; }
 
-.installer-error {
-  background: #fff0f0;
-  border: 1px solid #fca5a5;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 14px;
-  color: #b91c1c;
+/* Chips */
+.af-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: var(--r-pill);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; font-family: var(--font-display);
+  background: var(--stone-50); color: var(--stone-700);
+  white-space: nowrap;
+}
+.af-chip--installed { background: var(--field-green); color: var(--bone); }
+.af-chip--todo { background: #FDEBD3; color: #8A4E14; }
+
+/* Segmented filter */
+.af-segmented {
+  display: inline-flex; background: var(--stone-50); border-radius: var(--r-pill);
+  padding: 4px; gap: 2px;
+  border: 1px solid var(--border-1);
+}
+.af-segmented button {
+  min-height: 36px; padding: 0 16px; border-radius: var(--r-pill);
+  font-size: 12px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; font-family: var(--font-display);
+  color: var(--stone-700); background: none; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.af-segmented button[aria-pressed="true"] {
+  background: var(--bone-raised); color: var(--ink);
+  box-shadow: var(--shadow-1);
+}
+.af-segmented .count {
+  font-family: var(--font-mono); font-size: 11px;
+  background: color-mix(in oklab, currentColor 10%, transparent);
+  padding: 1px 6px; border-radius: var(--r-pill); letter-spacing: 0;
 }
 
-/* Route List */
-.installer-filter-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border);
+/* Filter bar */
+.af-filterbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; background: var(--bone);
+  gap: 10px;
+  position: sticky; top: 0; z-index: 1;
+  border-bottom: 1px solid var(--border-1);
   flex-shrink: 0;
 }
-.installer-filter-tab {
-  flex: 1;
-  padding: 12px 8px;
-  border: none;
-  background: none;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text-muted);
+
+/* Stop card */
+.af-stop {
+  background: var(--bone-raised); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 14px 14px 14px 0;
+  display: grid; grid-template-columns: 56px 1fr auto;
+  gap: 0; align-items: stretch;
+  cursor: pointer; width: 100%;
+  transition: transform 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+  position: relative; text-align: left;
+}
+.af-stop:active { transform: scale(0.995); }
+.af-stop[data-status="installed"] { opacity: 0.7; }
+.af-stop[data-status="installed"] .af-stop-order { background: var(--field-green); color: var(--bone); }
+.af-stop[data-status="todo"] .af-stop-order { background: var(--sage-wash); color: var(--field-green); }
+.af-stop::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px;
+  width: 3px; border-radius: 2px; background: var(--stone-100);
+}
+.af-stop[data-status="installed"]::before { background: var(--field-green); }
+.af-stop[data-status="todo"]::before { background: var(--dry); }
+
+.af-stop-order {
+  border-radius: var(--r-md); margin: 0 14px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1;
+  background: var(--stone-50); color: var(--stone-700);
+}
+.af-stop-order .stop-label { font-size: 8px; letter-spacing: 0.2em; margin-top: 3px; opacity: 0.7; }
+.af-stop-main { min-width: 0; text-align: left; }
+.af-stop-field {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 20px; line-height: 1.05; text-transform: uppercase;
+  letter-spacing: -0.005em; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.af-stop-op { font-size: 12px; color: var(--stone-500); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-stop-probe { font-family: var(--font-mono); font-size: 12px; color: var(--stone-700); margin-top: 4px; font-variant-numeric: tabular-nums; }
+.af-stop-right {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 14px; border-left: 1px dashed var(--border-1);
+  color: var(--stone-300);
+}
+
+/* Progress header */
+.af-progress-header {
+  padding: 56px 18px 18px;
+  background: var(--field-green); color: var(--bone);
+  position: relative; overflow: hidden; flex-shrink: 0;
+}
+.af-progress-header .topo {
+  position: absolute; inset: 0; opacity: 0.12; pointer-events: none;
+}
+.af-progress-header .greeting {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  opacity: 0.72; font-family: var(--font-display); font-weight: 600;
+  position: relative;
+}
+.af-progress-header .date {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 32px; line-height: 1; text-transform: uppercase;
+  margin-top: 6px; position: relative;
+}
+.af-progress-header .subdate {
+  font-size: 13px; opacity: 0.75; margin-top: 4px;
+  letter-spacing: 0.02em; position: relative;
+}
+.af-pb-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; position: relative; }
+.af-pb-stat .num {
+  font-family: var(--font-display); font-weight: 700;
+  font-size: 44px; line-height: 0.9; font-variant-numeric: tabular-nums;
+}
+.af-pb-stat .label {
+  font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  opacity: 0.7; margin-top: 4px; font-family: var(--font-display); font-weight: 600;
+}
+.af-pb-bar { height: 6px; border-radius: 3px; background: rgba(246,242,234,0.18); margin-top: 18px; overflow: hidden; position: relative; }
+.af-pb-bar .fill { height: 100%; background: var(--bone); transition: width var(--dur-slow) var(--ease-out); }
+
+/* Field hero (detail screen) */
+.af-field-hero {
+  height: 180px; position: relative; flex-shrink: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, #2a5c3f 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 70%, #3d7a51 0%, transparent 60%),
+    linear-gradient(135deg, #1F402A 0%, #0f2a19 100%);
+  overflow: hidden;
+}
+.af-field-hero .topo { position: absolute; inset: 0; opacity: 0.15; pointer-events: none; color: var(--bone); }
+
+/* Stat grid */
+.af-statgrid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+  background: var(--border-1); border: 1px solid var(--border-1);
+  border-radius: var(--r-md); overflow: hidden;
+}
+.af-statgrid .stat { background: var(--bone-raised); padding: 12px 10px; display: flex; flex-direction: column; gap: 4px; }
+.af-statgrid .stat .lbl { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--stone-500); font-weight: 600; font-family: var(--font-display); }
+.af-statgrid .stat .val { font-family: var(--font-display); font-weight: 700; font-size: 17px; line-height: 1.1; color: var(--ink); }
+
+/* Probe card */
+.af-probe {
+  background: var(--bone-raised); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); padding: 14px;
+  display: flex; gap: 14px; align-items: center;
+}
+.af-probe .sprite {
+  width: 48px; height: 48px; border-radius: var(--r-md);
+  background: var(--sage-wash); display: flex; align-items: center; justify-content: center;
+  color: var(--field-green); flex-shrink: 0;
+}
+.af-probe .info { flex: 1; min-width: 0; }
+.af-probe .info .serial { font-family: var(--font-mono); font-size: 15px; font-weight: 500; color: var(--ink); }
+.af-probe .info .brand { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--stone-500); font-weight: 600; margin-top: 2px; }
+
+/* GPS capture */
+.af-gps-cap {
+  background: var(--bone-raised); border: 1px solid var(--border-1);
+  border-radius: var(--r-lg); overflow: hidden;
+}
+.af-minimap {
+  height: 140px; position: relative;
+  background:
+    radial-gradient(ellipse at 40% 30%, #cfe3d2 0%, transparent 55%),
+    radial-gradient(ellipse at 70% 70%, #e8e0c9 0%, transparent 55%),
+    linear-gradient(180deg, #eef2e4 0%, #dde5d0 100%);
+  overflow: hidden;
+}
+.af-minimap .grid {
+  position: absolute; inset: 0; opacity: 0.5;
+  background-image: linear-gradient(rgba(31,64,42,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(31,64,42,0.1) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.af-minimap .user-dot {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+}
+.af-minimap .user-dot .pulse {
+  position: absolute; inset: -14px; border-radius: 50%;
+  background: rgba(47,107,176,0.2);
+}
+.af-minimap .user-dot .core {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: #2F6BB0; border: 3px solid white;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.af-minimap .probe-pin {
+  position: absolute; left: 58%; top: 42%; transform: translate(-50%, -100%);
+}
+.af-minimap .probe-pin .inner {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--field-green); color: var(--bone);
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+.af-minimap .acc-badge {
+  position: absolute; top: 8px; left: 8px;
+  background: rgba(255,255,255,0.92); border-radius: var(--r-pill);
+  padding: 3px 10px; font-size: 10px; font-family: var(--font-display);
+  font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--field-green); border: 1px solid var(--border-1);
+}
+.af-gps-cap .coords-row {
+  padding: 12px 14px; border-top: 1px solid var(--border-1);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.af-gps-cap .coords-text { font-family: var(--font-mono); font-size: 13px; font-variant-numeric: tabular-nums; color: var(--ink); }
+.af-gps-cap .coords-placeholder { font-size: 13px; color: var(--stone-500); }
+
+/* Photos */
+.af-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.af-photo-slot {
+  aspect-ratio: 4/5; border-radius: var(--r-lg);
+  border: 2px dashed var(--border-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; color: var(--stone-500);
+  font-family: var(--font-display); font-weight: 600; font-size: 12px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  position: relative; overflow: hidden; background: var(--bone);
+  cursor: pointer; width: 100%;
+}
+.af-photo-slot svg { width: 28px; height: 28px; stroke-width: 2; }
+.af-photo-slot.filled { border-style: solid; border-color: var(--field-green); background: linear-gradient(135deg, #3d7a51 0%, #1F402A 100%); color: var(--bone); }
+.af-photo-slot .check {
+  position: absolute; top: 10px; right: 10px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bone); color: var(--field-green);
+  display: flex; align-items: center; justify-content: center;
+}
+.af-photo-slot .lbl-bottom {
+  position: absolute; left: 8px; right: 8px; bottom: 8px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 10px;
+}
+
+/* Form fields */
+.af-field { display: flex; flex-direction: column; gap: 6px; }
+.af-field label {
+  font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--stone-700); font-family: var(--font-display); font-weight: 600;
+}
+.af-input, .af-textarea, .af-select {
+  min-height: 54px; padding: 14px 16px;
+  background: var(--bone-raised); border: 1px solid var(--border-2);
+  border-radius: var(--r-md); font-size: 17px; color: var(--ink);
+  font-family: var(--font-body); width: 100%; outline: none;
+  transition: border-color 120ms var(--ease-out), box-shadow 120ms var(--ease-out);
+}
+.af-textarea { min-height: 100px; resize: none; }
+.af-input:focus, .af-textarea:focus, .af-select:focus {
+  border-color: var(--field-green);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--field-green) 14%, transparent);
+}
+.af-input.af-mono { font-family: var(--font-mono); }
+.af-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6456' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 42px; }
+
+/* Pills (option buttons) */
+.af-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.af-pills button {
+  flex: 1; min-height: 48px; padding: 0 10px;
+  border: 1px solid var(--border-2); border-radius: var(--r-md);
+  background: var(--bone-raised);
+  font-family: var(--font-display); font-weight: 600;
+  font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--stone-700);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
 }
-.installer-filter-tab.active {
-  color: var(--accent-primary);
-  border-bottom-color: var(--accent-primary);
+.af-pills button[aria-pressed="true"] { background: var(--field-green); color: var(--bone); border-color: var(--field-green); }
+
+/* Sticky CTA bar */
+.af-cta-bar {
+  position: sticky; bottom: 0;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, color-mix(in oklab, var(--bone) 0%, transparent) 0%, var(--bone) 30%);
+  display: flex; gap: 10px; flex-shrink: 0;
+  box-shadow: 0 -4px 20px rgba(31,64,42,0.06);
 }
 
-.installer-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* Eyebrow / display text */
+.af-eyebrow {
+  font-family: var(--font-display); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.16em;
+  color: var(--field-green);
 }
-.installer-loading, .installer-empty {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--text-muted);
-  font-size: 15px;
+.af-display-text {
+  font-family: var(--font-display); font-weight: 700;
+  text-transform: uppercase; letter-spacing: -0.005em; line-height: 0.95;
 }
 
-.installer-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  text-align: left;
-  cursor: pointer;
-  width: 100%;
-  transition: background 0.12s;
-}
-.installer-card:active { background: var(--bg-hover); }
-
-.installer-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 4px;
-}
-.installer-route-num { font-size: 12px; font-weight: 600; color: var(--text-muted); }
-.installer-status-dot {
-  width: 10px; height: 10px; border-radius: 50%;
-  background: var(--border);
-  border: 2px solid var(--text-muted);
-}
-.installer-status-dot.done {
-  background: #22c55e;
-  border-color: #16a34a;
-}
-
-.installer-card-name { font-size: 16px; font-weight: 600; color: var(--text-primary); }
-.installer-card-sub { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
-.installer-card-probe { font-size: 13px; color: var(--text-secondary); margin-top: 6px; font-weight: 500; }
-
-/* Field Detail */
-.installer-detail-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 16px 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.installer-detail-header { display: flex; flex-direction: column; gap: 4px; }
-.installer-detail-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0; }
-.installer-detail-op { font-size: 14px; color: var(--text-muted); margin: 0; }
-.installer-done-badge {
-  display: inline-block;
-  margin-top: 6px;
-  background: #dcfce7;
-  color: #15803d;
-  border-radius: 20px;
-  padding: 3px 10px;
-  font-size: 13px;
-  font-weight: 600;
-  width: fit-content;
-}
-
-.installer-directions-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--accent-primary);
-  color: #fff;
-  border-radius: 10px;
-  padding: 12px 16px;
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  width: fit-content;
-}
-
-.installer-detail-section {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.installer-detail-section-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-.installer-detail-row { display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: var(--text-primary); gap: 16px; }
-.installer-detail-label { color: var(--text-muted); flex-shrink: 0; }
-.installer-access-notes { font-size: 14px; color: var(--text-primary); line-height: 1.5; margin: 0; }
-
-.installer-start-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-/* Install Form */
-.installer-install-screen { overflow: hidden; }
-.installer-form {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px 16px 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.installer-form-section { display: flex; flex-direction: column; gap: 8px; }
-.installer-form-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-.installer-required { color: #e53e3e; }
-
-.installer-form-input {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 16px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  width: 100%;
-  box-sizing: border-box;
-}
-.installer-form-input:focus { outline: none; border-color: var(--accent-primary); }
-
-.installer-form-textarea {
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 15px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  width: 100%;
-  box-sizing: border-box;
-  resize: none;
-  font-family: inherit;
-}
-.installer-form-textarea:focus { outline: none; border-color: var(--accent-primary); }
-
-.installer-gps-btn, .installer-photo-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  width: 100%;
-  justify-content: center;
-  transition: border-color 0.15s, background 0.15s;
-}
-.installer-gps-btn.captured, .installer-photo-btn.captured {
-  border-color: #22c55e;
-  background: #f0fdf4;
-  color: #15803d;
-}
-.installer-gps-coords { font-size: 13px; color: var(--text-muted); margin: 0; }
-.installer-field-error { font-size: 13px; color: #b91c1c; margin: 0; }
-
-.installer-confirm-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px;
-}
-.installer-confirm-value { font-size: 15px; color: var(--text-primary); font-weight: 500; }
-.installer-confirm-btn {
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  background: var(--bg-primary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-}
-.installer-confirm-btn.confirmed {
-  border-color: #22c55e;
-  background: #f0fdf4;
-  color: #15803d;
-}
-
-.installer-submit-btn { margin-top: 8px; }
-
-/* Success */
-.installer-success-screen {
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px;
-  text-align: center;
-  gap: 12px;
-}
-.installer-success-icon { font-size: 64px; line-height: 1; }
-.installer-success-title { font-size: 26px; font-weight: 700; color: var(--text-primary); margin: 0; }
-.installer-success-field { font-size: 17px; color: var(--text-primary); font-weight: 600; margin: 0; }
-.installer-success-probe { font-size: 15px; color: var(--text-muted); margin: 0; }
-
-.installer-flags-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px 24px;
-  width: 100%;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 8px;
-}
-.installer-flags-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.installer-flags-row { display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 500; color: var(--text-primary); }
-.installer-flag {
-  display: inline-block;
-  width: 18px; height: 18px;
-  border-radius: 3px;
+/* Section header for install form */
+.af-section-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 12px;
   flex-shrink: 0;
 }
-.installer-flag-pink { background: #f472b6; }
-.installer-flag-blue { background: #3b82f6; }
-.installer-flag-white { background: #f1f5f9; border: 1.5px solid var(--border); }
+.af-section-num.done { background: var(--field-green); color: var(--bone); }
+.af-section-num.todo { background: var(--stone-50); color: var(--stone-500); border: 1px solid var(--border-2); }
 
-.installer-back-route-btn { margin-top: 16px; max-width: 280px; }
+/* GPS capture animation */
+@keyframes af-pulse {
+  0% { opacity: 0.6; transform: scale(0.4); }
+  80% { opacity: 0; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.05); }
+}
+.af-capturing .pulse { animation: af-pulse 1.6s var(--ease-out) infinite; }
+
+/* Error / info messages */
+.af-error-msg {
+  background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: var(--r-md);
+  padding: 12px 14px; font-size: 14px; color: #B91C1C;
+}
+.af-install-note {
+  background: #FEF2F2;
+  border-left: 4px solid #B91C1C;
+  border-top: 1px solid #FCA5A5; border-right: 1px solid #FCA5A5; border-bottom: 1px solid #FCA5A5;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  padding: 14px 16px;
+}
+.af-install-note .note-label {
+  font-family: var(--font-display); font-weight: 800; font-size: 10px;
+  letter-spacing: 0.18em; color: #B91C1C; text-transform: uppercase; margin-bottom: 8px;
+}
+
+/* Login numpad */
+.af-numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.af-numpad-btn {
+  height: 62px; border-radius: var(--r-lg);
+  background: var(--bone-raised); border: 1px solid var(--border-1);
+  font-family: var(--font-display); font-weight: 700; font-size: 26px;
+  color: var(--ink); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--dur-fast) var(--ease-out);
+  box-shadow: var(--shadow-1);
+}
+.af-numpad-btn:active { background: var(--stone-50); }
+.af-numpad-btn.ghost { background: transparent; border-color: transparent; box-shadow: none; cursor: default; pointer-events: none; }
+.af-numpad-btn.delete { font-size: 20px; }
+
+/* PIN dots */
+.af-pin-dots { display: flex; gap: 14px; justify-content: center; padding: 8px 0; }
+.af-pin-dot {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--border-2); background: transparent;
+  transition: background 150ms, border-color 150ms;
+}
+.af-pin-dot.filled { background: var(--field-green); border-color: var(--field-green); }
+
