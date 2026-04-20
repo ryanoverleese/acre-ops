@@ -1444,7 +1444,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
             }).map(s => {
               const isLoaded = !!loaded[s.probeSerial];
               const isSentek = /sentek/i.test(s.probeBrand);
-              const rackLabel = s.probeRack ? `${s.probeRack}${s.probeRackSlot != null ? ` · ${s.probeRackSlot}` : ''}` : '—';
+              const hasRack = !!s.probeRack;
               return (
                 <div key={s.probeSerial + s.id} style={{
                   display: 'flex', alignItems: 'stretch',
@@ -1454,34 +1454,72 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                   transition: 'all 200ms var(--ease-out)',
                   opacity: isLoaded ? 0.78 : 1,
                 }}>
+                  {/* Big rack location badge — acts as a physical shelf marker */}
+                  <div style={{
+                    width: 72, flexShrink: 0,
+                    background: isLoaded ? 'var(--field-green)' : 'var(--stone-50)',
+                    color: isLoaded ? 'var(--bone)' : 'var(--field-green)',
+                    borderRight: '1px solid ' + (isLoaded ? 'var(--field-green)' : 'var(--border-1)'),
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    gap: 2, padding: '10px 6px',
+                  }}>
+                    {hasRack ? (
+                      <>
+                        <span style={{
+                          fontFamily: 'var(--font-display)', fontWeight: 700,
+                          fontSize: 22, lineHeight: 1, letterSpacing: '0.02em',
+                          fontVariantNumeric: 'tabular-nums',
+                        }}>
+                          {s.probeRack}
+                        </span>
+                        {s.probeRackSlot != null && (
+                          <span style={{
+                            fontFamily: 'var(--font-display)', fontWeight: 700,
+                            fontSize: 15, lineHeight: 1,
+                            fontVariantNumeric: 'tabular-nums',
+                            opacity: 0.85,
+                          }}>
+                            ·{s.probeRackSlot}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: 22, opacity: 0.4 }}>—</span>
+                    )}
+                    <span style={{
+                      fontSize: 8, letterSpacing: '0.18em', textTransform: 'uppercase',
+                      fontFamily: 'var(--font-display)', fontWeight: 700,
+                      opacity: 0.7, marginTop: 2,
+                    }}>
+                      Rack
+                    </span>
+                  </div>
+                  {/* Serial + brand */}
                   <div style={{ flex: 1, minWidth: 0, padding: '12px 10px 12px 14px', display: 'flex', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{
-                          fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 600, color: 'var(--ink)',
-                          fontVariantNumeric: 'tabular-nums',
-                          textDecoration: isLoaded ? 'line-through' : 'none',
-                          textDecorationColor: 'var(--stone-500)', textDecorationThickness: '1px',
-                        }}>
-                          #{s.probeSerial}
-                        </span>
-                        {s.probeBrand && (
+                      <div style={{
+                        fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 600, color: 'var(--ink)',
+                        fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
+                        textDecoration: isLoaded ? 'line-through' : 'none',
+                        textDecorationColor: 'var(--stone-500)', textDecorationThickness: '1.5px',
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        #{s.probeSerial || '—'}
+                      </div>
+                      {s.probeBrand && (
+                        <div style={{ marginTop: 4 }}>
                           <span style={{
                             fontFamily: 'var(--font-display)', fontWeight: 600,
                             fontSize: 10, letterSpacing: '0.1em',
                             color: isSentek ? '#8A4E14' : 'var(--field-green)',
                             background: isSentek ? '#FDEBD3' : 'var(--sage-wash)',
                             padding: '2px 6px', borderRadius: 3,
-                            textTransform: 'uppercase', flexShrink: 0,
+                            textTransform: 'uppercase', display: 'inline-block',
                           }}>
                             {s.probeBrand}
                           </span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 11, color: 'var(--stone-500)' }}>
-                        <RackIcon size={11} />
-                        <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{rackLabel}</span>
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <button
