@@ -1,0 +1,10 @@
+{
+  "name": "Acre Field",
+  "short_name": "Acre Field",
+  "description": "Acre field installer app",
+  "start_url": "/installer",
+  "scope": "/installer",
+  "display": "standalone",
+  "background_color": "#1F402A",
+  "theme_color": "#1F402A"
+}
