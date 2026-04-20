@@ -391,6 +391,7 @@ export interface FieldSeason {
   route_order?: number;
   planned_installer?: { id: number; value: string };
   ready_to_install?: boolean;
+  notes?: string;
   // All probe data (probe, probe_status, antenna_type, battery_type,
   // installer, install_*, cropx_telemetry_id, signal_strength) lives on probe_assignments table.
   // These fields were removed from field_seasons in Baserow.

@@ -188,8 +188,8 @@ export default function AppShell({ children }: AppShellProps) {
     localStorage.setItem('sidebar-collapsed', String(next));
   };
 
-  // Don't show navigation on public approval pages or login page
-  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login';
+  // Don't show navigation on public approval pages, login page, or installer app
+  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer');
 
   if (isPublicPage) {
     return <>{children}</>;

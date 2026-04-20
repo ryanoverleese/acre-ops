@@ -11,7 +11,7 @@ const INSTALLER_ROUTES = [
 ];
 
 // Routes that don't require authentication at all
-const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments'];
+const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
