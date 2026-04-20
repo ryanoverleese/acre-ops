@@ -20,8 +20,10 @@ interface WorkflowsClientProps {
 
 type Step = 'select' | 'confirm' | 'done';
 
+const PROBE_TYPES = ['CropX V4', 'CropX V3', 'Sentek', 'IrriMax'];
+
 export default function WorkflowsClient({ installedProbes }: WorkflowsClientProps) {
-  const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | null>(null);
+  const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
@@ -29,6 +31,12 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
   const [removalNotes, setRemovalNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Register probe state
+  const [regSerial, setRegSerial] = useState('');
+  const [regType, setRegType] = useState('CropX V4');
+  const [regYearNew, setRegYearNew] = useState(() => String(new Date().getFullYear()));
+  const [regCreatedSerial, setRegCreatedSerial] = useState('');
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -91,6 +99,40 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
     }
   };
 
+  const handleRegisterSubmit = async () => {
+    if (!regSerial.trim()) return;
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/probes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serial_number: regSerial.trim(),
+          brand: regType,
+          year_new: parseInt(regYearNew, 10),
+          status: 'In Stock',
+        }),
+      });
+      if (!res.ok) throw new Error('Failed to create probe');
+      setRegCreatedSerial(regSerial.trim());
+      setStep('done');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const resetRegister = () => {
+    setRegSerial('');
+    setRegType('CropX V4');
+    setRegYearNew(String(new Date().getFullYear()));
+    setRegCreatedSerial('');
+    setError('');
+    setStep('select');
+  };
+
   if (!activeWorkflow) {
     return (
       <>
@@ -104,6 +146,39 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
             <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
               Step-by-step guides for common field operations.
             </p>
+            <div
+              onClick={() => { setActiveWorkflow('register'); resetRegister(); }}
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '20px 24px',
+                cursor: 'pointer',
+                background: 'var(--bg-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+              }}
+              className="workflow-card"
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 8,
+                background: 'rgba(34, 197, 94, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="22" height="22">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Register New Probe</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
+                  Add a new probe to inventory with serial number and type.
+                </div>
+              </div>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
             <div
               onClick={() => { setActiveWorkflow('uninstall'); resetWorkflow(); }}
               style={{
@@ -137,6 +212,103 @@ export default function WorkflowsClient({ installedProbes }: WorkflowsClientProp
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Register probe workflow
+  if (activeWorkflow === 'register') {
+    return (
+      <>
+        <header className="header">
+          <div className="header-left">
+            <h2>Workflows</h2>
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ Register New Probe</span>
+          </div>
+          <div className="header-right">
+            <button className="btn btn-secondary" onClick={() => { setActiveWorkflow(null); resetRegister(); }}>
+              Cancel
+            </button>
+          </div>
+        </header>
+        <div className="content">
+          <div style={{ maxWidth: 480 }}>
+
+            {step === 'select' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Enter probe details</div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>Serial Number *</label>
+                    <input
+                      type="text"
+                      value={regSerial}
+                      onChange={(e) => setRegSerial(e.target.value)}
+                      placeholder="e.g. CX-12345"
+                      autoFocus
+                      style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>Probe Type</label>
+                    <select
+                      value={regType}
+                      onChange={(e) => setRegType(e.target.value)}
+                      style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
+                    >
+                      {PROBE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>Year New</label>
+                    <input
+                      type="number"
+                      value={regYearNew}
+                      onChange={(e) => setRegYearNew(e.target.value)}
+                      min="2000"
+                      max="2099"
+                      style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: 120 }}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <div style={{ color: '#ef4444', fontSize: 13, padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>{error}</div>
+                )}
+
+                <button
+                  className="btn btn-primary"
+                  onClick={handleRegisterSubmit}
+                  disabled={saving || !regSerial.trim()}
+                >
+                  {saving ? 'Registering...' : 'Register Probe'}
+                </button>
+              </div>
+            )}
+
+            {step === 'done' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'flex-start' }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="24" height="24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Probe registered</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                    <strong>{regType} #{regCreatedSerial}</strong> added to inventory with status In Stock.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn btn-primary" onClick={resetRegister}>Register Another</button>
+                  <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)}>Back to Workflows</button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       </>
