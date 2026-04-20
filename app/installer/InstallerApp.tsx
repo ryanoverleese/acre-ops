@@ -87,6 +87,18 @@ function playSuccessSound() {
   } catch { /* silently ignore if audio unavailable */ }
 }
 
+// Muted color palette for probe-brand badges.
+// Matches on brand + antenna combined so "Sentek 36\"/CropX Gateway (Small Diameter)"
+// picks up the 'small' rule regardless of which piece it lives in.
+function probeBadgeColors(brand: string, antenna = ''): { bg: string; fg: string } {
+  const combined = `${brand} ${antenna}`.toLowerCase();
+  if (/gateway[^a-z]*small|small[^a-z]*diameter/.test(combined)) return { bg: '#FEE2E2', fg: '#991B1B' };           // muted red
+  if (/gateway[^a-z]*large|large[^a-z]*diameter/.test(combined)) return { bg: '#FEF3C7', fg: '#92400E' };           // muted yellow/amber
+  if (/sentek/.test(combined)) return { bg: '#DCFCE7', fg: '#166534' };                                            // muted green
+  if (/cropx\s*v\d|cropx\s*v(?!\w)|v4/.test(combined)) return { bg: '#DBEAFE', fg: '#1E40AF' };                    // muted blue
+  return { bg: 'var(--sage-wash)', fg: 'var(--field-green)' };                                                      // default sage
+}
+
 function calcFlags(antennaType: string, sideDress: string) {
   const antenna = antennaType.toLowerCase();
   const sd = sideDress.toLowerCase();
@@ -575,18 +587,20 @@ function RouteScreen({
                 {(a.probeSerial || a.probeBrand || a.label) && (
                   <div className="af-stop-probe" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     {a.probeSerial && <span>#{a.probeSerial}</span>}
-                    {a.probeBrand && (
-                      <span style={{
-                        fontFamily: 'var(--font-display)', fontWeight: 600,
-                        fontSize: 10, letterSpacing: '0.1em',
-                        color: /sentek/i.test(a.probeBrand) ? '#8A4E14' : 'var(--field-green)',
-                        background: /sentek/i.test(a.probeBrand) ? '#FDEBD3' : 'var(--sage-wash)',
-                        padding: '2px 6px', borderRadius: 3,
-                        textTransform: 'uppercase',
-                      }}>
-                        {a.probeBrand}
-                      </span>
-                    )}
+                    {a.probeBrand && (() => {
+                      const c = probeBadgeColors(a.probeBrand, a.antennaType);
+                      return (
+                        <span style={{
+                          fontFamily: 'var(--font-display)', fontWeight: 600,
+                          fontSize: 10, letterSpacing: '0.1em',
+                          color: c.fg, background: c.bg,
+                          padding: '2px 6px', borderRadius: 3,
+                          textTransform: 'uppercase',
+                        }}>
+                          {a.probeBrand}
+                        </span>
+                      );
+                    })()}
                     {a.label && <span style={{ color: 'var(--stone-500)' }}>{a.label}</span>}
                   </div>
                 )}
@@ -1478,8 +1492,9 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
     batteries[bat] = (batteries[bat] || 0) + 1;
     const f = calcFlags(a.antennaType, a.sideDress);
     flags.pink += f.pink; flags.blue += f.blue; flags.white += f.white;
-    // Gateway rule: 1 per probe whose antenna type is a CropX Gateway
-    if (/gateway/i.test(a.antennaType)) gatewayCount += 1;
+    // Gateway rule: 1 per probe whose TYPE is a CropX Gateway
+    // (e.g. 'CropX Gateway Small Diameter'). Ignore antenna type.
+    if (/gateway/i.test(a.probeBrand)) gatewayCount += 1;
   }
   const totalBatteries = Object.values(batteries).reduce((s, n) => s + n, 0);
 
@@ -1543,7 +1558,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
               return (a.probeRack || '').localeCompare(b.probeRack || '', undefined, { numeric: true });
             }).map(s => {
               const isLoaded = !!loaded[s.probeSerial];
-              const isSentek = /sentek/i.test(s.probeBrand);
+              const badgeColors = probeBadgeColors(s.probeBrand, s.antennaType);
               const hasRack = !!s.probeRack;
               return (
                 <div key={s.probeSerial + s.id} style={{
@@ -1605,8 +1620,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                           <span style={{
                             fontFamily: 'var(--font-display)', fontWeight: 600,
                             fontSize: 10, letterSpacing: '0.1em',
-                            color: isSentek ? '#8A4E14' : 'var(--field-green)',
-                            background: isSentek ? '#FDEBD3' : 'var(--sage-wash)',
+                            color: badgeColors.fg, background: badgeColors.bg,
                             padding: '2px 6px', borderRadius: 3,
                             textTransform: 'uppercase', display: 'inline-block',
                           }}>
