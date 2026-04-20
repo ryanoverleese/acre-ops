@@ -204,6 +204,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'me' && session && (
           <MeScreen
             session={session}
+            assignments={assignments}
             onLogout={handleLogout}
           />
         )}
@@ -1698,78 +1699,155 @@ function FlagIcon({ size = 20 }: { size?: number }) {
 
 // ─── Me Screen ────────────────────────────────────────────────────────────────
 
-function MeScreen({ session, onLogout }: { session: Session; onLogout: () => void }) {
+function MeScreen({
+  session, assignments, onLogout,
+}: {
+  session: Session;
+  assignments: InstallerAssignment[];
+  onLogout: () => void;
+}) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const installed = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
+  const total = assignments.length;
+  const remaining = total - installed;
 
   return (
     <div className="af-screen">
-      <div className="af-topbar" style={{ justifyContent: 'center' }}>
-        <div className="af-topbar-title">Me</div>
+      <div className="af-topbar">
+        <div style={{ width: 40 }} />
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Account</div>
+        </div>
+        <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '32px 20px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-        {/* Avatar */}
+      <div className="af-body" style={{ padding: '0 0 24px', background: '#FFFFFF' }}>
+        {/* Profile header — green with topo, avatar + name */}
         <div style={{
-          width: 96, height: 96, borderRadius: '50%',
+          padding: '24px 18px 28px',
           background: 'var(--field-green)', color: 'var(--bone)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 36,
-          letterSpacing: '0.04em', marginBottom: 16,
+          position: 'relative', overflow: 'hidden',
         }}>
-          {initials}
-        </div>
-
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, textTransform: 'uppercase', textAlign: 'center', lineHeight: 1 }}>
-          {session.installer}
-        </div>
-        <div style={{ marginTop: 6, fontSize: 13, color: 'var(--stone-500)', letterSpacing: '0.04em' }}>
-          {session.season} season · Field installer
-        </div>
-
-        {/* Info card */}
-        <div style={{
-          width: '100%', marginTop: 32,
-          background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-          borderRadius: 'var(--r-lg)', overflow: 'hidden',
-        }}>
-          {[
-            { label: 'App', value: 'Acre Field' },
-            { label: 'Season', value: String(session.season) },
-            { label: 'Version', value: '1.0' },
-          ].map((row, i, arr) => (
-            <div key={row.label} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '14px 16px',
-              borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+          <TopoDeco />
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: 32,
+              background: 'rgba(246,242,234,0.18)',
+              border: '1px solid rgba(246,242,234,0.3)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24,
+              letterSpacing: '0.04em', flexShrink: 0,
             }}>
-              <span style={{ fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 600, letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>
-                {row.label}
-              </span>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>
-                {row.value}
-              </span>
+              {initials}
             </div>
-          ))}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, letterSpacing: '0.18em', opacity: 0.72, fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase' }}>
+                Field installer
+              </div>
+              <div className="af-display-text" style={{ fontSize: 26, marginTop: 2, lineHeight: 1, color: 'var(--bone)' }}>
+                {session.installer}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
+                Acre Insights · {session.season} season
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Logout */}
-        <button
-          className="af-btn af-btn--block"
-          onClick={onLogout}
-          style={{
-            marginTop: 32, minHeight: 56,
-            background: 'var(--bone-raised)', color: '#B23A2A',
-            border: '1px solid color-mix(in oklab, #B23A2A 30%, transparent)',
-            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
-            letterSpacing: '0.08em', textTransform: 'uppercase',
-          }}
-        >
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-          Sign out
-        </button>
+        {/* Stats grid */}
+        <div style={{ padding: '16px 14px 0' }}>
+          <div className="af-statgrid">
+            <div className="stat"><span className="lbl">Today</span><span className="val">{installed}/{total}</span></div>
+            <div className="stat"><span className="lbl">Remaining</span><span className="val">{remaining}</span></div>
+            <div className="stat"><span className="lbl">Installed</span><span className="val">{installed}</span></div>
+            <div className="stat"><span className="lbl">Season</span><span className="val">{session.season}</span></div>
+          </div>
+        </div>
+
+        {/* Menu */}
+        <div style={{ padding: '20px 14px 0' }}>
+          <MenuGroup label="Support">
+            <a href="tel:4025121850" style={{ textDecoration: 'none', display: 'block', color: 'inherit' }}>
+              <MenuRow
+                icon={
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" />
+                  </svg>
+                }
+                label="Call CropX support"
+                sub="402-512-1850"
+                showChevron
+              />
+            </a>
+            <MenuRow
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+              }
+              label="Sign out"
+              destructive
+              onClick={onLogout}
+              last
+            />
+          </MenuGroup>
+        </div>
       </div>
     </div>
+  );
+}
+
+function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>{label}</div>
+      <div style={{
+        background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden',
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function MenuRow({
+  icon, label, sub, destructive, onClick, showChevron, last,
+}: {
+  icon: React.ReactNode; label: string; sub?: string;
+  destructive?: boolean; onClick?: () => void; showChevron?: boolean; last?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: '100%', padding: '14px 14px',
+        display: 'flex', alignItems: 'center', gap: 12,
+        background: 'transparent', border: 'none',
+        borderBottom: last ? 'none' : '1px solid var(--border-1)',
+        cursor: onClick || showChevron ? 'pointer' : 'default', textAlign: 'left',
+      }}
+    >
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: destructive ? '#f3d6d6' : 'var(--sage-wash)',
+        color: destructive ? '#a84a3a' : 'var(--field-green)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, color: destructive ? '#a84a3a' : 'var(--ink)' }}>
+          {label}
+        </div>
+        {sub && <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{sub}</div>}
+      </div>
+      {showChevron && (
+        <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--stone-300)', flexShrink: 0 }}>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      )}
+    </button>
   );
 }
