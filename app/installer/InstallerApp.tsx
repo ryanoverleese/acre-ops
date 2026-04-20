@@ -563,11 +563,22 @@ function RouteScreen({
                   )}
                 </div>
                 <div className="af-stop-op">{a.operation}</div>
-                {(a.probeSerial || a.label) && (
-                  <div className="af-stop-probe">
-                    {a.probeSerial ? `#${a.probeSerial}` : ''}
-                    {a.probeSerial && a.label ? '  ·  ' : ''}
-                    {a.label || ''}
+                {(a.probeSerial || a.probeBrand || a.label) && (
+                  <div className="af-stop-probe" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {a.probeSerial && <span>#{a.probeSerial}</span>}
+                    {a.probeBrand && (
+                      <span style={{
+                        fontFamily: 'var(--font-display)', fontWeight: 600,
+                        fontSize: 10, letterSpacing: '0.1em',
+                        color: /sentek/i.test(a.probeBrand) ? '#8A4E14' : 'var(--field-green)',
+                        background: /sentek/i.test(a.probeBrand) ? '#FDEBD3' : 'var(--sage-wash)',
+                        padding: '2px 6px', borderRadius: 3,
+                        textTransform: 'uppercase',
+                      }}>
+                        {a.probeBrand}
+                      </span>
+                    )}
+                    {a.label && <span style={{ color: 'var(--stone-500)' }}>{a.label}</span>}
                   </div>
                 )}
               </div>
@@ -1378,8 +1389,8 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
     batteries[bat] = (batteries[bat] || 0) + 1;
     const f = calcFlags(a.antennaType, a.sideDress);
     flags.pink += f.pink; flags.blue += f.blue; flags.white += f.white;
-    // Gateway rule: 1 per Sentek probe
-    if (/sentek/i.test(a.probeBrand)) gatewayCount += 1;
+    // Gateway rule: 1 per probe whose antenna type is a CropX Gateway
+    if (/gateway/i.test(a.antennaType)) gatewayCount += 1;
   }
   const totalBatteries = Object.values(batteries).reduce((s, n) => s + n, 0);
 
@@ -1561,7 +1572,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         <SectionCard title="CropX Gateways" count={gatewayCount} icon={<WifiIcon />}>
           {gatewayCount === 0 ? (
             <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)', padding: 14, fontSize: 12, color: 'var(--stone-500)', textAlign: 'center' }}>
-              All probes today are CropX V4 — no gateways needed.
+              No gateways needed today.
             </div>
           ) : (
             <div style={{
@@ -1575,10 +1586,10 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                    LTE-M Gateways
+                    CropX Gateways
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
-                    1 per Sentek probe · CropX V4 doesn&apos;t need one
+                    1 per probe using a CropX Gateway antenna
                   </div>
                 </div>
               </div>
