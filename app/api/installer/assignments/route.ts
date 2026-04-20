@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
     // Diagnostic counters
     const stepCounts = { totalPA: probeAssignments.length, withFS: 0, inSeason: 0, matchedInstaller: 0 };
     const seenInstallers = new Set<string>();
-    const seenSeasons = new Set<number>();
-    const droppedExamples: Array<{ paId: number; reason: string; fsInstaller?: string; fsSeason?: number }> = [];
+    const seenSeasons = new Set<number | string>();
+    const droppedExamples: Array<{ paId: number; reason: string; fsInstaller?: string; fsSeason?: number | string }> = [];
 
     const assignments = probeAssignments
       .filter((pa) => {
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         if (!fs) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'field_season not found' }); return false; }
         if (fs.season != null) seenSeasons.add(fs.season);
         if (fs.planned_installer?.value) seenInstallers.add(fs.planned_installer.value);
-        if (fs.season !== season) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'season mismatch', fsSeason: fs.season }); return false; }
+        if (Number(fs.season) !== season) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'season mismatch', fsSeason: fs.season }); return false; }
         stepCounts.inSeason++;
         if (fs.planned_installer?.value !== installer) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'installer mismatch', fsInstaller: fs.planned_installer?.value }); return false; }
         stepCounts.matchedInstaller++;
