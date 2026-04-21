@@ -967,7 +967,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
                   border: '1px solid var(--border-1)',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
                 }}>
-                  ±{livePos.acc.toFixed(1)} m
+                  ±{(livePos.acc * 3.28084).toFixed(0)} ft
                 </div>
               )}
               {/* Waiting-for-GPS overlay */}
