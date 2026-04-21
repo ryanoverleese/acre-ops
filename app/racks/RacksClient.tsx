@@ -267,8 +267,8 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
       const probeId = row.probe?.[0]?.id;
       return probeId && probeLabels[probeId]?.status?.toLowerCase() === 'lost';
     });
-    const borderColor = isLost ? 'rgba(220,38,38,0.35)' : isFilled ? 'rgba(74,122,91,0.25)' : 'var(--border)';
-    const bgColor = isLost ? 'rgba(220,38,38,0.06)' : isFilled ? 'rgba(74,122,91,0.06)' : 'var(--bg-card)';
+    const borderColor = isFilled ? 'rgba(74,122,91,0.25)' : 'var(--border)';
+    const bgColor = isFilled ? 'rgba(74,122,91,0.06)' : 'var(--bg-card)';
     return (
       <div
         onClick={() => setSlotModal({ rows, slotNum, side })}
