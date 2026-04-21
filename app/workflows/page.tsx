@@ -1,10 +1,10 @@
 import { getProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
-import WorkflowsClient, { UninstallProbeData } from './WorkflowsClient';
+import WorkflowsClient, { UninstallProbeData, OnOrderProbe } from './WorkflowsClient';
 
 export const dynamic = 'force-dynamic';
 
-async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[]; brandOptions: string[] }> {
+async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 300),
@@ -55,14 +55,27 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
 
     const brandOptions = Array.from(new Set(probes.map(p => p.brand?.value).filter(Boolean) as string[])).sort();
 
-    return { installedProbes, brandOptions };
+    const onOrderProbes = probes
+      .filter(p => {
+        const s = p.status?.value?.toLowerCase() ?? '';
+        return s === 'on order' || s === 'on order - trade';
+      })
+      .map(p => ({
+        id: p.id,
+        brand: p.brand?.value ?? '',
+        status: p.status?.value ?? '',
+        notes: p.notes ?? '',
+        yearNew: p.year_new ?? null,
+      }));
+
+    return { installedProbes, brandOptions, onOrderProbes };
   } catch (error) {
     console.error('Error fetching workflow data:', error);
-    return { installedProbes: [], brandOptions: [] };
+    return { installedProbes: [], brandOptions: [], onOrderProbes: [] };
   }
 }
 
 export default async function WorkflowsPage() {
-  const { installedProbes, brandOptions } = await getWorkflowData();
-  return <WorkflowsClient installedProbes={installedProbes} brandOptions={brandOptions} />;
+  const { installedProbes, brandOptions, onOrderProbes } = await getWorkflowData();
+  return <WorkflowsClient installedProbes={installedProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
 }

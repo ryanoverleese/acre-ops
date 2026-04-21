@@ -14,14 +14,23 @@ export interface UninstallProbeData {
   season: number;
 }
 
+export interface OnOrderProbe {
+  id: number;
+  brand: string;
+  status: string;
+  notes: string;
+  yearNew: number | null;
+}
+
 interface WorkflowsClientProps {
   installedProbes: UninstallProbeData[];
   brandOptions: string[];
+  onOrderProbes: OnOrderProbe[];
 }
 
 type Step = 'select' | 'confirm' | 'done';
 
-export default function WorkflowsClient({ installedProbes, brandOptions }: WorkflowsClientProps) {
+export default function WorkflowsClient({ installedProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
@@ -36,6 +45,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
   const [regType, setRegType] = useState(() => brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
   const [regYearNew, setRegYearNew] = useState(() => String(new Date().getFullYear()));
   const [regCreatedSerial, setRegCreatedSerial] = useState('');
+  const [regOnOrderMatch, setRegOnOrderMatch] = useState<OnOrderProbe | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -48,6 +58,12 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
         p.operation.toLowerCase().includes(q)
     );
   }, [installedProbes, search]);
+
+  // On-order probes of the currently selected brand
+  const matchingOnOrder = useMemo(() =>
+    onOrderProbes.filter(p => p.brand.toLowerCase() === regType.toLowerCase()),
+    [onOrderProbes, regType]
+  );
 
   const resetWorkflow = () => {
     setStep('select');
@@ -103,17 +119,27 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
     setSaving(true);
     setError('');
     try {
-      const res = await fetch('/api/probes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serial_number: regSerial.trim(),
-          brand: regType,
-          year_new: parseInt(regYearNew, 10),
-          status: 'In Stock',
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create probe');
+      if (regOnOrderMatch) {
+        // Swap serial number onto existing on-order probe row
+        const res = await fetch(`/api/probes/${regOnOrderMatch.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serial_number: regSerial.trim(), status: 'In Stock' }),
+        });
+        if (!res.ok) throw new Error('Failed to update probe');
+      } else {
+        const res = await fetch('/api/probes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serial_number: regSerial.trim(),
+            brand: regType,
+            year_new: parseInt(regYearNew, 10),
+            status: 'In Stock',
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to create probe');
+      }
       setRegCreatedSerial(regSerial.trim());
       setStep('done');
     } catch (err) {
@@ -128,6 +154,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
     setRegType(brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
     setRegYearNew(String(new Date().getFullYear()));
     setRegCreatedSerial('');
+    setRegOnOrderMatch(null);
     setError('');
     setStep('select');
   };
@@ -275,6 +302,55 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
                   </div>
                 </div>
 
+                {/* On-order match suggestion */}
+                {matchingOnOrder.length > 0 && (
+                  <div>
+                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                      Assign to On Order slot?
+                      <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 6 }}>
+                        — {matchingOnOrder.length} {regType} on order
+                      </span>
+                    </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {matchingOnOrder.map(p => (
+                        <button
+                          key={p.id}
+                          onClick={() => setRegOnOrderMatch(regOnOrderMatch?.id === p.id ? null : p)}
+                          style={{
+                            padding: '10px 14px',
+                            border: `2px solid ${regOnOrderMatch?.id === p.id ? 'var(--accent-primary)' : 'var(--border)'}`,
+                            borderRadius: 8,
+                            background: regOnOrderMatch?.id === p.id ? 'rgba(34,197,94,0.08)' : 'var(--bg-secondary)',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                          }}
+                        >
+                          <div style={{
+                            width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                            border: regOnOrderMatch?.id === p.id ? '6px solid var(--accent-primary)' : '2px solid var(--border)',
+                          }} />
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>
+                              {p.status} — Probe #{p.id}
+                            </div>
+                            {p.notes && (
+                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{p.notes}</div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                      {regOnOrderMatch && (
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                          Serial #{regSerial || '…'} will replace the on-order slot. No new row created.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {error && (
                   <div style={{ color: '#ef4444', fontSize: 13, padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>{error}</div>
                 )}
@@ -284,7 +360,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
                   onClick={handleRegisterSubmit}
                   disabled={saving || !regSerial.trim()}
                 >
-                  {saving ? 'Registering...' : 'Register Probe'}
+                  {saving ? 'Saving...' : regOnOrderMatch ? 'Assign Serial to On Order Slot' : 'Register as New Probe'}
                 </button>
               </div>
             )}
@@ -299,7 +375,10 @@ export default function WorkflowsClient({ installedProbes, brandOptions }: Workf
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Probe registered</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
-                    <strong>{regType} #{regCreatedSerial}</strong> added to inventory with status In Stock.
+                    {regOnOrderMatch
+                      ? <><strong>#{regCreatedSerial}</strong> assigned to on-order slot (Probe #{regOnOrderMatch.id}). Status set to In Stock.</>
+                      : <><strong>{regType} #{regCreatedSerial}</strong> added to inventory with status In Stock.</>
+                    }
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
