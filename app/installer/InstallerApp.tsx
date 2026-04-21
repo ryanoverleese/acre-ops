@@ -1462,10 +1462,13 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
   const [loaded, setLoaded] = useState<LoadedMap>(() => {
     try { return JSON.parse(localStorage.getItem(LOADED_KEY) || '{}'); } catch { return {}; }
   });
+  // Separate sort-order state — trails loaded by 600ms so the card fades before moving
+  const [sortLoaded, setSortLoaded] = useState<LoadedMap>(loaded);
   const toggleLoaded = (serial: string) => {
     setLoaded(prev => {
       const next = { ...prev, [serial]: !prev[serial] };
       localStorage.setItem(LOADED_KEY, JSON.stringify(next));
+      setTimeout(() => setSortLoaded(next), 600);
       return next;
     });
   };
@@ -1547,8 +1550,8 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
               </div>
             )}
             {[...probeStops].sort((a, b) => {
-              const aL = loaded[a.probeSerial] ? 1 : 0;
-              const bL = loaded[b.probeSerial] ? 1 : 0;
+              const aL = sortLoaded[a.probeSerial] ? 1 : 0;
+              const bL = sortLoaded[b.probeSerial] ? 1 : 0;
               if (aL !== bL) return aL - bL;
               return (a.probeRack || '').localeCompare(b.probeRack || '', undefined, { numeric: true });
             }).map(s => {
