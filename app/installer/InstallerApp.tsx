@@ -906,7 +906,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         <div style={{ position: 'absolute', inset: 0, right: 'auto', width: `${progress * 100}%`, background: 'var(--field-green)', transition: 'width 200ms var(--ease-out)' }} />
       </div>
 
-      <div className="af-body" style={{ paddingBottom: 120, background: '#FFFFFF' }}>
+      <div className="af-body" style={{ background: '#FFFFFF' }}>
         {/* Compact field header */}
         <div style={{ background: 'var(--field-green)', color: 'var(--bone)', padding: '14px 18px 16px', position: 'relative', overflow: 'hidden' }}>
           <TopoDeco />
@@ -1170,25 +1170,25 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {error && <div style={{ padding: '0 14px 8px' }}><div className="af-error-msg">{error}</div></div>}
-      </div>
 
-      {/* Sticky submit bar */}
-      <div className="af-cta-bar">
-        <button
-          className="af-btn af-btn--primary af-btn--xl af-btn--block"
-          onClick={handleSubmit}
-          disabled={!canSubmit || submitting}
-          style={{ opacity: canSubmit ? 1 : 0.72 }}
-        >
-          {submitting ? 'Submitting…' : (
-            <>
-              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              Submit install
-            </>
-          )}
-        </button>
+        {/* Submit button — bottom of scroll */}
+        <div style={{ padding: '16px 14px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+          <button
+            className="af-btn af-btn--primary af-btn--xl af-btn--block"
+            onClick={handleSubmit}
+            disabled={!canSubmit || submitting}
+            style={{ opacity: canSubmit ? 1 : 0.72 }}
+          >
+            {submitting ? 'Submitting…' : (
+              <>
+                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Submit install
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
