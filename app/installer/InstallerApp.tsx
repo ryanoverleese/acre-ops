@@ -32,6 +32,7 @@ export interface InstallerAssignment {
   batteryType: string;
   fieldNotes: string;
   status: string;
+  plannedInstaller: string;
 }
 
 type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'settings';
@@ -251,6 +252,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
           <SettingsScreen
             session={session}
             onBack={() => setScreen('me')}
+            onAdHocInstall={(a) => { setSelected(a); setScreen('field'); }}
           />
         )}
         {screen === 'field' && selected && (
@@ -2290,8 +2292,16 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
-function SettingsScreen({ session, onBack }: { session: Session; onBack: () => void }) {
+function SettingsScreen({ session, onBack, onAdHocInstall }: {
+  session: Session;
+  onBack: () => void;
+  onAdHocInstall: (a: InstallerAssignment) => void;
+}) {
   const [mapProvider, setMapProvider] = useState<MapProvider>('google');
+  const [showAdHoc, setShowAdHoc] = useState(false);
+  const [adHocLoading, setAdHocLoading] = useState(false);
+  const [adHocAll, setAdHocAll] = useState<InstallerAssignment[]>([]);
+  const [adHocQuery, setAdHocQuery] = useState('');
 
   useEffect(() => {
     setMapProvider(getMapProvider());
@@ -2300,6 +2310,22 @@ function SettingsScreen({ session, onBack }: { session: Session; onBack: () => v
   useEffect(() => {
     localStorage.setItem(MAP_PROVIDER_KEY, mapProvider);
   }, [mapProvider]);
+
+  const openAdHocPicker = async () => {
+    setShowAdHoc(true);
+    setAdHocLoading(true);
+    try {
+      const res = await fetch(`/api/installer/assignments?installer=${encodeURIComponent(session.installer)}&season=${session.season}&all=1&fresh=1`);
+      const data = await res.json();
+      setAdHocAll(data.assignments ?? []);
+    } catch { setAdHocAll([]); }
+    finally { setAdHocLoading(false); }
+  };
+
+  const adHocFiltered = adHocAll.filter(a => {
+    const q = adHocQuery.toLowerCase();
+    return !q || a.fieldName.toLowerCase().includes(q) || a.operation.toLowerCase().includes(q);
+  });
 
   return (
     <div className="af-screen">
@@ -2393,6 +2419,41 @@ function SettingsScreen({ session, onBack }: { session: Session; onBack: () => v
           </div>
         </div>
 
+        {/* Ad-hoc install */}
+        <div style={{ marginBottom: 22 }}>
+          <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Unscheduled install</div>
+          <button
+            onClick={openAdHocPicker}
+            style={{
+              width: '100%', padding: '14px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+              borderRadius: 'var(--r-lg)', cursor: 'pointer', textAlign: 'left',
+            }}
+          >
+            <div style={{
+              width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+              background: 'var(--sage-wash)', color: 'var(--field-green)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
+                Install a different field
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                Search all ready-to-install assignments
+              </div>
+            </div>
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        </div>
+
         {/* App info */}
         <div style={{
           padding: '14px', borderTop: '1px solid var(--border-1)',
@@ -2403,6 +2464,86 @@ function SettingsScreen({ session, onBack }: { session: Session; onBack: () => v
           <div>Acre Insights · {session.season} season</div>
         </div>
       </div>
+
+      {/* Ad-hoc field picker sheet */}
+      {showAdHoc && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(10,10,10,0.5)',
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+        }} onClick={() => setShowAdHoc(false)}>
+          <div
+            style={{
+              background: 'var(--bone)', borderRadius: '16px 16px 0 0',
+              maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Sheet header */}
+            <div style={{ padding: '16px 16px 12px', borderBottom: '1px solid var(--border-1)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>
+                  Install a Different Field
+                </div>
+                <button
+                  onClick={() => setShowAdHoc(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--stone-500)', padding: 4 }}
+                >
+                  <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <input
+                className="af-input"
+                placeholder="Search field or operation…"
+                value={adHocQuery}
+                onChange={e => setAdHocQuery(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            {/* Sheet list */}
+            <div style={{ overflowY: 'auto', flex: 1, padding: '8px 0 32px' }}>
+              {adHocLoading && (
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--stone-500)', fontSize: 13 }}>
+                  Loading fields…
+                </div>
+              )}
+              {!adHocLoading && adHocFiltered.length === 0 && (
+                <div style={{ padding: 24, textAlign: 'center', color: 'var(--stone-500)', fontSize: 13 }}>
+                  No fields found.
+                </div>
+              )}
+              {!adHocLoading && adHocFiltered.map((a, i, arr) => (
+                <button
+                  key={a.id}
+                  onClick={() => { setShowAdHoc(false); onAdHocInstall(a); }}
+                  style={{
+                    width: '100%', padding: '13px 16px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    background: 'none', border: 'none',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+                    cursor: 'pointer', textAlign: 'left',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>
+                      {a.fieldName}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                      {a.operation}{a.crop ? ` · ${a.crop}` : ''}{a.plannedInstaller ? ` · ${a.plannedInstaller}` : ''}
+                    </div>
+                  </div>
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

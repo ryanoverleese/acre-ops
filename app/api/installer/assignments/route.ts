@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
   const debug = searchParams.get('debug') === '1';
   const fresh = searchParams.get('fresh') === '1';
+  const all = searchParams.get('all') === '1'; // skip installer filter; return all ready-to-install fields
 
   if (!installer) {
     return NextResponse.json({ error: 'installer param required' }, { status: 400 });
@@ -79,12 +80,14 @@ export async function GET(request: NextRequest) {
         if (fs.planned_installer?.value) seenInstallers.add(fs.planned_installer.value);
         if (Number(fs.season) !== season) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'season mismatch', fsSeason: fs.season }); return false; }
         stepCounts.inSeason++;
-        if (fs.planned_installer?.value !== installer) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'installer mismatch', fsInstaller: fs.planned_installer?.value }); return false; }
+        if (!all && fs.planned_installer?.value !== installer) { if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'installer mismatch', fsInstaller: fs.planned_installer?.value }); return false; }
         stepCounts.matchedInstaller++;
         // Must be marked ready_to_install on the field_season, OR already installed
         // (keep installed ones visible so they show under the Done filter).
+        // When all=1, exclude already-installed to keep the ad-hoc picker clean.
         const status = (pa.probe_status?.value ?? '').toLowerCase();
         const isInstalled = status === 'installed';
+        if (all && isInstalled) return false;
         if (!fs.ready_to_install && !isInstalled) {
           if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'not ready_to_install', ready: fs.ready_to_install, status });
           return false;
