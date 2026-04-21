@@ -23,6 +23,21 @@ export default async function RacksPage() {
     brand: p.brand?.value || 'Unknown',
   }));
 
+  // Probes with "In Crate" status are physically out of the rack — treat slots as empty
+  const inCrateProbeIds = new Set(
+    probes
+      .filter(p => p.status?.value?.toLowerCase().includes('in crate'))
+      .map(p => p.id)
+  );
+
+  const filteredSlots = slots.map(slot => {
+    const probeId = slot.probe?.[0]?.id;
+    if (probeId && inCrateProbeIds.has(probeId)) {
+      return { ...slot, probe: [] };
+    }
+    return slot;
+  });
+
   // Operation lookup: probe.billing_entity → operation name
   const operationMap = buildOperationMap(operations);
   const { billingToOperationNames } = buildBillingToOperationMaps(contacts, operationMap);
@@ -60,5 +75,5 @@ export default async function RacksPage() {
     probeLabels[probe.id] = { operation, field, status };
   }
 
-  return <RacksClient slots={slots} probes={processedProbes} probeLabels={probeLabels} />;
+  return <RacksClient slots={filteredSlots} probes={processedProbes} probeLabels={probeLabels} />;
 }
