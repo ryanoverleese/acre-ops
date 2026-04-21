@@ -1044,7 +1044,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           </div>
           {cropConfirmed === false && (
             <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Other'].map(opt => (
+              {['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum', 'Other'].map(opt => (
                 <button
                   key={opt}
                   className="af-btn af-btn--lg"
