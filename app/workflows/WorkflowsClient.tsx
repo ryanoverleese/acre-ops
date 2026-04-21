@@ -246,105 +246,133 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
 
   // Register probe workflow
   if (activeWorkflow === 'register') {
+    const inputStyle: React.CSSProperties = {
+      padding: '14px 16px',
+      border: '1px solid var(--border)',
+      borderRadius: 10,
+      background: 'var(--bg-secondary)',
+      color: 'var(--text-primary)',
+      fontSize: 17,
+      width: '100%',
+      boxSizing: 'border-box',
+    };
+    const labelStyle: React.CSSProperties = {
+      display: 'block',
+      fontWeight: 600,
+      fontSize: 13,
+      textTransform: 'uppercase',
+      letterSpacing: '0.06em',
+      color: 'var(--text-secondary)',
+      marginBottom: 8,
+    };
+
     return (
       <>
         <header className="header">
           <div className="header-left">
-            <h2>Workflows</h2>
-            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ Register New Probe</span>
-          </div>
-          <div className="header-right">
-            <button className="btn btn-secondary" onClick={() => { setActiveWorkflow(null); resetRegister(); }}>
-              Cancel
+            <button
+              className="btn btn-secondary"
+              onClick={() => { setActiveWorkflow(null); resetRegister(); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 18l-6-6 6-6" />
+              </svg>
+              Workflows
             </button>
           </div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Register Probe</div>
+          <div style={{ width: 90 }} />
         </header>
         <div className="content">
-          <div style={{ maxWidth: 480 }}>
+          <div style={{ maxWidth: 520 }}>
 
             {step === 'select' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>Enter probe details</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>Serial Number *</label>
-                    <input
-                      type="text"
-                      value={regSerial}
-                      onChange={(e) => setRegSerial(e.target.value)}
-                      placeholder="e.g. 12345"
-                      inputMode="numeric"
-                      autoFocus
-                      style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>Probe Type</label>
-                    <select
-                      value={regType}
-                      onChange={(e) => setRegType(e.target.value)}
-                      style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
-                    >
-                      {brandOptions.map(t => <option key={t} value={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>Year New</label>
-                    <input
-                      type="number"
-                      value={regYearNew}
-                      onChange={(e) => setRegYearNew(e.target.value)}
-                      min="2000"
-                      max="2099"
-                      style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: 120 }}
-                    />
-                  </div>
+                {/* Serial number */}
+                <div>
+                  <label style={labelStyle}>Serial Number</label>
+                  <input
+                    type="text"
+                    value={regSerial}
+                    onChange={(e) => setRegSerial(e.target.value)}
+                    placeholder="e.g. 412719"
+                    inputMode="numeric"
+                    autoFocus
+                    style={{ ...inputStyle, fontSize: 22, fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em' }}
+                  />
                 </div>
 
-                {/* On-order match suggestion */}
+                {/* Probe type */}
+                <div>
+                  <label style={labelStyle}>Probe Type</label>
+                  <select
+                    value={regType}
+                    onChange={(e) => setRegType(e.target.value)}
+                    style={inputStyle}
+                  >
+                    {brandOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+
+                {/* Year */}
+                <div>
+                  <label style={labelStyle}>Year New</label>
+                  <input
+                    type="number"
+                    value={regYearNew}
+                    onChange={(e) => setRegYearNew(e.target.value)}
+                    min="2000"
+                    max="2099"
+                    style={{ ...inputStyle, width: 140 }}
+                  />
+                </div>
+
+                {/* On-order match */}
                 {matchingOnOrder.length > 0 && (
                   <div>
-                    <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                    <label style={labelStyle}>
                       Assign to On Order slot?
-                      <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 6 }}>
-                        — {matchingOnOrder.length} {regType} on order
+                      <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginLeft: 6, color: 'var(--text-muted)' }}>
+                        {matchingOnOrder.length} {regType} on order
                       </span>
                     </label>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                       {matchingOnOrder.map(p => (
                         <button
                           key={p.id}
                           onClick={() => setRegOnOrderMatch(regOnOrderMatch?.id === p.id ? null : p)}
                           style={{
-                            padding: '10px 14px',
+                            padding: '14px 16px',
                             border: `2px solid ${regOnOrderMatch?.id === p.id ? 'var(--accent-primary)' : 'var(--border)'}`,
-                            borderRadius: 8,
+                            borderRadius: 10,
                             background: regOnOrderMatch?.id === p.id ? 'rgba(34,197,94,0.08)' : 'var(--bg-secondary)',
                             cursor: 'pointer',
                             textAlign: 'left',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 10,
+                            gap: 14,
                           }}
                         >
                           <div style={{
-                            width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                            border: regOnOrderMatch?.id === p.id ? '6px solid var(--accent-primary)' : '2px solid var(--border)',
+                            width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                            border: regOnOrderMatch?.id === p.id ? '7px solid var(--accent-primary)' : '2px solid var(--border)',
+                            transition: 'border-width 0.1s',
                           }} />
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>
-                              {p.status} — Probe #{p.id}
+                            <div style={{ fontWeight: 600, fontSize: 15 }}>
+                              Probe #{p.id}
                             </div>
-                            {p.notes && (
-                              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{p.notes}</div>
-                            )}
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                              {p.status}{p.notes ? ` · ${p.notes}` : ''}
+                            </div>
                           </div>
                         </button>
                       ))}
                       {regOnOrderMatch && (
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                          Serial #{regSerial || '…'} will replace the on-order slot. No new row created.
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', padding: '0 4px' }}>
+                          #{regSerial || '…'} will be written to Probe #{regOnOrderMatch.id}. No new row created.
                         </div>
                       )}
                     </div>
@@ -352,38 +380,43 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                 )}
 
                 {error && (
-                  <div style={{ color: '#ef4444', fontSize: 13, padding: '8px 12px', background: 'rgba(239,68,68,0.1)', borderRadius: 6 }}>{error}</div>
+                  <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{error}</div>
                 )}
 
                 <button
                   className="btn btn-primary"
                   onClick={handleRegisterSubmit}
                   disabled={saving || !regSerial.trim()}
+                  style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}
                 >
-                  {saving ? 'Saving...' : regOnOrderMatch ? 'Assign Serial to On Order Slot' : 'Register as New Probe'}
+                  {saving ? 'Saving…' : regOnOrderMatch ? `Assign #${regSerial || '…'} to On Order Slot` : 'Register as New Probe'}
                 </button>
               </div>
             )}
 
             {step === 'done' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'flex-start' }}>
-                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(34, 197, 94, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="24" height="24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="32" height="32">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Probe registered</div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                  <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Probe registered</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
                     {regOnOrderMatch
-                      ? <><strong>#{regCreatedSerial}</strong> assigned to on-order slot (Probe #{regOnOrderMatch.id}). Status set to In Stock.</>
-                      : <><strong>{regType} #{regCreatedSerial}</strong> added to inventory with status In Stock.</>
+                      ? <><strong>#{regCreatedSerial}</strong> assigned to Probe #{regOnOrderMatch.id}. Status set to In Stock.</>
+                      : <><strong>{regType} #{regCreatedSerial}</strong> added to inventory as In Stock.</>
                     }
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button className="btn btn-primary" onClick={resetRegister}>Register Another</button>
-                  <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)}>Back to Workflows</button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                  <button className="btn btn-primary" onClick={resetRegister} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
+                    Register Another
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
+                    Back to Workflows
+                  </button>
                 </div>
               </div>
             )}
