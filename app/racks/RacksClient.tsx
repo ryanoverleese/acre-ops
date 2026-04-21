@@ -57,6 +57,13 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
   const [lastMove, setLastMove] = useState<LastMove | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>('serial');
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [statusPickerProbeId, setStatusPickerProbeId] = useState<number | null>(null);
+
+  const STATUS_OPTIONS = [
+    'In Stock', 'Assigned', 'Installed', 'In Crate for Shipment',
+    'Trade Ordered', 'Trade Ordered - In Crate', 'On Order', 'On Order - Trade',
+    'No Trade', 'RMA', 'Retired', 'Lost',
+  ];
 
   useEffect(() => {
     const saved = localStorage.getItem('rack-display-mode') as DisplayMode | null;
@@ -161,6 +168,20 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     setDestSearch('');
     setAssigningRowId(null);
     setProbeSearch('');
+    setStatusPickerProbeId(null);
+  }
+
+  async function changeProbeStatus(probeId: number, status: string) {
+    setSaving(true);
+    try {
+      await fetch(`/api/probes/${probeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      closeModal();
+      router.refresh();
+    } finally { setSaving(false); }
   }
 
   async function assignProbe(slotId: number, probeId: number) {
@@ -452,7 +473,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                       {showPositionLabel && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Position {i + 1}</div>}
                       <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--accent-primary)', marginBottom: 2 }}>{probe.value}</div>
                       {probeData && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>{probeData.brand} · {probeData.status}</div>}
-                      <div style={{ display: 'flex', gap: 8 }}>
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                         <button
                           onClick={() => {
                             setDestPicker({ rowId: row.id, probeId: probe.id, serialNumber: probe.value });
@@ -470,6 +491,33 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                           {saving ? 'Saving…' : 'Unassign'}
                         </button>
                       </div>
+                      <button
+                        onClick={() => setStatusPickerProbeId(statusPickerProbeId === probe.id ? null : probe.id)}
+                        style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-secondary)', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Change Status {probeData?.status ? `· ${probeData.status}` : ''}
+                      </button>
+                      {statusPickerProbeId === probe.id && (
+                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {STATUS_OPTIONS.map(s => (
+                            <button
+                              key={s}
+                              onClick={() => changeProbeStatus(probe.id, s)}
+                              disabled={saving || s === probeData?.status}
+                              style={{
+                                padding: '8px 12px', borderRadius: 7, textAlign: 'left', fontSize: 13,
+                                border: `1px solid ${s === probeData?.status ? 'var(--accent-primary)' : 'var(--border)'}`,
+                                background: s === probeData?.status ? 'rgba(74,122,91,0.1)' : 'var(--bg-primary)',
+                                color: s === probeData?.status ? 'var(--accent-primary)' : 'var(--text-primary)',
+                                fontWeight: s === probeData?.status ? 600 : 400,
+                                cursor: s === probeData?.status ? 'default' : 'pointer',
+                              }}
+                            >
+                              {s}{s === probeData?.status ? ' ✓' : ''}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 }
