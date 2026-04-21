@@ -42,7 +42,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
 
   // Register probe state
   const [regSerial, setRegSerial] = useState('');
-  const [regType, setRegType] = useState(() => brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
+  const [regType, setRegType] = useState(() => brandOptions.find(b => b.toLowerCase().includes('cropx v4')) || brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
   const [regYearNew, setRegYearNew] = useState(() => String(new Date().getFullYear()));
   const [regCreatedSerial, setRegCreatedSerial] = useState('');
   const [regOnOrderMatch, setRegOnOrderMatch] = useState<OnOrderProbe | null>(null);
@@ -151,7 +151,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
 
   const resetRegister = () => {
     setRegSerial('');
-    setRegType(brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
+    setRegType(brandOptions.find(b => b.toLowerCase().includes('cropx v4')) || brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
     setRegYearNew(String(new Date().getFullYear()));
     setRegCreatedSerial('');
     setRegOnOrderMatch(null);
