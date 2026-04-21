@@ -1021,7 +1021,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
               style={{
                 background: cropConfirmed === true ? 'var(--field-green)' : 'var(--bone-raised)',
                 color: cropConfirmed === true ? 'var(--bone)' : 'var(--ink)',
-                border: `1px solid ${cropConfirmed === true ? 'var(--field-green)' : 'var(--border-2)'}`,
+                border: `1.5px solid ${cropConfirmed === true ? 'var(--field-green)' : 'var(--stone-300)'}`,
               }}
             >
               <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -1036,7 +1036,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
               style={{
                 background: cropConfirmed === false ? 'var(--dry)' : 'var(--bone-raised)',
                 color: cropConfirmed === false ? 'white' : 'var(--ink)',
-                border: `1px solid ${cropConfirmed === false ? 'var(--dry)' : 'var(--border-2)'}`,
+                border: `1.5px solid ${cropConfirmed === false ? 'var(--dry)' : 'var(--stone-300)'}`,
               }}
             >
               Changed
@@ -1067,7 +1067,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
                 style={{
                   background: rowDir === dir ? 'var(--field-green)' : 'var(--bone-raised)',
                   color: rowDir === dir ? 'var(--bone)' : 'var(--ink)',
-                  border: `1px solid ${rowDir === dir ? 'var(--field-green)' : 'var(--border-2)'}`,
+                  border: `1.5px solid ${rowDir === dir ? 'var(--field-green)' : 'var(--stone-300)'}`,
                 }}
               >
                 {dir}
@@ -1178,7 +1178,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           className="af-btn af-btn--primary af-btn--xl af-btn--block"
           onClick={handleSubmit}
           disabled={!canSubmit || submitting}
-          style={{ opacity: canSubmit ? 1 : 0.55 }}
+          style={{ opacity: canSubmit ? 1 : 0.72 }}
         >
           {submitting ? (
             'Submitting…'

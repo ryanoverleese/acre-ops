@@ -10106,7 +10106,7 @@ tr.expanded-row:hover {
 .af-btn--primary { background: var(--field-green); color: var(--bone); box-shadow: var(--shadow-1); }
 .af-btn--primary:active { background: var(--field-green-ink); }
 .af-btn--primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-.af-btn--secondary { background: var(--bone-raised); color: var(--ink); border: 1px solid var(--border-2); }
+.af-btn--secondary { background: var(--bone-raised); color: var(--ink); border: 1.5px solid var(--stone-300); }
 .af-btn--ghost { color: var(--field-green); background: transparent; }
 .af-btn--lg { min-height: 60px; font-size: 16px; padding: 0 20px; }
 .af-btn--xl { min-height: 72px; font-size: 20px; letter-spacing: 0.04em; }
@@ -10328,9 +10328,9 @@ tr.expanded-row:hover {
 .af-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .af-photo-slot {
   aspect-ratio: 4/5; border-radius: var(--r-lg);
-  border: 2px dashed var(--border-2);
+  border: 2px dashed var(--stone-400);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 8px; color: var(--stone-500);
+  gap: 8px; color: var(--stone-700);
   font-family: var(--font-display); font-weight: 600; font-size: 12px;
   letter-spacing: 0.1em; text-transform: uppercase;
   position: relative; overflow: hidden; background: var(--bone);
@@ -10412,7 +10412,7 @@ tr.expanded-row:hover {
   flex-shrink: 0;
 }
 .af-section-num.done { background: var(--field-green); color: var(--bone); }
-.af-section-num.todo { background: var(--stone-50); color: var(--stone-500); border: 1px solid var(--border-2); }
+.af-section-num.todo { background: var(--ink); color: var(--bone); }
 
 /* GPS capture animation */
 @keyframes af-pulse {
