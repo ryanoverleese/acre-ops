@@ -1509,9 +1509,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
           <div className="af-topbar-title">Loadout</div>
           <div className="af-topbar-sub">{todo.length} install{todo.length !== 1 ? 's' : ''} today</div>
         </div>
-        <div style={{ width: 40, textAlign: 'right', fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '0.1em', color: 'var(--field-green)' }}>
-          {initials}
-        </div>
+        <div style={{ width: 40 }} />
       </div>
 
       <div className="af-body" style={{ padding: '0 0 24px', background: '#FFFFFF' }}>
