@@ -96,10 +96,11 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
       style={{ height: 240, width: '100%' }}
       zoomControl={false}
       attributionControl={false}
-      dragging
-      doubleClickZoom
+      dragging={false}
+      doubleClickZoom={false}
       scrollWheelZoom={false}
-      touchZoom
+      touchZoom={false}
+      keyboard={false}
     >
       <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
       <FollowUser pos={userPos} />
