@@ -326,9 +326,7 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const currentYear = new Date().getFullYear();
-
-  const handleDigit = (d: string) => { if (pin.length < 4) setPin(p => p + d); };
-  const handleDelete = () => setPin(p => p.slice(0, -1));
+  const pinInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-submit when 4th digit is entered
   useEffect(() => {
@@ -358,8 +356,6 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
     } catch { setError('Connection error — try again'); }
     finally { setLoading(false); }
   };
-
-  const numpadRows = [['1','2','3'],['4','5','6'],['7','8','9'],['','0','⌫']];
 
   return (
     <div className="af-screen" style={{ overflowY: 'auto', background: 'var(--bone)' }}>
@@ -394,7 +390,7 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
                 <button
                   key={n}
                   aria-pressed={installer === n}
-                  onClick={() => { setInstaller(n); setPin(''); setError(''); }}
+                  onClick={() => { setInstaller(n); setPin(''); setError(''); setTimeout(() => pinInputRef.current?.focus(), 50); }}
                 >
                   {n}
                 </button>
@@ -404,15 +400,15 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
             <select
               className="af-select"
               value={installer}
-              onChange={e => { setInstaller(e.target.value); setPin(''); setError(''); }}
+              onChange={e => { setInstaller(e.target.value); setPin(''); setError(''); setTimeout(() => pinInputRef.current?.focus(), 50); }}
             >
               {installerNames.map(n => <option key={n} value={n}>{n}</option>)}
             </select>
           )}
         </div>
 
-        {/* PIN dots */}
-        <div style={{ textAlign: 'center' }}>
+        {/* PIN dots — tap to focus hidden input */}
+        <div style={{ textAlign: 'center' }} onClick={() => pinInputRef.current?.focus()}>
           <div style={{ fontSize: 10, letterSpacing: '0.2em', fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--stone-500)', marginBottom: 14 }}>
             PIN
           </div>
@@ -421,15 +417,16 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
               <div key={i} className={`af-pin-dot${i < pin.length ? ' filled' : ''}`} />
             ))}
           </div>
-        </div>
-
-        {/* Numpad */}
-        <div className="af-numpad">
-          {numpadRows.flat().map((d, i) => {
-            if (d === '') return <button key={i} className="af-numpad-btn ghost" disabled />;
-            if (d === '⌫') return <button key={i} className="af-numpad-btn delete" onClick={handleDelete}>⌫</button>;
-            return <button key={i} className="af-numpad-btn" onClick={() => handleDigit(d)}>{d}</button>;
-          })}
+          <input
+            ref={pinInputRef}
+            type="password"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={4}
+            value={pin}
+            onChange={e => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            style={{ position: 'absolute', opacity: 0, pointerEvents: 'none', width: 1, height: 1 }}
+          />
         </div>
 
         {error && <div className="af-error-msg">{error}</div>}
