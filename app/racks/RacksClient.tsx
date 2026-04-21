@@ -94,7 +94,7 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     return stats;
   }, [slots]);
 
-  const { sideAGroups, sideBGroups, rackFilled, rackTotal } = useMemo(() => {
+  const { sideAGroups, sideBGroups, rackFilled, rackTotal, rackLost } = useMemo(() => {
     const rackSlots = slots.filter((s) => parseRackStr(s.rack).num === selectedRack);
     function groupSide(side: 'A' | 'B'): [number, ProbeRackSlot[]][] {
       const map = new Map<number, ProbeRackSlot[]>();
@@ -105,13 +105,18 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
       }
       return Array.from(map.entries()).sort(([a], [b]) => a - b);
     }
+    const lost = rackSlots.filter(s => {
+      const probeId = s.probe?.[0]?.id;
+      return probeId && probeLabels[probeId]?.status?.toLowerCase() === 'lost';
+    }).length;
     return {
       sideAGroups: groupSide('A'),
       sideBGroups: groupSide('B'),
       rackFilled: rackSlots.filter(slotIsFilled).length,
       rackTotal: rackSlots.length,
+      rackLost: lost,
     };
-  }, [slots, selectedRack]);
+  }, [slots, selectedRack, probeLabels]);
 
   const assignedProbeIds = useMemo(
     () => new Set(slots.flatMap((s) => s.probe?.map((p) => p.id) ?? [])),
@@ -403,6 +408,13 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{rackTotal - rackFilled}</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>empty</span>
               </div>
+              {rackLost > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-red)' }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent-red)' }}>{rackLost}</span>
+                  <span style={{ fontSize: 12, color: 'var(--accent-red)', opacity: 0.8 }}>lost</span>
+                </div>
+              )}
             </div>
             <div style={{ height: 6, borderRadius: 3, background: 'var(--bg-secondary)', overflow: 'hidden' }}>
               <div style={{ width: `${rackTotal ? Math.round((rackFilled / rackTotal) * 100) : 0}%`, height: '100%', background: 'var(--accent-primary)', borderRadius: 3, transition: 'width 0.3s ease' }} />
