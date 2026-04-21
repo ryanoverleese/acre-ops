@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 
 export default async function RacksPage() {
   const [slots, probes, billingEntities, contacts, operations, probeAssignments, fieldSeasons, fields] = await Promise.all([
-    getCachedRows<ProbeRackSlot>('probe_rack', undefined, 0),   // live — you're moving these
-    getCachedRows<Probe>('probes', undefined, 0),               // live — status changes
+    getRows<ProbeRackSlot>('probe_rack'),   // live — you're moving these
+    getRows<Probe>('probes'),               // live — status changes
     getCachedRows<BillingEntity>('billing_entities', undefined, 600),
     getCachedRows<Contact>('contacts', undefined, 600),
     getCachedRows<Operation>('operations', undefined, 600),
