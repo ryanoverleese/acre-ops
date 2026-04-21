@@ -2534,6 +2534,13 @@ function SettingsScreen({ session, onBack, onAdHocInstall }: {
                     <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
                       {a.operation}{a.crop ? ` · ${a.crop}` : ''}{a.plannedInstaller ? ` · ${a.plannedInstaller}` : ''}
                     </div>
+                    {(a.probeSerial || a.probeRack) && (
+                      <div style={{ fontSize: 11, color: 'var(--field-green)', marginTop: 3, fontFamily: 'var(--font-mono)' }}>
+                        {a.probeSerial ? `#${a.probeSerial}` : ''}
+                        {a.probeSerial && a.probeRack ? ' · ' : ''}
+                        {a.probeRack ? `Rack ${a.probeRack}${a.probeRackSlot ? ` · Slot ${a.probeRackSlot}` : ''}` : ''}
+                      </div>
+                    )}
                   </div>
                   <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                     <polyline points="9 18 15 12 9 6" />
