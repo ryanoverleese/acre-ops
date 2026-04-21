@@ -1408,7 +1408,7 @@ function MapScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
               width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-              background: selected.status.toLowerCase() === 'installed' ? 'var(--stone-100)' : 'var(--ink)',
+              background: selected.status.toLowerCase() === 'installed' ? 'var(--stone-100)' : 'var(--field-green)',
               color: selected.status.toLowerCase() === 'installed' ? 'var(--stone-400)' : 'var(--bone)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
@@ -1567,7 +1567,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                   {/* Big rack location badge — acts as a physical shelf marker */}
                   <div style={{
                     width: 88, flexShrink: 0,
-                    background: isLoaded ? 'var(--stone-100)' : 'var(--ink)',
+                    background: isLoaded ? 'var(--stone-100)' : 'var(--field-green)',
                     color: isLoaded ? 'var(--stone-400)' : 'var(--bone)',
                     borderRight: '1px solid var(--border-1)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

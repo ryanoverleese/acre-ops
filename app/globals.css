@@ -10170,7 +10170,7 @@ tr.expanded-row:hover {
 .af-stop:active { transform: scale(0.995); }
 .af-stop[data-status="installed"] { opacity: 0.55; }
 .af-stop[data-status="installed"] .af-stop-order { background: var(--stone-100); color: var(--stone-400); }
-.af-stop[data-status="todo"] .af-stop-order { background: var(--ink); color: var(--bone); }
+.af-stop[data-status="todo"] .af-stop-order { background: var(--field-green); color: var(--bone); }
 .af-stop::before {
   content: ""; position: absolute; left: 0; top: 10px; bottom: 10px;
   width: 3px; border-radius: 2px; background: var(--stone-100);
