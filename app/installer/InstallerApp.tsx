@@ -1180,17 +1180,13 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           disabled={!canSubmit || submitting}
           style={{ opacity: canSubmit ? 1 : 0.72 }}
         >
-          {submitting ? (
-            'Submitting…'
-          ) : canSubmit ? (
+          {submitting ? 'Submitting…' : (
             <>
               <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
               Submit install
             </>
-          ) : (
-            `${requiredKeys.length - completedCount} field${requiredKeys.length - completedCount === 1 ? '' : 's'} to go`
           )}
         </button>
       </div>
