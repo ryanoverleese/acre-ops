@@ -2499,7 +2499,6 @@ function SettingsScreen({ session, onBack, onAdHocInstall }: {
                 placeholder="Search field or operation…"
                 value={adHocQuery}
                 onChange={e => setAdHocQuery(e.target.value)}
-                autoFocus
               />
             </div>
 
