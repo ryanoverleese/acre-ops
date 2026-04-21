@@ -1567,8 +1567,8 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                   {/* Big rack location badge — acts as a physical shelf marker */}
                   <div style={{
                     width: 88, flexShrink: 0,
-                    background: isLoaded ? 'var(--stone-100)' : 'var(--stone-50)',
-                    color: isLoaded ? 'var(--stone-500)' : 'var(--field-green)',
+                    background: isLoaded ? 'var(--stone-100)' : 'var(--ink)',
+                    color: isLoaded ? 'var(--stone-400)' : 'var(--bone)',
                     borderRight: '1px solid var(--border-1)',
                     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                     gap: 4, padding: '10px 6px',
