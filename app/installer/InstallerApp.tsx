@@ -92,7 +92,7 @@ function playSuccessSound() {
 // picks up the 'small' rule regardless of which piece it lives in.
 function probeBadgeColors(brand: string, antenna = ''): { bg: string; fg: string } {
   const combined = `${brand} ${antenna}`.toLowerCase();
-  if (/gateway[^a-z]*small|small[^a-z]*diameter/.test(combined)) return { bg: '#CCFBF1', fg: '#0F766E' };           // teal
+  if (/gateway[^a-z]*small|small[^a-z]*diameter/.test(combined)) return { bg: '#EDE9FE', fg: '#6D28D9' };           // purple
   if (/gateway[^a-z]*large|large[^a-z]*diameter/.test(combined)) return { bg: '#FEF3C7', fg: '#92400E' };           // muted yellow/amber
   if (/sentek/.test(combined)) return { bg: '#DCFCE7', fg: '#166534' };                                            // muted green
   if (/cropx\s*v\d|cropx\s*v(?!\w)|v4/.test(combined)) return { bg: '#DBEAFE', fg: '#1E40AF' };                    // muted blue
