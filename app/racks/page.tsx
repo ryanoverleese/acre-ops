@@ -1,4 +1,4 @@
-import { getCachedRows, ProbeRackSlot, Probe, BillingEntity, Contact, Operation, Field, FieldSeason, getProbeAssignments } from '@/lib/baserow';
+import { getCachedRows, getRows, ProbeRackSlot, Probe, BillingEntity, Contact, Operation, Field, FieldSeason, getProbeAssignments } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import RacksClient from './RacksClient';
 
@@ -6,14 +6,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function RacksPage() {
   const [slots, probes, billingEntities, contacts, operations, probeAssignments, fieldSeasons, fields] = await Promise.all([
-    getCachedRows<ProbeRackSlot>('probe_rack', undefined, 60),
-    getCachedRows<Probe>('probes', undefined, 120),
-    getCachedRows<BillingEntity>('billing_entities', undefined, 300),
-    getCachedRows<Contact>('contacts', undefined, 300),
-    getCachedRows<Operation>('operations', undefined, 300),
+    getCachedRows<ProbeRackSlot>('probe_rack', undefined, 0),   // live — you're moving these
+    getCachedRows<Probe>('probes', undefined, 0),               // live — status changes
+    getCachedRows<BillingEntity>('billing_entities', undefined, 600),
+    getCachedRows<Contact>('contacts', undefined, 600),
+    getCachedRows<Operation>('operations', undefined, 600),
     getProbeAssignments(),
-    getCachedRows<FieldSeason>('field_seasons', undefined, 120),
-    getCachedRows<Field>('fields', undefined, 300),
+    getCachedRows<FieldSeason>('field_seasons', undefined, 300),
+    getCachedRows<Field>('fields', undefined, 600),
   ]);
 
   const processedProbes = probes.map((p) => ({

@@ -99,9 +99,12 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     function groupSide(side: 'A' | 'B'): [number, ProbeRackSlot[]][] {
       const map = new Map<number, ProbeRackSlot[]>();
       for (const slot of rackSlots.filter(s => s.rack.endsWith(side))) {
-        const existing = map.get(slot.rack_slot) ?? [];
+        const groupKey = selectedRack === 6
+          ? Math.ceil(slot.rack_slot / 2)
+          : slot.rack_slot;
+        const existing = map.get(groupKey) ?? [];
         existing.push(slot);
-        map.set(slot.rack_slot, existing);
+        map.set(groupKey, existing);
       }
       return Array.from(map.entries()).sort(([a], [b]) => a - b);
     }
@@ -288,7 +291,11 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
           minWidth: 0,
         }}
       >
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>{slotNum}</div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 2 }}>
+          {rows.length > 1 && rows[0].rack_slot !== rows[rows.length - 1].rack_slot
+            ? `${Math.min(...rows.map(r => r.rack_slot))}-${Math.max(...rows.map(r => r.rack_slot))}`
+            : slotNum}
+        </div>
         {rows.map((row) => {
           const linked = row.probe?.[0];
           const sn = linked?.value;
@@ -475,7 +482,11 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
             {/* Modal header */}
             <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontWeight: 600, fontSize: 14 }}>
-                Rack {selectedRack}{slotModal.side} · Slot {slotModal.slotNum}
+                Rack {selectedRack}{slotModal.side} · Slot {
+                  slotModal.rows.length > 1 && slotModal.rows[0].rack_slot !== slotModal.rows[slotModal.rows.length - 1].rack_slot
+                    ? `${Math.min(...slotModal.rows.map(r => r.rack_slot))}-${Math.max(...slotModal.rows.map(r => r.rack_slot))}`
+                    : slotModal.slotNum
+                }
               </span>
               <button onClick={closeModal} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 20, lineHeight: 1, padding: '0 2px' }}>×</button>
             </div>
