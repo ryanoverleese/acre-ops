@@ -1043,14 +1043,22 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
             </button>
           </div>
           {cropConfirmed === false && (
-            <div className="af-field" style={{ marginTop: 10 }}>
-              <label>What&apos;s planted?</label>
-              <input
-                className="af-input"
-                placeholder="e.g. Soybeans"
-                value={cropChanged}
-                onChange={e => setCropChanged(e.target.value)}
-              />
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {['Corn', 'Soybeans', 'Seed Corn', 'Wheat', 'Other'].map(opt => (
+                <button
+                  key={opt}
+                  className="af-btn af-btn--lg"
+                  aria-pressed={cropChanged === opt ? 'true' : 'false'}
+                  onClick={() => setCropChanged(opt)}
+                  style={{
+                    background: cropChanged === opt ? 'var(--field-green)' : 'var(--bone-raised)',
+                    color: cropChanged === opt ? 'var(--bone)' : 'var(--ink)',
+                    border: `1.5px solid ${cropChanged === opt ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                  }}
+                >
+                  {opt}
+                </button>
+              ))}
             </div>
           )}
         </InstallSection>
