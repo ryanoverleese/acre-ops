@@ -263,14 +263,20 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
 
   function SlotGroup({ slotNum, rows, side }: { slotNum: number; rows: ProbeRackSlot[]; side: 'A' | 'B' }) {
     const isFilled = rows.some(slotIsFilled);
+    const isLost = isFilled && rows.some(row => {
+      const probeId = row.probe?.[0]?.id;
+      return probeId && probeLabels[probeId]?.status?.toLowerCase() === 'lost';
+    });
+    const borderColor = isLost ? 'rgba(220,38,38,0.35)' : isFilled ? 'rgba(74,122,91,0.25)' : 'var(--border)';
+    const bgColor = isLost ? 'rgba(220,38,38,0.06)' : isFilled ? 'rgba(74,122,91,0.06)' : 'var(--bg-card)';
     return (
       <div
         onClick={() => setSlotModal({ rows, slotNum, side })}
         style={{
           padding: '5px 8px',
           borderRadius: 6,
-          border: `1px solid ${isFilled ? 'rgba(74,122,91,0.25)' : 'var(--border)'}`,
-          background: isFilled ? 'rgba(74,122,91,0.06)' : 'var(--bg-card)',
+          border: `1px solid ${borderColor}`,
+          background: bgColor,
           cursor: 'pointer',
           transition: 'all 0.12s ease',
           minWidth: 0,
@@ -281,12 +287,13 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
           const linked = row.probe?.[0];
           const sn = linked?.value;
           const probeId = linked?.id;
+          const isRowLost = probeId && probeLabels[probeId]?.status?.toLowerCase() === 'lost';
           const secondLine = sn && probeId && displayMode !== 'serial'
             ? probeLabels[probeId]?.[displayMode as 'operation' | 'field' | 'status'] || null
             : null;
           return (
             <div key={row.id}>
-              <div style={{ fontSize: 11, fontWeight: sn ? 500 : 400, color: sn ? 'var(--accent-primary)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 11, fontWeight: sn ? 500 : 400, color: isRowLost ? 'var(--accent-red)' : sn ? 'var(--accent-primary)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {sn || '–'}
               </div>
               {secondLine && (
