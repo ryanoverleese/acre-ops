@@ -87,10 +87,16 @@ export async function GET(request: NextRequest) {
         // When all=1, exclude already-installed to keep the ad-hoc picker clean.
         const status = (pa.probe_status?.value ?? '').toLowerCase();
         const isInstalled = status === 'installed';
-        if (all && isInstalled) return false;
-        if (!fs.ready_to_install && !isInstalled) {
-          if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'not ready_to_install', ready: fs.ready_to_install, status });
-          return false;
+        if (all) {
+          // Ad-hoc picker: any field with a probe assigned, not yet installed
+          if (isInstalled) return false;
+          if (!pa.probe?.[0]?.id) return false;
+        } else {
+          // Normal route: must be ready_to_install, or already installed (shown under Done filter)
+          if (!fs.ready_to_install && !isInstalled) {
+            if (droppedExamples.length < 5) droppedExamples.push({ paId: pa.id, reason: 'not ready_to_install', ready: fs.ready_to_install, status });
+            return false;
+          }
         }
         stepCounts.readyOrInstalled++;
         return true;
