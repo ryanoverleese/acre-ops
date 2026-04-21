@@ -1161,10 +1161,10 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         <InstallSection num={6} title="CropX telemetry ID" done={!!cropxId} hint="Optional — found on probe unit.">
           <input
             className="af-input af-mono"
-            placeholder="TX-000000"
+            placeholder="000000"
+            inputMode="numeric"
             value={cropxId}
-            onChange={e => setCropxId(e.target.value.toUpperCase())}
-            style={{ textTransform: 'uppercase' }}
+            onChange={e => setCropxId(e.target.value.replace(/\D/g, ''))}
           />
         </InstallSection>
 
