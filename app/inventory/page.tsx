@@ -63,6 +63,7 @@ export default async function InventoryPage() {
     });
 
     // All equipment from probe_assignments (only those linked to current year field_seasons)
+    let totalProbeCount = 0;
     let stubAntennaCount = 0;
     probeAssignments.forEach((pa) => {
       const fsId = pa.field_season?.[0]?.id;
@@ -71,12 +72,13 @@ export default async function InventoryPage() {
       const battery = pa.battery_type?.value;
       if (antenna) antennaCounts.set(antenna, (antennaCounts.get(antenna) || 0) + 1);
       if (battery) batteryCounts.set(battery, (batteryCounts.get(battery) || 0) + 1);
+      totalProbeCount++;
       if (antenna === 'CropX Stub' || antenna === 'Sentek Stub') stubAntennaCount++;
     });
 
-    flagNeeds = stubAntennaCount > 0
-      ? [{ type: "4' White Flag", count: stubAntennaCount }]
-      : [];
+    flagNeeds = [];
+    if (totalProbeCount > 0) flagNeeds.push({ type: "Border Flag (1 per probe)", count: totalProbeCount });
+    if (stubAntennaCount > 0) flagNeeds.push({ type: "Stub Antenna Flag (extra)", count: stubAntennaCount });
 
     antennaNeeds = Array.from(antennaCounts.entries())
       .map(([type, count]) => ({ type, count }))

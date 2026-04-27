@@ -1,0 +1,246 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import type { ReadinessRow } from './page';
+
+interface Props {
+  rows: ReadinessRow[];
+  year: number;
+}
+
+type Filter = 'all' | 'incomplete' | 'ready' | 'installed';
+
+function Check({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      title={label}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        fontSize: 12,
+        fontWeight: 700,
+        background: ok ? '#dcfce7' : '#fee2e2',
+        color: ok ? '#15803d' : '#dc2626',
+        marginRight: 3,
+      }}
+    >
+      {ok ? '✓' : '✗'}
+    </span>
+  );
+}
+
+export default function SeasonReadinessClient({ rows, year }: Props) {
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
+
+  const total     = rows.length;
+  const installed = rows.filter((r) => r.installed).length;
+  const ready     = rows.filter((r) => !r.installed && r.readyScore === r.totalChecks).length;
+  const incomplete = rows.filter((r) => !r.installed && r.readyScore < r.totalChecks).length;
+
+  // Gap summary counts
+  const missingProbe     = rows.filter((r) => !r.installed && (!r.probe1 || (r.hasProbe2 && !r.probe2))).length;
+  const missingAntenna   = rows.filter((r) => !r.installed && (!r.antenna1 || (r.hasProbe2 && !r.antenna2))).length;
+  const missingBattery   = rows.filter((r) => !r.installed && (!r.battery1 || (r.hasProbe2 && !r.battery2))).length;
+  const missingInstaller = rows.filter((r) => !r.installed && !r.plannedInstaller && !r.installer).length;
+
+  const filtered = useMemo(() => {
+    let result = rows;
+    if (filter === 'incomplete') result = result.filter((r) => !r.installed && r.readyScore < r.totalChecks);
+    if (filter === 'ready')      result = result.filter((r) => !r.installed && r.readyScore === r.totalChecks);
+    if (filter === 'installed')  result = result.filter((r) => r.installed);
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((r) => r.fieldName.toLowerCase().includes(q) || r.operation.toLowerCase().includes(q) || r.plannedInstaller.toLowerCase().includes(q));
+    }
+    return result;
+  }, [rows, filter, search]);
+
+  return (
+    <>
+      {/* Summary cards */}
+      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
+        <div className="stat-card">
+          <div className="stat-label">Total Fields</div>
+          <div className="stat-value blue">{total}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Installed</div>
+          <div className="stat-value green">{installed}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Ready to Install</div>
+          <div className="stat-value" style={{ color: '#f59e0b' }}>{ready}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Incomplete</div>
+          <div className="stat-value" style={{ color: '#ef4444' }}>{incomplete}</div>
+        </div>
+      </div>
+
+      {/* Gap summary */}
+      {(missingProbe > 0 || missingAntenna > 0 || missingBattery > 0 || missingInstaller > 0) && (
+        <div style={{
+          background: '#fff',
+          border: '1px solid #fee2e2',
+          borderRadius: 10,
+          padding: '12px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          gap: 24,
+          flexWrap: 'wrap',
+          fontSize: 13,
+        }}>
+          <span style={{ fontWeight: 600, color: '#86868b', marginRight: 4 }}>Gaps:</span>
+          {missingProbe > 0     && <span style={{ color: '#dc2626' }}>No probe: <strong>{missingProbe}</strong></span>}
+          {missingAntenna > 0   && <span style={{ color: '#dc2626' }}>No antenna: <strong>{missingAntenna}</strong></span>}
+          {missingBattery > 0   && <span style={{ color: '#dc2626' }}>No battery: <strong>{missingBattery}</strong></span>}
+          {missingInstaller > 0 && <span style={{ color: '#dc2626' }}>No installer: <strong>{missingInstaller}</strong></span>}
+        </div>
+      )}
+
+      <div className="table-container">
+        <div className="table-header">
+          <h3 className="table-title">Fields ({filtered.length})</h3>
+          <div className="table-actions">
+            <div className="search-box" style={{ minWidth: 180 }}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search fields..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="range-tabs" style={{ display: 'flex', gap: 4 }}>
+              {(['all', 'incomplete', 'ready', 'installed'] as Filter[]).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '4px 12px', fontSize: 12 }}
+                >
+                  {f === 'all' ? 'All' : f === 'incomplete' ? 'Incomplete' : f === 'ready' ? 'Ready' : 'Installed'}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <table className="desktop-table">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Operation</th>
+              <th>Installer</th>
+              <th style={{ textAlign: 'center' }}>Probe</th>
+              <th style={{ textAlign: 'center' }}>Antenna</th>
+              <th style={{ textAlign: 'center' }}>Battery</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
+                  No fields found.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((row) => {
+                const statusColor = row.installed
+                  ? '#15803d'
+                  : row.readyScore === row.totalChecks
+                    ? '#f59e0b'
+                    : '#dc2626';
+                const statusLabel = row.installed
+                  ? 'Installed'
+                  : row.readyScore === row.totalChecks
+                    ? 'Ready'
+                    : `${row.readyScore}/${row.totalChecks}`;
+                const statusBg = row.installed
+                  ? '#dcfce7'
+                  : row.readyScore === row.totalChecks
+                    ? '#fef9c3'
+                    : '#fee2e2';
+
+                const installerDisplay = row.installer || row.plannedInstaller;
+
+                return (
+                  <tr key={row.fieldSeasonId}>
+                    <td className="operation-name">{row.fieldName}</td>
+                    <td style={{ color: '#86868b', fontSize: 13 }}>{row.operation}</td>
+                    <td style={{ fontSize: 13 }}>{installerDisplay || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <Check ok={row.probe1} label="Probe 1 assigned" />
+                      {row.hasProbe2 && <Check ok={row.probe2} label="Probe 2 assigned" />}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <Check ok={row.antenna1} label="Antenna 1 type" />
+                      {row.hasProbe2 && <Check ok={row.antenna2} label="Antenna 2 type" />}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <Check ok={row.battery1} label="Battery 1 type" />
+                      {row.hasProbe2 && <Check ok={row.battery2} label="Battery 2 type" />}
+                    </td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '2px 10px',
+                        borderRadius: 20,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: statusBg,
+                        color: statusColor,
+                      }}>
+                        {statusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+
+        {/* Mobile cards */}
+        <div className="mobile-cards">
+          {filtered.map((row) => {
+            const installerDisplay = row.installer || row.plannedInstaller;
+            const statusColor = row.installed ? '#15803d' : row.readyScore === row.totalChecks ? '#f59e0b' : '#dc2626';
+            const statusLabel = row.installed ? 'Installed' : row.readyScore === row.totalChecks ? 'Ready' : `${row.readyScore}/${row.totalChecks} checks`;
+            return (
+              <div key={row.fieldSeasonId} className="mobile-card">
+                <div className="mobile-card-header">
+                  <span className="mobile-card-title">{row.fieldName}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: statusColor }}>{statusLabel}</span>
+                </div>
+                <div className="mobile-card-body">
+                  <div className="mobile-card-row"><span>Operation:</span><span>{row.operation}</span></div>
+                  <div className="mobile-card-row"><span>Installer:</span><span>{installerDisplay || '—'}</span></div>
+                  <div className="mobile-card-row">
+                    <span>Checks:</span>
+                    <span style={{ display: 'flex', gap: 2 }}>
+                      <Check ok={row.probe1} label="Probe" />
+                      <Check ok={row.antenna1} label="Antenna" />
+                      <Check ok={row.battery1} label="Battery" />
+                      {row.hasProbe2 && <Check ok={row.probe2} label="Probe 2" />}
+                      {row.hasProbe2 && <Check ok={row.antenna2} label="Antenna 2" />}
+                      {row.hasProbe2 && <Check ok={row.battery2} label="Battery 2" />}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
