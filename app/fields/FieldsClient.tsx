@@ -250,6 +250,10 @@ export default function FieldsClient({
   const [localProbes, setLocalProbes] = useState(probes);
   const [showSeasonFieldsEdit, setShowSeasonFieldsEdit] = useState(false);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [showManualCoordModal, setShowManualCoordModal] = useState(false);
+  const [manualCoordPa, setManualCoordPa] = useState<ProcessedProbeAssignment | null>(null);
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
   const [locationPickerTarget, setLocationPickerTarget] = useState<'edit' | 'add' | 'probeAssignment'>('edit');
   const [editingProbeAssignmentLocation, setEditingProbeAssignmentLocation] = useState<ProcessedProbeAssignment | null>(null);
   const [locationPickerTitle, setLocationPickerTitle] = useState<string | undefined>(undefined);
@@ -2376,9 +2380,21 @@ export default function FieldsClient({
                                               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="12" height="12" className="fields-edit-icon">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                               </svg>
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); setManualCoordPa(pa); setManualLat(String(pa.placementLat ?? '')); setManualLng(String(pa.placementLng ?? '')); setShowManualCoordModal(true); }}
+                                                title="Type coordinates"
+                                                style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', padding: '1px 4px', fontSize: 10, color: '#6b7280', marginLeft: 4, lineHeight: 1 }}
+                                              >123</button>
                                             </span>
                                           ) : (
-                                            <span className="fields-set-location">Set location</span>
+                                            <span className="fields-set-location" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                              Set location
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); setManualCoordPa(pa); setManualLat(''); setManualLng(''); setShowManualCoordModal(true); }}
+                                                title="Type coordinates"
+                                                style={{ background: 'none', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', padding: '1px 4px', fontSize: 10, color: '#6b7280', lineHeight: 1 }}
+                                              >123</button>
+                                            </span>
                                           )}
                                         </td>
                                         <td onClick={(e) => e.stopPropagation()} className={(probeIsMultiAssigned || missingProbe) ? 'fields-probe-cell-danger' : ''}>
@@ -3332,6 +3348,64 @@ export default function FieldsClient({
         )}
 
         {/* Rollover Modal */}
+
+        {/* Manual Coordinate Entry */}
+        {showManualCoordModal && manualCoordPa && (
+          <div className="detail-panel-overlay" onClick={() => setShowManualCoordModal(false)}>
+            <div className="detail-panel" style={{ maxWidth: 320 }} onClick={(e) => e.stopPropagation()}>
+              <div className="detail-panel-header">
+                <h3>Enter Coordinates</h3>
+                <button className="close-btn" onClick={() => setShowManualCoordModal(false)}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="detail-panel-content">
+                <div className="edit-form">
+                  <div className="form-group">
+                    <label>Latitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. 40.5673"
+                      value={manualLat}
+                      onChange={(e) => setManualLat(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Longitude</label>
+                    <input
+                      type="number"
+                      step="any"
+                      placeholder="e.g. -99.3437"
+                      value={manualLng}
+                      onChange={(e) => setManualLng(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="detail-panel-footer">
+                <button className="btn btn-secondary" onClick={() => setShowManualCoordModal(false)}>Cancel</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={!manualLat || !manualLng || isNaN(parseFloat(manualLat)) || isNaN(parseFloat(manualLng))}
+                  onClick={async () => {
+                    const lat = parseFloat(manualLat);
+                    const lng = parseFloat(manualLng);
+                    if (isNaN(lat) || isNaN(lng)) return;
+                    await handleProbeAssignmentLocationSave(manualCoordPa.id, lat, lng);
+                    setShowManualCoordModal(false);
+                    setManualCoordPa(null);
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Location Picker */}
         {showLocationPicker && (
