@@ -1,5 +1,4 @@
 import { getFieldsData } from '@/lib/fields-data';
-import { getProbes } from '@/lib/baserow';
 import SeasonReadinessClient from './SeasonReadinessClient';
 
 export const dynamic = 'force-dynamic';
@@ -36,15 +35,14 @@ export interface ReadinessRow {
 
 export default async function SeasonReadinessPage() {
   const year = new Date().getFullYear();
-  const [{ fields }, rawProbes] = await Promise.all([
-    getFieldsData(year),
-    getProbes(),
-  ]);
+  const { fields, probes } = await getFieldsData(year);
 
-  // Build probe rack map: probeId → has rack assigned
+  // ProbeOption doesn't include rack, so we can only detect on-order vs not
+  // rack info would require a separate fetch — skipping to avoid extra API calls
   const probeRackMap = new Map<number, boolean>();
-  rawProbes.forEach((p) => {
-    probeRackMap.set(p.id, !!p.rack);
+  probes.forEach((p) => {
+    // ProbeOption has status — treat anything not "On Order" as on-rack
+    probeRackMap.set(p.id, p.status !== 'On Order');
   });
 
   const seasonFields = fields.filter((f) => f.fieldSeasonId !== null);
