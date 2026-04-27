@@ -15,14 +15,8 @@ function Check({ ok, label }: { ok: boolean; label: string }) {
     <span
       title={label}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        fontSize: 12,
-        fontWeight: 700,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        width: 22, height: 22, borderRadius: 6, fontSize: 12, fontWeight: 700,
         background: ok ? '#dcfce7' : '#fee2e2',
         color: ok ? '#15803d' : '#dc2626',
         marginRight: 3,
@@ -33,20 +27,56 @@ function Check({ ok, label }: { ok: boolean; label: string }) {
   );
 }
 
+function ProbeLocationBadge({ loc }: { loc: ReadinessRow['probe1Location'] }) {
+  if (loc === 'none') return <span style={{ color: '#c7c7cc' }}>—</span>;
+  const map = {
+    'on-rack':  { label: 'On Rack',  bg: '#dcfce7', color: '#15803d' },
+    'on-order': { label: 'On Order', bg: '#fef9c3', color: '#92400e' },
+    'in-field': { label: 'In Field', bg: '#dbeafe', color: '#1d4ed8' },
+  };
+  const s = map[loc];
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 8px', borderRadius: 20,
+      fontSize: 11, fontWeight: 600, background: s.bg, color: s.color, marginRight: 3,
+    }}>
+      {s.label}
+    </span>
+  );
+}
+
+function ApprovalBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; color: string }> = {
+    'Approved':          { bg: '#dcfce7', color: '#15803d' },
+    'Pending':           { bg: '#f3f4f6', color: '#6b7280' },
+    'Change Requested':  { bg: '#fee2e2', color: '#dc2626' },
+    'No Probes':         { bg: '#f3f4f6', color: '#9ca3af' },
+  };
+  const s = map[status] || { bg: '#f3f4f6', color: '#6b7280' };
+  return (
+    <span style={{
+      display: 'inline-block', padding: '1px 8px', borderRadius: 20,
+      fontSize: 11, fontWeight: 600, background: s.bg, color: s.color,
+    }}>
+      {status}
+    </span>
+  );
+}
+
 export default function SeasonReadinessClient({ rows, year }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
 
-  const total     = rows.length;
-  const installed = rows.filter((r) => r.installed).length;
-  const ready     = rows.filter((r) => !r.installed && r.readyScore === r.totalChecks).length;
+  const total      = rows.length;
+  const installed  = rows.filter((r) => r.installed).length;
+  const ready      = rows.filter((r) => !r.installed && r.readyScore === r.totalChecks).length;
   const incomplete = rows.filter((r) => !r.installed && r.readyScore < r.totalChecks).length;
 
-  // Gap summary counts
   const missingProbe     = rows.filter((r) => !r.installed && (!r.probe1 || (r.hasProbe2 && !r.probe2))).length;
   const missingAntenna   = rows.filter((r) => !r.installed && (!r.antenna1 || (r.hasProbe2 && !r.antenna2))).length;
   const missingBattery   = rows.filter((r) => !r.installed && (!r.battery1 || (r.hasProbe2 && !r.battery2))).length;
   const missingInstaller = rows.filter((r) => !r.installed && !r.plannedInstaller && !r.installer).length;
+  const missingApproval  = rows.filter((r) => !r.installed && !r.locationApproved).length;
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -55,14 +85,17 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
     if (filter === 'installed')  result = result.filter((r) => r.installed);
     if (search.trim()) {
       const q = search.toLowerCase();
-      result = result.filter((r) => r.fieldName.toLowerCase().includes(q) || r.operation.toLowerCase().includes(q) || r.plannedInstaller.toLowerCase().includes(q));
+      result = result.filter((r) =>
+        r.fieldName.toLowerCase().includes(q) ||
+        r.operation.toLowerCase().includes(q) ||
+        r.plannedInstaller.toLowerCase().includes(q)
+      );
     }
     return result;
   }, [rows, filter, search]);
 
   return (
     <>
-      {/* Summary cards */}
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
         <div className="stat-card">
           <div className="stat-label">Total Fields</div>
@@ -82,24 +115,18 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
         </div>
       </div>
 
-      {/* Gap summary */}
-      {(missingProbe > 0 || missingAntenna > 0 || missingBattery > 0 || missingInstaller > 0) && (
+      {(missingProbe > 0 || missingAntenna > 0 || missingBattery > 0 || missingInstaller > 0 || missingApproval > 0) && (
         <div style={{
-          background: '#fff',
-          border: '1px solid #fee2e2',
-          borderRadius: 10,
-          padding: '12px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          gap: 24,
-          flexWrap: 'wrap',
-          fontSize: 13,
+          background: '#fff', border: '1px solid #fee2e2', borderRadius: 10,
+          padding: '12px 16px', marginBottom: 16,
+          display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13,
         }}>
           <span style={{ fontWeight: 600, color: '#86868b', marginRight: 4 }}>Gaps:</span>
           {missingProbe > 0     && <span style={{ color: '#dc2626' }}>No probe: <strong>{missingProbe}</strong></span>}
           {missingAntenna > 0   && <span style={{ color: '#dc2626' }}>No antenna: <strong>{missingAntenna}</strong></span>}
           {missingBattery > 0   && <span style={{ color: '#dc2626' }}>No battery: <strong>{missingBattery}</strong></span>}
           {missingInstaller > 0 && <span style={{ color: '#dc2626' }}>No installer: <strong>{missingInstaller}</strong></span>}
+          {missingApproval > 0  && <span style={{ color: '#dc2626' }}>Not approved: <strong>{missingApproval}</strong></span>}
         </div>
       )}
 
@@ -118,7 +145,7 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <div className="range-tabs" style={{ display: 'flex', gap: 4 }}>
+            <div style={{ display: 'flex', gap: 4 }}>
               {(['all', 'incomplete', 'ready', 'installed'] as Filter[]).map((f) => (
                 <button
                   key={f}
@@ -142,34 +169,23 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
               <th style={{ textAlign: 'center' }}>Probe</th>
               <th style={{ textAlign: 'center' }}>Antenna</th>
               <th style={{ textAlign: 'center' }}>Battery</th>
+              <th style={{ textAlign: 'center' }}>Approval</th>
+              <th>Probe Location</th>
               <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
                   No fields found.
                 </td>
               </tr>
             ) : (
               filtered.map((row) => {
-                const statusColor = row.installed
-                  ? '#15803d'
-                  : row.readyScore === row.totalChecks
-                    ? '#f59e0b'
-                    : '#dc2626';
-                const statusLabel = row.installed
-                  ? 'Installed'
-                  : row.readyScore === row.totalChecks
-                    ? 'Ready'
-                    : `${row.readyScore}/${row.totalChecks}`;
-                const statusBg = row.installed
-                  ? '#dcfce7'
-                  : row.readyScore === row.totalChecks
-                    ? '#fef9c3'
-                    : '#fee2e2';
-
+                const statusColor = row.installed ? '#15803d' : row.readyScore === row.totalChecks ? '#f59e0b' : '#dc2626';
+                const statusLabel = row.installed ? 'Installed' : row.readyScore === row.totalChecks ? 'Ready' : `${row.readyScore}/${row.totalChecks}`;
+                const statusBg    = row.installed ? '#dcfce7' : row.readyScore === row.totalChecks ? '#fef9c3' : '#fee2e2';
                 const installerDisplay = row.installer || row.plannedInstaller;
 
                 return (
@@ -189,15 +205,17 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
                       <Check ok={row.battery1} label="Battery 1 type" />
                       {row.hasProbe2 && <Check ok={row.battery2} label="Battery 2 type" />}
                     </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <ApprovalBadge status={row.approvalStatus} />
+                    </td>
+                    <td>
+                      <ProbeLocationBadge loc={row.probe1Location} />
+                      {row.hasProbe2 && <ProbeLocationBadge loc={row.probe2Location} />}
+                    </td>
                     <td>
                       <span style={{
-                        display: 'inline-block',
-                        padding: '2px 10px',
-                        borderRadius: 20,
-                        fontSize: 12,
-                        fontWeight: 600,
-                        background: statusBg,
-                        color: statusColor,
+                        display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+                        fontSize: 12, fontWeight: 600, background: statusBg, color: statusColor,
                       }}>
                         {statusLabel}
                       </span>
@@ -209,7 +227,6 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
           </tbody>
         </table>
 
-        {/* Mobile cards */}
         <div className="mobile-cards">
           {filtered.map((row) => {
             const installerDisplay = row.installer || row.plannedInstaller;
@@ -224,12 +241,18 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
                 <div className="mobile-card-body">
                   <div className="mobile-card-row"><span>Operation:</span><span>{row.operation}</span></div>
                   <div className="mobile-card-row"><span>Installer:</span><span>{installerDisplay || '—'}</span></div>
+                  <div className="mobile-card-row"><span>Approval:</span><ApprovalBadge status={row.approvalStatus} /></div>
+                  <div className="mobile-card-row">
+                    <span>Probe:</span>
+                    <span><ProbeLocationBadge loc={row.probe1Location} />{row.hasProbe2 && <ProbeLocationBadge loc={row.probe2Location} />}</span>
+                  </div>
                   <div className="mobile-card-row">
                     <span>Checks:</span>
                     <span style={{ display: 'flex', gap: 2 }}>
                       <Check ok={row.probe1} label="Probe" />
                       <Check ok={row.antenna1} label="Antenna" />
                       <Check ok={row.battery1} label="Battery" />
+                      <Check ok={row.locationApproved} label="Approved" />
                       {row.hasProbe2 && <Check ok={row.probe2} label="Probe 2" />}
                       {row.hasProbe2 && <Check ok={row.antenna2} label="Antenna 2" />}
                       {row.hasProbe2 && <Check ok={row.battery2} label="Battery 2" />}
