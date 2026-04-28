@@ -75,7 +75,8 @@ type FieldColumnKey =
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
   | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval' | 'earlyInstall'
   | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
-  | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
+  | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections'
+  | 'plantingDate';
 
 export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
   field: '140px', operation: '100px', billingEntity: '120px', crop: '90px',
@@ -87,7 +88,7 @@ export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
   readyToRemove: '60px', earlyRemoval: '60px', earlyInstall: '80px',
   acres: '80px', pivotAcres: '90px', irrigationType: '110px', rowDirection: '100px',
   waterSource: '100px', fuelSource: '100px', elevation: '80px', soilType: '100px',
-  fieldDirections: '150px',
+  fieldDirections: '150px', plantingDate: '110px',
 };
 
 type OptionList = { value: string; label: string }[];
@@ -342,6 +343,13 @@ export function FieldCell({
           <InlineFieldSelect fieldId={field.id} apiField="fuel_source" value={field.fuelSource}
             options={fieldOpts.fuel_source}
             savingFields={savingFields} savedFields={savedFields} onSave={onInlineFieldSave} />
+        </td>
+      );
+    case 'plantingDate':
+      return (
+        <td key={colKey} onClick={(e) => e.stopPropagation()}>
+          <InlineCell fieldSeasonId={field.fieldSeasonId} field="plantingDate" value={field.plantingDate} type="date"
+            onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );
     case 'elevation':

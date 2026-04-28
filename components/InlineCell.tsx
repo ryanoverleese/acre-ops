@@ -7,7 +7,7 @@ export interface InlineCellProps {
   fieldSeasonId: number | null;
   field: string;
   value: string | number | boolean | null | undefined;
-  type: 'text' | 'select' | 'number' | 'checkbox';
+  type: 'text' | 'select' | 'number' | 'checkbox' | 'date';
   options?: { value: string; label: string }[];
   onSave: (fieldSeasonId: number, field: string, value: unknown) => Promise<void>;
   savingFields: Set<string>;
@@ -91,6 +91,23 @@ export default function InlineCell({ fieldSeasonId, field, value, type, options,
       isSaving={isSaving}
       justSaved={justSaved}
     />;
+  }
+
+  if (type === 'date') {
+    const strVal = value ? String(value).slice(0, 10) : '';
+    return (
+      <div style={{ position: 'relative' }}>
+        <input
+          type="date"
+          value={strVal}
+          onChange={(e) => handleChange(e.target.value || null)}
+          disabled={isSaving}
+          style={{ width: '100%', padding: '4px 6px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px',
+            background: justSaved ? 'var(--accent-primary-dim)' : 'var(--bg-secondary)', transition: 'background 0.3s' }}
+        />
+        {isSaving && <span style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', fontSize: '10px', color: 'var(--text-muted)' }}>...</span>}
+      </div>
+    );
   }
 
   return <span>{value?.toString() || '—'}</span>;

@@ -52,7 +52,8 @@ type FieldColumnKey =
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
   | 'removalDate' | 'removalNotes' | 'readyToRemove' | 'earlyRemoval' | 'earlyInstall'
   | 'acres' | 'pivotAcres' | 'irrigationType' | 'rowDirection'
-  | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections';
+  | 'waterSource' | 'fuelSource' | 'elevation' | 'soilType' | 'fieldDirections'
+  | 'plantingDate';
 
 interface FieldColumnDefinition {
   key: FieldColumnKey;
@@ -81,6 +82,7 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
   { key: 'nrcsField', label: 'NRCS Field' },
   { key: 'operation', label: 'Operation' },
   { key: 'pivotAcres', label: 'Pivot Acres' },
+  { key: 'plantingDate', label: 'Planting Date' },
   { key: 'plannedInstaller', label: 'Planned Installer' },
   { key: 'probeStatus', label: 'Probe Status' },
   { key: 'probes', label: 'Probes' },
@@ -389,6 +391,7 @@ export default function FieldsClient({
       case 'plannedInstaller': return field.plannedInstaller || '—';
       case 'readyToInstall': return field.readyToInstall ? 'Yes' : 'No';
       case 'nrcsField': return field.nrcsField ? 'Yes' : 'No';
+      case 'plantingDate': return field.plantingDate || '—';
       case 'installDate': return field.installDate || '—';
       case 'installer': return field.installer || '—';
       case 'approvalStatus': return field.approvalStatus || '—';
@@ -586,6 +589,7 @@ export default function FieldsClient({
         case 'readyToInstall': aVal = a.readyToInstall ? 1 : 0; bVal = b.readyToInstall ? 1 : 0; break;
         case 'nrcsField': aVal = a.nrcsField ? 1 : 0; bVal = b.nrcsField ? 1 : 0; break;
         case 'probeStatus': aVal = (a.probeStatus || '').toLowerCase(); bVal = (b.probeStatus || '').toLowerCase(); break;
+        case 'plantingDate': aVal = a.plantingDate || ''; bVal = b.plantingDate || ''; break;
         case 'installDate': aVal = a.installDate || ''; bVal = b.installDate || ''; break;
         case 'installer': aVal = (a.installer || '').toLowerCase(); bVal = (b.installer || '').toLowerCase(); break;
         case 'approvalStatus': aVal = (a.approvalStatus || '').toLowerCase(); bVal = (b.approvalStatus || '').toLowerCase(); break;
@@ -802,6 +806,7 @@ export default function FieldsClient({
         routeOrder: 'route_order',
         plannedInstaller: 'planned_installer',
         readyToInstall: 'ready_to_install',
+        plantingDate: 'planting_date',
       };
 
       // Probe 1 changes go to probe_assignments, not field_seasons
