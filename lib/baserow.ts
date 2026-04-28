@@ -205,17 +205,12 @@ export async function getRows<T>(tableName: TableName, options?: FetchOptions): 
     return allResults;
   }
 
-  // Calculate remaining pages and fetch them all in parallel
+  // Fetch remaining pages sequentially to avoid hammering Baserow rate limits
   const totalPages = Math.ceil(firstPage.count / size);
-  const remainingPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
-
-  const remainingResults = await Promise.all(
-    remainingPages.map((page) => baserowFetch<T>(tableId, { ...options, page, size }))
-  );
-
-  remainingResults.forEach((response) => {
-    allResults.push(...response.results);
-  });
+  for (let page = 2; page <= totalPages; page++) {
+    const result = await baserowFetch<T>(tableId, { ...options, page, size });
+    allResults.push(...result.results);
+  }
 
   return allResults;
 }
