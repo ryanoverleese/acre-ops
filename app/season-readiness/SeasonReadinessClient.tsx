@@ -9,6 +9,13 @@ interface Props {
 }
 
 type Filter = 'all' | 'incomplete' | 'ready' | 'installed';
+type SortCol = 'fieldName' | 'operation' | 'crop' | 'plantingDate' | 'installer' | 'approvalStatus' | 'status';
+type SortDir = 'asc' | 'desc';
+
+function formatPlantDate(dateStr: string): string {
+  const [year, month, day] = dateStr.slice(0, 10).split('-').map(Number);
+  return `${month}/${day}/${year}`;
+}
 
 function Check({ ok, label }: { ok: boolean; label: string }) {
   return (
@@ -63,9 +70,43 @@ function ApprovalBadge({ status }: { status: string }) {
   );
 }
 
+function SortTh({
+  label, col, sortCol, sortDir, onSort, style,
+}: {
+  label: string;
+  col: SortCol;
+  sortCol: SortCol;
+  sortDir: SortDir;
+  onSort: (col: SortCol) => void;
+  style?: React.CSSProperties;
+}) {
+  const active = sortCol === col;
+  return (
+    <th
+      onClick={() => onSort(col)}
+      style={{
+        cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap',
+        ...style,
+      }}
+    >
+      {label}
+      <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
+        {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+      </span>
+    </th>
+  );
+}
+
 export default function SeasonReadinessClient({ rows, year }: Props) {
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
+  const [sortCol, setSortCol] = useState<SortCol>('fieldName');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  function handleSort(col: SortCol) {
+    if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortCol(col); setSortDir('asc'); }
+  }
 
   const total      = rows.length;
   const installed  = rows.filter((r) => r.installed).length;
@@ -77,6 +118,8 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
   const missingBattery   = rows.filter((r) => !r.installed && (!r.battery1 || (r.hasProbe2 && !r.battery2))).length;
   const missingInstaller = rows.filter((r) => !r.installed && !r.plannedInstaller && !r.installer).length;
   const missingApproval  = rows.filter((r) => !r.installed && !r.locationApproved).length;
+  const missingCrop      = rows.filter((r) => !r.installed && !r.crop).length;
+  const missingPlantDate = rows.filter((r) => !r.installed && !r.plantingDate).length;
 
   const filtered = useMemo(() => {
     let result = rows;
@@ -91,8 +134,34 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
         r.plannedInstaller.toLowerCase().includes(q)
       );
     }
+
+    const dir = sortDir === 'asc' ? 1 : -1;
+    result = [...result].sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      switch (sortCol) {
+        case 'fieldName':      av = a.fieldName; bv = b.fieldName; break;
+        case 'operation':      av = a.operation; bv = b.operation; break;
+        case 'crop':           av = a.crop || ''; bv = b.crop || ''; break;
+        case 'plantingDate':   av = a.plantingDate || ''; bv = b.plantingDate || ''; break;
+        case 'installer':      av = a.installer || a.plannedInstaller || ''; bv = b.installer || b.plannedInstaller || ''; break;
+        case 'approvalStatus': av = a.approvalStatus; bv = b.approvalStatus; break;
+        case 'status':
+          // installed > ready > incomplete, then by score
+          av = a.installed ? 2 : a.readyScore === a.totalChecks ? 1 : 0;
+          bv = b.installed ? 2 : b.readyScore === b.totalChecks ? 1 : 0;
+          if (av === bv) return (a.readyScore - b.readyScore) * dir;
+          break;
+      }
+      if (av < bv) return -dir;
+      if (av > bv) return dir;
+      return 0;
+    });
+
     return result;
-  }, [rows, filter, search]);
+  }, [rows, filter, search, sortCol, sortDir]);
+
+  const sortProps = { sortCol, sortDir, onSort: handleSort };
 
   return (
     <>
@@ -115,13 +184,15 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
         </div>
       </div>
 
-      {(missingProbe > 0 || missingAntenna > 0 || missingBattery > 0 || missingInstaller > 0 || missingApproval > 0) && (
+      {(missingProbe > 0 || missingAntenna > 0 || missingBattery > 0 || missingInstaller > 0 || missingApproval > 0 || missingCrop > 0 || missingPlantDate > 0) && (
         <div style={{
           background: '#fff', border: '1px solid #fee2e2', borderRadius: 10,
           padding: '12px 16px', marginBottom: 16,
           display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13,
         }}>
           <span style={{ fontWeight: 600, color: '#86868b', marginRight: 4 }}>Gaps:</span>
+          {missingCrop > 0      && <span style={{ color: '#dc2626' }}>No crop: <strong>{missingCrop}</strong></span>}
+          {missingPlantDate > 0 && <span style={{ color: '#dc2626' }}>No plant date: <strong>{missingPlantDate}</strong></span>}
           {missingProbe > 0     && <span style={{ color: '#dc2626' }}>No probe: <strong>{missingProbe}</strong></span>}
           {missingAntenna > 0   && <span style={{ color: '#dc2626' }}>No antenna: <strong>{missingAntenna}</strong></span>}
           {missingBattery > 0   && <span style={{ color: '#dc2626' }}>No battery: <strong>{missingBattery}</strong></span>}
@@ -163,17 +234,17 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
         <table className="desktop-table">
           <thead>
             <tr>
-              <th>Field</th>
-              <th>Operation</th>
-              <th>Crop</th>
-              <th>Plant Date</th>
-              <th>Installer</th>
+              <SortTh label="Field"      col="fieldName"      {...sortProps} />
+              <SortTh label="Operation"  col="operation"      {...sortProps} />
+              <SortTh label="Crop"       col="crop"           {...sortProps} />
+              <SortTh label="Plant Date" col="plantingDate"   {...sortProps} />
+              <SortTh label="Installer"  col="installer"      {...sortProps} />
               <th style={{ textAlign: 'center' }}>Probe</th>
               <th style={{ textAlign: 'center' }}>Antenna</th>
               <th style={{ textAlign: 'center' }}>Battery</th>
-              <th style={{ textAlign: 'center' }}>Approval</th>
+              <SortTh label="Approval"   col="approvalStatus" {...sortProps} style={{ textAlign: 'center' }} />
               <th>Probe Location</th>
-              <th>Status</th>
+              <SortTh label="Status"     col="status"         {...sortProps} />
             </tr>
           </thead>
           <tbody>
@@ -195,7 +266,7 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
                     <td className="operation-name">{row.fieldName}</td>
                     <td style={{ color: '#86868b', fontSize: 13 }}>{row.operation}</td>
                     <td style={{ fontSize: 13 }}>{row.crop || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
-                    <td style={{ fontSize: 13 }}>{row.plantingDate ? row.plantingDate.slice(0, 10) : <span style={{ color: '#c7c7cc' }}>—</span>}</td>
+                    <td style={{ fontSize: 13 }}>{row.plantingDate ? formatPlantDate(row.plantingDate) : <span style={{ color: '#c7c7cc' }}>—</span>}</td>
                     <td style={{ fontSize: 13 }}>{installerDisplay || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
                     <td style={{ textAlign: 'center' }}>
                       <Check ok={row.probe1} label="Probe 1 assigned" />
