@@ -281,6 +281,8 @@ export default function FieldsClient({
   const [tabColumns, setTabColumns] = useState<Record<TabView, FieldColumnKey[]>>(() => ({ ...TAB_DEFAULT_COLUMNS }));
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const columnPickerRef = useRef<HTMLDivElement>(null);
+  const dragColRef = useRef<FieldColumnKey | null>(null);
+  const [dragOverCol, setDragOverCol] = useState<FieldColumnKey | null>(null);
 
   const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
     defaultWidths: DEFAULT_FIELD_COLUMN_WIDTHS,
@@ -438,6 +440,22 @@ export default function FieldsClient({
   };
 
   const isColumnVisible = (columnKey: FieldColumnKey) => visibleColumns.includes(columnKey);
+
+  const handleColDrop = (targetKey: FieldColumnKey) => {
+    const fromKey = dragColRef.current;
+    if (!fromKey || fromKey === targetKey) return;
+    setTabColumns((prev) => {
+      const cols = [...prev[activeTab]];
+      const fromIdx = cols.indexOf(fromKey);
+      const toIdx = cols.indexOf(targetKey);
+      if (fromIdx === -1 || toIdx === -1) return prev;
+      cols.splice(fromIdx, 1);
+      cols.splice(toIdx, 0, fromKey);
+      return { ...prev, [activeTab]: cols };
+    });
+    dragColRef.current = null;
+    setDragOverCol(null);
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -1777,24 +1795,55 @@ export default function FieldsClient({
               {showColumnPicker && (
                 <div className="fields-col-dropdown">
                   <div className="fields-col-header">
-                    <span className="fields-col-label">Show Columns</span>
+                    <span className="fields-col-label">Active</span>
                   </div>
-                  {ALL_COLUMN_DEFINITIONS.map((col) => (
-                    <label
-                      key={col.key}
-                      className={`fields-col-item ${col.alwaysVisible ? 'disabled' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isColumnVisible(col.key)}
-                        disabled={col.alwaysVisible}
-                        onChange={() => { if (!col.alwaysVisible) toggleColumn(col.key); }}
-                        className={`fields-col-checkbox ${col.alwaysVisible ? 'disabled' : ''}`}
-                      />
-                      {col.label}
-                      {col.alwaysVisible && <span className="fields-col-required">(required)</span>}
-                    </label>
-                  ))}
+                  {visibleColumns.map((key) => {
+                    const col = ALL_COLUMN_DEFINITIONS.find((c) => c.key === key);
+                    if (!col) return null;
+                    return (
+                      <div
+                        key={col.key}
+                        className={`fields-col-item ${dragOverCol === col.key ? 'fields-col-drag-over' : ''}`}
+                        draggable={!col.alwaysVisible}
+                        onDragStart={() => { dragColRef.current = col.key; }}
+                        onDragOver={(e) => { e.preventDefault(); setDragOverCol(col.key); }}
+                        onDragLeave={() => setDragOverCol(null)}
+                        onDrop={() => handleColDrop(col.key)}
+                        onDragEnd={() => { dragColRef.current = null; setDragOverCol(null); }}
+                        style={{ cursor: col.alwaysVisible ? 'default' : 'grab', display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        {!col.alwaysVisible && <span style={{ color: '#c7c7cc', fontSize: 14, lineHeight: 1, userSelect: 'none' }}>⠿</span>}
+                        <input
+                          type="checkbox"
+                          checked
+                          disabled={col.alwaysVisible}
+                          onChange={() => toggleColumn(col.key)}
+                          className="fields-col-checkbox"
+                          style={{ flexShrink: 0 }}
+                        />
+                        {col.label}
+                        {col.alwaysVisible && <span className="fields-col-required">(required)</span>}
+                      </div>
+                    );
+                  })}
+                  {ALL_COLUMN_DEFINITIONS.filter((col) => !isColumnVisible(col.key)).length > 0 && (
+                    <>
+                      <div className="fields-col-header" style={{ marginTop: 6 }}>
+                        <span className="fields-col-label">Add</span>
+                      </div>
+                      {ALL_COLUMN_DEFINITIONS.filter((col) => !isColumnVisible(col.key)).map((col) => (
+                        <label key={col.key} className="fields-col-item" style={{ cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            onChange={() => toggleColumn(col.key)}
+                            className="fields-col-checkbox"
+                          />
+                          {col.label}
+                        </label>
+                      ))}
+                    </>
+                  )}
                   <div className="fields-col-footer">
                     <button
                       className="btn btn-secondary fields-col-reset"

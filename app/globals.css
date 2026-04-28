@@ -7870,6 +7870,11 @@ tr.expanded-row:hover {
   opacity: 0.6;
 }
 
+.fields-col-drag-over {
+  background: var(--accent-primary-dim, #e0f2fe);
+  border-radius: 4px;
+}
+
 .fields-col-item:not(.disabled) {
   cursor: pointer;
 }
