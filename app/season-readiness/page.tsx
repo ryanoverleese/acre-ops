@@ -27,6 +27,8 @@ export interface ReadinessRow {
   // Probe location info (informational)
   probe1Location: 'on-rack' | 'on-order' | 'in-field' | 'none';
   probe2Location: 'on-rack' | 'on-order' | 'in-field' | 'none';
+  crop: string;
+  plantingDate: string;
   // Derived
   installed: boolean;
   readyScore: number;
@@ -92,6 +94,8 @@ export default async function SeasonReadinessPage() {
       approvalStatus:   f.approvalStatus || 'Pending',
       probe1Location,
       probe2Location,
+      crop:         f.crop || '',
+      plantingDate: f.plantingDate || '',
       installed,
       readyScore:  checks.filter(Boolean).length,
       totalChecks: checks.length,

@@ -165,6 +165,8 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
             <tr>
               <th>Field</th>
               <th>Operation</th>
+              <th>Crop</th>
+              <th>Plant Date</th>
               <th>Installer</th>
               <th style={{ textAlign: 'center' }}>Probe</th>
               <th style={{ textAlign: 'center' }}>Antenna</th>
@@ -177,7 +179,7 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
+                <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
                   No fields found.
                 </td>
               </tr>
@@ -192,6 +194,8 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
                   <tr key={row.fieldSeasonId}>
                     <td className="operation-name">{row.fieldName}</td>
                     <td style={{ color: '#86868b', fontSize: 13 }}>{row.operation}</td>
+                    <td style={{ fontSize: 13 }}>{row.crop || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
+                    <td style={{ fontSize: 13 }}>{row.plantingDate ? row.plantingDate.slice(0, 10) : <span style={{ color: '#c7c7cc' }}>—</span>}</td>
                     <td style={{ fontSize: 13 }}>{installerDisplay || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
                     <td style={{ textAlign: 'center' }}>
                       <Check ok={row.probe1} label="Probe 1 assigned" />
