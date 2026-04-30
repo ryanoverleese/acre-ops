@@ -84,7 +84,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           lng: pa.placement_lng || field?.lng || 0,
           // From field_season
           crop: fieldSeason?.crop?.value || '',
-          routeOrder: fieldSeason?.route_order || 999,
+          routeOrder: fieldSeason?.route_order || '',
           plannedInstaller: fieldSeason?.planned_installer?.value || '',
           // Probe info
           probeNumber: pa.probe_number || 1,
@@ -100,7 +100,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       })
       .sort((a, b) => {
         // Sort by route_order, then by field name, then by probe number
-        if (a.routeOrder !== b.routeOrder) return a.routeOrder - b.routeOrder;
+        if (a.routeOrder !== b.routeOrder) return (a.routeOrder || 'zzz').localeCompare(b.routeOrder || 'zzz');
         const nameCompare = a.fieldName.localeCompare(b.fieldName);
         if (nameCompare !== 0) return nameCompare;
         return a.probeNumber - b.probeNumber;
@@ -155,7 +155,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           lat: pa.placement_lat || field?.lat || 0,
           lng: pa.placement_lng || field?.lng || 0,
           crop: fieldSeason?.crop?.value || '',
-          routeOrder: fieldSeason?.route_order || 999,
+          routeOrder: fieldSeason?.route_order || '',
           plannedInstaller: fieldSeason?.planned_installer?.value || '',
           probeNumber: pa.probe_number || 1,
           label: pa.label || '',

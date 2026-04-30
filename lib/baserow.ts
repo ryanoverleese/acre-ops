@@ -384,7 +384,7 @@ export interface FieldSeason {
   ready_to_remove?: { id: number; value: string };
   planting_date?: string;
   // Install planning
-  route_order?: number;
+  route_order?: string;
   planned_installer?: { id: number; value: string };
   ready_to_install?: boolean;
   notes?: string;

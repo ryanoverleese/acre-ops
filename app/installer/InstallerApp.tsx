@@ -20,7 +20,7 @@ export interface InstallerAssignment {
   crop: string;
   sideDress: string;
   rowDirection: string;
-  routeOrder: number;
+  routeOrder: string;
   probeNumber: number;
   label: string;
   probeId: number | null;
@@ -549,7 +549,7 @@ function RouteScreen({
         )}
         {!loading && visible.map(a => {
           const isInstalled = a.status.toLowerCase() === 'installed';
-          const orderLabel = a.routeOrder !== 999 ? String(a.routeOrder) : '—';
+          const orderLabel = a.routeOrder || '—';
           return (
             <button
               key={a.id}
@@ -640,7 +640,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall }: {
         </button>
         <div style={{ textAlign: 'center' }}>
           <div className="af-eyebrow">
-            {a.routeOrder !== 999 ? `Stop ${a.routeOrder}` : 'Field Detail'}
+            {a.routeOrder ? `Stop ${a.routeOrder}` : 'Field Detail'}
           </div>
         </div>
         <div style={{ width: 32 }} />
@@ -1419,7 +1419,7 @@ function MapScreen({
             }}>
               {selected.status.toLowerCase() === 'installed' ? (
                 <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
-              ) : selected.routeOrder !== 999 ? (
+              ) : selected.routeOrder ? (
                 selected.routeOrder
               ) : (
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'currentColor' }} />

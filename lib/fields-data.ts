@@ -95,7 +95,7 @@ export interface ProcessedField {
   // NRCS
   nrcsField?: boolean;
   // Install planning fields
-  routeOrder?: number;
+  routeOrder?: string;
   plannedInstaller?: string;
   readyToInstall?: boolean;
   // Install details (after installation)

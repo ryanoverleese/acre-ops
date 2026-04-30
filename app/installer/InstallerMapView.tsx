@@ -9,7 +9,7 @@ export interface MapPoint {
   id: number;
   lat: number;
   lng: number;
-  routeOrder: number;
+  routeOrder: string;
   status: string;
   fieldName: string;
   operation: string;
@@ -229,8 +229,8 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
       {valid.map(p => {
         const installed = p.status.toLowerCase() === 'installed';
         const selected = selectedId === p.id;
-        const label = p.routeOrder !== 999 ? String(p.routeOrder) : '?';
-        const hasOrder = p.routeOrder !== 999;
+        const label = p.routeOrder || '?';
+        const hasOrder = !!p.routeOrder;
         return (
           <Marker
             key={p.id}

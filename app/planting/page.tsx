@@ -14,7 +14,7 @@ export interface PlantingRow {
   crop: string;
   plantingDate: string;
   plannedInstaller: string;
-  routeOrder: number | null;
+  routeOrder: string | null;
   gdu: number | null;
   probeCount: number;
 }

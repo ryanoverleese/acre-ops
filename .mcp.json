@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "baserow": {
+      "command": "node",
+      "args": ["/Users/ryano/.claude/mcp-servers/baserow/index.mjs"],
+      "env": {
+        "BASEROW_TOKEN": "yb1dwgipNaSGxxAHdI3glBJUGM5X3JDa"
+      }
+    }
+  }
+}

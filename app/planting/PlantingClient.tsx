@@ -189,33 +189,30 @@ function InstallerCell({
 function RouteCell({
   fieldSeasonId, value, onSaved,
 }: {
-  fieldSeasonId: number; value: number | null; onSaved: (v: number | null) => void;
+  fieldSeasonId: number; value: string | null; onSaved: (v: string | null) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value ?? ''));
+  const [draft, setDraft] = useState(value ?? '');
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function startEdit() {
-    setDraft(String(value ?? ''));
+    setDraft(value ?? '');
     setEditing(true);
     setTimeout(() => inputRef.current?.select(), 0);
   }
 
   async function save() {
-    const parsed = draft.trim() === '' ? null : parseInt(draft, 10);
-    if (parsed === value || (draft.trim() !== '' && isNaN(parsed as number))) {
-      setEditing(false);
-      return;
-    }
+    const trimmed = draft.trim() || null;
+    if (trimmed === value) { setEditing(false); return; }
     setSaving(true);
     try {
       await fetch(`/api/field-seasons/${fieldSeasonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ route_order: parsed }),
+        body: JSON.stringify({ route_order: trimmed }),
       });
-      onSaved(parsed);
+      onSaved(trimmed);
     } finally {
       setSaving(false);
       setEditing(false);
@@ -228,14 +225,13 @@ function RouteCell({
         <input
           ref={inputRef}
           type="text"
-          inputMode="numeric"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={save}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
           disabled={saving}
           style={{
-            width: 50, fontSize: 13, padding: '2px 4px', textAlign: 'center',
+            width: 70, fontSize: 13, padding: '2px 4px', textAlign: 'center',
             border: '1px solid #0071e3', borderRadius: 4, outline: 'none',
           }}
           autoFocus
@@ -248,9 +244,9 @@ function RouteCell({
     <td
       onClick={startEdit}
       title="Click to edit"
-      style={{ fontSize: 13, cursor: 'text', textAlign: 'center', color: value == null ? '#c7c7cc' : undefined }}
+      style={{ fontSize: 13, cursor: 'text', textAlign: 'center', color: !value ? '#c7c7cc' : undefined }}
     >
-      {value ?? '—'}
+      {value || '—'}
     </td>
   );
 }
@@ -292,7 +288,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
         case 'plantingDate':     av = a.plantingDate; bv = b.plantingDate; break;
         case 'daysSince':        av = daysSince(a.plantingDate); bv = daysSince(b.plantingDate); break;
         case 'gdu':              av = a.gdu ?? -1; bv = b.gdu ?? -1; break;
-        case 'routeOrder':       av = a.routeOrder ?? 9999; bv = b.routeOrder ?? 9999; break;
+        case 'routeOrder':       av = a.routeOrder || 'zzz'; bv = b.routeOrder || 'zzz'; break;
         case 'plannedInstaller': av = a.plannedInstaller; bv = b.plannedInstaller; break;
       }
       if (av < bv) return -dir;
@@ -308,7 +304,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
   const totalFields = rows.length;
   const withPlantDate = rows.filter((r) => r.plantingDate).length;
   const withInstaller = rows.filter((r) => r.plannedInstaller).length;
-  const withRoute = rows.filter((r) => r.routeOrder != null).length;
+  const withRoute = rows.filter((r) => !!r.routeOrder).length;
 
   return (
     <>

@@ -103,7 +103,7 @@ export default function EditSeasonModal({
         hybrid_variety: form.hybrid_variety || null,
         ready_to_remove: clean(form.ready_to_remove),
         planting_date: form.planting_date || null,
-        route_order: form.route_order ? parseInt(form.route_order, 10) : null,
+        route_order: form.route_order || null,
         planned_installer: form.planned_installer || null,
         ready_to_install: form.ready_to_install,
       };

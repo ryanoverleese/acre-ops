@@ -224,7 +224,7 @@ export function FieldCell({
     case 'routeOrder':
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
-          <InlineCell fieldSeasonId={field.fieldSeasonId} field="routeOrder" value={field.routeOrder} type="number"
+          <InlineCell fieldSeasonId={field.fieldSeasonId} field="routeOrder" value={field.routeOrder} type="text"
             onSave={onInlineSave} savingFields={savingFields} savedFields={savedFields} />
         </td>
       );

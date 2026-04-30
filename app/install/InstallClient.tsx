@@ -150,7 +150,7 @@ export interface InstallableProbeAssignment {
   lat: number;
   lng: number;
   crop: string;
-  routeOrder: number;
+  routeOrder: string;
   plannedInstaller: string;
   probeNumber: number;
   label: string;
@@ -755,7 +755,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 <div className="install-route-badge">
                   <span className="install-route-badge-label">Stop</span>
                   <span className="install-route-badge-number">
-                    {assignment.routeOrder < 999 ? assignment.routeOrder : '—'}
+                    {assignment.routeOrder || '—'}
                   </span>
                 </div>
 

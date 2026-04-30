@@ -602,7 +602,7 @@ export default function FieldsClient({
         case 'sideDress': aVal = (a.sideDress || '').toLowerCase(); bVal = (b.sideDress || '').toLowerCase(); break;
         case 'loggerId': aVal = (a.loggerId || '').toLowerCase(); bVal = (b.loggerId || '').toLowerCase(); break;
         case 'probes': aVal = (a.probe || '').toLowerCase(); bVal = (b.probe || '').toLowerCase(); break;
-        case 'routeOrder': aVal = a.routeOrder || 999; bVal = b.routeOrder || 999; break;
+        case 'routeOrder': aVal = a.routeOrder || 'zzz'; bVal = b.routeOrder || 'zzz'; break;
         case 'plannedInstaller': aVal = (a.plannedInstaller || '').toLowerCase(); bVal = (b.plannedInstaller || '').toLowerCase(); break;
         case 'readyToInstall': aVal = a.readyToInstall ? 1 : 0; bVal = b.readyToInstall ? 1 : 0; break;
         case 'nrcsField': aVal = a.nrcsField ? 1 : 0; bVal = b.nrcsField ? 1 : 0; break;

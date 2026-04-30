@@ -140,7 +140,7 @@ export async function GET(request: NextRequest) {
           crop: fs.crop?.value ?? '',
           sideDress: (fs.side_dress?.value ?? ''),
           rowDirection: field?.row_direction?.value ?? '',
-          routeOrder: toNum(fs.route_order) || 999,
+          routeOrder: fs.route_order || '',
           plannedInstaller: fs.planned_installer?.value ?? '',
           probeNumber: toNum(pa.probe_number) || 1,
           label: pa.label ?? '',
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
         };
       })
       .sort((a, b) => {
-        if (a.routeOrder !== b.routeOrder) return a.routeOrder - b.routeOrder;
+        if (a.routeOrder !== b.routeOrder) return (a.routeOrder || 'zzz').localeCompare(b.routeOrder || 'zzz');
         return a.fieldName.localeCompare(b.fieldName);
       });
 
