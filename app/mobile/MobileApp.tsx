@@ -901,12 +901,32 @@ const submitBtnStyle: React.CSSProperties = { width: '100%', padding: 14, border
 
 function NewRepairSheet({ data, onClose, onSaved }: { data: MobileData; onClose: () => void; onSaved: () => void }) {
   const [fieldId, setFieldId] = useState('');
+  const [probeAssignmentId, setProbeAssignmentId] = useState('');
   const [problem, setProblem] = useState('');
+  const [fix, setFix] = useState('');
   const [reportedAt, setReportedAt] = useState(new Date().toISOString().split('T')[0]);
+  const [repairedAt, setRepairedAt] = useState('');
+  const [notifiedCustomer, setNotifiedCustomer] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const fieldsWithSeason = data.fields.filter(f => f.fieldSeasonId2026).sort((a, b) => a.name.localeCompare(b.name));
+
+  const selectedField = data.fields.find(f => f.id === Number(fieldId));
+  const fieldProbes = selectedField?.fieldSeasonId2026
+    ? data.probes.filter(p => p.fieldSeasonId === selectedField.fieldSeasonId2026 && p.probeAssignmentId)
+    : [];
+
+  function handleFieldChange(id: string) {
+    setFieldId(id);
+    setProbeAssignmentId('');
+    // Auto-select if exactly one probe
+    const field = data.fields.find(f => f.id === Number(id));
+    if (field?.fieldSeasonId2026) {
+      const probes = data.probes.filter(p => p.fieldSeasonId === field.fieldSeasonId2026 && p.probeAssignmentId);
+      if (probes.length === 1) setProbeAssignmentId(String(probes[0].probeAssignmentId));
+    }
+  }
 
   async function handleSubmit() {
     if (!fieldId || !problem.trim()) { setError('Field and problem are required.'); return; }
@@ -915,10 +935,20 @@ function NewRepairSheet({ data, onClose, onSaved }: { data: MobileData; onClose:
     setSaving(true);
     setError('');
     try {
+      const body: Record<string, unknown> = {
+        field_season: f.fieldSeasonId2026,
+        problem: problem.trim(),
+        reported_at: reportedAt,
+      };
+      if (probeAssignmentId) body.probe_assignment = Number(probeAssignmentId);
+      if (fix.trim()) body.fix = fix.trim();
+      if (repairedAt) body.repaired_at = repairedAt;
+      if (notifiedCustomer) body.notified_customer = true;
+
       const res = await fetch('/api/repairs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ field_season: f.fieldSeasonId2026, problem: problem.trim(), reported_at: reportedAt }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error(await res.text());
       onSaved();
@@ -933,19 +963,49 @@ function NewRepairSheet({ data, onClose, onSaved }: { data: MobileData; onClose:
       <div style={{ padding: '8px 16px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {error && <div style={{ background: '#FEE2E2', color: '#7F1D1D', padding: '10px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
         <FormField label="Field *">
-          <select value={fieldId} onChange={e => setFieldId(e.target.value)} style={inputStyle}>
+          <select value={fieldId} onChange={e => handleFieldChange(e.target.value)} style={inputStyle}>
             <option value="">Select a field…</option>
             {fieldsWithSeason.map(f => (
               <option key={f.id} value={f.id}>{f.name}{f.operationName ? ` (${f.operationName})` : ''}</option>
             ))}
           </select>
         </FormField>
+        {fieldId && fieldProbes.length > 1 && (
+          <FormField label="Probe">
+            <select value={probeAssignmentId} onChange={e => setProbeAssignmentId(e.target.value)} style={inputStyle}>
+              <option value="">No specific probe</option>
+              {fieldProbes.map(p => (
+                <option key={p.probeAssignmentId} value={p.probeAssignmentId}>{p.serialNumber}</option>
+              ))}
+            </select>
+          </FormField>
+        )}
+        {fieldId && fieldProbes.length === 1 && (
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: -6 }}>
+            Probe: {fieldProbes[0].serialNumber}
+          </div>
+        )}
         <FormField label="Problem *">
           <textarea value={problem} onChange={e => setProblem(e.target.value)} rows={3} placeholder="Describe the issue…" style={{ ...inputStyle, resize: 'none' }} />
         </FormField>
         <FormField label="Reported date">
           <input type="date" value={reportedAt} onChange={e => setReportedAt(e.target.value)} style={inputStyle} />
         </FormField>
+        <FormField label="Fix / resolution">
+          <textarea value={fix} onChange={e => setFix(e.target.value)} rows={2} placeholder="What was done to fix it…" style={{ ...inputStyle, resize: 'none' }} />
+        </FormField>
+        <FormField label="Repaired date">
+          <input type="date" value={repairedAt} onChange={e => setRepairedAt(e.target.value)} style={inputStyle} />
+        </FormField>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--text-primary)', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={notifiedCustomer}
+            onChange={e => setNotifiedCustomer(e.target.checked)}
+            style={{ width: 18, height: 18, accentColor: 'var(--field-green)', cursor: 'pointer' }}
+          />
+          Customer notified
+        </label>
         <button onClick={handleSubmit} disabled={saving} style={{ ...submitBtnStyle, opacity: saving ? 0.6 : 1 }}>
           {saving ? 'Saving…' : 'Save Repair'}
         </button>
@@ -954,16 +1014,35 @@ function NewRepairSheet({ data, onClose, onSaved }: { data: MobileData; onClose:
   );
 }
 
+interface DraftLineItem {
+  productId: string;
+  productName: string;
+  quantity: string;
+  unitPrice: string;
+}
+
 function NewOrderSheet({ data, onClose, onSaved }: { data: MobileData; onClose: () => void; onSaved: () => void }) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [orderId, setOrderId] = useState<number | null>(null);
+
+  // Step 1 state
   const [opId, setOpId] = useState('');
   const [notes, setNotes] = useState('');
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  // Step 2 state
+  const [lineItems, setLineItems] = useState<DraftLineItem[]>([]);
+  const [newProductId, setNewProductId] = useState('');
+  const [newQty, setNewQty] = useState('1');
+  const [newPrice, setNewPrice] = useState('');
+  const [addingItem, setAddingItem] = useState(false);
+  const [itemError, setItemError] = useState('');
+
   const opsWithBE = data.operations.filter(o => o.billingEntityIds.length > 0).sort((a, b) => a.name.localeCompare(b.name));
 
-  async function handleSubmit() {
+  async function handleCreateOrder() {
     if (!opId) { setError('Please select an operation.'); return; }
     const op = data.operations.find(x => x.id === Number(opId));
     if (!op?.billingEntityIds?.[0]) { setError('Selected operation has no billing entity.'); return; }
@@ -976,11 +1055,109 @@ function NewOrderSheet({ data, onClose, onSaved }: { data: MobileData; onClose: 
         body: JSON.stringify({ billing_entity: [op.billingEntityIds[0]], order_date: orderDate, notes: notes.trim(), status: 'Quote' }),
       });
       if (!res.ok) throw new Error(await res.text());
-      onSaved();
+      const json = await res.json();
+      setOrderId(json.id);
+      setStep(2);
     } catch (e) {
       setError(String(e));
+    } finally {
       setSaving(false);
     }
+  }
+
+  function handleSelectProduct(productId: string) {
+    setNewProductId(productId);
+    const product = data.products.find(p => p.id === Number(productId));
+    if (product?.defaultPrice) setNewPrice(String(product.defaultPrice));
+    else setNewPrice('');
+  }
+
+  async function handleAddItem() {
+    if (!newProductId) { setItemError('Select a product.'); return; }
+    const qty = parseFloat(newQty);
+    const price = parseFloat(newPrice);
+    if (!qty || qty <= 0) { setItemError('Enter a valid quantity.'); return; }
+    if (isNaN(price) || price < 0) { setItemError('Enter a valid price.'); return; }
+    const product = data.products.find(p => p.id === Number(newProductId));
+    if (!product) return;
+    setAddingItem(true);
+    setItemError('');
+    try {
+      const res = await fetch('/api/order-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: orderId, product: Number(newProductId), quantity: qty, unit_price: price }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setLineItems(prev => [...prev, { productId: newProductId, productName: product.name, quantity: newQty, unitPrice: newPrice }]);
+      setNewProductId('');
+      setNewQty('1');
+      setNewPrice('');
+    } catch (e) {
+      setItemError(String(e));
+    } finally {
+      setAddingItem(false);
+    }
+  }
+
+  const lineTotal = lineItems.reduce((s, i) => s + parseFloat(i.quantity) * parseFloat(i.unitPrice || '0'), 0);
+
+  if (step === 2) {
+    return (
+      <BottomSheet title="Add Line Items" onClose={onSaved}>
+        <div style={{ padding: '8px 16px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {lineItems.length > 0 && (
+            <div style={{ background: 'var(--bone)', borderRadius: 10, overflow: 'hidden' }}>
+              {lineItems.map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', borderBottom: i < lineItems.length - 1 ? '1px solid var(--separator)' : 'none' }}>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text-primary)' }}>{item.productName}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>qty {item.quantity}</div>
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
+                    ${(parseFloat(item.quantity) * parseFloat(item.unitPrice || '0')).toFixed(2)}
+                  </div>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 14px', borderTop: '1px solid var(--separator)', fontWeight: 600 }}>
+                <span style={{ fontSize: 14 }}>Total</span>
+                <span style={{ fontSize: 14 }}>${lineTotal.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+          {itemError && <div style={{ background: '#FEE2E2', color: '#7F1D1D', padding: '10px 12px', borderRadius: 8, fontSize: 13 }}>{itemError}</div>}
+          <div style={{ background: 'var(--bone)', borderRadius: 10, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Add item</div>
+            <FormField label="Product">
+              <select value={newProductId} onChange={e => handleSelectProduct(e.target.value)} style={inputStyle}>
+                <option value="">Select a product…</option>
+                {data.products.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}{p.unit ? ` (${p.unit})` : ''}</option>
+                ))}
+              </select>
+            </FormField>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <FormField label="Qty">
+                  <input type="number" value={newQty} onChange={e => setNewQty(e.target.value)} min="1" step="1" style={inputStyle} />
+                </FormField>
+              </div>
+              <div style={{ flex: 2 }}>
+                <FormField label="Unit price">
+                  <input type="number" value={newPrice} onChange={e => setNewPrice(e.target.value)} min="0" step="0.01" placeholder="0.00" style={inputStyle} />
+                </FormField>
+              </div>
+            </div>
+            <button onClick={handleAddItem} disabled={addingItem} style={{ ...submitBtnStyle, opacity: addingItem ? 0.6 : 1 }}>
+              {addingItem ? 'Adding…' : '+ Add Item'}
+            </button>
+          </div>
+          <button onClick={onSaved} style={{ ...submitBtnStyle, background: 'var(--field-green)' }}>
+            Done
+          </button>
+        </div>
+      </BottomSheet>
+    );
   }
 
   return (
@@ -999,10 +1176,10 @@ function NewOrderSheet({ data, onClose, onSaved }: { data: MobileData; onClose: 
           <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} style={inputStyle} />
         </FormField>
         <FormField label="Notes">
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes…" style={{ ...inputStyle, resize: 'none' }} />
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Add notes…" style={{ ...inputStyle, resize: 'none' }} />
         </FormField>
-        <button onClick={handleSubmit} disabled={saving} style={{ ...submitBtnStyle, opacity: saving ? 0.6 : 1 }}>
-          {saving ? 'Saving…' : 'Create Order'}
+        <button onClick={handleCreateOrder} disabled={saving} style={{ ...submitBtnStyle, opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Creating…' : 'Next: Add Items →'}
         </button>
       </div>
     </BottomSheet>

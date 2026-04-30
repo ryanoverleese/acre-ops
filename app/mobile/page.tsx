@@ -12,6 +12,7 @@ import {
   getInvoices,
   getInvoiceLines,
   getWaterRecs,
+  getProductsServices,
 } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import MobileApp from './MobileApp';
@@ -73,6 +74,7 @@ export interface MobileProbe {
   fieldId?: number;
   fieldName?: string;
   fieldSeasonId?: number;
+  probeAssignmentId?: number;
   model?: string;
   installedDate?: string;
   eta?: string;
@@ -80,6 +82,13 @@ export interface MobileProbe {
   lng?: number;
   tradeFor?: string;
   notes?: string;
+}
+
+export interface MobileProduct {
+  id: number;
+  name: string;
+  defaultPrice?: number;
+  unit?: string;
 }
 
 export interface MobileRepair {
@@ -172,6 +181,7 @@ export interface MobileData {
   orders: MobileOrder[];
   invoices: MobileInvoice[];
   waterRecs: MobileWaterRec[];
+  products: MobileProduct[];
   installStats: {
     totalInstalled: number;
     totalPlanned: number;
@@ -220,10 +230,11 @@ async function loadMobileData(): Promise<MobileData> {
   await delay(300);
 
   // Batch 3: transactional data
-  const [rawRepairs, rawOrders, rawOrderItems] = await Promise.all([
+  const [rawRepairs, rawOrders, rawOrderItems, rawProducts] = await Promise.all([
     getRepairs(),
     getOrders(),
     getOrderItems(),
+    getProductsServices(),
   ]);
 
   await delay(300);
@@ -503,6 +514,7 @@ async function loadMobileData(): Promise<MobileData> {
       fieldId: paInfo?.fieldId,
       fieldName: paInfo?.fieldName || '',
       fieldSeasonId: paInfo?.fsId,
+      probeAssignmentId: pa?.id,
       model: p.brand?.value || '',
       installedDate: pa?.install_date,
       lat: asNum(pa?.install_lat) || asNum(pa?.placement_lat) || undefined,
@@ -658,7 +670,18 @@ async function loadMobileData(): Promise<MobileData> {
       }),
   };
 
-  return { operations, fields, probes, repairs, orders, invoices, waterRecs, installStats };
+  // ── Products ──────────────────────────────────────────────────
+  const products: MobileProduct[] = rawProducts
+    .filter(p => p.name)
+    .map(p => ({
+      id: p.id,
+      name: p.name!,
+      defaultPrice: p.rate ? asNum(p.rate) : undefined,
+      unit: p.unit?.value,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  return { operations, fields, probes, repairs, orders, invoices, waterRecs, products, installStats };
 }
 
 // ── Page ─────────────────────────────────────────────────────────
@@ -671,7 +694,7 @@ export default async function MobilePage() {
     console.error('Mobile data load error:', err);
     data = {
       operations: [], fields: [], probes: [], repairs: [],
-      orders: [], invoices: [], waterRecs: [],
+      orders: [], invoices: [], waterRecs: [], products: [],
       installStats: { totalInstalled: 0, totalPlanned: 0, byOp: [] },
     };
   }
