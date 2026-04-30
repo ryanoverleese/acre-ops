@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import type { PlantingRow } from './page';
 
 interface Props {
@@ -100,68 +100,88 @@ function InstallerCell({
 }: {
   fieldSeasonId: number; value: string; options: string[]; onSaved: (v: string) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value);
+  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  function startEdit() {
-    setDraft(value);
-    setEditing(true);
-    setTimeout(() => inputRef.current?.select(), 0);
-  }
-
-  async function save() {
-    if (draft === value) { setEditing(false); return; }
+  async function pick(name: string) {
+    if (name === value) { setOpen(false); return; }
     setSaving(true);
     try {
       await fetch(`/api/field-seasons/${fieldSeasonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planned_installer: draft }),
+        body: JSON.stringify({ planned_installer: name }),
       });
-      onSaved(draft);
+      onSaved(name);
     } finally {
       setSaving(false);
-      setEditing(false);
+      setOpen(false);
     }
   }
 
-  if (editing) {
-    const listId = `installer-opts-${fieldSeasonId}`;
+  const initial = (name: string) => name.charAt(0).toUpperCase();
+
+  if (open) {
     return (
-      <td style={{ padding: '2px 8px', minWidth: 140 }}>
-        <datalist id={listId}>
-          {options.map((o) => <option key={o} value={o} />)}
-        </datalist>
-        <input
-          ref={inputRef}
-          list={listId}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-          disabled={saving}
-          style={{
-            width: 160, fontSize: 13, padding: '2px 6px',
-            border: '1px solid #0071e3', borderRadius: 4, outline: 'none',
-          }}
-          autoFocus
-        />
+      <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {options.map((o) => (
+            <button
+              key={o}
+              onClick={() => pick(o)}
+              disabled={saving}
+              title={o}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: 'none',
+                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                background: value === o ? '#0071e3' : '#e5e5ea',
+                color: value === o ? '#fff' : '#1d1d1f',
+              }}
+            >
+              {initial(o)}
+            </button>
+          ))}
+          {value && (
+            <button
+              onClick={() => pick('')}
+              disabled={saving}
+              title="Clear"
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: '1px solid #e5e5ea',
+                fontSize: 11, cursor: 'pointer', background: '#fff', color: '#86868b',
+              }}
+            >
+              ✕
+            </button>
+          )}
+          <button
+            onClick={() => setOpen(false)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86868b', fontSize: 11 }}
+          >
+            cancel
+          </button>
+        </div>
       </td>
     );
   }
 
   return (
     <td
-      onClick={startEdit}
-      title="Click to edit"
-      style={{
-        fontSize: 13, cursor: 'text', minWidth: 120,
-        color: value ? undefined : '#c7c7cc',
-      }}
+      onClick={() => setOpen(true)}
+      title="Click to set installer"
+      style={{ cursor: 'pointer', minWidth: 60 }}
     >
-      {value || <span style={{ fontStyle: 'italic' }}>click to set</span>}
+      {value ? (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          width: 28, height: 28, borderRadius: '50%',
+          background: '#0071e3', color: '#fff', fontSize: 13, fontWeight: 700,
+        }}>
+          {initial(value)}
+        </span>
+      ) : (
+        <span style={{ color: '#c7c7cc', fontSize: 13, fontStyle: 'italic' }}>click to set</span>
+      )}
     </td>
   );
 }
