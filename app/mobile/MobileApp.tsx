@@ -466,7 +466,7 @@ function FieldDetailScreen({ data, fieldId, nav, goBack }: { data: MobileData; f
           {[
             { label: 'Acres', value: f.acres.toFixed(1) },
             { label: 'Crop', value: f.crop || '—' },
-            { label: 'Probes', value: String(f.probeCount) },
+            { label: 'Probes', value: String(probes.length) },
           ].map(s => (
             <div key={s.label} className="card" style={{ padding: 12 }}>
               <div className="stat-label">{s.label}</div>
@@ -627,6 +627,8 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
   if (!p) return <div style={{ padding: 40 }}>Probe not found</div>;
   const field = p.fieldId ? data.fields.find(f => f.id === p.fieldId) : undefined;
   const op = p.operationId ? data.operations.find(o => o.id === p.operationId) : undefined;
+  const lat = p.lat || field?.lat;
+  const lng = p.lng || field?.lng;
 
   return (
     <>
@@ -650,14 +652,15 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
           <MetaRow label="Installed" value={fmtDateShort(p.installedDate)} />
         </div>
 
-        {p.lat && p.lng && (
+        {lat && lng && (
           <>
             <div className="section-label">Location</div>
             <div style={{ padding: '0 16px 16px' }}>
               <div className="card-flat" style={{ marginBottom: 8 }}>
-                <MetaRow label="Coordinates" value={fmtCoord(p.lat, p.lng)} />
+                <MetaRow label="Coordinates" value={fmtCoord(lat, lng)} />
+                {!p.lat && field && <MetaRow label="Source" value="Field location" />}
               </div>
-              <DirectionsBtn lat={p.lat} lng={p.lng} label={`Directions to ${p.serialNumber}`} />
+              <DirectionsBtn lat={lat} lng={lng} label={`Directions to ${p.serialNumber}`} />
             </div>
           </>
         )}
@@ -680,6 +683,7 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
 function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?: Record<string, unknown>) => void }) {
   const [tab, setTab] = useState<'open' | 'resolved'>('open');
   const [query, setQuery] = useState('');
+  const [showNew, setShowNew] = useState(false);
 
   const open = data.repairs.filter(r => r.status === 'open');
   const resolved = data.repairs.filter(r => r.status === 'resolved');
@@ -704,7 +708,7 @@ function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p
         </div>
         <div className="searchbar"><I.search /><input placeholder="Search repairs" value={query} onChange={e => setQuery(e.target.value)} /></div>
         {list.length === 0 && <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--stone-500)' }}>No repairs here.</div>}
-        <div className="card-flat" style={{ margin: '0 16px 24px' }}>
+        <div className="card-flat" style={{ margin: '0 16px 100px' }}>
           {list.map(r => (
             <button key={r.id} className="list-row" style={{ width: '100%', textAlign: 'left', gap: 10 }} onClick={() => nav('repairs', { repairId: r.id })}>
               <div style={{ width: 4, height: 44, borderRadius: 999, background: r.status === 'resolved' ? 'var(--healthy)' : '#C97B2D', flexShrink: 0 }} />
@@ -718,6 +722,14 @@ function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p
           ))}
         </div>
       </div>
+      <button className="fab" onClick={() => setShowNew(true)}><I.plus /></button>
+      {showNew && (
+        <NewRepairSheet
+          data={data}
+          onClose={() => setShowNew(false)}
+          onSaved={() => { setShowNew(false); window.location.reload(); }}
+        />
+      )}
     </>
   );
 }
@@ -763,6 +775,144 @@ function RepairDetailScreen({ data, repairId, goBack }: { data: MobileData; repa
         )}
       </div>
     </>
+  );
+}
+
+// ── BOTTOM SHEET ─────────────────────────────────────────────────
+
+function BottomSheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }} onClick={onClose}>
+      <div style={{ width: '100%', background: 'var(--bone)', borderRadius: '20px 20px 0 0', maxHeight: '82%', overflow: 'auto', paddingBottom: 'env(safe-area-inset-bottom)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 16px 8px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: 'var(--stone-500)' }}><I.x /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mono" style={{ fontSize: 9.5, color: 'var(--stone-500)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{label}</div>
+      {children}
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = { width: '100%', padding: '10px 12px', borderRadius: 10, border: '1.5px solid var(--border-1)', background: 'var(--bone-raised)', fontSize: 14, fontFamily: 'var(--font-body)', color: 'var(--stone-900)', boxSizing: 'border-box', appearance: 'none' };
+const submitBtnStyle: React.CSSProperties = { width: '100%', padding: 14, borderRadius: 12, background: 'var(--field-green)', color: 'var(--bone)', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.04em', border: 'none', cursor: 'pointer' };
+
+function NewRepairSheet({ data, onClose, onSaved }: { data: MobileData; onClose: () => void; onSaved: () => void }) {
+  const [fieldId, setFieldId] = useState('');
+  const [problem, setProblem] = useState('');
+  const [reportedAt, setReportedAt] = useState(new Date().toISOString().split('T')[0]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const fieldsWithSeason = data.fields.filter(f => f.fieldSeasonId2026).sort((a, b) => a.name.localeCompare(b.name));
+
+  async function handleSubmit() {
+    if (!fieldId || !problem.trim()) { setError('Field and problem are required.'); return; }
+    const f = data.fields.find(x => x.id === Number(fieldId));
+    if (!f?.fieldSeasonId2026) { setError('Selected field has no 2026 season.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/repairs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field_season: f.fieldSeasonId2026, problem: problem.trim(), reported_at: reportedAt }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      onSaved();
+    } catch (e) {
+      setError(String(e));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <BottomSheet title="New Repair" onClose={onClose}>
+      <div style={{ padding: '8px 16px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {error && <div style={{ background: '#FEE2E2', color: '#7F1D1D', padding: '10px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+        <FormField label="Field *">
+          <select value={fieldId} onChange={e => setFieldId(e.target.value)} style={inputStyle}>
+            <option value="">Select a field…</option>
+            {fieldsWithSeason.map(f => (
+              <option key={f.id} value={f.id}>{f.name}{f.operationName ? ` (${f.operationName})` : ''}</option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Problem *">
+          <textarea value={problem} onChange={e => setProblem(e.target.value)} rows={3} placeholder="Describe the issue…" style={{ ...inputStyle, resize: 'none' }} />
+        </FormField>
+        <FormField label="Reported date">
+          <input type="date" value={reportedAt} onChange={e => setReportedAt(e.target.value)} style={inputStyle} />
+        </FormField>
+        <button onClick={handleSubmit} disabled={saving} style={{ ...submitBtnStyle, opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving…' : 'Save Repair'}
+        </button>
+      </div>
+    </BottomSheet>
+  );
+}
+
+function NewOrderSheet({ data, onClose, onSaved }: { data: MobileData; onClose: () => void; onSaved: () => void }) {
+  const [opId, setOpId] = useState('');
+  const [notes, setNotes] = useState('');
+  const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const opsWithBE = data.operations.filter(o => o.billingEntityIds.length > 0).sort((a, b) => a.name.localeCompare(b.name));
+
+  async function handleSubmit() {
+    if (!opId) { setError('Please select an operation.'); return; }
+    const op = data.operations.find(x => x.id === Number(opId));
+    if (!op?.billingEntityIds?.[0]) { setError('Selected operation has no billing entity.'); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billing_entity: [op.billingEntityIds[0]], order_date: orderDate, notes: notes.trim(), status: 'Quote' }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      onSaved();
+    } catch (e) {
+      setError(String(e));
+      setSaving(false);
+    }
+  }
+
+  return (
+    <BottomSheet title="New Order" onClose={onClose}>
+      <div style={{ padding: '8px 16px 32px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {error && <div style={{ background: '#FEE2E2', color: '#7F1D1D', padding: '10px 12px', borderRadius: 8, fontSize: 13 }}>{error}</div>}
+        <FormField label="Operation *">
+          <select value={opId} onChange={e => setOpId(e.target.value)} style={inputStyle}>
+            <option value="">Select an operation…</option>
+            {opsWithBE.map(o => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Order date">
+          <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)} style={inputStyle} />
+        </FormField>
+        <FormField label="Notes">
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Add notes…" style={{ ...inputStyle, resize: 'none' }} />
+        </FormField>
+        <button onClick={handleSubmit} disabled={saving} style={{ ...submitBtnStyle, opacity: saving ? 0.6 : 1 }}>
+          {saving ? 'Saving…' : 'Create Order'}
+        </button>
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -993,6 +1143,7 @@ const ORDER_STATUSES = ['Quote', 'Ordered', 'Shipped', 'Received', 'Fulfilled'];
 
 function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?: Record<string, unknown>) => void }) {
   const [tab, setTab] = useState<'open' | 'fulfilled' | 'all'>('open');
+  const [showNew, setShowNew] = useState(false);
 
   const open = data.orders.filter(o => o.status !== 'Fulfilled');
   const fulfilled = data.orders.filter(o => o.status === 'Fulfilled');
@@ -1025,7 +1176,7 @@ function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
         </div>
 
         {list.length === 0 && <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--stone-500)' }}>No orders here.</div>}
-        <div className="card-flat" style={{ margin: '0 16px 24px' }}>
+        <div className="card-flat" style={{ margin: '0 16px 100px' }}>
           {list.map(o => (
             <button key={o.id} className="list-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => nav('order-detail', { orderId: o.id })}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -1040,6 +1191,14 @@ function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
           ))}
         </div>
       </div>
+      <button className="fab" onClick={() => setShowNew(true)}><I.plus /></button>
+      {showNew && (
+        <NewOrderSheet
+          data={data}
+          onClose={() => setShowNew(false)}
+          onSaved={() => { setShowNew(false); window.location.reload(); }}
+        />
+      )}
     </>
   );
 }

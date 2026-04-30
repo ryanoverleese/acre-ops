@@ -505,8 +505,8 @@ async function loadMobileData(): Promise<MobileData> {
       fieldSeasonId: paInfo?.fsId,
       model: p.brand?.value || '',
       installedDate: pa?.install_date,
-      lat: pa?.install_lat ? asNum(pa.install_lat) : undefined,
-      lng: pa?.install_lng ? asNum(pa.install_lng) : undefined,
+      lat: asNum(pa?.install_lat) || asNum(pa?.placement_lat) || undefined,
+      lng: asNum(pa?.install_lng) || asNum(pa?.placement_lng) || undefined,
       notes: p.notes,
     };
   });
