@@ -100,11 +100,10 @@ function InstallerCell({
 }: {
   fieldSeasonId: number; value: string; options: string[]; onSaved: (v: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function pick(name: string) {
-    if (name === value) { setOpen(false); return; }
+    if (name === value) return;
     setSaving(true);
     try {
       await fetch(`/api/field-seasons/${fieldSeasonId}`, {
@@ -115,73 +114,44 @@ function InstallerCell({
       onSaved(name);
     } finally {
       setSaving(false);
-      setOpen(false);
     }
   }
 
   const initial = (name: string) => name.charAt(0).toUpperCase();
 
-  if (open) {
-    return (
-      <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {options.map((o) => (
-            <button
-              key={o}
-              onClick={() => pick(o)}
-              disabled={saving}
-              title={o}
-              style={{
-                width: 28, height: 28, borderRadius: '50%', border: 'none',
-                fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                background: value === o ? '#0071e3' : '#e5e5ea',
-                color: value === o ? '#fff' : '#1d1d1f',
-              }}
-            >
-              {initial(o)}
-            </button>
-          ))}
-          {value && (
-            <button
-              onClick={() => pick('')}
-              disabled={saving}
-              title="Clear"
-              style={{
-                width: 28, height: 28, borderRadius: '50%', border: '1px solid #e5e5ea',
-                fontSize: 11, cursor: 'pointer', background: '#fff', color: '#86868b',
-              }}
-            >
-              ✕
-            </button>
-          )}
-          <button
-            onClick={() => setOpen(false)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#86868b', fontSize: 11 }}
-          >
-            cancel
-          </button>
-        </div>
-      </td>
-    );
-  }
-
   return (
-    <td
-      onClick={() => setOpen(true)}
-      title="Click to set installer"
-      style={{ cursor: 'pointer', minWidth: 60 }}
-    >
-      {value ? (
-        <span style={{
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: 28, height: 28, borderRadius: '50%',
-          background: '#0071e3', color: '#fff', fontSize: 13, fontWeight: 700,
-        }}>
-          {initial(value)}
-        </span>
-      ) : (
-        <span style={{ color: '#c7c7cc', fontSize: 13, fontStyle: 'italic' }}>click to set</span>
-      )}
+    <td style={{ padding: '4px 8px', whiteSpace: 'nowrap' }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        {options.map((o) => (
+          <button
+            key={o}
+            onClick={() => pick(o)}
+            disabled={saving}
+            title={o}
+            style={{
+              width: 28, height: 28, borderRadius: '50%', border: 'none',
+              fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              background: value === o ? '#0071e3' : '#e5e5ea',
+              color: value === o ? '#fff' : '#1d1d1f',
+            }}
+          >
+            {initial(o)}
+          </button>
+        ))}
+        {value && (
+          <button
+            onClick={() => pick('')}
+            disabled={saving}
+            title="Clear"
+            style={{
+              width: 28, height: 28, borderRadius: '50%', border: '1px solid #e5e5ea',
+              fontSize: 11, cursor: 'pointer', background: '#fff', color: '#86868b',
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
     </td>
   );
 }
