@@ -1,7 +1,7 @@
 /* Acre Ops Mobile — Design System */
 /* Matches Claude Design handoff v2 */
 
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   --field-green: #1F402A;
@@ -23,7 +23,7 @@
   --dry: #C04A30;
   --moist: #2F6BB0;
   --font-display: 'Barlow Condensed', sans-serif;
-  --font-body: 'Inter Tight', sans-serif;
+  --font-body: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 }
 
