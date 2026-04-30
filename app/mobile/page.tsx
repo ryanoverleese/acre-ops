@@ -196,32 +196,40 @@ const PREV_SEASON = 2025;
 
 // ── Main data loader ─────────────────────────────────────────────
 
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
 async function loadMobileData(): Promise<MobileData> {
-  const [
-    rawOps,
-    rawContacts,
-    rawBEs,
-    rawFields,
-    rawFieldSeasons,
-    rawProbes,
-    rawProbeAssignments,
-    rawRepairs,
-    rawOrders,
-    rawOrderItems,
-    rawInvoices,
-    rawInvoiceLines,
-    rawWaterRecs,
-  ] = await Promise.all([
+  // Batch requests to avoid Baserow 429 rate limits.
+  // Batch 1: core relational entities (needed to build lookup maps)
+  const [rawOps, rawContacts, rawBEs, rawFields] = await Promise.all([
     getOperations(),
     getContacts(),
     getBillingEntities(),
     getFields(),
+  ]);
+
+  await delay(300);
+
+  // Batch 2: season + probe data
+  const [rawFieldSeasons, rawProbes, rawProbeAssignments] = await Promise.all([
     getFieldSeasons({ size: 200 }),
     getProbes({ size: 200 }),
     getProbeAssignments({ size: 200 }),
+  ]);
+
+  await delay(300);
+
+  // Batch 3: transactional data
+  const [rawRepairs, rawOrders, rawOrderItems] = await Promise.all([
     getRepairs(),
     getOrders(),
     getOrderItems(),
+  ]);
+
+  await delay(300);
+
+  // Batch 4: billing + water recs
+  const [rawInvoices, rawInvoiceLines, rawWaterRecs] = await Promise.all([
     getInvoices(),
     getInvoiceLines(),
     getWaterRecs({ orderBy: '-date' }),
