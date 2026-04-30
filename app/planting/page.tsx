@@ -19,10 +19,12 @@ async function fetchGDURaw(lat: number, lng: number, plantingDate: string): Prom
   try {
     const today = new Date().toISOString().slice(0, 10);
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&daily=temperature_2m_max,temperature_2m_min&start_date=${plantingDate}&end_date=${today}&temperature_unit=fahrenheit&timezone=auto`;
+    console.log('[GDU] fetching', { lat, lng, plantingDate, today, url });
     const res = await fetch(url);
+    console.log('[GDU] response status', res.status, 'for', plantingDate);
     if (!res.ok) return null;
     const data = await res.json();
-    if (!data.daily?.temperature_2m_max) return null;
+    if (!data.daily?.temperature_2m_max) { console.log('[GDU] no daily data for', plantingDate, data); return null; }
     let total = 0;
     for (let i = 0; i < data.daily.time.length; i++) {
       const tmax = Math.min(data.daily.temperature_2m_max[i] ?? 50, 86);
@@ -58,10 +60,17 @@ export default async function PlantingPage() {
 
   // One GDU fetch per unique planting date, cached 24h
   const gduByDate = new Map<string, number | null>();
+  const DEFAULT_LAT = 40.591112;
+  const DEFAULT_LNG = -99.037735;
+
+  console.log('[GDU] dateGroups:', Array.from(dateGroups.entries()).map(([d, g]) => ({ date: d, count: g.count })));
+
   await Promise.all(
     Array.from(dateGroups.entries()).map(async ([date, { latSum, lngSum, count }]) => {
-      if (count === 0) { gduByDate.set(date, null); return; }
-      const gdu = await fetchGDU(latSum / count, lngSum / count, date);
+      const lat = count > 0 ? latSum / count : DEFAULT_LAT;
+      const lng = count > 0 ? lngSum / count : DEFAULT_LNG;
+      const gdu = await fetchGDU(lat, lng, date);
+      console.log('[GDU] result for', date, '->', gdu);
       gduByDate.set(date, gdu);
     })
   );
