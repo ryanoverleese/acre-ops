@@ -373,7 +373,17 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
             ) : (
               filtered.map((row) => (
                 <tr key={row.fieldSeasonId}>
-                  <td className="operation-name">{row.fieldName}</td>
+                  <td className="operation-name">
+                    {row.fieldName}
+                    {row.probeCount > 1 && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 10, fontWeight: 700, padding: '1px 5px',
+                        borderRadius: 4, background: '#f59e0b', color: '#fff', verticalAlign: 'middle',
+                      }}>
+                        {row.probeCount}×
+                      </span>
+                    )}
+                  </td>
                   <td style={{ color: '#86868b', fontSize: 13 }}>{row.operation}</td>
                   <td style={{ fontSize: 13 }}>{row.crop || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
                   <td style={{ fontSize: 13 }}>{row.plantingDate ? formatDate(row.plantingDate) : <span style={{ color: '#c7c7cc' }}>—</span>}</td>
