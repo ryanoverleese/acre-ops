@@ -625,14 +625,6 @@ function ProbesScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
                         {p.fieldName || p.model || '—'}{p.operationName ? ` · ${p.operationName}` : ''}
                       </div>
                     </div>
-                    {p.battery != null && (
-                      <div style={{ textAlign: 'right', marginRight: 6 }}>
-                        <div className="mono" style={{ fontSize: 11, fontWeight: 500 }}>{p.battery}%</div>
-                        <div style={{ width: 32, height: 4, background: 'var(--stone-50)', borderRadius: 999, marginTop: 3, overflow: 'hidden' }}>
-                          <div style={{ width: p.battery + '%', height: '100%', background: p.battery > 30 ? 'var(--healthy)' : 'var(--dry)' }} />
-                        </div>
-                      </div>
-                    )}
                     <I.chevron />
                   </button>
                 ))}
@@ -667,20 +659,6 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
             <div style={{ marginTop: 6 }}><StatusPill status={p.status} /></div>
           </div>
         </div>
-
-        {p.battery != null && (
-          <div style={{ padding: '0 16px 12px' }}>
-            <div className="card" style={{ padding: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <div className="stat-label">Battery</div>
-                <div className="mono" style={{ fontWeight: 600 }}>{p.battery}%</div>
-              </div>
-              <div style={{ height: 8, background: 'var(--stone-50)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{ width: p.battery + '%', height: '100%', background: p.battery > 30 ? 'var(--healthy)' : 'var(--dry)', borderRadius: 999 }} />
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="section-label">Assignment</div>
         <div className="card-flat" style={{ margin: '0 16px 16px' }}>
