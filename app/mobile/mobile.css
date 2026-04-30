@@ -1,0 +1,638 @@
+/* Acre Ops Mobile — Design System */
+/* Matches Claude Design handoff v2 */
+
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --field-green: #1F402A;
+  --field-green-dark: #172E1E;
+  --bone: #F6F2EA;
+  --bone-raised: #EEEAD9;
+  --sage-wash: #E4EBE2;
+  --sage-mid: #C5D4C0;
+  --ink: #1A1612;
+  --stone-900: #1C1A16;
+  --stone-700: #4A4540;
+  --stone-500: #8A8278;
+  --stone-300: #C0BAB0;
+  --stone-100: #E8E4DC;
+  --stone-50: #F2EEE6;
+  --border-1: #DDD8CE;
+  --border-2: #C8C3B8;
+  --healthy: #3A7D44;
+  --dry: #C04A30;
+  --moist: #2F6BB0;
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-body: 'Inter Tight', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ── Shell ─────────────────────────────────────────────────────── */
+.ms {
+  position: fixed;
+  inset: 0;
+  background: var(--bone);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-body);
+  color: var(--ink);
+  overflow: hidden;
+  max-width: 430px;
+  margin: 0 auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+.ms-topbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--bone);
+  border-bottom: 1px solid var(--border-1);
+  min-height: 52px;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.ms-topbar-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 17px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.ms-topbar-action {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: var(--stone-700);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.ms-topbar-action:hover { background: var(--stone-100); }
+
+.ms-body {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-bottom: 90px;
+}
+
+.ms-tabbar {
+  display: flex;
+  align-items: stretch;
+  background: var(--bone);
+  border-top: 1px solid var(--border-1);
+  padding-bottom: env(safe-area-inset-bottom);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.ms-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: var(--stone-400, #B0A89E);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  min-height: 52px;
+}
+
+.ms-tab.active { color: var(--field-green); }
+.ms-tab svg { width: 22px; height: 22px; }
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+.card {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--border-1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  padding: 16px;
+  cursor: default;
+}
+
+button.card { cursor: pointer; text-align: left; width: 100%; }
+
+.card-flat {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--border-1);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  overflow: hidden;
+}
+
+/* ── Section labels ─────────────────────────────────────────────── */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--stone-500);
+  padding: 14px 16px 6px;
+}
+
+/* ── Hero green ─────────────────────────────────────────────────── */
+.hero-green {
+  background: var(--field-green);
+  border-radius: 14px;
+  padding: 18px 20px;
+  color: var(--bone);
+}
+
+.hero-green .label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  margin-bottom: 4px;
+}
+
+.hero-green .big {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.hero-green .progress {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+  margin-top: 14px;
+  overflow: hidden;
+}
+
+.hero-green .progress-fill {
+  height: 100%;
+  background: var(--bone);
+  border-radius: 999px;
+}
+
+.hero-green .meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+/* ── Segment / Tabs ─────────────────────────────────────────────── */
+.segment {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--stone-100);
+  border-radius: 10px;
+  margin: 0 16px 12px;
+}
+
+.segment button {
+  flex: 1;
+  padding: 7px 8px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--stone-500);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.segment button.active {
+  background: #fff;
+  color: var(--field-green);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+
+/* ── Searchbar ──────────────────────────────────────────────────── */
+.searchbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--border-1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 0 16px 12px;
+  color: var(--stone-500);
+}
+
+.searchbar svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+.searchbar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.searchbar input::placeholder { color: var(--stone-500); }
+
+/* ── List rows ──────────────────────────────────────────────────── */
+.list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--stone-100);
+  background: #fff;
+  border: none;
+  width: 100%;
+  cursor: default;
+}
+
+.list-row:last-child { border-bottom: none; }
+button.list-row { cursor: pointer; }
+button.list-row:hover { background: var(--stone-50); }
+.card-flat > .list-row { border-bottom: 1px solid var(--stone-100); }
+.card-flat > .list-row:last-child { border-bottom: none; }
+
+.list-row-title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+}
+
+.list-row-sub {
+  font-size: 12px;
+  color: var(--stone-500);
+  margin-top: 2px;
+}
+
+/* ── Stat tiles ─────────────────────────────────────────────────── */
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--stone-500);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 28px;
+  line-height: 1;
+  margin-top: 4px;
+}
+
+.stat-value.warn { color: #C97B2D; }
+.stat-value.healthy { color: var(--healthy); }
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--stone-500);
+  margin-top: 4px;
+}
+
+/* ── Mono text ──────────────────────────────────────────────────── */
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* ── Count badge ─────────────────────────────────────────────────── */
+.count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--stone-100);
+  color: var(--stone-500);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 7px;
+  min-width: 20px;
+}
+
+/* ── Pills ──────────────────────────────────────────────────────── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.pill-brand { background: var(--sage-wash); color: var(--field-green); }
+.pill-warn { background: #F5E5CC; color: #7A4A12; }
+.pill-info { background: #D6E3F2; color: #1A4575; }
+.pill-neutral { background: var(--stone-100); color: var(--stone-700); }
+.pill-ok { background: #DCEBD5; color: #2D5E26; }
+.pill-dry { background: #FDECEA; color: #C04A30; }
+.pill-rma { background: #FDECEA; color: #C04A30; }
+
+/* Status pill mappings */
+
+/* ── Link button ─────────────────────────────────────────────────── */
+.linkbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: none;
+  background: transparent;
+  color: var(--field-green);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+/* ── FAB ────────────────────────────────────────────────────────── */
+.fab {
+  position: absolute;
+  bottom: 80px;
+  right: 16px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--field-green);
+  color: var(--bone);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(31,64,42,0.35);
+  cursor: pointer;
+  z-index: 20;
+}
+
+/* ── Banners ─────────────────────────────────────────────────────── */
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.banner-warn { background: #F5E5CC; color: #7A4A12; }
+.banner-ok { background: #DCEBD5; color: #2D5E26; }
+
+/* ── Checklist tiles ─────────────────────────────────────────────── */
+.check-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--stone-100);
+}
+
+.check-tile:last-child { border-bottom: none; }
+.check-tile.done { opacity: 0.6; }
+
+.check-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid var(--border-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.check-box.checked {
+  background: var(--field-green);
+  border-color: var(--field-green);
+  color: #fff;
+}
+
+.check-tile-title {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.check-tile-sub {
+  font-size: 12px;
+  color: var(--stone-500);
+  margin-top: 2px;
+}
+
+/* ── Form fields ─────────────────────────────────────────────────── */
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-field label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--stone-500);
+}
+
+.field-input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-1);
+  background: #fff;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--ink);
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.field-input:focus { border-color: var(--field-green); }
+
+/* ── Page header ─────────────────────────────────────────────────── */
+.page-header {
+  padding: 12px 16px 4px;
+}
+
+.page-header-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--stone-500);
+}
+
+.page-header-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 28px;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+/* ── Directions button ──────────────────────────────────────────── */
+.directions-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--field-green);
+  color: var(--bone);
+  border-radius: 10px;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Order status strip ─────────────────────────────────────────── */
+.order-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 0 16px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.order-strip-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.order-strip-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--stone-500);
+  background: var(--stone-100);
+  border: 2px solid var(--border-1);
+}
+
+.order-strip-dot.active {
+  background: var(--field-green);
+  border-color: var(--field-green);
+  color: var(--bone);
+}
+
+.order-strip-dot.done {
+  background: #DCEBD5;
+  border-color: #4E8E3E;
+  color: #2D5E26;
+}
+
+.order-strip-line {
+  width: 20px;
+  height: 2px;
+  background: var(--border-1);
+  flex-shrink: 0;
+}
+
+.order-strip-line.done { background: #4E8E3E; }
+
+/* ── Bottom sheet ─────────────────────────────────────────────────── */
+.ms-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ms-sheet {
+  background: var(--bone);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ms-sheet-handle {
+  width: 36px;
+  height: 4px;
+  background: var(--border-2);
+  border-radius: 999px;
+  margin: 12px auto 16px;
+}
+
+/* ── Avatar ──────────────────────────────────────────────────────── */
+.avatar {
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+/* ── Repair status colors ─────────────────────────────────────────── */
+.repair-stripe {
+  width: 4px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  align-self: stretch;
+}
+
+/* ── Scrollbar hide ──────────────────────────────────────────────── */
+.ms-body::-webkit-scrollbar { display: none; }
+.ms-body { -ms-overflow-style: none; scrollbar-width: none; }
+.ms-sheet::-webkit-scrollbar { display: none; }
+
+/* ── Safe area padding ──────────────────────────────────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .ms-body { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+}
