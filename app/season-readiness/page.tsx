@@ -29,6 +29,7 @@ export interface ReadinessRow {
   probe2Location: 'on-rack' | 'on-order' | 'in-field' | 'none';
   crop: string;
   plantingDate: string;
+  hybridVariety: string;
   // Derived
   installed: boolean;
   readyScore: number;
@@ -94,8 +95,9 @@ export default async function SeasonReadinessPage() {
       approvalStatus:   f.approvalStatus || 'Pending',
       probe1Location,
       probe2Location,
-      crop:         f.crop || '',
-      plantingDate: f.plantingDate || '',
+      crop:          f.crop || '',
+      plantingDate:  f.plantingDate || '',
+      hybridVariety: f.hybridVariety || '',
       installed,
       readyScore:  checks.filter(Boolean).length,
       totalChecks: checks.length,

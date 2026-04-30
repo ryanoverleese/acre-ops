@@ -9,7 +9,7 @@ interface Props {
 }
 
 type Filter = 'all' | 'incomplete' | 'ready' | 'installed';
-type SortCol = 'fieldName' | 'operation' | 'crop' | 'plantingDate' | 'installer' | 'approvalStatus' | 'status';
+type SortCol = 'fieldName' | 'operation' | 'crop' | 'plantingDate' | 'hybridVariety' | 'installer' | 'approvalStatus' | 'status';
 type SortDir = 'asc' | 'desc';
 
 function formatPlantDate(dateStr: string): string {
@@ -70,6 +70,64 @@ function ApprovalBadge({ status }: { status: string }) {
   );
 }
 
+function InlineEditCell({
+  fieldSeasonId, value, field, type = 'text', onSaved,
+}: {
+  fieldSeasonId: number; value: string; field: string; type?: 'text' | 'date'; onSaved: (v: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    const trimmed = draft.trim();
+    if (trimmed === value) { setEditing(false); return; }
+    setSaving(true);
+    try {
+      await fetch(`/api/field-seasons/${fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: trimmed || null }),
+      });
+      onSaved(trimmed);
+    } finally {
+      setSaving(false);
+      setEditing(false);
+    }
+  }
+
+  if (editing) {
+    return (
+      <td style={{ padding: '2px 8px' }}>
+        <input
+          type={type}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+          disabled={saving}
+          autoFocus
+          style={{
+            fontSize: 13, padding: '2px 6px', width: type === 'date' ? 130 : 140,
+            border: '1px solid #0071e3', borderRadius: 4, outline: 'none',
+          }}
+        />
+      </td>
+    );
+  }
+
+  const display = type === 'date' && value ? formatPlantDate(value) : value;
+  return (
+    <td
+      onClick={() => { setDraft(value); setEditing(true); }}
+      title="Click to edit"
+      style={{ fontSize: 13, cursor: 'text' }}
+    >
+      {display || <span style={{ color: '#c7c7cc', fontStyle: 'italic' }}>—</span>}
+    </td>
+  );
+}
+
 function SortTh({
   label, col, sortCol, sortDir, onSort, style,
 }: {
@@ -97,11 +155,16 @@ function SortTh({
   );
 }
 
-export default function SeasonReadinessClient({ rows, year }: Props) {
+export default function SeasonReadinessClient({ rows: initialRows, year }: Props) {
+  const [rows, setRows] = useState<ReadinessRow[]>(initialRows);
   const [filter, setFilter] = useState<Filter>('all');
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<SortCol>('fieldName');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  function updateRow(fieldSeasonId: number, patch: Partial<ReadinessRow>) {
+    setRows((prev) => prev.map((r) => r.fieldSeasonId === fieldSeasonId ? { ...r, ...patch } : r));
+  }
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -144,6 +207,7 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
         case 'operation':      av = a.operation; bv = b.operation; break;
         case 'crop':           av = a.crop || ''; bv = b.crop || ''; break;
         case 'plantingDate':   av = a.plantingDate || ''; bv = b.plantingDate || ''; break;
+        case 'hybridVariety':  av = a.hybridVariety || ''; bv = b.hybridVariety || ''; break;
         case 'installer':      av = a.installer || a.plannedInstaller || ''; bv = b.installer || b.plannedInstaller || ''; break;
         case 'approvalStatus': av = a.approvalStatus; bv = b.approvalStatus; break;
         case 'status':
@@ -237,6 +301,7 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
               <SortTh label="Field"      col="fieldName"      {...sortProps} />
               <SortTh label="Operation"  col="operation"      {...sortProps} />
               <SortTh label="Crop"       col="crop"           {...sortProps} />
+              <SortTh label="Hybrid"     col="hybridVariety"  {...sortProps} />
               <SortTh label="Plant Date" col="plantingDate"   {...sortProps} />
               <SortTh label="Installer"  col="installer"      {...sortProps} />
               <th style={{ textAlign: 'center' }}>Probe</th>
@@ -250,7 +315,7 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={11} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
+                <td colSpan={12} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
                   No fields found.
                 </td>
               </tr>
@@ -266,7 +331,10 @@ export default function SeasonReadinessClient({ rows, year }: Props) {
                     <td className="operation-name">{row.fieldName}</td>
                     <td style={{ color: '#86868b', fontSize: 13 }}>{row.operation}</td>
                     <td style={{ fontSize: 13 }}>{row.crop || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
-                    <td style={{ fontSize: 13 }}>{row.plantingDate ? formatPlantDate(row.plantingDate) : <span style={{ color: '#c7c7cc' }}>—</span>}</td>
+                    <InlineEditCell fieldSeasonId={row.fieldSeasonId} value={row.hybridVariety} field="hybrid_variety"
+                      onSaved={(v) => updateRow(row.fieldSeasonId, { hybridVariety: v })} />
+                    <InlineEditCell fieldSeasonId={row.fieldSeasonId} value={row.plantingDate} field="planting_date" type="date"
+                      onSaved={(v) => updateRow(row.fieldSeasonId, { plantingDate: v })} />
                     <td style={{ fontSize: 13 }}>{installerDisplay || <span style={{ color: '#c7c7cc' }}>—</span>}</td>
                     <td style={{ textAlign: 'center' }}>
                       <Check ok={row.probe1} label="Probe 1 assigned" />
