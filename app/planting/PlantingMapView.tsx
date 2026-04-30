@@ -34,10 +34,10 @@ function installerColor(name: string): string {
 
 function daysColor(days: number | null): string {
   if (days === null) return '#c7c7cc';
-  if (days <= 7)  return '#34c759';
-  if (days <= 14) return '#ff9f0a';
-  if (days <= 21) return '#ff6b35';
-  return '#ff3b30';
+  if (days >= 16) return '#34c759';  // ready to install
+  if (days >= 11) return '#ff9f0a';  // getting close
+  if (days >= 6)  return '#ff6b35';  // too soon
+  return '#ff3b30';                  // way too early
 }
 
 function cropColor(crop: string): string {
@@ -101,10 +101,10 @@ function Legend({ colorMode }: { colorMode: ColorMode }) {
       { color: '#c7c7cc', label: 'Unassigned' },
     ] :
     colorMode === 'days' ? [
-      { color: '#34c759', label: '0–7 days' },
-      { color: '#ff9f0a', label: '8–14 days' },
-      { color: '#ff6b35', label: '15–21 days' },
-      { color: '#ff3b30', label: '22+ days' },
+      { color: '#34c759', label: '16+ days — ready' },
+      { color: '#ff9f0a', label: '11–15 days' },
+      { color: '#ff6b35', label: '6–10 days' },
+      { color: '#ff3b30', label: '0–5 days — too early' },
     ] : [
       { color: '#ffd60a', label: 'Corn' },
       { color: '#34c759', label: 'Soybean' },
