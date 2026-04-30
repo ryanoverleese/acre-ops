@@ -16,6 +16,61 @@ function formatDate(dateStr: string): string {
   return `${month}/${day}/${year}`;
 }
 
+const CORN_STAGES: [number, string][] = [
+  [0,    'Pre-VE'],
+  [100,  'VE'],
+  [200,  'V1'],
+  [285,  'V2'],
+  [370,  'V3'],
+  [455,  'V4'],
+  [540,  'V5'],
+  [625,  'V6'],
+  [710,  'V7'],
+  [795,  'V8'],
+  [880,  'V9'],
+  [965,  'V10'],
+  [1050, 'V11'],
+  [1135, 'VT'],
+  [1400, 'R1'],
+  [1560, 'R2'],
+  [1750, 'R3'],
+  [2020, 'R4'],
+  [2300, 'R5'],
+  [2700, 'R6'],
+];
+
+const SOY_STAGES: [number, string][] = [
+  [0,    'Pre-VE'],
+  [130,  'VE'],
+  [160,  'VC'],
+  [240,  'V1'],
+  [320,  'V2'],
+  [400,  'V3'],
+  [480,  'V4'],
+  [560,  'V5'],
+  [660,  'R1'],
+  [750,  'R2'],
+  [860,  'R3'],
+  [990,  'R4'],
+  [1130, 'R5'],
+  [1310, 'R6'],
+  [1500, 'R7'],
+  [1620, 'R8'],
+];
+
+function growthStage(gdu: number | null, crop: string): string | null {
+  if (gdu == null) return null;
+  const c = crop.toLowerCase();
+  const stages = c.includes('corn') ? CORN_STAGES : c.includes('soy') ? SOY_STAGES : null;
+  if (!stages) return null;
+  let stage = stages[0][1];
+  for (const [threshold, label] of stages) {
+    if (gdu >= threshold) stage = label;
+    else break;
+  }
+  return stage;
+}
+
 function daysSince(dateStr: string): number {
   const planted = new Date(dateStr + 'T12:00:00');
   const today = new Date();
@@ -283,6 +338,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
               <SortTh label="Plant Date" col="plantingDate"     {...sortProps} />
               <SortTh label="Days"       col="daysSince"        {...sortProps} style={{ textAlign: 'center' }} />
               <SortTh label="GDU"        col="gdu"              {...sortProps} style={{ textAlign: 'center' }} />
+              <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Stage</th>
               <SortTh label="Route #"    col="routeOrder"       {...sortProps} style={{ textAlign: 'center' }} />
               <SortTh label="Installer"  col="plannedInstaller" {...sortProps} />
             </tr>
@@ -290,7 +346,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
                   No fields found.
                 </td>
               </tr>
@@ -306,6 +362,9 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                   </td>
                   <td style={{ textAlign: 'center', fontSize: 13, fontWeight: 600 }}>
                     {row.gdu != null ? row.gdu : <span style={{ color: '#c7c7cc', fontWeight: 400 }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#0071e3' }}>
+                    {growthStage(row.gdu, row.crop) ?? <span style={{ color: '#c7c7cc', fontWeight: 400 }}>—</span>}
                   </td>
                   <RouteCell
                     fieldSeasonId={row.fieldSeasonId}
