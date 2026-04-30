@@ -47,7 +47,13 @@ const fetchGDU = unstable_cache(
 
 export default async function PlantingPage() {
   const currentYear = new Date().getFullYear();
-  const { fields, selectOptions } = await getFieldsData(currentYear);
+  const { fields, probeAssignments, selectOptions } = await getFieldsData(currentYear);
+
+  // Count probe assignments per field season
+  const probeCountByFieldSeason = new Map<number, number>();
+  for (const pa of probeAssignments) {
+    probeCountByFieldSeason.set(pa.fieldSeasonId, (probeCountByFieldSeason.get(pa.fieldSeasonId) ?? 0) + 1);
+  }
 
   const plantingFields = fields.filter((f) => f.fieldSeasonId && f.plantingDate);
 
@@ -69,7 +75,7 @@ export default async function PlantingPage() {
     plannedInstaller: f.plannedInstaller || '',
     routeOrder: f.routeOrder ?? null,
     gdu: gduByDate.get(f.plantingDate) ?? null,
-    probeCount: (f.probe ? 1 : 0) + (f.probe2 ? 1 : 0),
+    probeCount: probeCountByFieldSeason.get(f.fieldSeasonId!) ?? 0,
   }));
 
   // Installer options: find the planned_installer select field options
