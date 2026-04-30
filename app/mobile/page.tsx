@@ -80,6 +80,7 @@ export interface MobileProbe {
   lng?: number;
   tradeFor?: string;
   notes?: string;
+  battery?: number;
 }
 
 export interface MobileRepair {

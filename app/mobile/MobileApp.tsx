@@ -106,15 +106,15 @@ function TabBar({ active, nav }: { active: ScreenName; nav: (s: ScreenName) => v
 
 function TopBar({ title, eyebrow, onBack, right }: { title: string; eyebrow?: string; onBack?: () => void; right?: React.ReactNode }) {
   return (
-    <div className="ms-topbar" style={{ justifyContent: 'space-between' }}>
-      <button className="ms-topbar-action" onClick={onBack} style={{ color: 'var(--field-green)' }}>
-        <I.back />
+    <div className="ms-topbar">
+      <button className="ms-topbar-back" onClick={onBack} style={{ minWidth: 60 }}>
+        <I.back /> Back
       </button>
       <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-        {eyebrow && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--stone-500)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{eyebrow}</div>}
-        <div className="ms-topbar-title" style={{ fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
+        {eyebrow && <div className="ms-topbar-eyebrow" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{eyebrow}</div>}
+        <div className="ms-topbar-title" style={{ fontSize: 17, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
       </div>
-      <div style={{ width: 36 }}>{right}</div>
+      <div style={{ width: 60, flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>{right || <div style={{ width: 40 }} />}</div>
     </div>
   );
 }
@@ -131,7 +131,7 @@ function PageHeader({ eyebrow, title }: { eyebrow: string; title: string }) {
 function Avatar({ initials, tone, size = 36 }: { initials: string; tone: string; size?: number }) {
   const colors: Record<string, { bg: string; fg: string }> = {
     ok: { bg: '#DCEBD5', fg: '#2D5E26' },
-    green: { bg: '#DCEBD5', fg: '#2D5E26' },
+    green: { bg: 'var(--field-green)', fg: 'var(--bone)' },
     sage: { bg: 'var(--sage-wash)', fg: 'var(--field-green)' },
     warn: { bg: '#F5E5CC', fg: '#7A4A12' },
     info: { bg: '#D6E3F2', fg: '#1A4575' },
@@ -140,7 +140,7 @@ function Avatar({ initials, tone, size = 36 }: { initials: string; tone: string;
   };
   const c = colors[tone] || colors.neutral;
   return (
-    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.35, background: c.bg, color: c.fg, borderRadius: size > 40 ? 14 : 10, flexShrink: 0 }}>
+    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.38, background: c.bg, color: c.fg, flexShrink: 0 }}>
       {initials}
     </div>
   );
@@ -181,7 +181,7 @@ function MetaRow({ label, value, onClick }: { label: string; value: string | und
 function DirectionsBtn({ lat, lng, label }: { lat: number; lng: number; label: string }) {
   return (
     <a
-      href={`https://maps.google.com/maps?daddr=${lat},${lng}`}
+      href={`https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`}
       target="_blank"
       rel="noopener noreferrer"
       className="directions-btn"
@@ -601,20 +601,43 @@ function ProbesScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
             <div className="section-label" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <StatusPill status={status} /><span className="count">{items.length}</span>
             </div>
-            <div className="card-flat" style={{ margin: '0 16px 16px' }}>
-              {items.map(p => (
-                <button key={p.id} className="list-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => nav('probe-detail', { probeId: p.id })}>
-                  <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.radio /></div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="list-row-title mono">{p.serialNumber}</div>
-                    <div className="list-row-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.fieldName || p.model || '—'}{p.operationName ? ` · ${p.operationName}` : ''}
-                    </div>
+            {tab === 'inventory' ? (
+              <div style={{ padding: '0 16px 16px' }}>
+                <div className="card" style={{ padding: 14 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                    {items.map(p => (
+                      <button key={p.id} onClick={() => nav('probe-detail', { probeId: p.id })} style={{ background: 'var(--sage-wash)', color: 'var(--field-green)', border: '1px solid var(--border-1)', borderRadius: 8, padding: '12px 6px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500 }}>
+                        <I.radio />
+                        <span>{p.serialNumber.replace(/^CX-?/i, '')}</span>
+                      </button>
+                    ))}
                   </div>
-                  <I.chevron />
-                </button>
-              ))}
-            </div>
+                </div>
+              </div>
+            ) : (
+              <div className="card-flat" style={{ margin: '0 16px 16px' }}>
+                {items.map(p => (
+                  <button key={p.id} className="list-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => nav('probe-detail', { probeId: p.id })}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'var(--sage-wash)', color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.radio /></div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div className="list-row-title mono">{p.serialNumber}</div>
+                      <div className="list-row-sub" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {p.fieldName || p.model || '—'}{p.operationName ? ` · ${p.operationName}` : ''}
+                      </div>
+                    </div>
+                    {p.battery != null && (
+                      <div style={{ textAlign: 'right', marginRight: 6 }}>
+                        <div className="mono" style={{ fontSize: 11, fontWeight: 500 }}>{p.battery}%</div>
+                        <div style={{ width: 32, height: 4, background: 'var(--stone-50)', borderRadius: 999, marginTop: 3, overflow: 'hidden' }}>
+                          <div style={{ width: p.battery + '%', height: '100%', background: p.battery > 30 ? 'var(--healthy)' : 'var(--dry)' }} />
+                        </div>
+                      </div>
+                    )}
+                    <I.chevron />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -632,18 +655,32 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
 
   return (
     <>
-      <TopBar title={p.serialNumber} eyebrow="Probe" onBack={goBack} />
+      <TopBar title={p.serialNumber} eyebrow="Probe" onBack={goBack} right={<button className="ms-topbar-action"><I.edit /></button>} />
       <div className="ms-body">
         <div style={{ padding: '12px 16px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 64, height: 64, borderRadius: 14, background: 'var(--field-green)', color: 'var(--bone)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <span style={{ width: 32, height: 32, display: 'inline-flex' }}><I.radio /></span>
           </div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 22, textTransform: 'uppercase' }}>{p.serialNumber}</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, textTransform: 'uppercase' }}>{p.serialNumber}</div>
             <div style={{ color: 'var(--stone-500)', fontSize: 13, marginTop: 2 }}>{p.model || 'CropX Probe'}</div>
             <div style={{ marginTop: 6 }}><StatusPill status={p.status} /></div>
           </div>
         </div>
+
+        {p.battery != null && (
+          <div style={{ padding: '0 16px 12px' }}>
+            <div className="card" style={{ padding: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div className="stat-label">Battery</div>
+                <div className="mono" style={{ fontWeight: 600 }}>{p.battery}%</div>
+              </div>
+              <div style={{ height: 8, background: 'var(--stone-50)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: p.battery + '%', height: '100%', background: p.battery > 30 ? 'var(--healthy)' : 'var(--dry)', borderRadius: 999 }} />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="section-label">Assignment</div>
         <div className="card-flat" style={{ margin: '0 16px 16px' }}>
@@ -668,17 +705,27 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
         {p.notes && (
           <>
             <div className="section-label">Notes</div>
-            <div style={{ padding: '0 16px 24px' }}>
+            <div style={{ padding: '0 16px 16px' }}>
               <div className="card" style={{ padding: 14, fontSize: 13, lineHeight: 1.5, color: 'var(--stone-700)' }}>{p.notes}</div>
             </div>
           </>
         )}
+
+        <div style={{ padding: '0 16px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <button className="card" style={{ padding: 14, textAlign: 'center', color: 'var(--field-green)', fontWeight: 700, fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 13 }}>Move status</button>
+          <a href={`https://app.cropx.com/probes/${encodeURIComponent(p.serialNumber)}`} target="_blank" rel="noopener noreferrer" className="card" style={{ padding: 14, textAlign: 'center', color: 'var(--field-green)', fontWeight: 700, fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>Open in CropX</a>
+        </div>
       </div>
     </>
   );
 }
 
 // ── REPAIRS ───────────────────────────────────────────────────────
+
+const REPAIR_STATUS_INFO: Record<string, { color: string; bg: string; fg: string; step: number; label: string }> = {
+  'open':     { color: '#C97B2D', bg: '#F5E5CC', fg: '#7A4A12', step: 1, label: 'Open' },
+  'resolved': { color: '#4E8E3E', bg: '#DCEBD5', fg: '#2D5E26', step: 6, label: 'Resolved' },
+};
 
 function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?: Record<string, unknown>) => void }) {
   const [tab, setTab] = useState<'open' | 'resolved'>('open');
@@ -698,27 +745,37 @@ function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p
       <div className="ms-topbar">
         <div style={{ flex: 1 }} />
         <div className="ms-topbar-title" style={{ fontSize: 17 }}>Repairs</div>
-        <div style={{ width: 36 }} />
+        <button className="ms-topbar-action" onClick={() => setShowNew(true)}><I.plus /></button>
       </div>
       <div className="ms-body">
         <PageHeader eyebrow={`${open.length} open · ${resolved.length} resolved`} title="Repairs" />
+
+        {/* Stat strip */}
+        <div style={{ padding: '0 16px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          {[
+            { tone: '#C97B2D', bg: '#F5E5CC', fg: '#7A4A12', label: 'Open', value: open.length },
+            { tone: '#2F6BB0', bg: '#D6E3F2', fg: '#1A4575', label: 'Resolving', value: Math.max(0, open.length - 1) },
+            { tone: '#B23A2A', bg: '#F5D8D2', fg: '#7A2418', label: 'Resolved', value: resolved.length },
+          ].map(s => (
+            <div key={s.label} className="card" style={{ padding: 12, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+                <div style={{ width: 7, height: 7, borderRadius: 999, background: s.tone }} />
+                <div className="stat-label" style={{ fontSize: 9.5, letterSpacing: '0.1em' }}>{s.label}</div>
+              </div>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 24, lineHeight: 1 }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
         <div className="segment">
-          <button className={tab === 'open' ? 'active' : ''} onClick={() => setTab('open')}>Open ({open.length})</button>
-          <button className={tab === 'resolved' ? 'active' : ''} onClick={() => setTab('resolved')}>Resolved ({resolved.length})</button>
+          <button className={tab === 'open' ? 'active' : ''} onClick={() => setTab('open')}>Open · {open.length}</button>
+          <button className={tab === 'resolved' ? 'active' : ''} onClick={() => setTab('resolved')}>Resolved · {resolved.length}</button>
         </div>
         <div className="searchbar"><I.search /><input placeholder="Search repairs" value={query} onChange={e => setQuery(e.target.value)} /></div>
         {list.length === 0 && <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--stone-500)' }}>No repairs here.</div>}
-        <div className="card-flat" style={{ margin: '0 16px 100px' }}>
+        <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 10 }}>
           {list.map(r => (
-            <button key={r.id} className="list-row" style={{ width: '100%', textAlign: 'left', gap: 10 }} onClick={() => nav('repairs', { repairId: r.id })}>
-              <div style={{ width: 4, height: 44, borderRadius: 999, background: r.status === 'resolved' ? 'var(--healthy)' : '#C97B2D', flexShrink: 0 }} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="list-row-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.fieldName}</div>
-                <div className="list-row-sub">{r.operationName} · {fmtDateShort(r.reportedAt)}</div>
-                <div style={{ fontSize: 12, color: 'var(--stone-700)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.problem}</div>
-              </div>
-              <I.chevron />
-            </button>
+            <RepairCard key={r.id} repair={r} onClick={() => nav('repairs', { repairId: r.id })} />
           ))}
         </div>
       </div>
@@ -734,35 +791,93 @@ function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p
   );
 }
 
+function RepairCard({ repair, onClick }: { repair: MobileRepair; onClick: () => void }) {
+  const info = REPAIR_STATUS_INFO[repair.status] || REPAIR_STATUS_INFO['open'];
+  const daysOpen = Math.floor((Date.now() - new Date(repair.reportedAt || Date.now()).getTime()) / 86400000);
+
+  return (
+    <button onClick={onClick} className="card" style={{ padding: 0, textAlign: 'left', overflow: 'hidden', display: 'block', width: '100%' }}>
+      {/* Status stripe */}
+      <div style={{ height: 4, background: info.color }} />
+      <div style={{ padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.01em', lineHeight: 1.1 }}>{repair.fieldName}</div>
+            <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{repair.operationName}</div>
+            <div style={{ fontSize: 13, color: 'var(--stone-700)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{repair.problem}</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', background: info.bg, color: info.fg, borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
+              <span style={{ width: 6, height: 6, borderRadius: 999, background: info.color }} />
+              {info.label}
+            </div>
+            <div className="mono" style={{ fontSize: 10, color: 'var(--stone-500)', marginTop: 6 }}>{daysOpen}d open</div>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 8 }}>
+          {[1, 2, 3, 4, 5, 6].map(n => (
+            <div key={n} style={{ flex: 1, height: 4, borderRadius: 999, background: n <= info.step ? info.color : 'var(--stone-50)' }} />
+          ))}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function RepairDetailScreen({ data, repairId, goBack }: { data: MobileData; repairId: number; goBack: () => void }) {
   const r = data.repairs.find(x => x.id === repairId);
   if (!r) return <div style={{ padding: 40 }}>Repair not found</div>;
+  const info = REPAIR_STATUS_INFO[r.status] || REPAIR_STATUS_INFO['open'];
 
   return (
     <>
       <TopBar title={r.fieldName} eyebrow="Repair" onBack={goBack} />
       <div className="ms-body">
-        <div style={{ padding: '12px 16px 8px' }}>
-          <div className="card" style={{ padding: 14 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <div style={{ width: 4, height: 40, borderRadius: 999, background: r.status === 'resolved' ? 'var(--healthy)' : '#C97B2D' }} />
-              <div>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase' }}>{r.operationName}</div>
-                <StatusPill status={r.status === 'open' ? 'Open' : 'Resolved'} />
-              </div>
+        {/* Header */}
+        <div style={{ padding: '4px 16px 16px', borderBottom: '1px solid var(--border-1)' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, textTransform: 'uppercase', lineHeight: 1.05 }}>{r.operationName}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: info.bg, color: info.fg, borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+              <span style={{ width: 7, height: 7, borderRadius: 999, background: info.color }} />
+              {info.label}
             </div>
-            <div className="stat-label">Problem</div>
-            <div style={{ marginTop: 4, fontSize: 14, lineHeight: 1.5 }}>{r.problem}</div>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--stone-500)' }}>Reported {fmtDateShort(r.reportedAt)}</span>
           </div>
         </div>
 
-        <div className="section-label">Timeline</div>
+        {/* Status timeline */}
+        <div style={{ padding: '14px 16px 8px' }}>
+          <div className="stat-label" style={{ marginBottom: 10 }}>Status</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+            {[{ short: 'Report' }, { short: 'Diag' }, { short: 'RMA' }, { short: 'Wait' }, { short: 'Fixed' }, { short: 'Done' }].map((s, i, arr) => (
+              <React.Fragment key={s.short}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <div style={{ width: i + 1 === info.step ? 26 : 18, height: i + 1 === info.step ? 26 : 18, borderRadius: 999, background: i + 1 <= info.step ? info.color : 'var(--stone-50)', border: i + 1 === info.step ? '3px solid var(--bone)' : 'none', boxShadow: i + 1 === info.step ? `0 0 0 2px ${info.color}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bone)' }}>
+                    {i + 1 < info.step && <span style={{ fontSize: 10, fontWeight: 700 }}>✓</span>}
+                  </div>
+                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 600, color: i + 1 === info.step ? 'var(--ink)' : i + 1 < info.step ? 'var(--stone-700)' : 'var(--stone-300)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 6, whiteSpace: 'nowrap', textAlign: 'center' }}>{s.short}</div>
+                </div>
+                {i < arr.length - 1 && <div style={{ flex: 0.6, height: 2, marginTop: -16, background: i + 1 < info.step ? info.color : 'var(--stone-50)' }} />}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+
+        <div className="section-label">Details</div>
         <div className="card-flat" style={{ margin: '0 16px 16px' }}>
+          <MetaRow label="Field" value={r.fieldName} />
+          <MetaRow label="Operation" value={r.operationName} />
           <MetaRow label="Reported" value={fmtDate(r.reportedAt)} />
           {r.repairedAt && <MetaRow label="Resolved" value={fmtDate(r.repairedAt)} />}
           {r.probeSerial && <MetaRow label="Probe" value={r.probeSerial} />}
           {r.probeReplaced && <MetaRow label="Probe replaced" value={r.newProbeSerial || 'Yes'} />}
           <MetaRow label="Customer notified" value={r.notifiedCustomer ? 'Yes' : 'No'} />
+        </div>
+
+        <div className="section-label">Problem</div>
+        <div style={{ padding: '0 16px 16px' }}>
+          <div className="card" style={{ padding: 14, fontSize: 13, lineHeight: 1.5, color: 'var(--stone-700)' }}>{r.problem}</div>
         </div>
 
         {r.fix && (
@@ -933,7 +1048,7 @@ function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => v
 
   return (
     <>
-      <div className="ms-topbar"><div style={{ flex: 1 }} /><div className="ms-topbar-title" style={{ fontSize: 17 }}>More</div><div style={{ width: 36 }} /></div>
+      <div className="ms-topbar"><div style={{ flex: 1 }} /><div className="ms-topbar-title" style={{ fontSize: 17 }}>More</div><div style={{ width: 40 }} /></div>
       <div className="ms-body">
         <PageHeader eyebrow="Additional tools" title="More" />
         <div className="card-flat" style={{ margin: '0 16px 16px' }}>
@@ -949,6 +1064,24 @@ function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => v
               <I.chevron />
             </button>
           ))}
+        </div>
+
+        <div className="section-label">Account</div>
+        <div className="card-flat" style={{ margin: '0 16px 24px' }}>
+          <div className="list-row">
+            <div style={{ width: 40, height: 40, borderRadius: 999, background: 'var(--field-green)', color: 'var(--bone)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>JT</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="list-row-title">Jordan Thiessen</div>
+              <div className="list-row-sub">Acre Insights · Owner</div>
+            </div>
+          </div>
+          <button className="list-row" style={{ width: '100%', textAlign: 'left' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--stone-50)', color: 'var(--stone-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.cog /></div>
+            <div style={{ flex: 1 }}>
+              <div className="list-row-title">Settings</div>
+            </div>
+            <I.chevron />
+          </button>
         </div>
       </div>
     </>
@@ -1038,6 +1171,7 @@ function OpDetailScreen({ data, opId, nav, goBack }: { data: MobileData; opId: n
         {primaryContact && (
           <div style={{ padding: '0 16px 12px', display: 'flex', gap: 8 }}>
             {primaryContact.phone && <a href={`tel:${primaryContact.phone}`} className="card" style={{ flex: 1, padding: '10px 12px', textAlign: 'center', textDecoration: 'none', color: 'var(--field-green)', fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 12 }}>Call</a>}
+            {primaryContact.phone && <a href={`sms:${primaryContact.phone}`} className="card" style={{ flex: 1, padding: '10px 12px', textAlign: 'center', textDecoration: 'none', color: 'var(--field-green)', fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 12 }}>Text</a>}
             {primaryContact.email && <a href={`mailto:${primaryContact.email}`} className="card" style={{ flex: 1, padding: '10px 12px', textAlign: 'center', textDecoration: 'none', color: 'var(--field-green)', fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 12 }}>Email</a>}
           </div>
         )}
@@ -1100,19 +1234,23 @@ function OpDetailScreen({ data, opId, nav, goBack }: { data: MobileData; opId: n
         )}
 
         {tab === 'contacts' && (
-          <div className="card-flat" style={{ margin: '0 16px 24px' }}>
-            {op.contacts.length === 0 && <div style={{ padding: '20px 16px', color: 'var(--stone-500)', fontSize: 13 }}>No contacts.</div>}
-            {op.contacts.map(c => (
-              <div key={c.id} className="list-row">
-                <Avatar initials={getInitials(c.name)} tone="sage" />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="list-row-title">{c.name}{c.isPrimary && <span className="pill pill-brand" style={{ marginLeft: 6, padding: '1px 6px', fontSize: 9 }}>PRIMARY</span>}</div>
-                  {c.phone && <div className="mono" style={{ fontSize: 11, color: 'var(--field-green)', marginTop: 4 }}>{c.phone}</div>}
-                  {c.email && <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{c.email}</div>}
+          <>
+            <div className="section-label">Contacts</div>
+            <div className="card-flat" style={{ margin: '0 16px 16px' }}>
+              {op.contacts.length === 0 && <div style={{ padding: '20px 16px', color: 'var(--stone-500)', fontSize: 13 }}>No contacts.</div>}
+              {op.contacts.map(c => (
+                <div key={c.id} className="list-row">
+                  <Avatar initials={getInitials(c.name)} tone="sage" />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="list-row-title">{c.name}{c.isPrimary && <span className="pill pill-brand" style={{ marginLeft: 6, padding: '1px 6px', fontSize: 9 }}>PRIMARY</span>}</div>
+                    {c.role && <div className="list-row-sub">{c.role}</div>}
+                    {c.phone && <div className="mono" style={{ fontSize: 11, color: 'var(--field-green)', marginTop: 4 }}>{c.phone}</div>}
+                    {c.email && <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{c.email}</div>}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
         {tab === 'billing' && (
@@ -1141,6 +1279,24 @@ function OpDetailScreen({ data, opId, nav, goBack }: { data: MobileData; opId: n
 
 const ORDER_STATUSES = ['Quote', 'Ordered', 'Shipped', 'Received', 'Fulfilled'];
 
+function OrderFlowStrip({ orders }: { orders: MobileOrder[] }) {
+  const counts: Record<string, number> = {};
+  ORDER_STATUSES.forEach(s => { counts[s] = orders.filter(o => o.status === s).length; });
+  return (
+    <div style={{ margin: '0 16px 12px', padding: '10px 8px', background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 12, display: 'flex', alignItems: 'center' }}>
+      {ORDER_STATUSES.map((s, i) => (
+        <React.Fragment key={s}>
+          <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 18, color: counts[s] > 0 ? 'var(--ink)' : 'var(--stone-300)', lineHeight: 1 }}>{counts[s]}</div>
+            <div className="mono" style={{ fontSize: 9, color: 'var(--stone-500)', textTransform: 'uppercase', letterSpacing: '0.06em', marginTop: 4 }}>{s}</div>
+          </div>
+          {i < ORDER_STATUSES.length - 1 && <div style={{ flexShrink: 0, color: 'var(--stone-300)', display: 'flex', alignItems: 'center' }}><I.chevron /></div>}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?: Record<string, unknown>) => void }) {
   const [tab, setTab] = useState<'open' | 'fulfilled' | 'all'>('open');
   const [showNew, setShowNew] = useState(false);
@@ -1154,20 +1310,22 @@ function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
 
   return (
     <>
-      <TopBar title="Orders" onBack={() => nav('more')} />
+      <TopBar title="Orders" onBack={() => nav('more')} right={<button className="ms-topbar-action" onClick={() => setShowNew(true)}><I.plus /></button>} />
       <div className="ms-body">
         <div style={{ padding: '8px 16px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div className="card" style={{ padding: 14 }}>
-            <div className="stat-label">Open Orders</div>
-            <div className="stat-value warn" style={{ fontSize: 26, marginTop: 6 }}>{open.length}</div>
-            <div className="stat-sub">{fmtMoney(totalOpen)} value</div>
+            <div className="stat-label">Open value</div>
+            <div className="stat-value warn" style={{ fontSize: 26, marginTop: 6 }}>{fmtMoney(totalOpen)}</div>
+            <div className="stat-sub">{open.length} open orders</div>
           </div>
           <div className="card" style={{ padding: 14 }}>
-            <div className="stat-label">Quotes</div>
+            <div className="stat-label">Quotes out</div>
             <div className="stat-value" style={{ fontSize: 26, marginTop: 6 }}>{quotes}</div>
-            <div className="stat-sub">Awaiting approval</div>
+            <div className="stat-sub">Pending approval</div>
           </div>
         </div>
+
+        <OrderFlowStrip orders={data.orders} />
 
         <div className="segment">
           <button className={tab === 'open' ? 'active' : ''} onClick={() => setTab('open')}>Open ({open.length})</button>
@@ -1180,12 +1338,15 @@ function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
           {list.map(o => (
             <button key={o.id} className="list-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => nav('order-detail', { orderId: o.id })}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="list-row-title" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.billingEntityName || o.operationName || 'Unknown'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                  <div className="list-row-title mono" style={{ fontSize: 12 }}>{o.id ? `ORD-${o.id}` : '—'}</div>
+                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.billingEntityName || o.operationName || 'Unknown'}</div>
                 <div className="list-row-sub">{fmtDateShort(o.orderDate)} · {o.items.length} item{o.items.length !== 1 ? 's' : ''}</div>
               </div>
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16 }}>{fmtMoney(o.total)}</div>
-                <StatusPill status={o.status} />
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18 }}>{fmtMoney(o.total)}</div>
+                <div style={{ marginTop: 4 }}><StatusPill status={o.status} /></div>
               </div>
             </button>
           ))}
@@ -1547,9 +1708,19 @@ export default function MobileApp({ data }: { data: MobileData }) {
     setStack(s => s.length > 1 ? s.slice(0, -1) : s);
   }, []);
 
-  const activeTab = (['dashboard', 'fields', 'probes', 'repairs', 'more'] as ScreenName[]).find(t =>
-    stack.some(e => e.screen === t)
-  ) || 'dashboard';
+  const rootMap: Record<string, ScreenName> = {
+    'field-detail': 'fields',
+    'probe-detail': 'probes',
+    'op-detail': 'more',
+    'crm': 'more',
+    'water': 'more',
+    'billing': 'more',
+    'orders': 'more',
+    'order-detail': 'more',
+    'invoice-detail': 'more',
+    'season': 'fields',
+  };
+  const activeTab: ScreenName = rootMap[top.screen] || ((['dashboard', 'fields', 'probes', 'repairs', 'more'] as ScreenName[]).includes(top.screen) ? top.screen : 'dashboard');
 
   function renderScreen() {
     const { screen, params } = top;
