@@ -232,6 +232,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [showMap, setShowMap] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>('installer');
+  const [installerFilter, setInstallerFilter] = useState<string | null>(null);
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -274,6 +275,12 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
 
     return result;
   }, [rows, search, sortCol, sortDir]);
+
+  const mapRows = useMemo(() =>
+    installerFilter
+      ? filtered.filter((r) => r.plannedInstaller.toLowerCase() === installerFilter.toLowerCase())
+      : filtered,
+  [filtered, installerFilter]);
 
   const sortProps = { sortCol, sortDir, onSort: handleSort };
 
@@ -338,25 +345,57 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
 
         {showMap && (
           <div style={{ padding: '0 0 12px' }}>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-              {(['installer', 'days', 'crop'] as ColorMode[]).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setColorMode(mode)}
-                  style={{
-                    padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                    fontSize: 12, fontWeight: 600,
-                    background: colorMode === mode ? '#1d1d1f' : '#e5e5ea',
-                    color: colorMode === mode ? '#fff' : '#1d1d1f',
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {mode === 'installer' ? 'By Installer' : mode === 'days' ? 'By Days Since Planting' : 'By Crop'}
-                </button>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {(['installer', 'days', 'crop'] as ColorMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setColorMode(mode)}
+                    style={{
+                      padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600,
+                      background: colorMode === mode ? '#1d1d1f' : '#e5e5ea',
+                      color: colorMode === mode ? '#fff' : '#1d1d1f',
+                    }}
+                  >
+                    {mode === 'installer' ? 'By Installer' : mode === 'days' ? 'By Days' : 'By Crop'}
+                  </button>
+                ))}
+              </div>
+
+              {installerOptions.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderLeft: '1px solid #e5e5ea', paddingLeft: 16 }}>
+                  <span style={{ fontSize: 11, color: '#86868b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Show</span>
+                  <button
+                    onClick={() => setInstallerFilter(null)}
+                    style={{
+                      padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                      fontSize: 12, fontWeight: 600,
+                      background: installerFilter === null ? '#1d1d1f' : '#e5e5ea',
+                      color: installerFilter === null ? '#fff' : '#1d1d1f',
+                    }}
+                  >
+                    All
+                  </button>
+                  {installerOptions.map((name) => (
+                    <button
+                      key={name}
+                      onClick={() => setInstallerFilter(installerFilter === name ? null : name)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                        fontSize: 12, fontWeight: 600,
+                        background: installerFilter === name ? '#0071e3' : '#e5e5ea',
+                        color: installerFilter === name ? '#fff' : '#1d1d1f',
+                      }}
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div style={{ height: 520, borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
-              <PlantingMapView rows={filtered} colorMode={colorMode} />
+              <PlantingMapView rows={mapRows} colorMode={colorMode} />
             </div>
           </div>
         )}
