@@ -88,7 +88,7 @@ function InstallerCell({
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
           disabled={saving}
           style={{
-            width: '100%', fontSize: 13, padding: '2px 6px',
+            width: 160, fontSize: 13, padding: '2px 6px',
             border: '1px solid #0071e3', borderRadius: 4, outline: 'none',
           }}
           autoFocus
@@ -149,17 +149,18 @@ function RouteCell({
 
   if (editing) {
     return (
-      <td style={{ padding: '2px 8px', minWidth: 60 }}>
+      <td style={{ textAlign: 'center' }}>
         <input
           ref={inputRef}
-          type="number"
+          type="text"
+          inputMode="numeric"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={save}
           onKeyDown={(e) => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
           disabled={saving}
           style={{
-            width: 60, fontSize: 13, padding: '2px 6px',
+            width: 50, fontSize: 13, padding: '2px 4px', textAlign: 'center',
             border: '1px solid #0071e3', borderRadius: 4, outline: 'none',
           }}
           autoFocus
