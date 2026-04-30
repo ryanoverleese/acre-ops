@@ -333,7 +333,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
 
       <div className="table-container">
         <div className="table-header">
-          <h3 className="table-title">Planting ({filtered.length})</h3>
+          <h3 className="table-title">Install Planning ({filtered.length})</h3>
           <div className="table-actions">
             <div className="search-box" style={{ minWidth: 180 }}>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
