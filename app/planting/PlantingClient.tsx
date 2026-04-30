@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import type { PlantingRow } from './page';
+import type { ColorMode } from './PlantingMapView';
+
+const PlantingMapView = dynamic(() => import('./PlantingMapView'), { ssr: false });
 
 interface Props {
   rows: PlantingRow[];
@@ -226,6 +230,8 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<SortCol>('plantingDate');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [showMap, setShowMap] = useState(false);
+  const [colorMode, setColorMode] = useState<ColorMode>('installer');
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -312,8 +318,48 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
+            <button
+              onClick={() => setShowMap((v) => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                background: showMap ? '#0071e3' : '#e5e5ea',
+                color: showMap ? '#fff' : '#1d1d1f',
+              }}
+            >
+              <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+              </svg>
+              Map
+            </button>
           </div>
         </div>
+
+        {showMap && (
+          <div style={{ padding: '0 0 12px' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+              {(['installer', 'days', 'crop'] as ColorMode[]).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setColorMode(mode)}
+                  style={{
+                    padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 600,
+                    background: colorMode === mode ? '#1d1d1f' : '#e5e5ea',
+                    color: colorMode === mode ? '#fff' : '#1d1d1f',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {mode === 'installer' ? 'By Installer' : mode === 'days' ? 'By Days Since Planting' : 'By Crop'}
+                </button>
+              ))}
+            </div>
+            <div style={{ height: 520, borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+              <PlantingMapView rows={filtered} colorMode={colorMode} />
+            </div>
+          </div>
+        )}
 
         <table className="desktop-table">
           <thead>
