@@ -302,9 +302,10 @@ async function loadMobileData(): Promise<MobileData> {
   const fieldToFS = new Map<number, Map<number, typeof rawFieldSeasons[0]>>();
   rawFieldSeasons.forEach(fs => {
     const fId = fsToFieldId.get(fs.id);
-    if (!fId || !fs.season) return;
+    const seasonNum = Number(fs.season);
+    if (!fId || !seasonNum) return;
     if (!fieldToFS.has(fId)) fieldToFS.set(fId, new Map());
-    fieldToFS.get(fId)!.set(fs.season, fs);
+    fieldToFS.get(fId)!.set(seasonNum, fs);
   });
 
   // Probe serial map
@@ -329,7 +330,7 @@ async function loadMobileData(): Promise<MobileData> {
 
   // ── Probe assignments for 2026 field seasons ─────────────────
   const fs2026Ids = new Set(
-    rawFieldSeasons.filter(fs => fs.season === CURRENT_SEASON).map(fs => fs.id)
+    rawFieldSeasons.filter(fs => Number(fs.season) === CURRENT_SEASON).map(fs => fs.id)
   );
 
   const pasByFS = new Map<number, typeof rawProbeAssignments[0][]>();
@@ -344,7 +345,7 @@ async function loadMobileData(): Promise<MobileData> {
   // ── Install stats ───────────────────────────────────────────
   const opInstallMap = new Map<number, { installed: number; planned: number }>();
 
-  rawFieldSeasons.filter(fs => fs.season === CURRENT_SEASON).forEach(fs => {
+  rawFieldSeasons.filter(fs => Number(fs.season) === CURRENT_SEASON).forEach(fs => {
     const fId = fsToFieldId.get(fs.id);
     const opId = fId ? fieldToOpId.get(fId) : undefined;
     if (!opId) return;
@@ -377,9 +378,9 @@ async function loadMobileData(): Promise<MobileData> {
     const opId = fId ? fieldToOpId.get(fId) : undefined;
     if (!opId) return;
     const pas = pasByFS.get(fs.id) || [];
-    if (fs.season === CURRENT_SEASON) {
+    if (Number(fs.season) === CURRENT_SEASON) {
       opProbeCount2026.set(opId, (opProbeCount2026.get(opId) || 0) + pas.length);
-    } else if (fs.season === PREV_SEASON) {
+    } else if (Number(fs.season) === PREV_SEASON) {
       opProbeCount2025.set(opId, (opProbeCount2025.get(opId) || 0) + pas.length);
     }
   });
@@ -391,9 +392,9 @@ async function loadMobileData(): Promise<MobileData> {
     const beId = inv.billing_entity?.[0]?.id;
     if (!beId) return;
     const amount = asNum(inv.actual_billed_amount) || asNum(inv.amount);
-    if (inv.season === CURRENT_SEASON) {
+    if (Number(inv.season) === CURRENT_SEASON) {
       beRevenue2026.set(beId, (beRevenue2026.get(beId) || 0) + amount);
-    } else if (inv.season === PREV_SEASON) {
+    } else if (Number(inv.season) === PREV_SEASON) {
       beRevenue2025.set(beId, (beRevenue2025.get(beId) || 0) + amount);
     }
   });
@@ -416,8 +417,8 @@ async function loadMobileData(): Promise<MobileData> {
     const fId = fsToFieldId.get(fs.id);
     const opId = fId ? fieldToOpId.get(fId) : undefined;
     if (!opId) return;
-    if (fs.season === CURRENT_SEASON) opsWithFS2026.add(opId);
-    if (fs.season === PREV_SEASON) opsWithFS2025.add(opId);
+    if (Number(fs.season) === CURRENT_SEASON) opsWithFS2026.add(opId);
+    if (Number(fs.season) === PREV_SEASON) opsWithFS2025.add(opId);
   });
 
   // ── Operations ───────────────────────────────────────────────
