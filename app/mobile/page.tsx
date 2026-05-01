@@ -13,6 +13,8 @@ import {
   getInvoiceLines,
   getWaterRecs,
   getProductsServices,
+  getRows,
+  ProbeRackSlot,
 } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import { cookies } from 'next/headers';
@@ -168,6 +170,15 @@ export interface MobileWaterRec {
   suggestedWaterDay?: string;
 }
 
+export interface MobileRackSlot {
+  id: number;
+  rack: string;       // e.g. "1A", "7B"
+  rack_slot: number;
+  probeId?: number;
+  serialNumber?: string;
+  isLost?: boolean;
+}
+
 export interface InstallStatByOp {
   opId: number;
   opName: string;
@@ -185,6 +196,7 @@ export interface MobileData {
   invoices: MobileInvoice[];
   waterRecs: MobileWaterRec[];
   products: MobileProduct[];
+  rackSlots: MobileRackSlot[];
   activeSeason: number;
   availableSeasons: number[];
   installStats: {
@@ -242,11 +254,12 @@ async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
 
   await delay(300);
 
-  // Batch 4: billing + water recs
-  const [rawInvoices, rawInvoiceLines, rawWaterRecs] = await Promise.all([
+  // Batch 4: billing + water recs + rack slots
+  const [rawInvoices, rawInvoiceLines, rawWaterRecs, rawRackSlots] = await Promise.all([
     getInvoices(),
     getInvoiceLines(),
     getWaterRecs({ orderBy: '-date' }),
+    getRows<ProbeRackSlot>('probe_rack'),
   ]);
 
   // ── Lookup maps ─────────────────────────────────────────────
@@ -695,7 +708,31 @@ async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
   seasonSet.add(thisYear + 1);
   const availableSeasons = Array.from(seasonSet).sort((a, b) => b - a);
 
-  return { operations, fields, probes, repairs, orders, invoices, waterRecs, products, activeSeason: CURRENT_SEASON, availableSeasons, installStats };
+  // ── Rack slots ────────────────────────────────────────────────
+  const probeStatusMap = new Map(rawProbes.map(p => [p.id, p.status?.value || '']));
+  const rackSlots: MobileRackSlot[] = rawRackSlots
+    .filter(s => typeof s.rack === 'string' && s.rack.match(/^\d+[AB]$/))
+    .map(s => {
+      const linked = s.probe?.[0];
+      const probeId = linked?.id;
+      const serialNumber = linked?.value || undefined;
+      const probeSt = probeId ? probeStatusMap.get(probeId) : undefined;
+      return {
+        id: s.id,
+        rack: s.rack,
+        rack_slot: s.rack_slot,
+        probeId,
+        serialNumber,
+        isLost: probeSt?.toLowerCase() === 'lost',
+      };
+    })
+    .sort((a, b) => {
+      const [an, as2] = [parseInt(a.rack, 10), a.rack.slice(-1)];
+      const [bn, bs2] = [parseInt(b.rack, 10), b.rack.slice(-1)];
+      return an - bn || as2.localeCompare(bs2) || a.rack_slot - b.rack_slot;
+    });
+
+  return { operations, fields, probes, repairs, orders, invoices, waterRecs, products, rackSlots, activeSeason: CURRENT_SEASON, availableSeasons, installStats };
 }
 
 // ── Page ─────────────────────────────────────────────────────────
@@ -712,7 +749,7 @@ export default async function MobilePage() {
     console.error('Mobile data load error:', err);
     data = {
       operations: [], fields: [], probes: [], repairs: [],
-      orders: [], invoices: [], waterRecs: [], products: [],
+      orders: [], invoices: [], waterRecs: [], products: [], rackSlots: [],
       activeSeason, availableSeasons: [activeSeason],
       installStats: { totalInstalled: 0, totalPlanned: 0, byOp: [] },
     };

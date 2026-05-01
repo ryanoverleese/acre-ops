@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import type {
   MobileData, MobileOperation, MobileField, MobileProbe,
-  MobileRepair, MobileOrder, MobileInvoice, MobileWaterRec,
+  MobileRepair, MobileOrder, MobileInvoice, MobileWaterRec, MobileRackSlot,
 } from './page';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -12,7 +12,7 @@ type ScreenName =
   | 'dashboard' | 'fields' | 'probes' | 'repairs' | 'more'
   | 'field-detail' | 'probe-detail' | 'op-detail'
   | 'crm' | 'orders' | 'order-detail' | 'water' | 'billing'
-  | 'invoice-detail' | 'season' | 'settings';
+  | 'invoice-detail' | 'season' | 'settings' | 'racks';
 
 interface StackEntry { screen: ScreenName; params: Record<string, unknown> }
 
@@ -78,6 +78,7 @@ const I = {
   x: () => <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><line x1={18} y1={6} x2={6} y2={18}/><line x1={6} y1={6} x2={18} y2={18}/></svg>,
   cog: () => <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={3}/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>,
   cart: () => <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={9} cy={21} r={1}/><circle cx={20} cy={21} r={1}/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>,
+  rack: () => <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x={2} y={2} width={20} height={8} rx={2}/><rect x={2} y={14} width={20} height={8} rx={2}/><line x1={6} y1={6} x2={6} y2={6}/><line x1={6} y1={18} x2={6} y2={18}/></svg>,
   map: () => <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><polygon points="3,6 9,3 15,6 21,3 21,18 15,21 9,18 3,21"/><line x1={9} y1={3} x2={9} y2={18}/><line x1={15} y1={6} x2={15} y2={21}/></svg>,
   bell: () => <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>,
 };
@@ -1368,6 +1369,147 @@ function SettingsScreen({ data, goBack }: { data: MobileData; goBack: () => void
   );
 }
 
+// ── RACKS ─────────────────────────────────────────────────────────
+
+function parseRackStr(rackStr: string): { num: number; side: 'A' | 'B' } {
+  const match = rackStr.match(/^(\d+)([AB])$/);
+  if (!match) return { num: 0, side: 'A' };
+  return { num: parseInt(match[1], 10), side: match[2] as 'A' | 'B' };
+}
+
+function RacksScreen({ data, goBack }: { data: MobileData; goBack: () => void }) {
+  const slots = data.rackSlots;
+
+  const rackNums = useMemo(() => {
+    const seen = new Set<number>();
+    slots.forEach(s => seen.add(parseRackStr(s.rack).num));
+    return Array.from(seen).filter(n => n > 0).sort((a, b) => a - b);
+  }, [slots]);
+
+  const [selectedRack, setSelectedRack] = useState<number>(rackNums[0] ?? 1);
+
+  const { sideA, sideB, filled, total } = useMemo(() => {
+    const rackSlots = slots.filter(s => parseRackStr(s.rack).num === selectedRack);
+    const sideA = rackSlots.filter(s => s.rack.endsWith('A')).sort((a, b) => a.rack_slot - b.rack_slot);
+    const sideB = rackSlots.filter(s => s.rack.endsWith('B')).sort((a, b) => a.rack_slot - b.rack_slot);
+    const filled = rackSlots.filter(s => !!s.serialNumber).length;
+    return { sideA, sideB, filled, total: rackSlots.length };
+  }, [slots, selectedRack]);
+
+  const rackStats = useMemo(() => {
+    const m: Record<number, { filled: number; total: number }> = {};
+    rackNums.forEach(n => {
+      const rs = slots.filter(s => parseRackStr(s.rack).num === n);
+      m[n] = { filled: rs.filter(s => !!s.serialNumber).length, total: rs.length };
+    });
+    return m;
+  }, [slots, rackNums]);
+
+  function SlotCard({ slot }: { slot: MobileRackSlot }) {
+    const isFilled = !!slot.serialNumber;
+    const sn = slot.serialNumber?.replace(/^CX-?/i, '') || null;
+    return (
+      <div style={{
+        padding: '6px 8px',
+        borderRadius: 8,
+        border: `1.5px solid ${isFilled ? (slot.isLost ? '#FDECEA' : 'rgba(74,122,91,0.25)') : 'var(--border-1)'}`,
+        background: isFilled ? (slot.isLost ? '#FFF5F4' : 'rgba(74,122,91,0.06)') : 'var(--bone-raised)',
+      }}>
+        <div style={{ fontSize: 9, color: 'var(--stone-500)', marginBottom: 3, fontWeight: 600, letterSpacing: '0.04em' }}>
+          {slot.rack_slot}
+        </div>
+        <div style={{
+          fontSize: 11,
+          fontFamily: 'var(--font-mono)',
+          fontWeight: sn ? 600 : 400,
+          color: slot.isLost ? '#C04A30' : isFilled ? 'var(--field-green)' : 'var(--stone-500)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.2,
+        }}>
+          {sn || '—'}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="ms-topbar">
+        <button className="ms-topbar-back" onClick={goBack} aria-label="Back">
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div className="ms-topbar-title" style={{ fontSize: 17 }}>Racks</div>
+        <div style={{ width: 40 }} />
+      </div>
+      <div className="ms-body">
+        <PageHeader eyebrow={`${slots.filter(s => !!s.serialNumber).length} / ${slots.length} slots filled`} title="Probe Racks" />
+
+        {/* Rack selector */}
+        <div style={{ display: 'flex', gap: 6, padding: '0 16px 12px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {rackNums.map(n => {
+            const st = rackStats[n] || { filled: 0, total: 0 };
+            const isSelected = n === selectedRack;
+            return (
+              <button
+                key={n}
+                onClick={() => setSelectedRack(n)}
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '8px 12px',
+                  borderRadius: 10,
+                  border: `1.5px solid ${isSelected ? 'var(--field-green)' : 'var(--border-1)'}`,
+                  background: isSelected ? 'var(--field-green)' : 'var(--bone-raised)',
+                  color: isSelected ? '#fff' : 'var(--stone-500)',
+                  minWidth: 52,
+                }}
+              >
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, lineHeight: 1 }}>{n}</div>
+                <div style={{ width: 28, height: 3, borderRadius: 999, background: isSelected ? 'rgba(255,255,255,0.35)' : 'var(--border-1)', overflow: 'hidden' }}>
+                  <div style={{ width: `${st.total ? (st.filled / st.total) * 100 : 0}%`, height: '100%', background: isSelected ? '#fff' : 'var(--field-green)', borderRadius: 999 }} />
+                </div>
+                <div style={{ fontSize: 9, fontWeight: 600, letterSpacing: '0.03em', opacity: 0.7 }}>{st.filled}/{st.total}</div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Rack stats */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 16px 12px' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, lineHeight: 1, color: 'var(--field-green)' }}>{filled}</div>
+          <div style={{ color: 'var(--stone-500)', fontSize: 14 }}>of {total} slots filled</div>
+          <div style={{ marginLeft: 'auto', flex: 1, maxWidth: 120, height: 6, borderRadius: 999, background: 'var(--border-1)', overflow: 'hidden' }}>
+            <div style={{ width: `${total ? (filled / total) * 100 : 0}%`, height: '100%', background: 'var(--field-green)', borderRadius: 999 }} />
+          </div>
+        </div>
+
+        {/* Side A / B columns */}
+        {(sideA.length > 0 || sideB.length > 0) && (
+          <div style={{ display: 'grid', gridTemplateColumns: sideB.length > 0 ? '1fr 1fr' : '1fr', gap: 12, padding: '0 16px 24px' }}>
+            {[{ label: 'Side A', items: sideA }, { label: 'Side B', items: sideB }].filter(s => s.items.length > 0).map(({ label, items }) => (
+              <div key={label}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: 'var(--stone-500)', textTransform: 'uppercase', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--border-1)' }}>{label}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {items.map(slot => <SlotCard key={slot.id} slot={slot} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {rackNums.length === 0 && (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--stone-500)' }}>No rack data.</div>
+        )}
+      </div>
+    </>
+  );
+}
+
 // ── MORE ──────────────────────────────────────────────────────────
 
 function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => void }) {
@@ -1375,9 +1517,11 @@ function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => v
   const openInvoices = data.invoices.filter(i => ['Sent', 'Overdue', 'Partially Paid'].includes(i.status)).length;
   const recentWater = data.waterRecs.filter(w => w.date && new Date(w.date) >= new Date(Date.now() - 14 * 86400000)).length;
 
+  const rackFilled = data.rackSlots.filter(s => !!s.serialNumber).length;
   const items = [
     { key: 'crm' as ScreenName, icon: I.users, label: 'CRM · Operations', sub: `${data.operations.length} operations`, tone: 'sage' },
     { key: 'orders' as ScreenName, icon: I.cart, label: 'Orders', sub: `${openOrders} open`, tone: 'warn' },
+    { key: 'racks' as ScreenName, icon: I.rack, label: 'Probe Racks', sub: `${rackFilled} / ${data.rackSlots.length} filled`, tone: 'sage' },
     { key: 'water' as ScreenName, icon: I.drop, label: 'Water Recommendations', sub: `${recentWater} recent`, tone: 'info' },
     { key: 'billing' as ScreenName, icon: I.dollar, label: 'Billing & Invoices', sub: `${openInvoices} open`, tone: 'sage' },
     { key: 'season' as ScreenName, icon: I.cal, label: 'Season Readiness', sub: `${data.activeSeason} prep`, tone: 'sage' },
@@ -2057,6 +2201,7 @@ export default function MobileApp({ data }: { data: MobileData }) {
     'invoice-detail': 'more',
     'season': 'fields',
     'settings': 'more',
+    'racks': 'more',
   };
   const activeTab: ScreenName = rootMap[top.screen] || ((['dashboard', 'fields', 'probes', 'repairs', 'more'] as ScreenName[]).includes(top.screen) ? top.screen : 'dashboard');
 
@@ -2081,6 +2226,7 @@ export default function MobileApp({ data }: { data: MobileData }) {
       case 'invoice-detail': return <InvoiceDetailScreen data={data} invoiceId={params.invoiceId as number} goBack={goBack} />;
       case 'season': return <SeasonReadinessScreen data={data} goBack={goBack} />;
       case 'settings': return <SettingsScreen data={data} goBack={goBack} />;
+      case 'racks': return <RacksScreen data={data} goBack={goBack} />;
       default: return <DashboardScreen data={data} nav={nav} />;
     }
   }
