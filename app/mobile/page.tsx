@@ -70,6 +70,7 @@ export interface MobileProbe {
   id: number;
   serialNumber: string;
   status: string;
+  assignmentStatus?: string;
   operationId?: number;
   operationName?: string;
   fieldId?: number;
@@ -517,6 +518,7 @@ async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
       fieldName: paInfo?.fieldName || '',
       fieldSeasonId: paInfo?.fsId,
       probeAssignmentId: pa?.id,
+      assignmentStatus: pa?.probe_status?.value,
       model: p.brand?.value || '',
       installedDate: pa?.install_date,
       lat: asNum(pa?.install_lat) || asNum(pa?.placement_lat) || undefined,

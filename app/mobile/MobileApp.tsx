@@ -637,13 +637,39 @@ function ProbesScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
   );
 }
 
+const PROBE_STATUSES = ['Assigned', 'Installed', 'Active', 'Removed', 'RMA', 'Retired', 'Lost'];
+
 function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; probeId: number; nav: (s: ScreenName, p?: Record<string, unknown>) => void; goBack: () => void }) {
-  const p = data.probes.find(x => x.id === probeId);
-  if (!p) return <div style={{ padding: 40 }}>Probe not found</div>;
+  const probe = data.probes.find(x => x.id === probeId);
+  const [showMoveStatus, setShowMoveStatus] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(probe?.assignmentStatus || probe?.status || '');
+  const [savingStatus, setSavingStatus] = useState('');
+
+  if (!probe) return <div style={{ padding: 40 }}>Probe not found</div>;
+  const p = probe;
   const field = p.fieldId ? data.fields.find(f => f.id === p.fieldId) : undefined;
   const op = p.operationId ? data.operations.find(o => o.id === p.operationId) : undefined;
   const lat = p.lat || field?.lat;
   const lng = p.lng || field?.lng;
+
+  async function handleMoveStatus(newStatus: string) {
+    if (!p.probeAssignmentId) return;
+    setSavingStatus(newStatus);
+    try {
+      const res = await fetch(`/api/probe-assignments/${p.probeAssignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe_status: newStatus }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setCurrentStatus(newStatus);
+      setShowMoveStatus(false);
+    } catch (e) {
+      alert('Failed to update status: ' + String(e));
+    } finally {
+      setSavingStatus('');
+    }
+  }
 
   return (
     <>
@@ -656,7 +682,7 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, textTransform: 'uppercase' }}>{p.serialNumber}</div>
             <div style={{ color: 'var(--stone-500)', fontSize: 13, marginTop: 2 }}>{p.model || 'CropX Probe'}</div>
-            <div style={{ marginTop: 6 }}><StatusPill status={p.status} /></div>
+            <div style={{ marginTop: 6 }}><StatusPill status={currentStatus} /></div>
           </div>
         </div>
 
@@ -690,10 +716,41 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
         )}
 
         <div style={{ padding: '0 16px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <button className="card" style={{ padding: 14, textAlign: 'center', color: 'var(--field-green)', fontWeight: 700, fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 13 }}>Move status</button>
+          {p.probeAssignmentId ? (
+            <button className="card" onClick={() => setShowMoveStatus(true)} style={{ padding: 14, textAlign: 'center', color: 'var(--field-green)', fontWeight: 700, fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 13 }}>Move status</button>
+          ) : (
+            <div />
+          )}
           <a href={`https://app.cropx.com/probes/${encodeURIComponent(p.serialNumber)}`} target="_blank" rel="noopener noreferrer" className="card" style={{ padding: 14, textAlign: 'center', color: 'var(--field-green)', fontWeight: 700, fontFamily: 'var(--font-display)', textTransform: 'uppercase', letterSpacing: '0.04em', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>Open in CropX</a>
         </div>
       </div>
+
+      {showMoveStatus && (
+        <BottomSheet title="Move Status" onClose={() => setShowMoveStatus(false)}>
+          <div style={{ padding: '4px 16px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {PROBE_STATUSES.map(s => (
+              <button
+                key={s}
+                onClick={() => handleMoveStatus(s)}
+                disabled={!!savingStatus}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', borderRadius: 12,
+                  background: s === currentStatus ? 'var(--sage-wash)' : 'var(--bone-raised)',
+                  border: s === currentStatus ? '1.5px solid var(--sage-mid)' : '1.5px solid var(--border-1)',
+                  fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
+                  textTransform: 'uppercase', letterSpacing: '0.02em',
+                  color: s === currentStatus ? 'var(--field-green)' : 'var(--ink)',
+                  cursor: savingStatus ? 'default' : 'pointer', opacity: savingStatus && savingStatus !== s ? 0.5 : 1,
+                }}
+              >
+                <span>{savingStatus === s ? 'Saving…' : s}</span>
+                {s === currentStatus && <I.check />}
+              </button>
+            ))}
+          </div>
+        </BottomSheet>
+      )}
     </>
   );
 }
@@ -826,19 +883,25 @@ function RepairDetailScreen({ data, repairId, goBack }: { data: MobileData; repa
 
         {/* Status timeline */}
         <div style={{ padding: '14px 16px 8px' }}>
-          <div className="stat-label" style={{ marginBottom: 10 }}>Status</div>
+          <div className="stat-label" style={{ marginBottom: 10 }}>Progress</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
-            {[{ short: 'Report' }, { short: 'Diag' }, { short: 'RMA' }, { short: 'Wait' }, { short: 'Fixed' }, { short: 'Done' }].map((s, i, arr) => (
-              <React.Fragment key={s.short}>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                  <div style={{ width: i + 1 === info.step ? 26 : 18, height: i + 1 === info.step ? 26 : 18, borderRadius: 999, background: i + 1 <= info.step ? info.color : 'var(--stone-50)', border: i + 1 === info.step ? '3px solid var(--bone)' : 'none', boxShadow: i + 1 === info.step ? `0 0 0 2px ${info.color}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bone)' }}>
-                    {i + 1 < info.step && <span style={{ fontSize: 10, fontWeight: 700 }}>✓</span>}
+            {[{ short: 'Open', step: 1 }, { short: 'Resolved', step: 2 }].map((s, i, arr) => {
+              const done = r.status === 'resolved';
+              const active = !done && s.step === 1;
+              const filled = done || s.step === 1;
+              return (
+                <React.Fragment key={s.short}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                    <div style={{ width: active ? 26 : 18, height: active ? 26 : 18, borderRadius: 999, background: filled ? info.color : 'var(--stone-50)', border: active ? '3px solid var(--bone)' : 'none', boxShadow: active ? `0 0 0 2px ${info.color}` : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bone)' }}>
+                      {done && s.step === 1 && <span style={{ fontSize: 10, fontWeight: 700 }}>✓</span>}
+                      {done && s.step === 2 && <span style={{ fontSize: 10, fontWeight: 700 }}>✓</span>}
+                    </div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 600, color: filled ? 'var(--stone-700)' : 'var(--stone-300)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 6, whiteSpace: 'nowrap' }}>{s.short}</div>
                   </div>
-                  <div style={{ fontFamily: 'var(--font-display)', fontSize: 9, fontWeight: 600, color: i + 1 === info.step ? 'var(--ink)' : i + 1 < info.step ? 'var(--stone-700)' : 'var(--stone-300)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 6, whiteSpace: 'nowrap', textAlign: 'center' }}>{s.short}</div>
-                </div>
-                {i < arr.length - 1 && <div style={{ flex: 0.6, height: 2, marginTop: -16, background: i + 1 < info.step ? info.color : 'var(--stone-50)' }} />}
-              </React.Fragment>
-            ))}
+                  {i < arr.length - 1 && <div style={{ flex: 2, height: 2, marginTop: -16, background: done ? info.color : 'var(--stone-50)' }} />}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
 
