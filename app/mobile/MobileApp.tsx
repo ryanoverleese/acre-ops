@@ -178,10 +178,20 @@ function MetaRow({ label, value, onClick }: { label: string; value: string | und
   );
 }
 
+const MAPS_PREF_KEY = 'acre-ops-maps-pref';
+
+function getMapsUrl(lat: number, lng: number): string {
+  const pref = typeof window !== 'undefined' ? localStorage.getItem(MAPS_PREF_KEY) : null;
+  if (pref === 'google') return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  return `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`;
+}
+
 function DirectionsBtn({ lat, lng, label }: { lat: number; lng: number; label: string }) {
+  const [href, setHref] = React.useState(`https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`);
+  React.useEffect(() => { setHref(getMapsUrl(lat, lng)); }, [lat, lng]);
   return (
     <a
-      href={`https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`}
+      href={href}
       target="_blank"
       rel="noopener noreferrer"
       className="directions-btn"
@@ -1257,6 +1267,11 @@ function NewOrderSheet({ data, onClose, onSaved }: { data: MobileData; onClose: 
 function SettingsScreen({ data, goBack }: { data: MobileData; goBack: () => void }) {
   const [selected, setSelected] = useState(String(data.activeSeason));
   const [saving, setSaving] = useState(false);
+  const [mapsPref, setMapsPref] = useState<'apple' | 'google'>('apple');
+  React.useEffect(() => {
+    const stored = localStorage.getItem(MAPS_PREF_KEY);
+    if (stored === 'google') setMapsPref('google');
+  }, []);
 
   function handleSeasonChange(year: string) {
     const n = parseInt(year, 10);
@@ -1292,6 +1307,26 @@ function SettingsScreen({ data, goBack }: { data: MobileData; goBack: () => void
             </select>
             {saving && <div style={{ fontSize: 12, color: 'var(--stone-500)' }}>Reloading…</div>}
           </div>
+        </div>
+
+        <div className="section-label">Navigation</div>
+        <div className="card-flat" style={{ margin: '0 16px 24px' }}>
+          {(['apple', 'google'] as const).map(opt => (
+            <button
+              key={opt}
+              className="list-row"
+              style={{ width: '100%', textAlign: 'left' }}
+              onClick={() => {
+                localStorage.setItem(MAPS_PREF_KEY, opt);
+                setMapsPref(opt);
+              }}
+            >
+              <div style={{ flex: 1 }}>
+                <div className="list-row-title">{opt === 'apple' ? 'Apple Maps' : 'Google Maps'}</div>
+              </div>
+              {mapsPref === opt && <I.check />}
+            </button>
+          ))}
         </div>
       </div>
     </>
