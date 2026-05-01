@@ -1224,9 +1224,9 @@ function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => v
         <div className="section-label">Account</div>
         <div className="card-flat" style={{ margin: '0 16px 24px' }}>
           <div className="list-row">
-            <div style={{ width: 40, height: 40, borderRadius: 999, background: 'var(--field-green)', color: 'var(--bone)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>JT</div>
+            <div style={{ width: 40, height: 40, borderRadius: 999, background: 'var(--field-green)', color: 'var(--bone)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, flexShrink: 0 }}>RO</div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="list-row-title">Jordan Thiessen</div>
+              <div className="list-row-title">Ryan Overleese</div>
               <div className="list-row-sub">Acre Insights · Owner</div>
             </div>
           </div>
