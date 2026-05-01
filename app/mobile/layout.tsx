@@ -4,6 +4,7 @@ import './mobile.css';
 export const metadata: Metadata = {
   title: 'Acre Ops',
   description: 'Acre Insights mobile operations app',
+  manifest: '/mobile-manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
