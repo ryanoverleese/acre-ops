@@ -84,6 +84,7 @@ export interface MobileProbe {
   lng?: number;
   tradeFor?: string;
   notes?: string;
+  rack?: string;
 }
 
 export interface MobileProduct {
@@ -524,6 +525,7 @@ async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
       lat: asNum(pa?.install_lat) || asNum(pa?.placement_lat) || undefined,
       lng: asNum(pa?.install_lng) || asNum(pa?.placement_lng) || undefined,
       notes: p.notes,
+      rack: p.rack?.value,
     };
   });
 

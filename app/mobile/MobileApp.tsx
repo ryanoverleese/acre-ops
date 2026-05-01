@@ -537,6 +537,7 @@ const PROBE_TABS = [
 function ProbesScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?: Record<string, unknown>) => void }) {
   const [tab, setTab] = useState('deployed');
   const [query, setQuery] = useState('');
+  const [rack, setRack] = useState('');
 
   const counts = useMemo(() => {
     const m: Record<string, number> = {};
@@ -546,15 +547,34 @@ function ProbesScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
     return m;
   }, [data.probes]);
 
-  const visible = useMemo(() => {
+  const tabProbes = useMemo(() => {
     const tabDef = PROBE_TABS.find(t => t.key === tab)!;
-    let list = data.probes.filter(p => tabDef.statuses.includes(p.status));
+    return data.probes.filter(p => tabDef.statuses.includes(p.status));
+  }, [data.probes, tab]);
+
+  const racks = useMemo(() => {
+    const seen = new Set<string>();
+    tabProbes.forEach(p => { if (p.rack) seen.add(p.rack); });
+    return Array.from(seen).sort((a, b) => {
+      const na = parseInt(a, 10), nb = parseInt(b, 10);
+      return (isNaN(na) || isNaN(nb)) ? a.localeCompare(b) : na - nb;
+    });
+  }, [tabProbes]);
+
+  // Clear rack filter when tab changes or rack is no longer in list
+  React.useEffect(() => {
+    if (rack && !racks.includes(rack)) setRack('');
+  }, [racks, rack]);
+
+  const visible = useMemo(() => {
+    let list = tabProbes;
+    if (rack) list = list.filter(p => p.rack === rack);
     if (query) {
       const q = query.toLowerCase();
       list = list.filter(p => p.serialNumber.toLowerCase().includes(q) || (p.fieldName || '').toLowerCase().includes(q));
     }
     return list;
-  }, [data.probes, tab, query]);
+  }, [tabProbes, rack, query]);
 
   const byStatus = useMemo(() => {
     const m = new Map<string, MobileProbe[]>();
@@ -605,6 +625,21 @@ function ProbesScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
           ))}
         </div>
         <div className="searchbar"><I.search /><input placeholder="Serial or field" value={query} onChange={e => setQuery(e.target.value)} /></div>
+        {racks.length > 0 && (
+          <div style={{ display: 'flex', gap: 6, padding: '0 16px 12px', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <button
+              onClick={() => setRack('')}
+              style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 600, border: '1.5px solid', borderColor: rack === '' ? 'var(--field-green)' : 'var(--border-1)', background: rack === '' ? 'var(--field-green)' : 'var(--bone-raised)', color: rack === '' ? '#fff' : 'var(--stone-500)' }}
+            >All</button>
+            {racks.map(r => (
+              <button
+                key={r}
+                onClick={() => setRack(r === rack ? '' : r)}
+                style={{ flexShrink: 0, padding: '5px 12px', borderRadius: 999, fontSize: 13, fontWeight: 600, border: '1.5px solid', borderColor: rack === r ? 'var(--field-green)' : 'var(--border-1)', background: rack === r ? 'var(--field-green)' : 'var(--bone-raised)', color: rack === r ? '#fff' : 'var(--stone-500)' }}
+              >Rack {r}</button>
+            ))}
+          </div>
+        )}
         {byStatus.length === 0 && <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--stone-500)' }}>No probes here.</div>}
         {byStatus.map(([status, items]) => (
           <div key={status}>
