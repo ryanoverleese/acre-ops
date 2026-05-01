@@ -2222,7 +2222,7 @@ a.notification-item {
   }
 
   .stats-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .search-box {
@@ -2590,6 +2590,20 @@ tr.selected {
 
   .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .table-actions {
+    width: 100%;
+  }
+
+  .table-actions .search-box,
+  .fields-search-box {
+    width: 100%;
+    flex: 1;
+  }
+
+  .table-actions .searchable-select-trigger {
+    flex: 1;
   }
 }
 

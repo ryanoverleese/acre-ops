@@ -229,7 +229,7 @@ export default function SeasonReadinessClient({ rows: initialRows, year }: Props
 
   return (
     <>
-      <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
+      <div className="stats-grid" style={{ marginBottom: 16 }}>
         <div className="stat-card">
           <div className="stat-label">Total Fields</div>
           <div className="stat-value blue">{total}</div>
