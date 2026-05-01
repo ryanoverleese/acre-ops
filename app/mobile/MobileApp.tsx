@@ -140,7 +140,7 @@ function Avatar({ initials, tone, size = 36 }: { initials: string; tone: string;
   };
   const c = colors[tone] || colors.neutral;
   return (
-    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.38, background: c.bg, color: c.fg, flexShrink: 0 }}>
+    <div className="avatar" style={{ width: size, height: size, fontSize: size * 0.4, background: c.bg, color: c.fg, flexShrink: 0 }}>
       {initials}
     </div>
   );
@@ -149,11 +149,11 @@ function Avatar({ initials, tone, size = 36 }: { initials: string; tone: string;
 function StatusPill({ status }: { status: string }) {
   const s = (status || '').toLowerCase();
   let cls = 'pill-neutral';
-  if (s === 'returning' || s === 'installed' || s === 'active' || s === 'paid' || s === 'fulfilled' || s === 'received') cls = 'pill-brand';
-  else if (s === 'still-to-go' || s === 'overdue' || s === 'sent' || s === 'shipped' || s === 'ordered') cls = 'pill-warn';
-  else if (s === 'new' || s === 'in stock' || s === 'on order' || s === 'partially paid') cls = 'pill-info';
-  else if (s === 'not-returning' || s === 'rma' || s === 'lost' || s === 'retired') cls = 'pill-dry';
-  else if (s === 'draft' || s === 'quote') cls = 'pill-neutral';
+  if (s === 'returning' || s === 'installed' || s === 'active' || s === 'paid' || s === 'fulfilled' || s === 'received') cls = 'pill-ok';
+  else if (s === 'still-to-go' || s === 'assigned' || s === 'shipped' || s === 'ordered' || s === 'partially paid' || s === 'trade ordered') cls = 'pill-warn';
+  else if (s === 'new' || s === 'in stock' || s === 'on order' || s === 'on order - trade' || s === 'sent') cls = 'pill-info';
+  else if (s === 'rma' || s === 'lost' || s === 'overdue') cls = 'pill-error';
+  else if (s === 'not-returning' || s === 'retired' || s === 'draft' || s === 'quote') cls = 'pill-neutral';
   return <span className={`pill ${cls}`}>{status}</span>;
 }
 
