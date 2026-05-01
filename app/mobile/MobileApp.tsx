@@ -12,7 +12,7 @@ type ScreenName =
   | 'dashboard' | 'fields' | 'probes' | 'repairs' | 'more'
   | 'field-detail' | 'probe-detail' | 'op-detail'
   | 'crm' | 'orders' | 'order-detail' | 'water' | 'billing'
-  | 'invoice-detail' | 'season';
+  | 'invoice-detail' | 'season' | 'settings';
 
 interface StackEntry { screen: ScreenName; params: Record<string, unknown> }
 
@@ -1186,6 +1186,50 @@ function NewOrderSheet({ data, onClose, onSaved }: { data: MobileData; onClose: 
   );
 }
 
+// ── SETTINGS ──────────────────────────────────────────────────────
+
+function SettingsScreen({ data, goBack }: { data: MobileData; goBack: () => void }) {
+  const [selected, setSelected] = useState(String(data.activeSeason));
+  const [saving, setSaving] = useState(false);
+
+  function handleSeasonChange(year: string) {
+    setSelected(year);
+    setSaving(true);
+    document.cookie = `mobile-active-season=${year}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    window.location.reload();
+  }
+
+  return (
+    <>
+      <TopBar title="Settings" onBack={goBack} />
+      <div className="ms-body">
+        <PageHeader eyebrow="App preferences" title="Settings" />
+
+        <div className="section-label">Season</div>
+        <div className="card-flat" style={{ margin: '0 16px 24px' }}>
+          <div className="list-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>
+            <div>
+              <div className="list-row-title">Active Season</div>
+              <div className="list-row-sub">Data shown throughout the app will reflect this season</div>
+            </div>
+            <select
+              value={selected}
+              onChange={e => handleSeasonChange(e.target.value)}
+              disabled={saving}
+              style={{ ...inputStyle, width: '100%', opacity: saving ? 0.6 : 1 }}
+            >
+              {data.availableSeasons.map(s => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            {saving && <div style={{ fontSize: 12, color: 'var(--stone-500)' }}>Reloading…</div>}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── MORE ──────────────────────────────────────────────────────────
 
 function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => void }) {
@@ -1198,7 +1242,7 @@ function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => v
     { key: 'orders' as ScreenName, icon: I.cart, label: 'Orders', sub: `${openOrders} open`, tone: 'warn' },
     { key: 'water' as ScreenName, icon: I.drop, label: 'Water Recommendations', sub: `${recentWater} recent`, tone: 'info' },
     { key: 'billing' as ScreenName, icon: I.dollar, label: 'Billing & Invoices', sub: `${openInvoices} open`, tone: 'sage' },
-    { key: 'season' as ScreenName, icon: I.cal, label: 'Season Readiness', sub: '2026 prep', tone: 'sage' },
+    { key: 'season' as ScreenName, icon: I.cal, label: 'Season Readiness', sub: `${data.activeSeason} prep`, tone: 'sage' },
   ];
 
   return (
@@ -1230,7 +1274,7 @@ function MoreScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName) => v
               <div className="list-row-sub">Acre Insights · Owner</div>
             </div>
           </div>
-          <button className="list-row" style={{ width: '100%', textAlign: 'left' }}>
+          <button className="list-row" style={{ width: '100%', textAlign: 'left' }} onClick={() => nav('settings')}>
             <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--stone-50)', color: 'var(--stone-700)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I.cog /></div>
             <div style={{ flex: 1 }}>
               <div className="list-row-title">Settings</div>
@@ -1874,6 +1918,7 @@ export default function MobileApp({ data }: { data: MobileData }) {
     'order-detail': 'more',
     'invoice-detail': 'more',
     'season': 'fields',
+    'settings': 'more',
   };
   const activeTab: ScreenName = rootMap[top.screen] || ((['dashboard', 'fields', 'probes', 'repairs', 'more'] as ScreenName[]).includes(top.screen) ? top.screen : 'dashboard');
 
@@ -1897,6 +1942,7 @@ export default function MobileApp({ data }: { data: MobileData }) {
       case 'billing': return <BillingScreen data={data} nav={nav} goBack={goBack} />;
       case 'invoice-detail': return <InvoiceDetailScreen data={data} invoiceId={params.invoiceId as number} goBack={goBack} />;
       case 'season': return <SeasonReadinessScreen data={data} goBack={goBack} />;
+      case 'settings': return <SettingsScreen data={data} goBack={goBack} />;
       default: return <DashboardScreen data={data} nav={nav} />;
     }
   }

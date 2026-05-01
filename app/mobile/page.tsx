@@ -15,6 +15,7 @@ import {
   getProductsServices,
 } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
+import { cookies } from 'next/headers';
 import MobileApp from './MobileApp';
 
 export const dynamic = 'force-dynamic';
@@ -182,6 +183,8 @@ export interface MobileData {
   invoices: MobileInvoice[];
   waterRecs: MobileWaterRec[];
   products: MobileProduct[];
+  activeSeason: number;
+  availableSeasons: number[];
   installStats: {
     totalInstalled: number;
     totalPlanned: number;
@@ -201,14 +204,12 @@ function asNum(v: unknown): number {
   return isFinite(n) ? n : 0;
 }
 
-const CURRENT_SEASON = 2026;
-const PREV_SEASON = 2025;
-
 // ── Main data loader ─────────────────────────────────────────────
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
-async function loadMobileData(): Promise<MobileData> {
+async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
+  const PREV_SEASON = CURRENT_SEASON - 1;
   // Batch requests to avoid Baserow 429 rate limits.
   // Batch 1: core relational entities (needed to build lookup maps)
   const [rawOps, rawContacts, rawBEs, rawFields] = await Promise.all([
@@ -682,20 +683,33 @@ async function loadMobileData(): Promise<MobileData> {
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return { operations, fields, probes, repairs, orders, invoices, waterRecs, products, installStats };
+  // ── Available seasons ─────────────────────────────────────────
+  const seasonSet = new Set<number>();
+  rawFieldSeasons.forEach(fs => { const n = Number(fs.season); if (n) seasonSet.add(n); });
+  const thisYear = new Date().getFullYear();
+  seasonSet.add(thisYear);
+  seasonSet.add(thisYear + 1);
+  const availableSeasons = Array.from(seasonSet).sort((a, b) => b - a);
+
+  return { operations, fields, probes, repairs, orders, invoices, waterRecs, products, activeSeason: CURRENT_SEASON, availableSeasons, installStats };
 }
 
 // ── Page ─────────────────────────────────────────────────────────
 
 export default async function MobilePage() {
+  const cookieStore = await cookies();
+  const seasonCookie = cookieStore.get('mobile-active-season')?.value;
+  const activeSeason = seasonCookie ? parseInt(seasonCookie, 10) : new Date().getFullYear() + 1;
+
   let data: MobileData;
   try {
-    data = await loadMobileData();
+    data = await loadMobileData(activeSeason);
   } catch (err) {
     console.error('Mobile data load error:', err);
     data = {
       operations: [], fields: [], probes: [], repairs: [],
       orders: [], invoices: [], waterRecs: [], products: [],
+      activeSeason, availableSeasons: [activeSeason],
       installStats: { totalInstalled: 0, totalPlanned: 0, byOp: [] },
     };
   }
