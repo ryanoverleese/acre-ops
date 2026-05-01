@@ -115,7 +115,7 @@
   padding: 4px 4px;
   border: none;
   background: transparent;
-  color: var(--stone-400, #B0A89E);
+  color: var(--stone-500);
   cursor: pointer;
   font-family: var(--font-body);
   font-size: 9px;

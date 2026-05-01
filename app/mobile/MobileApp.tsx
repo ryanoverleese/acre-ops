@@ -224,7 +224,7 @@ function DashboardScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName,
             <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Dashboard</div>
           </div>
         </div>
-        <button className="ms-topbar-action"><I.bell /></button>
+        <button className="ms-topbar-action" aria-label="Notifications"><I.bell /></button>
       </div>
 
       <div className="ms-body">
@@ -644,6 +644,7 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
   const [showMoveStatus, setShowMoveStatus] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(probe?.assignmentStatus || probe?.status || '');
   const [savingStatus, setSavingStatus] = useState('');
+  const [moveStatusError, setMoveStatusError] = useState('');
 
   if (!probe) return <div style={{ padding: 40 }}>Probe not found</div>;
   const p = probe;
@@ -655,17 +656,18 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
   async function handleMoveStatus(newStatus: string) {
     if (!p.probeAssignmentId) return;
     setSavingStatus(newStatus);
+    setMoveStatusError('');
     try {
       const res = await fetch(`/api/probe-assignments/${p.probeAssignmentId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ probe_status: newStatus }),
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error('Save failed — try again');
       setCurrentStatus(newStatus);
       setShowMoveStatus(false);
     } catch (e) {
-      alert('Failed to update status: ' + String(e));
+      setMoveStatusError(e instanceof Error ? e.message : 'Save failed — try again');
     } finally {
       setSavingStatus('');
     }
@@ -673,7 +675,7 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
 
   return (
     <>
-      <TopBar title={p.serialNumber} eyebrow="Probe" onBack={goBack} right={<button className="ms-topbar-action"><I.edit /></button>} />
+      <TopBar title={p.serialNumber} eyebrow="Probe" onBack={goBack} right={<button className="ms-topbar-action" aria-label="Edit probe"><I.edit /></button>} />
       <div className="ms-body">
         <div style={{ padding: '12px 16px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{ width: 64, height: 64, borderRadius: 14, background: 'var(--field-green)', color: 'var(--bone)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -728,6 +730,7 @@ function ProbeDetailScreen({ data, probeId, nav, goBack }: { data: MobileData; p
       {showMoveStatus && (
         <BottomSheet title="Move Status" onClose={() => setShowMoveStatus(false)}>
           <div style={{ padding: '4px 16px 32px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {moveStatusError && <div style={{ background: '#FDECEA', color: '#C04A30', padding: '10px 12px', borderRadius: 8, fontSize: 13 }}>{moveStatusError}</div>}
             {PROBE_STATUSES.map(s => (
               <button
                 key={s}
@@ -780,7 +783,7 @@ function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p
       <div className="ms-topbar">
         <div style={{ flex: 1 }} />
         <div className="ms-topbar-title" style={{ fontSize: 17 }}>Repairs</div>
-        <button className="ms-topbar-action" onClick={() => setShowNew(true)}><I.plus /></button>
+        <button className="ms-topbar-action" aria-label="New repair" onClick={() => setShowNew(true)}><I.plus /></button>
       </div>
       <div className="ms-body">
         <PageHeader eyebrow={`${open.length} open · ${resolved.length} resolved`} title="Repairs" />
@@ -814,7 +817,7 @@ function RepairsScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p
           ))}
         </div>
       </div>
-      <button className="fab" onClick={() => setShowNew(true)}><I.plus /></button>
+      <button className="fab" aria-label="New repair" onClick={() => setShowNew(true)}><I.plus /></button>
       {showNew && (
         <NewRepairSheet
           data={data}
@@ -1256,9 +1259,11 @@ function SettingsScreen({ data, goBack }: { data: MobileData; goBack: () => void
   const [saving, setSaving] = useState(false);
 
   function handleSeasonChange(year: string) {
+    const n = parseInt(year, 10);
+    if (!isFinite(n) || n < 2000 || n > 2100) return;
     setSelected(year);
     setSaving(true);
-    document.cookie = `mobile-active-season=${year}; path=/; max-age=${60 * 60 * 24 * 365}`;
+    document.cookie = `mobile-active-season=${n}; path=/; max-age=${60 * 60 * 24 * 365}`;
     window.location.reload();
   }
 
@@ -1572,7 +1577,7 @@ function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
 
   return (
     <>
-      <TopBar title="Orders" onBack={() => nav('more')} right={<button className="ms-topbar-action" onClick={() => setShowNew(true)}><I.plus /></button>} />
+      <TopBar title="Orders" onBack={() => nav('more')} right={<button className="ms-topbar-action" aria-label="New order" onClick={() => setShowNew(true)}><I.plus /></button>} />
       <div className="ms-body">
         <div style={{ padding: '8px 16px 12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div className="card" style={{ padding: 14 }}>
@@ -1614,7 +1619,7 @@ function OrdersScreen({ data, nav }: { data: MobileData; nav: (s: ScreenName, p?
           ))}
         </div>
       </div>
-      <button className="fab" onClick={() => setShowNew(true)}><I.plus /></button>
+      <button className="fab" aria-label="New order" onClick={() => setShowNew(true)}><I.plus /></button>
       {showNew && (
         <NewOrderSheet
           data={data}
@@ -1661,7 +1666,7 @@ function OrderDetailScreen({ data, orderId, goBack }: { data: MobileData; orderI
         </div>
         <div style={{ padding: '0 16px 12px', display: 'flex', gap: 4, overflowX: 'auto' }}>
           {ORDER_STATUSES.map((s, i) => (
-            <div key={s} style={{ flex: 1, textAlign: 'center', minWidth: 60, fontFamily: 'var(--font-mono)', fontSize: 9, color: i === stepIdx ? 'var(--field-green)' : 'var(--stone-400)', fontWeight: i === stepIdx ? 700 : 400, whiteSpace: 'nowrap' }}>{s}</div>
+            <div key={s} style={{ flex: 1, textAlign: 'center', minWidth: 60, fontFamily: 'var(--font-mono)', fontSize: 9, color: i === stepIdx ? 'var(--field-green)' : 'var(--stone-300)', fontWeight: i === stepIdx ? 700 : 400, whiteSpace: 'nowrap' }}>{s}</div>
           ))}
         </div>
 

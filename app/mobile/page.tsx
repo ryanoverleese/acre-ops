@@ -557,7 +557,7 @@ async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
     };
   }).sort((a, b) => {
     if (a.status !== b.status) return a.status === 'open' ? -1 : 1;
-    return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
+    return (b.reportedAt ? new Date(b.reportedAt).getTime() : 0) - (a.reportedAt ? new Date(a.reportedAt).getTime() : 0);
   });
 
   // ── Orders ────────────────────────────────────────────────────
@@ -570,7 +570,7 @@ async function loadMobileData(CURRENT_SEASON: number): Promise<MobileData> {
       id: item.id,
       productName: item.product?.[0]?.value || 'Unknown',
       quantity: item.quantity || 0,
-      unitPrice: item.unit_price ? parseFloat(item.unit_price) : 0,
+      unitPrice: asNum(item.unit_price),
     });
     itemsByOrder.set(orderId, list);
   });
