@@ -23,6 +23,8 @@ interface OrdersClientProps {
 }
 
 type ViewMode = 'list' | 'detail';
+type SortCol = 'customer' | 'status' | 'date' | 'items' | 'total';
+type SortDir = 'asc' | 'desc';
 
 interface NewLineItem {
   productId: number | null;
@@ -70,6 +72,8 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
   }, [initialOrders]); // eslint-disable-line react-hooks/exhaustive-deps
   const [filterStatus, setFilterStatus] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortCol, setSortCol] = useState<SortCol>('date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -107,6 +111,11 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
     setTimeout(() => setToast(null), 3000);
   }, []);
 
+  const handleSort = useCallback((col: SortCol) => {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortCol(col); setSortDir('asc'); }
+  }, [sortCol]);
+
   // Filtered orders
   const filteredOrders = useMemo(() => {
     let result = orders;
@@ -121,8 +130,21 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
         o.items.some(i => i.productName.toLowerCase().includes(term))
       );
     }
-    return result.sort((a, b) => (b.orderDate || '').localeCompare(a.orderDate || ''));
-  }, [orders, filterStatus, searchTerm]);
+    return result.sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      switch (sortCol) {
+        case 'customer': av = a.billingEntityName.toLowerCase(); bv = b.billingEntityName.toLowerCase(); break;
+        case 'status':   av = a.status; bv = b.status; break;
+        case 'date':     av = a.orderDate || ''; bv = b.orderDate || ''; break;
+        case 'items':    av = a.items.length; bv = b.items.length; break;
+        case 'total':    av = a.total; bv = b.total; break;
+      }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [orders, filterStatus, searchTerm, sortCol, sortDir]);
 
   // Status counts
   const statusCounts = useMemo(() => {
@@ -692,51 +714,30 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
             <thead>
               <tr>
                 <th className="order-th" style={{ width: 36 }} />
-                <th className="order-th th-resizable">
-                  <span className="th-content">Customer</span>
-                  <div
-                    onMouseDown={(e) => handleResizeStart('customer', e)}
-                    onDoubleClick={() => handleResetColumnWidth('customer')}
-                    className={`resize-handle${resizingColumn === 'customer' ? ' active' : ''}`}
-                    title="Drag to resize, double-click to reset"
-                  />
-                </th>
-                <th className="order-th th-resizable">
-                  <span className="th-content">Status</span>
-                  <div
-                    onMouseDown={(e) => handleResizeStart('status', e)}
-                    onDoubleClick={() => handleResetColumnWidth('status')}
-                    className={`resize-handle${resizingColumn === 'status' ? ' active' : ''}`}
-                    title="Drag to resize, double-click to reset"
-                  />
-                </th>
-                <th className="order-th th-resizable">
-                  <span className="th-content">Date</span>
-                  <div
-                    onMouseDown={(e) => handleResizeStart('date', e)}
-                    onDoubleClick={() => handleResetColumnWidth('date')}
-                    className={`resize-handle${resizingColumn === 'date' ? ' active' : ''}`}
-                    title="Drag to resize, double-click to reset"
-                  />
-                </th>
-                <th className="order-th th-resizable">
-                  <span className="th-content">Items</span>
-                  <div
-                    onMouseDown={(e) => handleResizeStart('items', e)}
-                    onDoubleClick={() => handleResetColumnWidth('items')}
-                    className={`resize-handle${resizingColumn === 'items' ? ' active' : ''}`}
-                    title="Drag to resize, double-click to reset"
-                  />
-                </th>
-                <th className="order-th order-th-right th-resizable">
-                  <span className="th-content">Total</span>
-                  <div
-                    onMouseDown={(e) => handleResizeStart('total', e)}
-                    onDoubleClick={() => handleResetColumnWidth('total')}
-                    className={`resize-handle${resizingColumn === 'total' ? ' active' : ''}`}
-                    title="Drag to resize, double-click to reset"
-                  />
-                </th>
+                {(['customer', 'status', 'date', 'items', 'total'] as SortCol[]).map((col) => {
+                  const active = sortCol === col;
+                  const label = col.charAt(0).toUpperCase() + col.slice(1);
+                  return (
+                    <th key={col} className={`order-th th-resizable${col === 'total' ? ' order-th-right' : ''}`}>
+                      <span
+                        className="th-content"
+                        onClick={() => handleSort(col)}
+                        style={{ cursor: 'pointer', userSelect: 'none' }}
+                      >
+                        {label}
+                        <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
+                          {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+                        </span>
+                      </span>
+                      <div
+                        onMouseDown={(e) => handleResizeStart(col, e)}
+                        onDoubleClick={() => handleResetColumnWidth(col)}
+                        className={`resize-handle${resizingColumn === col ? ' active' : ''}`}
+                        title="Drag to resize, double-click to reset"
+                      />
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
