@@ -3,6 +3,10 @@
 import { useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import type { ProcessedDocument } from './page';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
+
+const DOC_COL_WIDTHS = { name: 200, type: 80, size: 80, uploadedBy: 140, date: 120, description: 260 } as const;
+const NOTE_COL_WIDTHS = { name: 200, note: 360, uploadedBy: 140, date: 120 } as const;
 
 interface DocumentsClientProps {
   initialDocuments: ProcessedDocument[];
@@ -35,16 +39,27 @@ type DocSortCol = 'name' | 'type' | 'size' | 'uploadedBy' | 'date';
 type NoteSortCol = 'name' | 'uploadedBy' | 'date';
 type SortDir = 'asc' | 'desc';
 
-function SortTh({ label, col, sortCol, sortDir, onSort }: {
+function SortTh({ label, col, sortCol, sortDir, onSort, onResizeStart, onResetWidth, resizing }: {
   label: string; col: string; sortCol: string; sortDir: SortDir; onSort: (col: string) => void;
+  onResizeStart: (col: string, e: React.MouseEvent) => void;
+  onResetWidth: (col: string) => void;
+  resizing: boolean;
 }) {
   const active = sortCol === col;
   return (
-    <th onClick={() => onSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
-      {label}
-      <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
-        {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+    <th className="th-resizable" style={{ whiteSpace: 'nowrap' }}>
+      <span onClick={() => onSort(col)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+        {label}
+        <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+        </span>
       </span>
+      <div
+        className={`resize-handle${resizing ? ' active' : ''}`}
+        onMouseDown={(e) => onResizeStart(col, e)}
+        onDoubleClick={() => onResetWidth(col)}
+        title="Drag to resize, double-click to reset"
+      />
     </th>
   );
 }
@@ -57,6 +72,13 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [saving, setSaving] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null, date: '' });
+
+  const { columnWidths: docWidths, resizingColumn: docResizing, handleResizeStart: _docRS, handleResetColumnWidth: _docRW } = useResizableColumns({ defaultWidths: DOC_COL_WIDTHS, storageKey: 'documents-col-widths' });
+  const { columnWidths: noteWidths, resizingColumn: noteResizing, handleResizeStart: _noteRS, handleResetColumnWidth: _noteRW } = useResizableColumns({ defaultWidths: NOTE_COL_WIDTHS, storageKey: 'notes-col-widths' });
+  const docResizeStart = _docRS as (col: string, e: React.MouseEvent) => void;
+  const docResetWidth = _docRW as (col: string) => void;
+  const noteResizeStart = _noteRS as (col: string, e: React.MouseEvent) => void;
+  const noteResetWidth = _noteRW as (col: string) => void;
 
   const [docSortCol, setDocSortCol] = useState<DocSortCol>('date');
   const [docSortDir, setDocSortDir] = useState<SortDir>('desc');
@@ -187,15 +209,27 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
           </div>
         </div>
 
-        <table className="desktop-table">
+        <table className="desktop-table" style={{ userSelect: docResizing ? 'none' : undefined }}>
+          <colgroup>
+            <col style={{ width: docWidths.name }} />
+            <col style={{ width: docWidths.type }} />
+            <col style={{ width: docWidths.size }} />
+            <col style={{ width: docWidths.uploadedBy }} />
+            <col style={{ width: docWidths.date }} />
+            <col style={{ width: docWidths.description }} />
+            {isAdmin && <col style={{ width: 50 }} />}
+          </colgroup>
           <thead>
             <tr>
-              <SortTh label="Name" col="name" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
-              <SortTh label="Type" col="type" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
-              <SortTh label="Size" col="size" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
-              <SortTh label="Uploaded By" col="uploadedBy" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
-              <SortTh label="Date" col="date" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
-              <th>Description</th>
+              <SortTh label="Name" col="name" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} onResizeStart={docResizeStart} onResetWidth={docResetWidth} resizing={docResizing === 'name'} />
+              <SortTh label="Type" col="type" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} onResizeStart={docResizeStart} onResetWidth={docResetWidth} resizing={docResizing === 'type'} />
+              <SortTh label="Size" col="size" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} onResizeStart={docResizeStart} onResetWidth={docResetWidth} resizing={docResizing === 'size'} />
+              <SortTh label="Uploaded By" col="uploadedBy" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} onResizeStart={docResizeStart} onResetWidth={docResetWidth} resizing={docResizing === 'uploadedBy'} />
+              <SortTh label="Date" col="date" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} onResizeStart={docResizeStart} onResetWidth={docResetWidth} resizing={docResizing === 'date'} />
+              <th className="th-resizable">
+                <span>Description</span>
+                <div className={`resize-handle${docResizing === 'description' ? ' active' : ''}`} onMouseDown={(e) => docResizeStart('description', e)} onDoubleClick={() => docResetWidth('description')} title="Drag to resize, double-click to reset" />
+              </th>
               {isAdmin && <th></th>}
             </tr>
           </thead>
@@ -277,13 +311,23 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
           </div>
         </div>
 
-        <table className="desktop-table">
+        <table className="desktop-table" style={{ userSelect: noteResizing ? 'none' : undefined }}>
+          <colgroup>
+            <col style={{ width: noteWidths.name }} />
+            <col style={{ width: noteWidths.note }} />
+            <col style={{ width: noteWidths.uploadedBy }} />
+            <col style={{ width: noteWidths.date }} />
+            {isAdmin && <col style={{ width: 50 }} />}
+          </colgroup>
           <thead>
             <tr>
-              <SortTh label="Title" col="name" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} />
-              <th>Note</th>
-              <SortTh label="By" col="uploadedBy" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} />
-              <SortTh label="Date" col="date" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} />
+              <SortTh label="Title" col="name" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} onResizeStart={noteResizeStart} onResetWidth={noteResetWidth} resizing={noteResizing === 'name'} />
+              <th className="th-resizable">
+                <span>Note</span>
+                <div className={`resize-handle${noteResizing === 'note' ? ' active' : ''}`} onMouseDown={(e) => noteResizeStart('note', e)} onDoubleClick={() => noteResetWidth('note')} title="Drag to resize, double-click to reset" />
+              </th>
+              <SortTh label="By" col="uploadedBy" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} onResizeStart={noteResizeStart} onResetWidth={noteResetWidth} resizing={noteResizing === 'uploadedBy'} />
+              <SortTh label="Date" col="date" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} onResizeStart={noteResizeStart} onResetWidth={noteResetWidth} resizing={noteResizing === 'date'} />
               {isAdmin && <th></th>}
             </tr>
           </thead>

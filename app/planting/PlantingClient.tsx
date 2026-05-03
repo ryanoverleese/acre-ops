@@ -4,6 +4,13 @@ import { useState, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { PlantingRow } from './page';
 import type { ColorMode } from './PlantingMapView';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
+
+const DEFAULT_COLUMN_WIDTHS = {
+  fieldName: 160, operation: 140, crop: 100, plantingDate: 110,
+  daysSince: 70, gdu: 70, stage: 90, routeOrder: 80, plannedInstaller: 130,
+} as const;
+const COL_STORAGE_KEY = 'planting-column-widths';
 
 const PlantingMapView = dynamic(() => import('./PlantingMapView'), { ssr: false });
 
@@ -84,17 +91,32 @@ function daysSince(dateStr: string): number {
 
 function SortTh({
   label, col, sortCol, sortDir, onSort, style,
+  resizeKey, onResizeStart, onResetWidth, resizing,
 }: {
   label: string; col: SortCol; sortCol: SortCol; sortDir: SortDir;
   onSort: (col: SortCol) => void; style?: React.CSSProperties;
+  resizeKey?: string;
+  onResizeStart?: (key: string, e: React.MouseEvent) => void;
+  onResetWidth?: (key: string) => void;
+  resizing?: boolean;
 }) {
   const active = sortCol === col;
   return (
-    <th onClick={() => onSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', ...style }}>
-      {label}
-      <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
-        {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+    <th className={resizeKey ? 'th-resizable' : ''} style={{ whiteSpace: 'nowrap', ...style }}>
+      <span onClick={() => onSort(col)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+        {label}
+        <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
+          {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+        </span>
       </span>
+      {resizeKey && onResizeStart && onResetWidth && (
+        <div
+          className={`resize-handle${resizing ? ' active' : ''}`}
+          onMouseDown={(e) => onResizeStart(resizeKey, e)}
+          onDoubleClick={() => onResetWidth(resizeKey)}
+          title="Drag to resize, double-click to reset"
+        />
+      )}
     </th>
   );
 }
@@ -226,6 +248,10 @@ function RouteCell({
 }
 
 export default function PlantingClient({ rows: initialRows, installerOptions }: Props) {
+  const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
+    defaultWidths: DEFAULT_COLUMN_WIDTHS,
+    storageKey: COL_STORAGE_KEY,
+  });
   const [rows, setRows] = useState<PlantingRow[]>(initialRows);
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<SortCol>('plantingDate');
@@ -282,7 +308,11 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
       : filtered,
   [filtered, installerFilter]);
 
-  const sortProps = { sortCol, sortDir, onSort: handleSort };
+  const sortProps = {
+    sortCol, sortDir, onSort: handleSort,
+    onResizeStart: handleResizeStart as (key: string, e: React.MouseEvent) => void,
+    onResetWidth: handleResetColumnWidth as (key: string) => void,
+  };
 
   const totalFields = rows.length;
   const withPlantDate = rows.filter((r) => r.plantingDate).length;
@@ -400,18 +430,26 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
           </div>
         )}
 
-        <table className="desktop-table">
+        <table className="desktop-table" style={{ userSelect: resizingColumn ? 'none' : undefined }}>
+          <colgroup>
+            {(Object.keys(DEFAULT_COLUMN_WIDTHS) as (keyof typeof DEFAULT_COLUMN_WIDTHS)[]).map(k => (
+              <col key={k} style={{ width: columnWidths[k] }} />
+            ))}
+          </colgroup>
           <thead>
             <tr>
-              <SortTh label="Field"      col="fieldName"        {...sortProps} />
-              <SortTh label="Operation"  col="operation"        {...sortProps} />
-              <SortTh label="Crop"       col="crop"             {...sortProps} />
-              <SortTh label="Plant Date" col="plantingDate"     {...sortProps} />
-              <SortTh label="Days"       col="daysSince"        {...sortProps} style={{ textAlign: 'center' }} />
-              <SortTh label="GDU"        col="gdu"              {...sortProps} style={{ textAlign: 'center' }} />
-              <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Stage</th>
-              <SortTh label="Route #"    col="routeOrder"       {...sortProps} style={{ textAlign: 'center' }} />
-              <SortTh label="Installer"  col="plannedInstaller" {...sortProps} />
+              <SortTh label="Field"      col="fieldName"        {...sortProps} resizeKey="fieldName"        resizing={resizingColumn === 'fieldName'} />
+              <SortTh label="Operation"  col="operation"        {...sortProps} resizeKey="operation"        resizing={resizingColumn === 'operation'} />
+              <SortTh label="Crop"       col="crop"             {...sortProps} resizeKey="crop"             resizing={resizingColumn === 'crop'} />
+              <SortTh label="Plant Date" col="plantingDate"     {...sortProps} resizeKey="plantingDate"     resizing={resizingColumn === 'plantingDate'} />
+              <SortTh label="Days"       col="daysSince"        {...sortProps} resizeKey="daysSince"        resizing={resizingColumn === 'daysSince'}  style={{ textAlign: 'center' }} />
+              <SortTh label="GDU"        col="gdu"              {...sortProps} resizeKey="gdu"              resizing={resizingColumn === 'gdu'}         style={{ textAlign: 'center' }} />
+              <th className="th-resizable" style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                <span>Stage</span>
+                <div className={`resize-handle${resizingColumn === 'stage' ? ' active' : ''}`} onMouseDown={(e) => handleResizeStart('stage', e)} onDoubleClick={() => handleResetColumnWidth('stage')} title="Drag to resize, double-click to reset" />
+              </th>
+              <SortTh label="Route #"    col="routeOrder"       {...sortProps} resizeKey="routeOrder"       resizing={resizingColumn === 'routeOrder'}  style={{ textAlign: 'center' }} />
+              <SortTh label="Installer"  col="plannedInstaller" {...sortProps} resizeKey="plannedInstaller" resizing={resizingColumn === 'plannedInstaller'} />
             </tr>
           </thead>
           <tbody>
