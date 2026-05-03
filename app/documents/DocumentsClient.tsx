@@ -31,6 +31,23 @@ function getFileIcon(mimeType: string): string {
 }
 
 type ModalMode = 'document' | 'note' | null;
+type DocSortCol = 'name' | 'type' | 'size' | 'uploadedBy' | 'date';
+type NoteSortCol = 'name' | 'uploadedBy' | 'date';
+type SortDir = 'asc' | 'desc';
+
+function SortTh({ label, col, sortCol, sortDir, onSort }: {
+  label: string; col: string; sortCol: string; sortDir: SortDir; onSort: (col: string) => void;
+}) {
+  const active = sortCol === col;
+  return (
+    <th onClick={() => onSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+      {label}
+      <span style={{ marginLeft: 4, opacity: active ? 1 : 0.3, fontSize: 10 }}>
+        {active ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}
+      </span>
+    </th>
+  );
+}
 
 export default function DocumentsClient({ initialDocuments }: DocumentsClientProps) {
   const { data: session } = useSession();
@@ -41,8 +58,55 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
   const [saving, setSaving] = useState(false);
   const [uploadForm, setUploadForm] = useState({ name: '', description: '', file: null as File | null, date: '' });
 
-  const docs = useMemo(() => allItems.filter((d) => d.fileUrl), [allItems]);
-  const notes = useMemo(() => allItems.filter((d) => !d.fileUrl), [allItems]);
+  const [docSortCol, setDocSortCol] = useState<DocSortCol>('date');
+  const [docSortDir, setDocSortDir] = useState<SortDir>('desc');
+  const [noteSortCol, setNoteSortCol] = useState<NoteSortCol>('date');
+  const [noteSortDir, setNoteSortDir] = useState<SortDir>('desc');
+
+  function handleDocSort(col: string) {
+    const c = col as DocSortCol;
+    if (docSortCol === c) setDocSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setDocSortCol(c); setDocSortDir('asc'); }
+  }
+  function handleNoteSort(col: string) {
+    const c = col as NoteSortCol;
+    if (noteSortCol === c) setNoteSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setNoteSortCol(c); setNoteSortDir('asc'); }
+  }
+
+  const docs = useMemo(() => {
+    const list = allItems.filter((d) => d.fileUrl);
+    return list.sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      switch (docSortCol) {
+        case 'name':       av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
+        case 'type':       av = getFileIcon(a.mimeType); bv = getFileIcon(b.mimeType); break;
+        case 'size':       av = a.fileSize; bv = b.fileSize; break;
+        case 'uploadedBy': av = a.uploadedBy.toLowerCase(); bv = b.uploadedBy.toLowerCase(); break;
+        case 'date':       av = a.uploadedAt || ''; bv = b.uploadedAt || ''; break;
+      }
+      if (av < bv) return docSortDir === 'asc' ? -1 : 1;
+      if (av > bv) return docSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [allItems, docSortCol, docSortDir]);
+
+  const notes = useMemo(() => {
+    const list = allItems.filter((d) => !d.fileUrl);
+    return list.sort((a, b) => {
+      let av: string | number = '';
+      let bv: string | number = '';
+      switch (noteSortCol) {
+        case 'name':       av = a.name.toLowerCase(); bv = b.name.toLowerCase(); break;
+        case 'uploadedBy': av = a.uploadedBy.toLowerCase(); bv = b.uploadedBy.toLowerCase(); break;
+        case 'date':       av = a.uploadedAt || ''; bv = b.uploadedAt || ''; break;
+      }
+      if (av < bv) return noteSortDir === 'asc' ? -1 : 1;
+      if (av > bv) return noteSortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [allItems, noteSortCol, noteSortDir]);
 
   const handleSave = async () => {
     if (!uploadForm.name.trim()) {
@@ -126,11 +190,11 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
         <table className="desktop-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Type</th>
-              <th>Size</th>
-              <th>Uploaded By</th>
-              <th>Date</th>
+              <SortTh label="Name" col="name" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
+              <SortTh label="Type" col="type" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
+              <SortTh label="Size" col="size" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
+              <SortTh label="Uploaded By" col="uploadedBy" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
+              <SortTh label="Date" col="date" sortCol={docSortCol} sortDir={docSortDir} onSort={handleDocSort} />
               <th>Description</th>
               {isAdmin && <th></th>}
             </tr>
@@ -216,10 +280,10 @@ export default function DocumentsClient({ initialDocuments }: DocumentsClientPro
         <table className="desktop-table">
           <thead>
             <tr>
-              <th>Title</th>
+              <SortTh label="Title" col="name" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} />
               <th>Note</th>
-              <th>By</th>
-              <th>Date</th>
+              <SortTh label="By" col="uploadedBy" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} />
+              <SortTh label="Date" col="date" sortCol={noteSortCol} sortDir={noteSortDir} onSort={handleNoteSort} />
               {isAdmin && <th></th>}
             </tr>
           </thead>
