@@ -48,6 +48,9 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
   const [regCreatedProbeId, setRegCreatedProbeId] = useState<number | null>(null);
   const [regOnOrderMatch, setRegOnOrderMatch] = useState<OnOrderProbe | null>(null);
 
+  // On-order confirm modal
+  const [showOnOrderConfirm, setShowOnOrderConfirm] = useState(false);
+
   // Duplicate serial check
   const [serialExists, setSerialExists] = useState(false);
   const [serialCheckId, setSerialCheckId] = useState<ReturnType<typeof setTimeout> | null>(null);
@@ -245,6 +248,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     setRackSlots([]);
     setSelectedSlot(null);
     setSerialExists(false);
+    setShowOnOrderConfirm(false);
     setError('');
     setStep('select');
   };
@@ -429,17 +433,16 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{error}</div>
                 )}
 
-                {/* Warning: on-order slots exist but none selected */}
-                {matchingOnOrder.length > 0 && !regOnOrderMatch && regSerial.trim() && (
-                  <div style={{ color: '#92400e', fontSize: 13, padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8 }}>
-                    ⚠️ There {matchingOnOrder.length === 1 ? 'is' : 'are'} <strong>{matchingOnOrder.length} on-order {regType}</strong> slot{matchingOnOrder.length !== 1 ? 's' : ''} below — select one to avoid creating a duplicate.
-                  </div>
-                )}
-
                 {/* Submit button — above on-order list */}
                 <button
                   className="btn btn-primary"
-                  onClick={handleRegisterSubmit}
+                  onClick={() => {
+                    if (matchingOnOrder.length > 0 && !regOnOrderMatch) {
+                      setShowOnOrderConfirm(true);
+                    } else {
+                      handleRegisterSubmit();
+                    }
+                  }}
                   disabled={saving || !regSerial.trim()}
                   style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}
                 >
@@ -674,6 +677,57 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
 
           </div>
         </div>
+
+        {/* On-order confirm modal */}
+        {showOnOrderConfirm && (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+            onClick={() => setShowOnOrderConfirm(false)}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-primary)', borderRadius: 14, padding: 28,
+                maxWidth: 400, width: '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+                display: 'flex', flexDirection: 'column', gap: 16,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                  background: '#fef9c3', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <svg fill="none" stroke="#92400e" viewBox="0 0 24 24" width="22" height="22">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>Skip on-order slot?</div>
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                There {matchingOnOrder.length === 1 ? 'is' : 'are'} <strong>{matchingOnOrder.length} on-order {regType}</strong> slot{matchingOnOrder.length !== 1 ? 's' : ''} waiting below. Registering without selecting one will create a new separate row.
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { setShowOnOrderConfirm(false); handleRegisterSubmit(); }}
+                  disabled={saving}
+                  style={{ padding: '13px', fontSize: 15, borderRadius: 10, width: '100%' }}
+                >
+                  Yes, register as new probe anyway
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setShowOnOrderConfirm(false)}
+                  style={{ padding: '13px', fontSize: 15, borderRadius: 10, width: '100%' }}
+                >
+                  Go back and pick a slot
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </>
     );
   }
