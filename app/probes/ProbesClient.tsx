@@ -158,6 +158,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
   const [filterOperation, setFilterOperation] = useState<string[]>([]);
   const [filterBillingEntity, setFilterBillingEntity] = useState<string[]>([]);
   const [filterTradeYear, setFilterTradeYear] = useState<string[]>([]);
+  const [filterYearNew, setFilterYearNew] = useState<string[]>([]);
   const [filterField, setFilterField] = useState<string>('');
   const [savingTradeYear, setSavingTradeYear] = useState<Set<number>>(new Set());
   const [savedTradeYear, setSavedTradeYear] = useState<Set<number>>(new Set());
@@ -203,15 +204,18 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     const operations = new Set<string>();
     const billingEntities = new Set<string>();
     const tradeYears = new Set<string>();
+    const yearNews = new Set<string>();
     probes.forEach(p => {
       if (p.status) statuses.add(p.status);
       if (p.brand && p.brand !== 'Unknown') brands.add(p.brand);
       if (p.operation && p.operation !== '—') operations.add(p.operation);
       if (p.billingEntity && p.billingEntity !== '—') billingEntities.add(p.billingEntity);
       if (p.tradeYear) tradeYears.add(p.tradeYear);
+      if (p.yearNew) yearNews.add(String(p.yearNew));
     });
     const sort = (s: Set<string>) => Array.from(s).sort((a, b) => a.localeCompare(b));
-    return { statuses: sort(statuses), brands: sort(brands), operations: sort(operations), billingEntities: sort(billingEntities), tradeYears: sort(tradeYears) };
+    const sortNum = (s: Set<string>) => Array.from(s).sort((a, b) => Number(b) - Number(a));
+    return { statuses: sort(statuses), brands: sort(brands), operations: sort(operations), billingEntities: sort(billingEntities), tradeYears: sort(tradeYears), yearNews: sortNum(yearNews) };
   }, [probes]);
 
   // Rack numbers for the scrubber (1-15)
@@ -349,6 +353,9 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     if (filterTradeYear.length > 0) {
       filtered = filtered.filter(p => filterTradeYear.includes(p.tradeYear));
     }
+    if (filterYearNew.length > 0) {
+      filtered = filtered.filter(p => filterYearNew.includes(String(p.yearNew)));
+    }
     if (filterField === 'filled') {
       filtered = filtered.filter(p => !!probeFieldMap.get(`${p.id}-${currentSeason}`));
     } else if (filterField === 'empty') {
@@ -385,7 +392,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     }
 
     return filtered;
-  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, filterTradeYear, filterField, focusedOperation]);
+  }, [probes, searchQuery, sortColumn, sortDirection, viewMode, probeFieldMap, currentSeason, rackSortBy, filterStatus, filterBrand, filterOperation, filterBillingEntity, filterTradeYear, filterYearNew, filterField, focusedOperation]);
 
   // Get unique rack prefixes (numbers) from filtered probes for highlighting active ones
   const activeRackNumbers = useMemo(() => {
@@ -953,7 +960,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
             </div>
             {/* Filters button with active count badge */}
             {(() => {
-              const activeCount = filterStatus.length + filterBrand.length + filterOperation.length + filterBillingEntity.length + filterTradeYear.length + (filterField !== '' ? 1 : 0);
+              const activeCount = filterStatus.length + filterBrand.length + filterOperation.length + filterBillingEntity.length + filterTradeYear.length + filterYearNew.length + (filterField !== '' ? 1 : 0);
               return (
                 <button
                   className={`btn btn-secondary${showFilters ? ' btn-active' : ''}`}
@@ -1120,6 +1127,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               style={{ minWidth: 120 }}
             />
             <SearchableSelect
+              multi
+              value={filterYearNew}
+              onChange={setFilterYearNew}
+              options={filterOptions.yearNews.map(s => ({ value: s, label: s }))}
+              placeholder="All Years New"
+              style={{ minWidth: 120 }}
+            />
+            <SearchableSelect
               value={filterField}
               onChange={setFilterField}
               options={[
@@ -1129,10 +1144,10 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               placeholder="All Fields"
               style={{ minWidth: 110 }}
             />
-            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0 || filterField !== '') && (
+            {(filterStatus.length > 0 || filterBrand.length > 0 || filterOperation.length > 0 || filterBillingEntity.length > 0 || filterTradeYear.length > 0 || filterYearNew.length > 0 || filterField !== '') && (
               <button
                 className="btn btn-secondary btn-compact"
-                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); setFilterField(''); }}
+                onClick={() => { setFilterStatus([]); setFilterBrand([]); setFilterOperation([]); setFilterBillingEntity([]); setFilterTradeYear([]); setFilterYearNew([]); setFilterField(''); }}
               >
                 Clear All
               </button>
