@@ -28,7 +28,7 @@ interface WorkflowsClientProps {
   onOrderProbes: OnOrderProbe[];
 }
 
-type Step = 'select' | 'confirm' | 'done';
+type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
 export default function WorkflowsClient({ installedProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | null>(null);
@@ -45,7 +45,16 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
   const [regType, setRegType] = useState(() => brandOptions.find(b => b.toLowerCase().includes('cropx v4')) || brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
   const [regYearNew, setRegYearNew] = useState(() => String(new Date().getFullYear()));
   const [regCreatedSerial, setRegCreatedSerial] = useState('');
+  const [regCreatedProbeId, setRegCreatedProbeId] = useState<number | null>(null);
   const [regOnOrderMatch, setRegOnOrderMatch] = useState<OnOrderProbe | null>(null);
+
+  // Rack-pick state
+  type RackSlot = { id: number; rack: string; rack_slot: number; probeId?: number; probeSerial?: string };
+  const [rackSlots, setRackSlots] = useState<RackSlot[]>([]);
+  const [rackLoading, setRackLoading] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<RackSlot | null>(null);
+  const [rackSaving, setRackSaving] = useState(false);
+  const [pickerRack, setPickerRack] = useState<string>('');
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -119,14 +128,15 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     setSaving(true);
     setError('');
     try {
+      let probeId: number | null = null;
       if (regOnOrderMatch) {
-        // Swap serial number onto existing on-order probe row
         const res = await fetch(`/api/probes/${regOnOrderMatch.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ serial_number: regSerial.trim(), status: 'In Stock' }),
         });
         if (!res.ok) throw new Error('Failed to update probe');
+        probeId = regOnOrderMatch.id;
       } else {
         const res = await fetch('/api/probes', {
           method: 'POST',
@@ -139,13 +149,66 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
           }),
         });
         if (!res.ok) throw new Error('Failed to create probe');
+        const data = await res.json();
+        probeId = data.id ?? null;
       }
       setRegCreatedSerial(regSerial.trim());
-      setStep('done');
+      setRegCreatedProbeId(probeId);
+      setStep('rack-prompt');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleOpenRackPicker = async () => {
+    setRackLoading(true);
+    setSelectedSlot(null);
+    try {
+      const res = await fetch('/api/probe-rack');
+      const data = await res.json();
+      const slots: RackSlot[] = (data.results ?? data).map((s: { id: number; rack: string | { value: string }; rack_slot: number; probe?: { id: number; value: string }[] }) => ({
+        id: s.id,
+        rack: typeof s.rack === 'object' ? s.rack.value : s.rack,
+        rack_slot: s.rack_slot,
+        probeId: s.probe?.[0]?.id,
+        probeSerial: s.probe?.[0]?.value,
+      }));
+      slots.sort((a, b) => {
+        const rackNum = (r: string) => parseInt(r.replace(/[^0-9]/g, ''), 10) || 0;
+        const side = (r: string) => r.replace(/[0-9]/g, '');
+        if (rackNum(a.rack) !== rackNum(b.rack)) return rackNum(a.rack) - rackNum(b.rack);
+        if (side(a.rack) !== side(b.rack)) return side(a.rack) < side(b.rack) ? -1 : 1;
+        return a.rack_slot - b.rack_slot;
+      });
+      setRackSlots(slots);
+      // Default to first rack with an available slot
+      const firstAvailRack = slots.find(s => !s.probeId)?.rack ?? slots[0]?.rack ?? '';
+      setPickerRack(firstAvailRack);
+      setStep('rack-pick');
+    } catch {
+      setError('Failed to load rack data');
+    } finally {
+      setRackLoading(false);
+    }
+  };
+
+  const handleAssignRack = async () => {
+    if (!selectedSlot || !regCreatedProbeId) return;
+    setRackSaving(true);
+    try {
+      const res = await fetch(`/api/probe-rack/${selectedSlot.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe: regCreatedProbeId }),
+      });
+      if (!res.ok) throw new Error('Failed to assign rack slot');
+      setStep('done');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to assign rack slot');
+    } finally {
+      setRackSaving(false);
     }
   };
 
@@ -154,7 +217,10 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     setRegType(brandOptions.find(b => b.toLowerCase().includes('cropx v4')) || brandOptions.find(b => b.toLowerCase().includes('cropx')) || brandOptions[0] || '');
     setRegYearNew(String(new Date().getFullYear()));
     setRegCreatedSerial('');
+    setRegCreatedProbeId(null);
     setRegOnOrderMatch(null);
+    setRackSlots([]);
+    setSelectedSlot(null);
     setError('');
     setStep('select');
   };
@@ -329,6 +395,20 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   />
                 </div>
 
+                {error && (
+                  <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{error}</div>
+                )}
+
+                {/* Submit button — above on-order list */}
+                <button
+                  className="btn btn-primary"
+                  onClick={handleRegisterSubmit}
+                  disabled={saving || !regSerial.trim()}
+                  style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}
+                >
+                  {saving ? 'Saving…' : regOnOrderMatch ? `Assign #${regSerial || '…'} to On Order Slot` : 'Register as New Probe'}
+                </button>
+
                 {/* On-order match */}
                 {matchingOnOrder.length > 0 && (
                   <div>
@@ -378,21 +458,154 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                     </div>
                   </div>
                 )}
-
-                {error && (
-                  <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{error}</div>
-                )}
-
-                <button
-                  className="btn btn-primary"
-                  onClick={handleRegisterSubmit}
-                  disabled={saving || !regSerial.trim()}
-                  style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}
-                >
-                  {saving ? 'Saving…' : regOnOrderMatch ? `Assign #${regSerial || '…'} to On Order Slot` : 'Register as New Probe'}
-                </button>
               </div>
             )}
+
+            {/* Rack prompt */}
+            {step === 'rack-prompt' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="32" height="32">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Probe registered!</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
+                    {regOnOrderMatch
+                      ? <><strong>#{regCreatedSerial}</strong> assigned to Probe #{regOnOrderMatch.id}.</>
+                      : <><strong>{regType} #{regCreatedSerial}</strong> added to inventory.</>
+                    }
+                  </div>
+                </div>
+                <div style={{ fontWeight: 600, fontSize: 16 }}>Assign to a rack slot?</div>
+                {error && (
+                  <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8, width: '100%' }}>{error}</div>
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleOpenRackPicker}
+                    disabled={rackLoading}
+                    style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}
+                  >
+                    {rackLoading ? 'Loading racks…' : 'Assign to Rack'}
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setStep('done')}
+                    style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}
+                  >
+                    Skip
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Rack picker */}
+            {step === 'rack-pick' && (() => {
+              const rackIds = Array.from(new Set(rackSlots.map(s => s.rack))).sort((a, b) => {
+                const n = (r: string) => parseInt(r.replace(/\D/g, ''), 10) || 0;
+                const s = (r: string) => r.replace(/\d/g, '');
+                return n(a) !== n(b) ? n(a) - n(b) : s(a) < s(b) ? -1 : 1;
+              });
+              const slotsByRack = rackSlots.filter(s => s.rack === pickerRack).sort((a, b) => a.rack_slot - b.rack_slot);
+              const availCount = rackSlots.filter(s => s.rack === pickerRack && !s.probeId).length;
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 4 }}>Pick a rack slot</div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                      Assigning <strong>#{regCreatedSerial}</strong> — tap an available (green) slot
+                    </div>
+                  </div>
+
+                  {/* Rack tabs */}
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {rackIds.map(r => {
+                      const avail = rackSlots.filter(s => s.rack === r && !s.probeId).length;
+                      const total = rackSlots.filter(s => s.rack === r).length;
+                      const active = pickerRack === r;
+                      return (
+                        <button
+                          key={r}
+                          onClick={() => { setPickerRack(r); setSelectedSlot(null); }}
+                          style={{
+                            padding: '6px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                            border: active ? '2px solid var(--accent-primary)' : '1px solid var(--border)',
+                            background: active ? 'rgba(34,197,94,0.1)' : 'var(--bg-secondary)',
+                            color: active ? 'var(--accent-primary)' : avail === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
+                          }}
+                        >
+                          Rack {r}
+                          <span style={{ marginLeft: 5, fontWeight: 400, fontSize: 11, color: avail === 0 ? '#ef4444' : '#22c55e' }}>
+                            {avail}/{total}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Slot grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(64px, 1fr))', gap: 8 }}>
+                    {slotsByRack.map(slot => {
+                      const isFull = !!slot.probeId;
+                      const isSelected = selectedSlot?.id === slot.id;
+                      return (
+                        <button
+                          key={slot.id}
+                          disabled={isFull}
+                          onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                          title={isFull ? `Probe #${slot.probeSerial || slot.probeId} — full` : `Slot ${slot.rack_slot} — available`}
+                          style={{
+                            padding: '10px 4px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: isFull ? 'not-allowed' : 'pointer',
+                            border: isSelected ? '2px solid var(--accent-primary)' : '1.5px solid transparent',
+                            background: isSelected ? 'rgba(34,197,94,0.18)' : isFull ? '#fee2e2' : '#dcfce7',
+                            color: isFull ? '#b91c1c' : '#15803d',
+                            textAlign: 'center',
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          <div>{slot.rack_slot}</div>
+                          <div style={{ fontSize: 9, fontWeight: 400, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {isFull ? (slot.probeSerial || '●') : 'open'}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                    <span style={{ display: 'inline-block', width: 12, height: 12, background: '#dcfce7', borderRadius: 3, marginRight: 4, verticalAlign: 'middle' }} />open
+                    <span style={{ display: 'inline-block', width: 12, height: 12, background: '#fee2e2', borderRadius: 3, margin: '0 4px 0 12px', verticalAlign: 'middle' }} />full
+                    {availCount === 0 && <span style={{ color: '#ef4444', marginLeft: 8 }}>This rack is full</span>}
+                  </div>
+
+                  {error && (
+                    <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{error}</div>
+                  )}
+
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={handleAssignRack}
+                      disabled={!selectedSlot || rackSaving}
+                      style={{ padding: '14px', fontSize: 15, borderRadius: 10, flex: 1 }}
+                    >
+                      {rackSaving ? 'Saving…' : selectedSlot ? `Assign to Rack ${selectedSlot.rack} / Slot ${selectedSlot.rack_slot}` : 'Select a slot'}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => setStep('done')}
+                      style={{ padding: '14px', fontSize: 15, borderRadius: 10 }}
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
 
             {step === 'done' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
@@ -402,12 +615,13 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   </svg>
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Probe registered</div>
+                  <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>All done!</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
                     {regOnOrderMatch
-                      ? <><strong>#{regCreatedSerial}</strong> assigned to Probe #{regOnOrderMatch.id}. Status set to In Stock.</>
-                      : <><strong>{regType} #{regCreatedSerial}</strong> added to inventory as In Stock.</>
+                      ? <><strong>#{regCreatedSerial}</strong> assigned to Probe #{regOnOrderMatch.id}.</>
+                      : <><strong>{regType} #{regCreatedSerial}</strong> added to inventory.</>
                     }
+                    {selectedSlot && <><br />Assigned to Rack {selectedSlot.rack}, Slot {selectedSlot.rack_slot}.</>}
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
