@@ -168,13 +168,16 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     try {
       const res = await fetch('/api/probe-rack');
       const data = await res.json();
-      const slots: RackSlot[] = (data.results ?? data).map((s: { id: number; rack: string | { value: string }; rack_slot: number; probe?: { id: number; value: string }[] }) => ({
-        id: s.id,
-        rack: typeof s.rack === 'object' ? s.rack.value : s.rack,
-        rack_slot: s.rack_slot,
-        probeId: s.probe?.[0]?.id,
-        probeSerial: s.probe?.[0]?.value,
-      }));
+      const slots: RackSlot[] = (data.results ?? data).map((s: { id: number; rack: string | { value: string }; rack_slot: number; probe?: { id: number; value: string }[] }) => {
+        const probeEntry = s.probe?.find(p => !!p.value);
+        return {
+          id: s.id,
+          rack: typeof s.rack === 'object' ? s.rack.value : s.rack,
+          rack_slot: s.rack_slot,
+          probeId: probeEntry?.id,
+          probeSerial: probeEntry?.value,
+        };
+      });
       slots.sort((a, b) => {
         const rackNum = (r: string) => parseInt(r.replace(/[^0-9]/g, ''), 10) || 0;
         const side = (r: string) => r.replace(/[0-9]/g, '');
