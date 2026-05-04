@@ -122,8 +122,30 @@ export function addSpaceVariants(data: Record<string, unknown>): Record<string, 
   return result;
 }
 
+// Global concurrency limiter — max 3 simultaneous Baserow requests per invocation.
+// Prevents 429s when pages fire many parallel Promise.all table fetches.
+const MAX_CONCURRENT = 3;
+let _active = 0;
+const _queue: Array<() => void> = [];
+
+function acquireSemaphore(): Promise<void> {
+  if (_active < MAX_CONCURRENT) {
+    _active++;
+    return Promise.resolve();
+  }
+  return new Promise<void>((resolve) => _queue.push(resolve));
+}
+
+function releaseSemaphore() {
+  _active--;
+  const next = _queue.shift();
+  if (next) { _active++; next(); }
+}
+
 // Retry helper for transient API errors (rate limiting, network issues)
 async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
+  await acquireSemaphore();
+  try {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const response = await fetch(url, init);
     if (response.ok || (response.status < 500 && response.status !== 429)) {
@@ -131,8 +153,9 @@ async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): P
     }
     // Retry on 429 (rate limit) or 5xx (server error)
     if (attempt < maxRetries) {
-      const delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
-      console.warn(`Baserow API ${response.status} for ${url}, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+      const jitter = Math.random() * 500; // up to 500ms random jitter
+      const delay = Math.pow(2, attempt) * 1000 + jitter; // ~1s, ~2s, ~4s
+      console.warn(`Baserow API ${response.status} for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, delay));
     } else {
       return response;
@@ -140,6 +163,9 @@ async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): P
   }
   // Unreachable, but TypeScript needs it
   throw new Error('fetchWithRetry: exhausted retries');
+  } finally {
+    releaseSemaphore();
+  }
 }
 
 async function baserowFetch<T>(

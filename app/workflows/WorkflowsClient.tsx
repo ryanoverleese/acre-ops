@@ -48,6 +48,26 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
   const [regCreatedProbeId, setRegCreatedProbeId] = useState<number | null>(null);
   const [regOnOrderMatch, setRegOnOrderMatch] = useState<OnOrderProbe | null>(null);
 
+  // Duplicate serial check
+  const [serialExists, setSerialExists] = useState(false);
+  const [serialCheckId, setSerialCheckId] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+  function onSerialChange(val: string) {
+    setRegSerial(val);
+    setSerialExists(false);
+    if (serialCheckId) clearTimeout(serialCheckId);
+    if (!val.trim()) return;
+    const tid = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/probes?search=${encodeURIComponent(val.trim())}`);
+        const data = await res.json();
+        const probes: { serial_number?: string }[] = data.results ?? data;
+        setSerialExists(probes.some(p => p.serial_number?.trim() === val.trim()));
+      } catch { /* ignore */ }
+    }, 400);
+    setSerialCheckId(tid);
+  }
+
   // Rack-pick state
   type RackSlot = { id: number; rack: string; rack_slot: number; probeId?: number; probeSerial?: string };
   const [rackSlots, setRackSlots] = useState<RackSlot[]>([]);
@@ -224,6 +244,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     setRegOnOrderMatch(null);
     setRackSlots([]);
     setSelectedSlot(null);
+    setSerialExists(false);
     setError('');
     setStep('select');
   };
@@ -365,12 +386,18 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   <input
                     type="text"
                     value={regSerial}
-                    onChange={(e) => setRegSerial(e.target.value)}
+                    onChange={(e) => onSerialChange(e.target.value)}
                     placeholder="e.g. 412719"
                     inputMode="numeric"
                     autoFocus
-                    style={{ ...inputStyle, fontSize: 22, fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em' }}
+                    style={{ ...inputStyle, fontSize: 22, fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em', borderColor: serialExists ? '#dc2626' : undefined }}
                   />
+                  {serialExists && (
+                    <div style={{ color: '#dc2626', fontSize: 13, marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="14" height="14"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /></svg>
+                      Serial #{regSerial} is already in the system — check for duplicates before saving.
+                    </div>
+                  )}
                 </div>
 
                 {/* Probe type */}

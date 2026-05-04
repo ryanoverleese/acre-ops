@@ -4,6 +4,18 @@ import { TABLE_IDS } from '@/lib/baserow';
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
+export async function GET(request: NextRequest) {
+  const search = request.nextUrl.searchParams.get('search') ?? '';
+  const params = new URLSearchParams({ user_field_names: 'true', size: '10' });
+  if (search) params.set('search', search);
+  const res = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.probes}/?${params}`, {
+    headers: { Authorization: `Token ${BASEROW_TOKEN}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) return NextResponse.json({ results: [] });
+  return NextResponse.json(await res.json());
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
