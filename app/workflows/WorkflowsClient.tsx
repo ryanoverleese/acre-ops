@@ -48,6 +48,9 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
   const [regCreatedProbeId, setRegCreatedProbeId] = useState<number | null>(null);
   const [regOnOrderMatch, setRegOnOrderMatch] = useState<OnOrderProbe | null>(null);
 
+  // Track on-order slots claimed this session so they don't re-appear
+  const [claimedOnOrderIds, setClaimedOnOrderIds] = useState<Set<number>>(new Set());
+
   // On-order confirm modal
   const [showOnOrderConfirm, setShowOnOrderConfirm] = useState(false);
 
@@ -93,8 +96,11 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
 
   // On-order probes of the currently selected brand
   const matchingOnOrder = useMemo(() =>
-    onOrderProbes.filter(p => p.brand.toLowerCase() === regType.toLowerCase()),
-    [onOrderProbes, regType]
+    onOrderProbes.filter(p =>
+      p.brand.toLowerCase() === regType.toLowerCase() &&
+      !claimedOnOrderIds.has(p.id)
+    ),
+    [onOrderProbes, regType, claimedOnOrderIds]
   );
 
   const resetWorkflow = () => {
@@ -177,6 +183,9 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
       }
       setRegCreatedSerial(regSerial.trim());
       setRegCreatedProbeId(probeId);
+      if (regOnOrderMatch) {
+        setClaimedOnOrderIds(prev => new Set([...prev, regOnOrderMatch.id]));
+      }
       setStep('rack-prompt');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
