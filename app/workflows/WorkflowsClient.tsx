@@ -402,6 +402,13 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{error}</div>
                 )}
 
+                {/* Warning: on-order slots exist but none selected */}
+                {matchingOnOrder.length > 0 && !regOnOrderMatch && regSerial.trim() && (
+                  <div style={{ color: '#92400e', fontSize: 13, padding: '10px 14px', background: '#fef9c3', border: '1px solid #fde68a', borderRadius: 8 }}>
+                    ⚠️ There {matchingOnOrder.length === 1 ? 'is' : 'are'} <strong>{matchingOnOrder.length} on-order {regType}</strong> slot{matchingOnOrder.length !== 1 ? 's' : ''} below — select one to avoid creating a duplicate.
+                  </div>
+                )}
+
                 {/* Submit button — above on-order list */}
                 <button
                   className="btn btn-primary"
