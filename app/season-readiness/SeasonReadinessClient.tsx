@@ -9,6 +9,7 @@ interface Props {
 }
 
 type Filter = 'all' | 'incomplete' | 'ready' | 'installed';
+type GapFilter = 'crop' | 'plantDate' | 'probe' | 'antenna' | 'battery' | 'installer' | 'approval' | null;
 type SortCol = 'fieldName' | 'operation' | 'crop' | 'plantingDate' | 'hybridVariety' | 'installer' | 'approvalStatus' | 'status';
 type SortDir = 'asc' | 'desc';
 
@@ -158,9 +159,14 @@ function SortTh({
 export default function SeasonReadinessClient({ rows: initialRows, year }: Props) {
   const [rows, setRows] = useState<ReadinessRow[]>(initialRows);
   const [filter, setFilter] = useState<Filter>('all');
+  const [gapFilter, setGapFilter] = useState<GapFilter>(null);
   const [search, setSearch] = useState('');
   const [sortCol, setSortCol] = useState<SortCol>('fieldName');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  function toggleGapFilter(g: GapFilter) {
+    setGapFilter((prev) => (prev === g ? null : g));
+  }
 
   function updateRow(fieldSeasonId: number, patch: Partial<ReadinessRow>) {
     setRows((prev) => prev.map((r) => r.fieldSeasonId === fieldSeasonId ? { ...r, ...patch } : r));
@@ -189,6 +195,13 @@ export default function SeasonReadinessClient({ rows: initialRows, year }: Props
     if (filter === 'incomplete') result = result.filter((r) => !r.installed && r.readyScore < r.totalChecks);
     if (filter === 'ready')      result = result.filter((r) => !r.installed && r.readyScore === r.totalChecks);
     if (filter === 'installed')  result = result.filter((r) => r.installed);
+    if (gapFilter === 'crop')      result = result.filter((r) => !r.installed && !r.crop);
+    if (gapFilter === 'plantDate') result = result.filter((r) => !r.installed && !r.plantingDate);
+    if (gapFilter === 'probe')     result = result.filter((r) => !r.installed && (!r.probe1 || (r.hasProbe2 && !r.probe2)));
+    if (gapFilter === 'antenna')   result = result.filter((r) => !r.installed && (!r.antenna1 || (r.hasProbe2 && !r.antenna2)));
+    if (gapFilter === 'battery')   result = result.filter((r) => !r.installed && (!r.battery1 || (r.hasProbe2 && !r.battery2)));
+    if (gapFilter === 'installer') result = result.filter((r) => !r.installed && !r.plannedInstaller && !r.installer);
+    if (gapFilter === 'approval')  result = result.filter((r) => !r.installed && !r.locationApproved);
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((r) =>
@@ -223,7 +236,7 @@ export default function SeasonReadinessClient({ rows: initialRows, year }: Props
     });
 
     return result;
-  }, [rows, filter, search, sortCol, sortDir]);
+  }, [rows, filter, gapFilter, search, sortCol, sortDir]);
 
   const sortProps = { sortCol, sortDir, onSort: handleSort };
 
@@ -252,16 +265,47 @@ export default function SeasonReadinessClient({ rows: initialRows, year }: Props
         <div style={{
           background: '#fff', border: '1px solid #fee2e2', borderRadius: 10,
           padding: '12px 16px', marginBottom: 16,
-          display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13,
+          display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, alignItems: 'center',
         }}>
-          <span style={{ fontWeight: 600, color: '#86868b', marginRight: 4 }}>Gaps:</span>
-          {missingCrop > 0      && <span style={{ color: '#dc2626' }}>No crop: <strong>{missingCrop}</strong></span>}
-          {missingPlantDate > 0 && <span style={{ color: '#dc2626' }}>No plant date: <strong>{missingPlantDate}</strong></span>}
-          {missingProbe > 0     && <span style={{ color: '#dc2626' }}>No probe: <strong>{missingProbe}</strong></span>}
-          {missingAntenna > 0   && <span style={{ color: '#dc2626' }}>No antenna: <strong>{missingAntenna}</strong></span>}
-          {missingBattery > 0   && <span style={{ color: '#dc2626' }}>No battery: <strong>{missingBattery}</strong></span>}
-          {missingInstaller > 0 && <span style={{ color: '#dc2626' }}>No installer: <strong>{missingInstaller}</strong></span>}
-          {missingApproval > 0  && <span style={{ color: '#dc2626' }}>Not approved: <strong>{missingApproval}</strong></span>}
+          <span style={{ fontWeight: 600, color: '#86868b' }}>Gaps:</span>
+          {([
+            { key: 'crop'      as GapFilter, label: 'No crop',       count: missingCrop },
+            { key: 'plantDate' as GapFilter, label: 'No plant date',  count: missingPlantDate },
+            { key: 'probe'     as GapFilter, label: 'No probe',       count: missingProbe },
+            { key: 'antenna'   as GapFilter, label: 'No antenna',     count: missingAntenna },
+            { key: 'battery'   as GapFilter, label: 'No battery',     count: missingBattery },
+            { key: 'installer' as GapFilter, label: 'No installer',   count: missingInstaller },
+            { key: 'approval'  as GapFilter, label: 'Not approved',   count: missingApproval },
+          ]).filter((g) => g.count > 0).map((g) => {
+            const active = gapFilter === g.key;
+            return (
+              <button
+                key={g.key as string}
+                onClick={() => toggleGapFilter(g.key)}
+                style={{
+                  background: active ? '#fee2e2' : 'transparent',
+                  border: active ? '1px solid #dc2626' : '1px solid transparent',
+                  borderRadius: 6, padding: '2px 8px', cursor: 'pointer',
+                  color: '#dc2626', fontSize: 13, fontWeight: active ? 700 : 400,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+                title={active ? 'Click to clear filter' : `Filter to fields missing ${g.label.toLowerCase().replace('no ', '').replace('not ', '')}`}
+              >
+                {g.label}: <strong>{g.count}</strong>
+              </button>
+            );
+          })}
+          {gapFilter && (
+            <button
+              onClick={() => setGapFilter(null)}
+              style={{
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                color: '#86868b', fontSize: 12, textDecoration: 'underline', padding: 0,
+              }}
+            >
+              Clear filter
+            </button>
+          )}
         </div>
       )}
 
