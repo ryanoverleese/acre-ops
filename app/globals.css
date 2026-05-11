@@ -899,6 +899,12 @@ body::before {
   font-weight: 500;
 }
 
+.stat-footnote {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}
+
 /* Fields Filter Row */
 .fields-filter-row {
   display: flex;

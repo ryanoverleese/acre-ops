@@ -15,9 +15,11 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       getCachedRows<Probe>('probes', undefined, 120),
     ]);
 
-    // Calculate install stats from probe_assignments for current season
+    // Calculate install stats from probe_assignments for current season (exclude DIY)
     const currentSeasonFsIds = new Set(
-      fieldSeasons.filter(fs => fs.season == new Date().getFullYear()).map(fs => fs.id)
+      fieldSeasons
+        .filter(fs => fs.season == new Date().getFullYear() && !fs.service_type?.[0]?.value?.toLowerCase().includes('diy'))
+        .map(fs => fs.id)
     );
     const currentSeasonAssignments = probeAssignments.filter(pa => {
       const fsId = pa.field_season?.[0]?.id;

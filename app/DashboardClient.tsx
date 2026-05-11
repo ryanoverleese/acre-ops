@@ -151,7 +151,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           <div className="stats-grid stats-grid-3">
             <Link href="/install" className="unstyled-link">
               <div className="stat-card">
-                <div className="stat-label">Ready to Install</div>
+                <div className="stat-label">Ready to Install *</div>
                 <div className="stat-value amber">{stats.assignedCount}</div>
                 <div className="stat-change">Assigned probes</div>
               </div>
@@ -177,6 +177,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
               </div>
             </div>
           )}
+          <div className="stat-footnote">* excludes CropX Complete DIY</div>
           {showInstalled && installedProbes.length > 0 && (
             <div className="table-container">
               <div className="table-header">
@@ -256,7 +257,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
               <h3 className="section-label">{currentYear} Booking Tracker</h3>
               <div className="stats-grid stats-grid-6">
                 <div className="stat-card">
-                  <div className="stat-label">Enrolled Fields</div>
+                  <div className="stat-label">Enrolled Fields *</div>
                   <div className="stat-value">{totalEnrolledFields}</div>
                   <div className="stat-change">{currentYear} season</div>
                 </div>
@@ -276,7 +277,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <div className="stat-change">Had {previousYear}, not yet {currentYear}{notReturning > 0 ? ` (+${notReturning} dismissed)` : ''}</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-label">Probes Assigned</div>
+                  <div className="stat-label">Probes Assigned *</div>
                   <div className="stat-value green">{totalProbesAssigned}</div>
                   <div className="stat-change">Across booked operations</div>
                 </div>
@@ -286,6 +287,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <div className="stat-change">Awaiting delivery</div>
                 </div>
               </div>
+              <div className="stat-footnote">* excludes CropX Complete DIY</div>
               <div className="table-container">
                 <table className="desktop-table">
                   <thead>
