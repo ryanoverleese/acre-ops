@@ -37,7 +37,6 @@ export async function GET() {
       if (!beId) continue;
       const opId = billingToOperationMap.get(beId);
       if (!opId) continue;
-      if (fs.service_type?.[0]?.value?.toLowerCase().includes('diy')) continue;
 
       if (fs.season == currentYear) fsToOp.set(fs.id, opId);
       if (fs.season == previousYear) fsToOpPrev.set(fs.id, opId);
