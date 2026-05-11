@@ -153,7 +153,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
               <div className="stat-card">
                 <div className="stat-label">Ready to Install *</div>
                 <div className="stat-value amber">{stats.assignedCount}</div>
-                <div className="stat-change">Assigned probes</div>
+                <div className="stat-change">Not yet installed</div>
               </div>
             </Link>
             <div className="stat-card stat-card-clickable" onClick={() => setShowInstalled(!showInstalled)}>
@@ -279,7 +279,7 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                 <div className="stat-card">
                   <div className="stat-label">Probes Assigned *</div>
                   <div className="stat-value green">{totalProbesAssigned}</div>
-                  <div className="stat-change">Across booked operations</div>
+                  <div className="stat-change">{currentYear} season</div>
                 </div>
                 <div className="stat-card">
                   <div className="stat-label">Probes on Order</div>
