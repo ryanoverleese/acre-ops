@@ -2386,7 +2386,8 @@ export default function FieldsClient({
                                       const batteryDanger = missingBattery || mismatchBattery;
                                       const hasEquipmentWarning = (missingProbe || antennaDanger || batteryDanger) && !dismissedAlerts.has(pa.id);
                                       const hasDismissedAlert = dismissedAlerts.has(pa.id);
-                                      if (hasDismissedAlert && !showAllDismissed) return null;
+                                      const allDismissed = fieldSeasonProbeAssignments.every(p => dismissedAlerts.has(p.id));
+                                      if (hasDismissedAlert && !showAllDismissed && !allDismissed) return null;
                                       return (
                                       <tr key={`pa-${pa.id}`} className="fields-probe-row" style={hasDismissedAlert ? { opacity: 0.45 } : undefined}>
                                         <td className="fields-probe-number-cell" onClick={(e) => e.stopPropagation()}>
