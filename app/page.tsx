@@ -18,7 +18,7 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
     // Calculate install stats from probe_assignments for current season (exclude DIY)
     const currentSeasonFsIds = new Set(
       fieldSeasons
-        .filter(fs => fs.season == new Date().getFullYear() && !fs.service_type?.[0]?.value?.toLowerCase().includes('diy'))
+        .filter(fs => fs.season == new Date().getFullYear() && fs.service_type?.[0]?.value !== 'CropX Complete DIY')
         .map(fs => fs.id)
     );
     const currentSeasonAssignments = probeAssignments.filter(pa => {
