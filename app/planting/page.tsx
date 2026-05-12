@@ -51,13 +51,24 @@ export default async function PlantingPage() {
   const currentYear = new Date().getFullYear();
   const { fields, probeAssignments, selectOptions } = await getFieldsData(currentYear);
 
-  // Count probe assignments per field season
+  // Count probe assignments per field season (total + installed)
   const probeCountByFieldSeason = new Map<number, number>();
+  const installedCountByFieldSeason = new Map<number, number>();
   for (const pa of probeAssignments) {
     probeCountByFieldSeason.set(pa.fieldSeasonId, (probeCountByFieldSeason.get(pa.fieldSeasonId) ?? 0) + 1);
+    if (pa.installDate) {
+      installedCountByFieldSeason.set(pa.fieldSeasonId, (installedCountByFieldSeason.get(pa.fieldSeasonId) ?? 0) + 1);
+    }
   }
 
-  const plantingFields = fields.filter((f) => f.fieldSeasonId && f.plantingDate);
+  const plantingFields = fields.filter((f) => {
+    if (!f.fieldSeasonId || !f.plantingDate) return false;
+    // Hide fields where every assigned probe has already been installed
+    const total = probeCountByFieldSeason.get(f.fieldSeasonId) ?? 0;
+    const installed = installedCountByFieldSeason.get(f.fieldSeasonId) ?? 0;
+    if (total > 0 && installed >= total) return false;
+    return true;
+  });
 
   // One GDU fetch per unique planting date, cached 24h
   const uniqueDates = [...new Set(plantingFields.map((f) => f.plantingDate))];
