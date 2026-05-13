@@ -31,7 +31,7 @@ interface WorkflowsClientProps {
 type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
 export default function WorkflowsClient({ installedProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
-  const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | null>(null);
+  const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | 'rma' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
@@ -74,6 +74,15 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     setSerialCheckId(tid);
   }
 
+  // RMA state
+  const [rmaStep, setRmaStep] = useState<'select' | 'new-serial' | 'done'>('select');
+  const [rmaSearch, setRmaSearch] = useState('');
+  const [rmaSelected, setRmaSelected] = useState<UninstallProbeData | null>(null);
+  const [rmaNewSerial, setRmaNewSerial] = useState('');
+  const [rmaSaving, setRmaSaving] = useState(false);
+  const [rmaError, setRmaError] = useState('');
+  const [rmaOldSerial, setRmaOldSerial] = useState('');
+
   // Rack-pick state
   type RackSlot = { id: number; rack: string; rack_slot: number; probeId?: number; probeSerial?: string };
   const [rackSlots, setRackSlots] = useState<RackSlot[]>([]);
@@ -94,6 +103,18 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     );
   }, [installedProbes, search]);
 
+  const rmaFiltered = useMemo(() => {
+    const q = rmaSearch.toLowerCase();
+    if (!q) return installedProbes;
+    return installedProbes.filter(
+      (p) =>
+        p.fieldName.toLowerCase().includes(q) ||
+        p.probeSerial.toLowerCase().includes(q) ||
+        p.probeBrand.toLowerCase().includes(q) ||
+        p.operation.toLowerCase().includes(q)
+    );
+  }, [installedProbes, rmaSearch]);
+
   // On-order probes of the currently selected brand
   const matchingOnOrder = useMemo(() =>
     onOrderProbes.filter(p =>
@@ -102,6 +123,76 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     ),
     [onOrderProbes, regType, claimedOnOrderIds]
   );
+
+  const resetRma = () => {
+    setRmaStep('select');
+    setRmaSearch('');
+    setRmaSelected(null);
+    setRmaNewSerial('');
+    setRmaSaving(false);
+    setRmaError('');
+    setRmaOldSerial('');
+  };
+
+  const handleRmaSubmit = async () => {
+    if (!rmaSelected) return;
+    setRmaSaving(true);
+    setRmaError('');
+    try {
+      // 1. Create new probe record
+      const createRes = await fetch('/api/probes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serial_number: rmaNewSerial.trim(),
+          brand: rmaSelected.probeBrand,
+          year_new: new Date().getFullYear(),
+          status: 'In Stock',
+        }),
+      });
+      if (!createRes.ok) throw new Error('Failed to create new probe');
+      const createData = await createRes.json();
+      const newProbeId: number = createData.id;
+
+      // 2. PATCH probe assignment to point to new probe
+      const paRes = await fetch(`/api/probe-assignments/${rmaSelected.assignmentId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ probe: newProbeId }),
+      });
+      if (!paRes.ok) throw new Error('Failed to update probe assignment');
+
+      // 3. PATCH old probe status to RMA
+      const oldProbeRes = await fetch(`/api/probes/${rmaSelected.probeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'RMA' }),
+      });
+      if (!oldProbeRes.ok) throw new Error('Failed to mark old probe as RMA');
+
+      // 4. Update rack slot (best-effort)
+      try {
+        const rackRes = await fetch('/api/probe-rack');
+        const rackData = await rackRes.json();
+        const slots: { id: number; probe?: { id: number }[] }[] = rackData.results ?? rackData;
+        const slot = slots.find(s => s.probe?.[0]?.id === rmaSelected.probeId);
+        if (slot) {
+          await fetch(`/api/probe-rack/${slot.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ probe: newProbeId }),
+          });
+        }
+      } catch { /* best-effort, skip */ }
+
+      setRmaOldSerial(rmaSelected.probeSerial);
+      setRmaStep('done');
+    } catch (err) {
+      setRmaError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setRmaSaving(false);
+    }
+  };
 
   const resetWorkflow = () => {
     setStep('select');
@@ -335,6 +426,39 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                 <div style={{ fontWeight: 600, fontSize: 15 }}>Uninstall Probe</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
                   Record which probe was removed, from which field, and on what date.
+                </div>
+              </div>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <div
+              onClick={() => { setActiveWorkflow('rma'); resetRma(); }}
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '20px 24px',
+                cursor: 'pointer',
+                background: 'var(--bg-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+              }}
+              className="workflow-card"
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 8,
+                background: 'rgba(249, 115, 22, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg fill="none" stroke="#f97316" viewBox="0 0 24 24" width="22" height="22">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Replace Failed Probe (RMA)</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
+                  Swap a failed probe with a replacement. Preserves field assignment and coordinates.
                 </div>
               </div>
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }}>
@@ -737,6 +861,215 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
             </div>
           </div>
         )}
+      </>
+    );
+  }
+
+  // RMA workflow
+  if (activeWorkflow === 'rma') {
+    const inputStyle: React.CSSProperties = {
+      padding: '14px 16px',
+      border: '1px solid var(--border)',
+      borderRadius: 10,
+      background: 'var(--bg-secondary)',
+      color: 'var(--text-primary)',
+      fontSize: 17,
+      width: '100%',
+      boxSizing: 'border-box',
+    };
+    const labelStyle: React.CSSProperties = {
+      display: 'block',
+      fontWeight: 600,
+      fontSize: 13,
+      textTransform: 'uppercase',
+      letterSpacing: '0.06em',
+      color: 'var(--text-secondary)',
+      marginBottom: 8,
+    };
+
+    return (
+      <>
+        <header className="header">
+          <div className="header-left">
+            <button
+              className="btn btn-secondary"
+              onClick={() => { setActiveWorkflow(null); resetRma(); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 18l-6-6 6-6" />
+              </svg>
+              Workflows
+            </button>
+          </div>
+          <div style={{ fontWeight: 600, fontSize: 15 }}>Replace Failed Probe</div>
+          <div style={{ width: 90 }} />
+        </header>
+        <div className="content">
+          <div style={{ maxWidth: 520 }}>
+
+            {/* Step: select */}
+            {rmaStep === 'select' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Step 1 of 2 — Which probe is being replaced?</div>
+                <div className="search-box" style={{ maxWidth: '100%' }}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search by field, probe serial, brand, or operation..."
+                    value={rmaSearch}
+                    onChange={(e) => setRmaSearch(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {installedProbes.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No installed probes found for the current season.</p>
+                ) : rmaFiltered.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No probes match your search.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {rmaFiltered.map((probe) => (
+                      <div
+                        key={probe.assignmentId}
+                        onClick={() => { setRmaSelected(probe); setRmaStep('new-serial'); }}
+                        style={{
+                          border: '1px solid var(--border)',
+                          borderRadius: 6,
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          background: 'var(--bg-secondary)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          gap: 12,
+                        }}
+                        className="workflow-card"
+                      >
+                        <div>
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>
+                            {probe.fieldName}{probe.probeLabel ? ` — ${probe.probeLabel}` : ''}
+                          </div>
+                          <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
+                            {probe.probeBrand} #{probe.probeSerial}
+                            {probe.operation ? ` · ${probe.operation}` : ''}
+                            {probe.installDate ? ` · Installed ${probe.installDate}` : ''}
+                          </div>
+                        </div>
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step: new-serial */}
+            {rmaStep === 'new-serial' && rmaSelected && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Step 2 of 2 — Enter replacement serial</div>
+
+                {/* Summary card */}
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                  <div style={{ padding: '12px 16px', background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)', fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Probe being replaced
+                  </div>
+                  <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Field</span>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>
+                        {rmaSelected.fieldName}{rmaSelected.probeLabel ? ` — ${rmaSelected.probeLabel}` : ''}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Probe</span>
+                      <span style={{ fontSize: 13 }}>{rmaSelected.probeBrand} #{rmaSelected.probeSerial}</span>
+                    </div>
+                    {rmaSelected.operation && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Operation</span>
+                        <span style={{ fontSize: 13 }}>{rmaSelected.operation}</span>
+                      </div>
+                    )}
+                    {rmaSelected.installDate && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Installed</span>
+                        <span style={{ fontSize: 13 }}>{rmaSelected.installDate}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* New serial input */}
+                <div>
+                  <label style={labelStyle}>Replacement Serial Number</label>
+                  <input
+                    type="text"
+                    value={rmaNewSerial}
+                    onChange={(e) => setRmaNewSerial(e.target.value)}
+                    placeholder="e.g. 412719"
+                    inputMode="numeric"
+                    autoFocus
+                    style={{ ...inputStyle, fontSize: 22, fontFamily: 'ui-monospace, monospace', letterSpacing: '0.04em' }}
+                  />
+                </div>
+
+                {rmaError && (
+                  <div style={{ color: '#ef4444', fontSize: 14, padding: '12px 16px', background: 'rgba(239,68,68,0.1)', borderRadius: 8 }}>{rmaError}</div>
+                )}
+
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setRmaStep('select')}
+                    style={{ padding: '16px', fontSize: 16, borderRadius: 10 }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleRmaSubmit}
+                    disabled={rmaSaving || !rmaNewSerial.trim()}
+                    style={{ padding: '16px', fontSize: 16, borderRadius: 10, flex: 1 }}
+                  >
+                    {rmaSaving ? 'Saving…' : 'Confirm Swap'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step: done */}
+            {rmaStep === 'done' && rmaSelected && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'flex-start' }}>
+                <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(34,197,94,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg fill="none" stroke="#22c55e" viewBox="0 0 24 24" width="32" height="32">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Swap complete!</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
+                    <strong>{rmaSelected.probeBrand} #{rmaOldSerial}</strong> replaced with{' '}
+                    <strong>#{rmaNewSerial.trim()}</strong> on <strong>{rmaSelected.fieldName}</strong>.
+                    Old probe marked RMA.
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                  <button className="btn btn-primary" onClick={resetRma} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
+                    Replace Another
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
+                    Back to Workflows
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
       </>
     );
   }

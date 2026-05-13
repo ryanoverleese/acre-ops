@@ -262,11 +262,6 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
                   <div className="stat-change">{currentYear} season</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-label">Remaining Fields</div>
-                  <div className="stat-value">{remainingFields > 0 ? <span className="amber">{remainingFields}</span> : <span className="green">0</span>}</div>
-                  <div className="stat-change">Were in {previousYear}, not yet {currentYear}</div>
-                </div>
-                <div className="stat-card">
                   <div className="stat-label">New Operations</div>
                   <div className="stat-value blue">{newOps}</div>
                   <div className="stat-change">First time in {currentYear}</div>
