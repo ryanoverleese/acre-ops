@@ -183,6 +183,21 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
         }
       } catch { /* best-effort, skip */ }
 
+      // 5. Log to Apple Notes (best-effort)
+      try {
+        await fetch('/api/log-removal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            serial: rmaSelected.probeSerial,
+            reason: 'RMA – failed probe replaced',
+            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            fieldName: rmaSelected.fieldName,
+            operation: rmaSelected.operation,
+          }),
+        });
+      } catch { /* best-effort, skip */ }
+
       setRmaOldSerial(rmaSelected.probeSerial);
       setRmaStep('done');
     } catch (err) {
