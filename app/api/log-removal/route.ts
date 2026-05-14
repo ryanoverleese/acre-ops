@@ -1,34 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { execSync } from 'child_process';
+import { TABLE_IDS } from '@/lib/baserow';
+
+const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
+const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 export async function POST(request: NextRequest) {
   try {
     const { serial, reason, date, fieldName, operation } = await request.json();
 
-    const title = `Probe Removed – #${serial}`;
-    const body = [
-      `Serial: ${serial}`,
-      `Reason: ${reason}`,
-      `Date: ${date}`,
-      fieldName ? `Field: ${fieldName}` : null,
-      operation ? `Operation: ${operation}` : null,
-    ].filter(Boolean).join('\\n');
+    const noteParts = [`Serial: ${serial}`, `Reason: ${reason}`];
+    if (fieldName) noteParts.push(`Field: ${fieldName}`);
+    if (operation) noteParts.push(`Operation: ${operation}`);
 
-    const script = `tell application "Notes"
-  set targetFolder to missing value
-  repeat with f in folders of default account
-    if name of f is "Acre Ops" then
-      set targetFolder to f
-      exit repeat
-    end if
-  end repeat
-  if targetFolder is missing value then
-    set targetFolder to make new folder at default account with properties {name:"Acre Ops"}
-  end if
-  make new note at targetFolder with properties {name:"${title}", body:"${body}"}
-end tell`;
+    const payload = {
+      name: `Probe Removed – #${serial}`,
+      description: noteParts.join('\n'),
+      uploaded_by: 'Ryan',
+      uploaded_at: date || new Date().toISOString(),
+    };
 
-    execSync(`osascript -e '${script}'`);
+    const res = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.documents}/?user_field_names=true`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${BASEROW_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      return NextResponse.json({ ok: false, error: err }, { status: res.status });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {
