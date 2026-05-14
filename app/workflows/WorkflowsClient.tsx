@@ -162,13 +162,11 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
       });
       if (!paRes.ok) throw new Error('Failed to update probe assignment');
 
-      // 3. PATCH old probe status to RMA
+      // 3. Delete old probe
       const oldProbeRes = await fetch(`/api/probes/${rmaSelected.probeId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'RMA' }),
+        method: 'DELETE',
       });
-      if (!oldProbeRes.ok) throw new Error('Failed to mark old probe as RMA');
+      if (!oldProbeRes.ok) throw new Error('Failed to delete old probe');
 
       // 4. Update rack slot (best-effort)
       try {
@@ -1054,7 +1052,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
                     <strong>{rmaSelected.probeBrand} #{rmaOldSerial}</strong> replaced with{' '}
                     <strong>#{rmaNewSerial.trim()}</strong> on <strong>{rmaSelected.fieldName}</strong>.
-                    Old probe marked RMA.
+                    Old probe deleted.
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
