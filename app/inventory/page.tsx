@@ -73,7 +73,7 @@ export default async function InventoryPage() {
       if (antenna) antennaCounts.set(antenna, (antennaCounts.get(antenna) || 0) + 1);
       if (battery) batteryCounts.set(battery, (batteryCounts.get(battery) || 0) + 1);
       totalProbeCount++;
-      if (antenna === 'CropX Stub' || antenna === 'Sentek Stub') stubAntennaCount++;
+      if (antenna === 'Sentek Stub' || (antenna && antenna.startsWith('CropX Stub'))) stubAntennaCount++;
     });
 
     flagNeeds = [];

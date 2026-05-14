@@ -2540,6 +2540,8 @@ export default function FieldsClient({
                                             options={[
                                               { value: 'Sentek Stub', label: 'Sentek Stub' },
                                               { value: 'CropX Stub', label: 'CropX Stub' },
+                                              { value: 'CropX Stub + White Flag', label: 'CropX Stub + White Flag' },
+                                              { value: 'CropX Stub + No Flag', label: 'CropX Stub + No Flag' },
                                               { value: "Sentek 10'", label: "Sentek 10'" },
                                               { value: "CropX 10'", label: "CropX 10'" },
                                               { value: "CropX 6'", label: "CropX 6'" },
