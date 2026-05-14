@@ -3,7 +3,7 @@ import { TABLE_IDS } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-const NOTE_TITLE = 'Probe Removals';
+const NOTE_TITLE = 'Probe RMA Records';
 
 export async function POST(request: NextRequest) {
   try {
