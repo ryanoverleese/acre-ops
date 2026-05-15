@@ -952,10 +952,10 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
                 onClick={() => setSerialConfirmed('confirmed')}
                 style={{
                   flex: 1, padding: '11px 0',
-                  background: 'var(--field-green)', color: 'var(--bone)',
+                  background: 'transparent', color: 'var(--field-green)',
                   fontFamily: 'var(--font-display)', fontWeight: 700,
                   fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
-                  border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer',
+                  border: '1.5px solid var(--field-green)', borderRadius: 'var(--r-md)', cursor: 'pointer',
                 }}
               >
                 ✓ Confirm
