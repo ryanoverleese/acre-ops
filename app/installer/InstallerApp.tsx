@@ -1427,17 +1427,45 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
             disabled={!canSubmit || submitting}
             style={{ opacity: canSubmit ? 1 : 0.72 }}
           >
-            {submitting ? 'Submitting…' : (
-              <>
-                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                Submit install
-              </>
-            )}
+            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+            Submit install
           </button>
         </div>
       </div>
+
+      {/* Submitting overlay */}
+      {submitting && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 300,
+          background: 'rgba(31,64,42,0.92)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 24, padding: '0 40px',
+        }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: 'var(--bone)', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>
+            Logging install…
+          </div>
+          <div style={{ width: '100%', height: 6, background: 'rgba(246,242,234,0.2)', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 3,
+              background: 'var(--bone)',
+              animation: 'af-progress-indeterminate 1.6s ease-in-out infinite',
+            }} />
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(246,242,234,0.6)', fontFamily: 'var(--font-display)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Uploading photos &amp; saving location
+          </div>
+          <style>{`
+            @keyframes af-progress-indeterminate {
+              0%   { width: 0%;   margin-left: 0%; }
+              40%  { width: 60%;  margin-left: 20%; }
+              100% { width: 0%;   margin-left: 100%; }
+            }
+          `}</style>
+        </div>
+      )}
     </div>
   );
 }
