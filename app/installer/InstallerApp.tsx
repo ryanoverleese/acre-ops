@@ -796,6 +796,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   onBack: () => void; onSuccess: (data: SuccessData, assignmentId: number) => void;
 }) {
   const [probeSerial, setProbeSerial] = useState(a.probeSerial);
+  const [serialConfirmed, setSerialConfirmed] = useState<null | 'confirmed' | 'override'>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
   const [livePos, setLivePos] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -826,13 +827,15 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const photoEndRef = useRef<HTMLInputElement>(null);
   const photoExtraRef = useRef<HTMLInputElement>(null);
 
+  const serialDone = serialConfirmed === 'confirmed' || (serialConfirmed === 'override' && !!probeSerial);
   const doneMap = {
+    serial: serialDone,
     gps: !!gps,
     crop: cropConfirmed !== null,
     photoEnd: !!photoEnd,
     rowDir: !!rowDir,
   };
-  const requiredKeys = ['gps', 'crop', 'photoEnd', 'rowDir'] as const;
+  const requiredKeys = ['serial', 'gps', 'crop', 'photoEnd', 'rowDir'] as const;
   const completedCount = requiredKeys.filter(k => doneMap[k]).length;
   const progress = completedCount / requiredKeys.length;
   const canSubmit = completedCount === requiredKeys.length;
@@ -930,7 +933,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </div>
 
         {/* Section 1: Probe serial */}
-        <InstallSection num={1} title="Probe serial" done={!!probeSerial}>
+        <InstallSection num={1} title="Probe serial" done={serialDone}>
           <div className="af-probe">
             <div className="sprite">
               <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -942,17 +945,59 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
               <div className="brand">{a.probeBrand}{a.label ? ` · ${a.label}` : ''}</div>
             </div>
           </div>
-          <div className="af-field" style={{ marginTop: 10 }}>
-            <label>Override serial number</label>
-            <input
-              className="af-input af-mono"
-              type="text"
-              inputMode="numeric"
-              value={probeSerial}
-              onChange={e => setProbeSerial(e.target.value.replace(/\D/g, ''))}
-              placeholder="Serial number"
-            />
-          </div>
+          {serialConfirmed === null && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                onClick={() => setSerialConfirmed('confirmed')}
+                style={{
+                  flex: 1, padding: '11px 0',
+                  background: 'var(--field-green)', color: 'var(--bone)',
+                  fontFamily: 'var(--font-display)', fontWeight: 700,
+                  fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  border: 'none', borderRadius: 'var(--r-md)', cursor: 'pointer',
+                }}
+              >
+                ✓ Confirm
+              </button>
+              <button
+                type="button"
+                onClick={() => setSerialConfirmed('override')}
+                style={{
+                  flex: 1, padding: '11px 0',
+                  background: 'transparent', color: 'var(--field-green)',
+                  fontFamily: 'var(--font-display)', fontWeight: 700,
+                  fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase',
+                  border: '1.5px solid var(--field-green)', borderRadius: 'var(--r-md)', cursor: 'pointer',
+                }}
+              >
+                Change
+              </button>
+            </div>
+          )}
+          {serialConfirmed === 'confirmed' && (
+            <button
+              type="button"
+              onClick={() => setSerialConfirmed(null)}
+              style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--stone-500)', fontSize: 12, cursor: 'pointer', padding: 0 }}
+            >
+              Undo
+            </button>
+          )}
+          {serialConfirmed === 'override' && (
+            <div className="af-field" style={{ marginTop: 10 }}>
+              <label>Enter correct serial number</label>
+              <input
+                className="af-input af-mono"
+                type="text"
+                inputMode="numeric"
+                value={probeSerial}
+                onChange={e => setProbeSerial(e.target.value.replace(/\D/g, ''))}
+                placeholder="Serial number"
+                autoFocus
+              />
+            </div>
+          )}
         </InstallSection>
 
         {/* Section 2: GPS */}
