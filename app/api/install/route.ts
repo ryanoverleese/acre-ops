@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build the update data for probe_assignment
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString();
     const probeAssignmentUpdate: Record<string, unknown> = {
       installer,
       install_date: today,
