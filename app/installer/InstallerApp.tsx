@@ -46,7 +46,7 @@ function getMapProvider(): MapProvider {
 }
 function mapsUrlFor(lat: number, lng: number, provider: MapProvider): string {
   if (provider === 'apple') return `https://maps.apple.com/?q=${lat},${lng}&ll=${lat},${lng}`;
-  return `https://maps.google.com/?daddr=${lat},${lng}`;
+  return `https://maps.google.com/?q=${lat},${lng}`;
 }
 type Filter = 'todo' | 'done' | 'all';
 
@@ -1374,6 +1374,7 @@ function MapScreen({
     status: a.status,
     fieldName: a.fieldName,
     operation: a.operation,
+    probeSerial: a.probeSerial,
   }));
 
   return (

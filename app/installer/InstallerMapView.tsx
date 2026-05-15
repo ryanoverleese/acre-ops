@@ -13,6 +13,7 @@ export interface MapPoint {
   status: string;
   fieldName: string;
   operation: string;
+  probeSerial?: string;
 }
 
 type Layer = 'street' | 'satellite';
@@ -260,6 +261,11 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
                 </span>
               )}
               {p.fieldName}
+              {p.probeSerial && (
+                <span style={{ display: 'block', opacity: 0.7, fontSize: '0.85em', marginTop: 1 }}>
+                  #{p.probeSerial}
+                </span>
+              )}
             </Tooltip>
           </Marker>
         );
