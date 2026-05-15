@@ -195,10 +195,11 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const handleLogout = () => { clearSession(); setSession(null); setAssignments([]); setScreen('login'); };
   const handleSelectAssignment = (a: InstallerAssignment) => { setSelected(a); setScreen('field'); };
   const handleInstallSuccess = (data: SuccessData, assignmentId: number) => {
+    void data;
     playSuccessSound();
     setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: 'Installed' } : a));
-    setSuccessData(data);
-    setScreen('success');
+    setSelected(null);
+    setScreen('route');
   };
   const handleBackToRoute = () => { setSelected(null); setSuccessData(null); setScreen('route'); };
 
