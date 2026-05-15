@@ -600,7 +600,19 @@ function RouteScreen({
                         </span>
                       );
                     })()}
-                    {a.label && <span style={{ color: 'var(--stone-500)' }}>{a.label}</span>}
+                    {a.label && (
+                                        <span style={{
+                                          fontFamily: 'var(--font-display)', fontWeight: 700,
+                                          fontSize: 10, letterSpacing: '0.08em',
+                                          color: 'var(--field-green)',
+                                          background: 'var(--sage-wash)',
+                                          padding: '2px 6px', borderRadius: 3,
+                                          textTransform: 'uppercase',
+                                          border: '1px solid var(--field-green)',
+                                        }}>
+                                          {a.label}
+                                        </span>
+                                      )}
                   </div>
                 )}
               </div>
