@@ -1006,7 +1006,9 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const [photoExtra, setPhotoExtra] = useState<File | null>(null);
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
   const [error, setError] = useState('');
+  const submitProgressRef = useRef(0);
   const photoEndRef = useRef<HTMLInputElement>(null);
   const photoExtraRef = useRef<HTMLInputElement>(null);
 
@@ -1055,7 +1057,17 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const handleSubmit = async () => {
     if (!gps) { setError('GPS location is required'); return; }
     if (!photoEnd) { setError('Field end photo is required'); return; }
-    setError(''); setSubmitting(true);
+    setError(''); setSubmitting(true); setSubmitProgress(0); submitProgressRef.current = 0;
+
+    // Simulated progress: fast 0→70, slow 70→92, stalls waiting for server
+    const interval = setInterval(() => {
+      const cur = submitProgressRef.current;
+      const increment = cur < 40 ? 3 : cur < 70 ? 1.5 : cur < 85 ? 0.5 : cur < 92 ? 0.15 : 0;
+      const next = Math.min(cur + increment, 92);
+      submitProgressRef.current = next;
+      setSubmitProgress(next);
+    }, 120);
+
     try {
       const fd = new FormData();
       fd.append('probeAssignmentId', String(a.id));
@@ -1071,11 +1083,18 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       if (photoExtra) fd.append('photoExtra', photoExtra);
 
       const res = await fetch('/api/install', { method: 'POST', body: fd });
-      if (!res.ok) { const d = await res.json(); setError(d.error || 'Submit failed — try again'); return; }
+      clearInterval(interval);
+      if (!res.ok) { const d = await res.json(); setError(d.error || 'Submit failed — try again'); setSubmitting(false); return; }
+      // Jump to 100% and hold briefly before navigating
+      submitProgressRef.current = 100; setSubmitProgress(100);
+      await new Promise(r => setTimeout(r, 500));
       const flags = calcFlags(a.antennaType, a.sideDress);
       onSuccess({ fieldName: a.fieldName, probeSerial, flags }, a.id);
-    } catch { setError('Network error — check connection and try again'); }
-    finally { setSubmitting(false); }
+    } catch {
+      clearInterval(interval);
+      setError('Network error — check connection and try again');
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -1439,31 +1458,35 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       {submitting && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 300,
-          background: 'rgba(31,64,42,0.92)',
+          background: 'var(--field-green)',
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
-          gap: 24, padding: '0 40px',
+          padding: '0 36px', gap: 32,
         }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: 'var(--bone)', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>
-            Logging install…
+          <div style={{ fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(246,242,234,0.5)' }}>
+            {submitProgress < 100 ? 'Logging install' : 'Complete'}
           </div>
-          <div style={{ width: '100%', height: 6, background: 'rgba(246,242,234,0.2)', borderRadius: 3, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', borderRadius: 3,
-              background: 'var(--bone)',
-              animation: 'af-progress-indeterminate 1.6s ease-in-out infinite',
-            }} />
+          {/* Text fill paragraph */}
+          <div style={{ position: 'relative', lineHeight: 1.55, fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 700, letterSpacing: '0.02em', textTransform: 'uppercase', userSelect: 'none' }}>
+            {/* Background (dim) layer */}
+            <span style={{ color: 'rgba(246,242,234,0.18)' }}>
+              Saving GPS coordinates, probe assignment, crop confirmation, photos, and install notes to Acre Insights.
+            </span>
+            {/* Foreground (fill) layer — clips to progress width */}
+            <span style={{
+              position: 'absolute', inset: 0,
+              color: 'var(--bone)',
+              clipPath: `inset(0 ${100 - submitProgress}% 0 0)`,
+              transition: 'clip-path 0.15s linear',
+              whiteSpace: 'pre-wrap',
+            }}>
+              Saving GPS coordinates, probe assignment, crop confirmation, photos, and install notes to Acre Insights.
+            </span>
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(246,242,234,0.6)', fontFamily: 'var(--font-display)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            Uploading photos &amp; saving location
+          {/* Numeric % */}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'rgba(246,242,234,0.45)', letterSpacing: '0.12em' }}>
+            {Math.round(submitProgress)}%
           </div>
-          <style>{`
-            @keyframes af-progress-indeterminate {
-              0%   { width: 0%;   margin-left: 0%; }
-              40%  { width: 60%;  margin-left: 20%; }
-              100% { width: 0%;   margin-left: 100%; }
-            }
-          `}</style>
         </div>
       )}
     </div>
