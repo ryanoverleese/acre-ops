@@ -31,6 +31,7 @@ export interface InstallerAssignment {
   antennaType: string;
   batteryType: string;
   fieldNotes: string;
+  installNotes: string;
   status: string;
   plannedInstaller: string;
 }
@@ -641,7 +642,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
 
   // Edit mode for installed probes
   const [editMode, setEditMode] = useState<null | 'location' | 'note' | 'serial'>(null);
-  const [editNote, setEditNote] = useState(a.fieldNotes || '');
+  const [editNote, setEditNote] = useState(a.installNotes || '');
   const [editSerial, setEditSerial] = useState('');
   const [editGps, setEditGps] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
   const [editLivePos, setEditLivePos] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
@@ -697,7 +698,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       if (!res.ok) { setEditError('Save failed — try again'); setEditSaving(false); return; }
       setEditSuccess('Saved');
       setEditMode(null);
-      if (editMode === 'note') onUpdateAssignment?.({ fieldNotes: editNote });
+      if (editMode === 'note') onUpdateAssignment?.({ installNotes: editNote });
       if (editMode === 'serial') onUpdateAssignment?.({ probeSerial: editSerial.trim() });
       if (editMode === 'location' && editGps) onUpdateAssignment?.({ lat: editGps.lat, lng: editGps.lng });
     } catch { setEditError('Network error'); }
@@ -2431,6 +2432,7 @@ interface HistoryEntry {
   probeSerial: string;
   installDate: string;
   label: string;
+  installNotes: string;
 }
 
 function HistoryScreen({ session, onBack }: { session: Session; onBack: () => void }) {
@@ -2457,7 +2459,7 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
     return () => navigator.geolocation.clearWatch(id);
   }, [editMode]);
 
-  const openEdit = (h: HistoryEntry) => { setEditEntry(h); setEditMode(null); setEditNote(''); setEditSerial(''); setEditGps(null); setEditError(''); };
+  const openEdit = (h: HistoryEntry) => { setEditEntry(h); setEditMode(null); setEditNote(h.installNotes || ''); setEditSerial(''); setEditGps(null); setEditError(''); };
   const closeEdit = () => { setEditEntry(null); setEditMode(null); setEditError(''); };
 
   const saveEdit = async () => {

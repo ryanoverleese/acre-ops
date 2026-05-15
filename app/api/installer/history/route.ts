@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
           probeSerial: probe?.serial_number?.toString() ?? '',
           installDate: pa.install_date ?? '',
           label: pa.label ?? '',
+          installNotes: pa.install_notes ?? '',
         };
       })
       .sort((a, b) => (b.installDate || '').localeCompare(a.installDate || ''));

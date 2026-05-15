@@ -155,6 +155,7 @@ export async function GET(request: NextRequest) {
           // the probe_assignment's placement_notes field so installers see
           // all relevant notes.
           fieldNotes: [fs.notes, pa.placement_notes].filter(Boolean).join('\n\n'),
+          installNotes: pa.install_notes ?? '',
           status: pa.probe_status?.value ?? 'Assigned',
         };
       })
