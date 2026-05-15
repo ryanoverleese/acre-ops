@@ -1363,7 +1363,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
                   border: `1.5px solid ${pickupAccess === val ? 'var(--field-green)' : 'var(--stone-300)'}`,
                 }}
               >
-                {val ? 'Yes' : 'No'}
+                {val ? 'Yes' : 'Needs ATV'}
               </button>
             ))}
           </div>
