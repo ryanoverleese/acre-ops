@@ -1001,6 +1001,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const [cropConfirmed, setCropConfirmed] = useState<null | true | false>(null);
   const [cropChanged, setCropChanged] = useState('');
   const [rowDir, setRowDir] = useState<string | null>(null);
+  const [pickupAccess, setPickupAccess] = useState<boolean | null>(null);
   const [cropxId, setCropxId] = useState('');
   const [photoEnd, setPhotoEnd] = useState<File | null>(null);
   const [photoExtra, setPhotoExtra] = useState<File | null>(null);
@@ -1077,6 +1078,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       fd.append('lng', String(gps.lng));
       fd.append('crop', cropConfirmed === false && cropChanged ? cropChanged : a.crop);
       if (rowDir) fd.append('rowDirection', rowDir);
+      if (pickupAccess !== null) fd.append('pickupAccess', String(pickupAccess));
       if (cropxId) fd.append('cropxTelemetryId', cropxId);
       if (notes) fd.append('installNotes', notes);
       fd.append('photoFieldEnd', photoEnd);
@@ -1341,6 +1343,31 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
             ))}
           </div>
         </InstallSection>
+
+        {/* Section 4b: Pickup access */}
+        <div style={{ padding: '20px 14px 8px' }}>
+          <div style={{ fontSize: 12, color: 'var(--stone-500)', marginBottom: 10, lineHeight: 1.4 }}>
+            Is this probe easily accessed with a pickup only?
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {([true, false] as const).map(val => (
+              <button
+                key={String(val)}
+                type="button"
+                onClick={() => setPickupAccess(val)}
+                className="af-btn af-btn--lg"
+                style={{
+                  flex: 1,
+                  background: pickupAccess === val ? 'var(--field-green)' : 'var(--bone-raised)',
+                  color: pickupAccess === val ? 'var(--bone)' : 'var(--ink)',
+                  border: `1.5px solid ${pickupAccess === val ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                }}
+              >
+                {val ? 'Yes' : 'No'}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Section 5: Photos */}
         <InstallSection num={5} title="Photos" done={doneMap.photoEnd} hint="Field end shot + optional extra.">

@@ -55,6 +55,8 @@ export async function POST(request: NextRequest) {
     const changedProbeId = changedProbeIdStr ? parseInt(changedProbeIdStr, 10) : null;
     const cropxTelemetryId = formData.get('cropxTelemetryId') as string | null;
     const signalStrength = formData.get('signalStrength') as string | null;
+    const pickupAccessStr = formData.get('pickupAccess') as string | null;
+    const pickupAccess = pickupAccessStr !== null ? pickupAccessStr === 'true' : null;
     const installNotes = formData.get('installNotes') as string | null;
     const photoFieldEnd = formData.get('photoFieldEnd') as File | null;
     const photoExtra = formData.get('photoExtra') as File | null;
@@ -106,6 +108,9 @@ export async function POST(request: NextRequest) {
     }
     if (installNotes) {
       probeAssignmentUpdate.install_notes = installNotes;
+    }
+    if (pickupAccess !== null) {
+      probeAssignmentUpdate.pick_up_access = pickupAccess;
     }
     if (photoFieldEndFile) {
       probeAssignmentUpdate.install_photo_field_end_url = [{ name: photoFieldEndFile.name }];
