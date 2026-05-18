@@ -1444,7 +1444,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 6: CropX telemetry ID */}
-        <InstallSection num={6} title="CropX telemetry ID" done={!!cropxId} hint="Optional — found on probe unit.">
+        <InstallSection num={6} title="CropX telemetry ID" done={!!cropxId} hint="Only needed for CropX White Gateways.">
           <input
             className="af-input af-mono"
             placeholder="000000"
