@@ -1349,9 +1349,9 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         {/* Section 4b: Pickup access */}
         <div style={{ padding: '20px 14px 8px' }}>
           <div style={{ fontSize: 12, color: 'var(--stone-500)', marginBottom: 10, lineHeight: 1.4 }}>
-            Is this probe easily accessed with a pickup only?
+            Is this probe location easily accessed with a pickup?
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {([true, false] as const).map(val => (
               <button
                 key={String(val)}
@@ -1359,7 +1359,6 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
                 onClick={() => setPickupAccess(val)}
                 className="af-btn af-btn--lg"
                 style={{
-                  flex: 1,
                   background: pickupAccess === val ? 'var(--field-green)' : 'var(--bone-raised)',
                   color: pickupAccess === val ? 'var(--bone)' : 'var(--ink)',
                   border: `1.5px solid ${pickupAccess === val ? 'var(--field-green)' : 'var(--stone-300)'}`,
