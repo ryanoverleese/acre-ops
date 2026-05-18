@@ -320,6 +320,20 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
   const withInstaller = rows.filter((r) => r.plannedInstaller).length;
   const withRoute = rows.filter((r) => !!r.routeOrder).length;
 
+  // Per-installer field + probe counts (live, derived from rows state)
+  const installerStats = useMemo(() => {
+    const map = new Map<string, { fields: number; probes: number }>();
+    for (const r of rows) {
+      const name = r.plannedInstaller;
+      if (!name) continue;
+      const entry = map.get(name) ?? { fields: 0, probes: 0 };
+      entry.fields += 1;
+      entry.probes += r.probeCount || 1;
+      map.set(name, entry);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [rows]);
+
   return (
     <>
       <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 16 }}>
@@ -340,6 +354,34 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
           <div className="stat-value" style={{ color: '#6366f1' }}>{withRoute}</div>
         </div>
       </div>
+
+      {installerStats.length > 0 && (
+        <div style={{
+          display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16,
+        }}>
+          {installerStats.map(([name, stats]) => (
+            <div key={name} style={{
+              background: '#fff', border: '1px solid #e5e5ea', borderRadius: 10,
+              padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: '50%', background: '#0071e3',
+                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 13, fontWeight: 700, flexShrink: 0,
+              }}>
+                {name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#1d1d1f' }}>{name}</div>
+                <div style={{ fontSize: 12, color: '#86868b', marginTop: 1 }}>
+                  {stats.fields} field{stats.fields !== 1 ? 's' : ''} · {stats.probes} probe{stats.probes !== 1 ? 's' : ''}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="table-container">
         <div className="table-header">
