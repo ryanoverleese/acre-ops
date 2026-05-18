@@ -161,7 +161,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
       }
       const rLat = Number(field?.lat);
       const rLng = Number(field?.lng);
-      if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) continue;
+      if (!field || !rLat || !rLng || isNaN(rLat) || isNaN(rLng)) continue;
       out.push({
         id: r.id,
         fieldName: field.name,
