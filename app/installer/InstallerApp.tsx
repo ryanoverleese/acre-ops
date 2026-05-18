@@ -1012,6 +1012,9 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const [submitProgress, setSubmitProgress] = useState(0);
   const [error, setError] = useState('');
   const submitProgressRef = useRef(0);
+  const [showRepairModal, setShowRepairModal] = useState(false);
+  const [repairProblem, setRepairProblem] = useState('');
+  const [submittingRepair, setSubmittingRepair] = useState(false);
   const photoEndRef = useRef<HTMLInputElement>(null);
   const photoExtraRef = useRef<HTMLInputElement>(null);
 
@@ -1464,7 +1467,24 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         {error && <div style={{ padding: '0 14px 8px' }}><div className="af-error-msg">{error}</div></div>}
 
         {/* Submit button — bottom of scroll */}
-        <div style={{ padding: '16px 14px calc(24px + env(safe-area-inset-bottom, 0px))' }}>
+        <div style={{ padding: '16px 14px calc(24px + env(safe-area-inset-bottom, 0px))', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button
+            type="button"
+            onClick={() => setShowRepairModal(true)}
+            disabled={!canSubmit || submitting}
+            style={{
+              width: '100%', padding: '14px', borderRadius: 12, border: '1.5px solid var(--dry)',
+              background: 'transparent', color: 'var(--dry)', fontSize: 15, fontWeight: 700,
+              cursor: canSubmit ? 'pointer' : 'default', opacity: canSubmit ? 1 : 0.45,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+            }}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+            Mark as installed, needs repair
+          </button>
           <button
             className="af-btn af-btn--primary af-btn--xl af-btn--block"
             onClick={handleSubmit}
@@ -1477,6 +1497,96 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
             Submit install
           </button>
         </div>
+
+        {/* Needs Repair Modal */}
+        {showRepairModal && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 400,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex', alignItems: 'flex-end',
+          }} onClick={() => setShowRepairModal(false)}>
+            <div style={{
+              width: '100%', background: 'var(--bone)', borderRadius: '20px 20px 0 0',
+              padding: '24px 20px calc(32px + env(safe-area-inset-bottom, 0px))',
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="18" height="18" fill="none" stroke="#92400E" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>Needs Repair</div>
+                  <div style={{ fontSize: 12, color: 'var(--stone-500)' }}>{a.fieldName}</div>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--stone-500)', margin: '12px 0 6px' }}>
+                What's wrong with this probe? Describe the issue so the office can follow up.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                {['Antenna damaged', 'Probe not reading', 'Wet connector', 'Physical damage', 'Wrong location', 'Signal issues'].map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setRepairProblem(p => p ? `${p}, ${tag}` : tag)}
+                    style={{
+                      padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                      border: '1px solid var(--stone-300)', background: 'var(--bone-raised)',
+                      color: 'var(--ink)', cursor: 'pointer',
+                    }}
+                  >{tag}</button>
+                ))}
+              </div>
+              <textarea
+                value={repairProblem}
+                onChange={e => setRepairProblem(e.target.value)}
+                placeholder="Describe the problem…"
+                rows={3}
+                style={{
+                  width: '100%', borderRadius: 10, border: '1.5px solid var(--stone-300)',
+                  padding: '10px 12px', fontSize: 14, background: 'var(--bone-raised)',
+                  color: 'var(--ink)', resize: 'none', boxSizing: 'border-box',
+                }}
+              />
+              <button
+                type="button"
+                disabled={!repairProblem.trim() || submittingRepair}
+                onClick={async () => {
+                  if (!repairProblem.trim()) return;
+                  setSubmittingRepair(true);
+                  try {
+                    // Submit the normal install first
+                    await handleSubmit();
+                    // Then log the repair
+                    await fetch('/api/repairs', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        field_season: a.fieldSeasonId,
+                        probe_assignment: a.id,
+                        problem: repairProblem.trim(),
+                        reported_at: new Date().toISOString().slice(0, 10),
+                      }),
+                    });
+                  } finally {
+                    setSubmittingRepair(false);
+                    setShowRepairModal(false);
+                  }
+                }}
+                style={{
+                  marginTop: 14, width: '100%', padding: 14, borderRadius: 12,
+                  background: repairProblem.trim() ? '#92400E' : 'var(--stone-300)',
+                  color: '#fff', fontSize: 15, fontWeight: 700, border: 'none',
+                  cursor: repairProblem.trim() ? 'pointer' : 'default',
+                  opacity: submittingRepair ? 0.6 : 1,
+                }}
+              >
+                {submittingRepair ? 'Submitting…' : 'Submit install + log repair'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Submitting overlay */}
