@@ -99,10 +99,9 @@ function daysSince(dateStr?: string): number | null {
 function probeDaysColor(plantingDate?: string): string {
   const days = daysSince(plantingDate);
   if (days === null) return '#c7c7cc';   // no date — gray
-  if (days >= 16)   return '#34c759';   // ready
-  if (days >= 11)   return '#ff9f0a';   // getting close
-  if (days >= 6)    return '#ff6b35';   // too soon
-  return '#ff3b30';                      // too early
+  if (days > 26)    return '#2F6BB0';   // getting late — blue
+  if (days >= 16)   return '#34c759';   // ideal — green
+  return '#ff3b30';                      // too early — red
 }
 
 export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom }: Props) {
