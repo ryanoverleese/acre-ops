@@ -1346,11 +1346,8 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           </div>
         </InstallSection>
 
-        {/* Section 4b: Pickup access */}
-        <div style={{ padding: '20px 14px 8px' }}>
-          <div style={{ fontSize: 12, color: 'var(--stone-500)', marginBottom: 10, lineHeight: 1.4 }}>
-            Is this probe location easily accessed with a pickup?
-          </div>
+        {/* Section 5: Access */}
+        <InstallSection num={5} title="Access" done={pickupAccess !== null} hint="Is this probe location easily accessed with a pickup?">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {([true, false] as const).map(val => (
               <button
@@ -1368,10 +1365,10 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
               </button>
             ))}
           </div>
-        </div>
+        </InstallSection>
 
-        {/* Section 5: Photos */}
-        <InstallSection num={5} title="Photos" done={doneMap.photoEnd} hint="Field end shot + optional extra.">
+        {/* Section 6: Photos */}
+        <InstallSection num={6} title="Photos" done={doneMap.photoEnd} hint="Field end shot + optional extra.">
           <div>
             <input ref={photoEndRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
               onChange={e => handlePhoto('end', e.target.files?.[0] ?? null)} />
@@ -1444,7 +1441,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 6: CropX telemetry ID */}
-        <InstallSection num={6} title="CropX telemetry ID" done={!!cropxId} hint="Only needed for CropX White Gateways.">
+        <InstallSection num={7} title="CropX telemetry ID" done={!!cropxId} hint="Only needed for CropX White Gateways.">
           <input
             className="af-input af-mono"
             placeholder="000000"
@@ -1455,7 +1452,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 7: Install notes */}
-        <InstallSection num={7} title="Install notes" done={!!notes} hint="Optional — anything unusual?">
+        <InstallSection num={8} title="Install notes" done={!!notes} hint="Optional — anything unusual?">
           <textarea
             className="af-textarea"
             placeholder="Residue heavy, soil dry on top, grower mentioned replant in west end…"

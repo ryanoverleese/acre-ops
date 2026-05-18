@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -18,6 +18,13 @@ interface Props {
 // Google hybrid tiles — same source used elsewhere in Acre Ops
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const ATTR = '&copy; Google';
+
+// Exposes map instance via callback so parent can call zoom
+function MapRef({ onMap }: { onMap: (m: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => { onMap(map); }, [map, onMap]);
+  return null;
+}
 
 // Keep map centered on the user as they walk around
 function FollowUser({ pos }: { pos: { lat: number; lng: number } | null }) {
@@ -37,6 +44,8 @@ function FollowUser({ pos }: { pos: { lat: number; lng: number } | null }) {
 
 export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, userPos }: Props) {
   const [ready, setReady] = useState(false);
+  const mapRef = useRef<L.Map | null>(null);
+  const handleMap = useCallback((m: L.Map) => { mapRef.current = m; }, []);
   useEffect(() => { setReady(true); }, []);
   if (!ready) return null;
 
@@ -88,24 +97,39 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
       })
     : null;
 
+  const btnStyle: React.CSSProperties = {
+    position: 'absolute', right: 8, zIndex: 1000,
+    width: 36, height: 36, borderRadius: 8,
+    background: 'rgba(255,255,255,0.92)', border: '1px solid rgba(0,0,0,0.15)',
+    boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: 22, fontWeight: 300, cursor: 'pointer', lineHeight: 1,
+    color: '#1d1d1f',
+  };
+
   return (
-    <MapContainer
-      center={center}
-      zoom={17}
-      maxZoom={21}
-      style={{ height: 240, width: '100%' }}
-      zoomControl={false}
-      attributionControl={false}
-      dragging={false}
-      doubleClickZoom={false}
-      scrollWheelZoom={false}
-      touchZoom={false}
-      keyboard={false}
-    >
-      <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
-      <FollowUser pos={userPos} />
-      {userPos && userIcon && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} interactive={false} />}
-      {captured && capturedIcon && <Marker position={[captured.lat, captured.lng]} icon={capturedIcon} interactive={false} />}
-    </MapContainer>
+    <div style={{ position: 'relative' }}>
+      <MapContainer
+        center={center}
+        zoom={17}
+        maxZoom={21}
+        style={{ height: 240, width: '100%' }}
+        zoomControl={false}
+        attributionControl={false}
+        dragging={false}
+        doubleClickZoom={false}
+        scrollWheelZoom={false}
+        touchZoom={false}
+        keyboard={false}
+      >
+        <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
+        <FollowUser pos={userPos} />
+        <MapRef onMap={handleMap} />
+        {userPos && userIcon && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} interactive={false} />}
+        {captured && capturedIcon && <Marker position={[captured.lat, captured.lng]} icon={capturedIcon} interactive={false} />}
+      </MapContainer>
+      <button style={{ ...btnStyle, top: 8 }} onPointerDown={(e) => { e.preventDefault(); mapRef.current?.zoomIn(); }}>+</button>
+      <button style={{ ...btnStyle, top: 52 }} onPointerDown={(e) => { e.preventDefault(); mapRef.current?.zoomOut(); }}>−</button>
+    </div>
   );
 }
