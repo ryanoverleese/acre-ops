@@ -231,6 +231,7 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
         opacity: 0.7,
         fillColor: '#4a7a5b',
         fillOpacity: 0.1,
+        interactive: false,
       });
 
       const center = zoneCenter(cell.band, cell.col);
