@@ -65,6 +65,15 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     return m;
   }, [fields]);
 
+  // field_season → planting date
+  const fsToPlantingDate = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const fs of fieldSeasons) {
+      if (fs.planting_date) m.set(fs.id, fs.planting_date);
+    }
+    return m;
+  }, [fieldSeasons]);
+
   // field_season → operation name
   const fsToOperationName = useMemo(() => {
     const m = new Map<number, string>();
@@ -122,10 +131,11 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
         lat,
         lng,
         status: pa.probe_status?.value ?? 'Unknown',
+        plantingDate: fsToPlantingDate.get(fsLink.id),
       });
     }
     return out;
-  }, [probeAssignments, fsToField, fsToOperationName]);
+  }, [probeAssignments, fsToField, fsToOperationName, fsToPlantingDate]);
 
   // Map repairs — join through probe_assignment → field_season → field
   const paToFs = useMemo(() => {
@@ -315,6 +325,23 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               onToggle={() => toggle(key)}
             />
           ))}
+          {layers.probes && (
+            <div style={{ borderTop: '1px solid #e7e5e4', marginTop: 8, paddingTop: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Days Since Planting</div>
+              {[
+                { color: '#34c759', label: '16+ — ready' },
+                { color: '#ff9f0a', label: '11–15 days' },
+                { color: '#ff6b35', label: '6–10 days' },
+                { color: '#ff3b30', label: '0–5 — too early' },
+                { color: '#c7c7cc', label: 'No date' },
+              ].map(({ color, label }) => (
+                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: 12 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                  <span style={{ color: '#57534e' }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

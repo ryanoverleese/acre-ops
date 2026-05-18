@@ -26,6 +26,7 @@ export interface MapProbe {
   lat: number;
   lng: number;
   status: string;
+  plantingDate?: string;  // YYYY-MM-DD
 }
 
 export interface MapRepair {
@@ -87,13 +88,19 @@ function statusColor(status: string): string {
   return STATUS_COLORS[key] ?? '#4a7a5b';
 }
 
-function probeStatusColor(status: string): string {
-  const s = status.toLowerCase();
-  if (s.includes('install') || s.includes('active')) return '#4a7a5b';
-  if (s.includes('plan') || s.includes('pending')) return '#f59e0b';
-  if (s.includes('remove')) return '#6b7280';
-  if (s.includes('damage') || s.includes('repair')) return '#ef4444';
-  return '#8b5cf6';
+function daysSince(dateStr?: string): number | null {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  return Math.floor(diff / 86_400_000);
+}
+
+function probeDaysColor(plantingDate?: string): string {
+  const days = daysSince(plantingDate);
+  if (days === null) return '#c7c7cc';   // no date — gray
+  if (days >= 16)   return '#34c759';   // ready
+  if (days >= 11)   return '#ff9f0a';   // getting close
+  if (days >= 6)    return '#ff6b35';   // too soon
+  return '#ff3b30';                      // too early
 }
 
 export default function UnifiedMap({ fields, probes, repairs, operations, cells, layers, center, zoom }: Props) {
@@ -171,10 +178,12 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
         radius: 5,
         color: '#fff',
         weight: 1,
-        fillColor: probeStatusColor(p.status),
+        fillColor: probeDaysColor(p.plantingDate),
         fillOpacity: 0.9,
       });
-      circle.bindPopup(`<b>${p.label}</b><br>${p.fieldName}<br>${p.operation}<br><i>${p.status}</i>`);
+      const days = daysSince(p.plantingDate);
+      const daysStr = days !== null ? `${days} days since planting` : 'No plant date';
+      circle.bindPopup(`<b>${p.label}</b><br>${p.fieldName}<br>${p.operation}<br><i>${daysStr}</i>`);
       g.addLayer(circle);
     }
   }, [probes]);
