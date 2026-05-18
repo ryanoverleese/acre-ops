@@ -62,7 +62,7 @@ export default async function PlantingPage() {
   }
 
   const plantingFields = fields.filter((f) => {
-    if (!f.fieldSeasonId || !f.plantingDate) return false;
+    if (!f.fieldSeasonId) return false;
     // Hide fields where every assigned probe has already been installed
     const total = probeCountByFieldSeason.get(f.fieldSeasonId) ?? 0;
     const installed = installedCountByFieldSeason.get(f.fieldSeasonId) ?? 0;
