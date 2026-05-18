@@ -560,7 +560,7 @@ export const getInventory = (options?: FetchOptions) => getRows<InventoryItem>('
 export interface WeatherStation {
   id: number;
   station_name?: string;
-  model?: { id: number; value: string };
+  model?: string;
   billing_entity?: { id: number; value: string }[];
   install_lat?: number;
   install_lng?: number;
