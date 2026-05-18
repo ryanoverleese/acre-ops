@@ -160,7 +160,7 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false }:
 
           return (
             <Marker
-              key={row.fieldSeasonId}
+              key={`${row.fieldSeasonId}-${showLabels}`}
               position={[row.lat, row.lng]}
               icon={makePin(color, false)}
             >
