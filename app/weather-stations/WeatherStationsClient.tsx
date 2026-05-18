@@ -210,8 +210,8 @@ export default function WeatherStationsClient({
         notes: form.notes || '',
       };
       if (form.billingEntity) payload.billing_entity = parseInt(form.billingEntity, 10);
-      if (form.installLat) payload.install_lat = parseFloat(form.installLat);
-      if (form.installLng) payload.install_lng = parseFloat(form.installLng);
+      if (form.installLat) payload.install_lat = Math.round(parseFloat(form.installLat) * 1000000) / 1000000;
+      if (form.installLng) payload.install_lng = Math.round(parseFloat(form.installLng) * 1000000) / 1000000;
       if (form.installDate) payload.install_date = form.installDate;
       if (form.pricePaid) payload.price_paid = parseFloat(form.pricePaid);
 
