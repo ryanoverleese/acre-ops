@@ -87,13 +87,15 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
       if (seen.has(fieldLink.id)) continue;
       seen.add(fieldLink.id);
       const f = fieldMap.get(fieldLink.id);
-      if (!f || !f.lat || !f.lng) continue;
+      const lat = Number(f?.lat);
+      const lng = Number(f?.lng);
+      if (!f || !lat || !lng || isNaN(lat) || isNaN(lng)) continue;
       out.push({
         id: f.id,
         name: f.name,
         operation: fieldToOperation.get(f.id) ?? '',
-        lat: f.lat,
-        lng: f.lng,
+        lat,
+        lng,
         acres: f.acres,
         crop: fs.crop?.value,
       });
@@ -109,9 +111,9 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
       if (!fsLink) continue;
       const field = fsToField.get(fsLink.id);
       if (!field) continue;
-      const lat = pa.placement_lat ?? pa.install_lat ?? field.lat;
-      const lng = pa.placement_lng ?? pa.install_lng ?? field.lng;
-      if (!lat || !lng) continue;
+      const lat = Number(pa.placement_lat ?? pa.install_lat ?? field.lat);
+      const lng = Number(pa.placement_lng ?? pa.install_lng ?? field.lng);
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
       out.push({
         id: pa.id,
         label: pa.label ?? `Probe ${pa.probe_number ?? 1}`,
@@ -157,13 +159,15 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           opName = fsToOperationName.get(fsLink.id) ?? '';
         }
       }
-      if (!field?.lat || !field?.lng) continue;
+      const rLat = Number(field?.lat);
+      const rLng = Number(field?.lng);
+      if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) continue;
       out.push({
         id: r.id,
         fieldName: field.name,
         operation: opName,
-        lat: field.lat,
-        lng: field.lng,
+        lat: rLat,
+        lng: rLng,
         problem: r.problem,
         fix: r.fix,
         repairedAt: r.repaired_at,
@@ -177,13 +181,15 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     const opContacts = new Map<string, { lats: number[]; lngs: number[]; fieldCount: number }>();
 
     for (const c of contacts) {
-      if (!c.address_lat || !c.address_lng) continue;
+      const cLat = Number(c.address_lat);
+      const cLng = Number(c.address_lng);
+      if (!cLat || !cLng || isNaN(cLat) || isNaN(cLng)) continue;
       for (const op of c.operations ?? []) {
         if (!opContacts.has(op.value)) {
           opContacts.set(op.value, { lats: [], lngs: [], fieldCount: 0 });
         }
-        opContacts.get(op.value)!.lats.push(c.address_lat);
-        opContacts.get(op.value)!.lngs.push(c.address_lng);
+        opContacts.get(op.value)!.lats.push(cLat);
+        opContacts.get(op.value)!.lngs.push(cLng);
       }
     }
 
