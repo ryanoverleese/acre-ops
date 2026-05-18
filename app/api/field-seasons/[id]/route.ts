@@ -44,7 +44,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // probe link field is on probe_assignments, not field_seasons
     // Install planning fields
     if (body.route_order !== undefined) updateData.route_order = body.route_order;
-    if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer;
+    if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer || null;
     if (body.ready_to_install !== undefined) updateData.ready_to_install = body.ready_to_install;
 
 
