@@ -542,6 +542,20 @@ export default function WeatherStationsClient({
             </div>
             <div className="detail-panel-footer">
               <button className="btn btn-secondary" onClick={() => setShowDetailModal(false)}>Close</button>
+              {selectedStation.installLat && selectedStation.installLng && (
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStation.installLat},${selectedStation.installLng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-secondary"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+                  </svg>
+                  Navigate
+                </a>
+              )}
               <button className="btn btn-primary" onClick={handleStartEdit}>Edit</button>
             </div>
           </div>
