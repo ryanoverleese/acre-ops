@@ -259,6 +259,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
   const [showMap, setShowMap] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>('installer');
   const [installerFilter, setInstallerFilter] = useState<string | null>(null);
+  const [showLabels, setShowLabels] = useState(false);
 
   function handleSort(col: SortCol) {
     if (sortCol === col) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
@@ -393,6 +394,20 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                 ))}
               </div>
 
+              <div style={{ borderLeft: '1px solid #e5e5ea', paddingLeft: 16 }}>
+                <button
+                  onClick={() => setShowLabels((v) => !v)}
+                  style={{
+                    padding: '4px 12px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                    fontSize: 12, fontWeight: 600,
+                    background: showLabels ? '#1d1d1f' : '#e5e5ea',
+                    color: showLabels ? '#fff' : '#1d1d1f',
+                  }}
+                >
+                  Labels
+                </button>
+              </div>
+
               {installerOptions.length > 0 && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderLeft: '1px solid #e5e5ea', paddingLeft: 16 }}>
                   <span style={{ fontSize: 11, color: '#86868b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Show</span>
@@ -425,7 +440,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
               )}
             </div>
             <div style={{ height: 520, borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
-              <PlantingMapView rows={mapRows} colorMode={colorMode} />
+              <PlantingMapView rows={mapRows} colorMode={colorMode} showLabels={showLabels} />
             </div>
           </div>
         )}

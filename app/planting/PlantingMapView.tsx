@@ -12,6 +12,7 @@ export type ColorMode = 'installer' | 'days' | 'crop';
 interface Props {
   rows: PlantingRow[];
   colorMode: ColorMode;
+  showLabels?: boolean;
 }
 
 const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
@@ -130,7 +131,7 @@ function Legend({ colorMode }: { colorMode: ColorMode }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function PlantingMapView({ rows, colorMode }: Props) {
+export default function PlantingMapView({ rows, colorMode, showLabels = false }: Props) {
   const valid = useMemo(() => rows.filter(r => r.lat && r.lng), [rows]);
   const center: [number, number] = valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
 
@@ -163,14 +164,31 @@ export default function PlantingMapView({ rows, colorMode }: Props) {
               position={[row.lat, row.lng]}
               icon={makePin(color, false)}
             >
-              <Tooltip direction="top" offset={[0, -10]}>
-                <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                  <strong>{row.fieldName}</strong>
-                  {tooltipLines.slice(1).map((l, i) => (
-                    <div key={i} style={{ color: '#555' }}>{l}</div>
-                  ))}
-                </div>
-              </Tooltip>
+              {showLabels ? (
+                <Tooltip
+                  permanent
+                  direction="top"
+                  offset={[0, -10]}
+                  className="af-map-label"
+                >
+                  <div style={{ fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}>
+                    <strong style={{ display: 'block' }}>{row.fieldName}</strong>
+                    <span style={{ opacity: 0.7 }}>{row.operation}</span>
+                    {row.aiUfid && (
+                      <span style={{ display: 'block', opacity: 0.55, fontSize: '0.9em', fontFamily: 'monospace' }}>{row.aiUfid}</span>
+                    )}
+                  </div>
+                </Tooltip>
+              ) : (
+                <Tooltip direction="top" offset={[0, -10]}>
+                  <div style={{ fontSize: 12, lineHeight: 1.5 }}>
+                    <strong>{row.fieldName}</strong>
+                    {tooltipLines.slice(1).map((l, i) => (
+                      <div key={i} style={{ color: '#555' }}>{l}</div>
+                    ))}
+                  </div>
+                </Tooltip>
+              )}
             </Marker>
           );
         })}

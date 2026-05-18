@@ -98,6 +98,7 @@ export interface ProcessedField {
   routeOrder?: string;
   plannedInstaller?: string;
   readyToInstall?: boolean;
+  aiUfid?: string;
   // Install details (after installation)
   installer?: string;
   installDate?: string;
@@ -389,6 +390,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
             readyToInstall: fs.ready_to_install,
+            aiUfid: field.ai_ufid || '',
             nrcsField: field.nrcs_field,
             // Install details from probe_assignment (probe 1)
             installer: probe1Assignment?.installer,

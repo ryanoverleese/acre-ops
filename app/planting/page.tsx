@@ -19,6 +19,7 @@ export interface PlantingRow {
   probeCount: number;
   lat: number;
   lng: number;
+  aiUfid: string;
 }
 
 async function fetchGDURaw(plantingDate: string): Promise<number | null> {
@@ -91,6 +92,7 @@ export default async function PlantingPage() {
     probeCount: probeCountByFieldSeason.get(f.fieldSeasonId!) ?? 0,
     lat: parseFloat(String(f.lat)) || 0,
     lng: parseFloat(String(f.lng)) || 0,
+    aiUfid: f.aiUfid || '',
   }));
 
   // Installer options: find the planned_installer select field options
