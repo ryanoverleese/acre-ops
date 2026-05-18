@@ -262,7 +262,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
               )}
               {p.fieldName}
               {p.probeSerial && (
-                <span style={{ display: 'block', opacity: 0.7, fontSize: '0.85em', marginTop: 1 }}>
+                <span style={{ display: 'block', opacity: 0.7, fontSize: '1em', marginTop: 1 }}>
                   #{p.probeSerial}
                 </span>
               )}
