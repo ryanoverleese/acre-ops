@@ -20,6 +20,7 @@ interface Props {
 const LAYER_LABELS: Record<keyof Layers, string> = {
   fields: 'Fields',
   probes: 'Probes',
+  plantDays: 'Planting Days',
   repairs: 'Repairs',
   customers: 'Customers',
   territory: 'Territory',
@@ -30,6 +31,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
   const [layers, setLayers] = useState<Layers>({
     fields: true,
     probes: true,
+    plantDays: false,
     repairs: false,
     customers: false,
     territory: false,
@@ -136,6 +138,14 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     }
     return out;
   }, [probeAssignments, fsToField, fsToOperationName, fsToPlantingDate]);
+
+  // Planting days probes — uninstalled only, colored by days since planting
+  const plantDaysProbes = useMemo<MapProbe[]>(() => {
+    return mapProbes.filter((p) => {
+      const s = p.status.toLowerCase();
+      return !s.includes('install') && !s.includes('active');
+    });
+  }, [mapProbes]);
 
   // Map repairs — join through probe_assignment → field_season → field
   const paToFs = useMemo(() => {
@@ -292,6 +302,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
         <UnifiedMap
           fields={mapFields}
           probes={mapProbes}
+          plantDaysProbes={plantDaysProbes}
           repairs={mapRepairs}
           operations={mapOperations}
           cells={mapCells}
@@ -325,7 +336,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               onToggle={() => toggle(key)}
             />
           ))}
-          {layers.probes && (
+          {layers.plantDays && (
             <div style={{ borderTop: '1px solid #e7e5e4', marginTop: 8, paddingTop: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Days Since Planting</div>
               {[

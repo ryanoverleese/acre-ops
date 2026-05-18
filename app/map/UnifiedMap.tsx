@@ -60,6 +60,7 @@ export interface MapCell {
 export interface Layers {
   fields: boolean;
   probes: boolean;
+  plantDays: boolean;
   repairs: boolean;
   customers: boolean;
   territory: boolean;
@@ -68,6 +69,7 @@ export interface Layers {
 interface Props {
   fields: MapField[];
   probes: MapProbe[];
+  plantDaysProbes: MapProbe[];
   repairs: MapRepair[];
   operations: MapOperation[];
   cells: MapCell[];
@@ -103,12 +105,13 @@ function probeDaysColor(plantingDate?: string): string {
   return '#ff3b30';                      // too early
 }
 
-export default function UnifiedMap({ fields, probes, repairs, operations, cells, layers, center, zoom }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerGroupsRef = useRef<{
     fields: L.LayerGroup;
     probes: L.LayerGroup;
+    plantDays: L.LayerGroup;
     repairs: L.LayerGroup;
     customers: L.LayerGroup;
     territory: L.LayerGroup;
@@ -134,7 +137,8 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
     const groups = {
       fields: L.layerGroup().addTo(map),
       probes: L.layerGroup().addTo(map),
-      repairs: L.layerGroup().addTo(map),
+      plantDays: L.layerGroup(),
+      repairs: L.layerGroup(),
       customers: L.layerGroup(),
       territory: L.layerGroup(),
     };
@@ -178,15 +182,33 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
         radius: 5,
         color: '#fff',
         weight: 1,
-        fillColor: probeDaysColor(p.plantingDate),
+        fillColor: statusColor(p.status),
         fillOpacity: 0.9,
+      });
+      circle.bindPopup(`<b>${p.label}</b><br>${p.fieldName}<br>${p.operation}<br><i>${p.status}</i>`);
+      g.addLayer(circle);
+    }
+  }, [probes]);
+
+  // Rebuild plantDays layer — uninstalled probes colored by days since planting
+  useEffect(() => {
+    const g = layerGroupsRef.current?.plantDays;
+    if (!g) return;
+    g.clearLayers();
+    for (const p of plantDaysProbes) {
+      const circle = L.circleMarker([p.lat, p.lng], {
+        radius: 6,
+        color: '#fff',
+        weight: 1.5,
+        fillColor: probeDaysColor(p.plantingDate),
+        fillOpacity: 0.95,
       });
       const days = daysSince(p.plantingDate);
       const daysStr = days !== null ? `${days} days since planting` : 'No plant date';
       circle.bindPopup(`<b>${p.label}</b><br>${p.fieldName}<br>${p.operation}<br><i>${daysStr}</i>`);
       g.addLayer(circle);
     }
-  }, [probes]);
+  }, [plantDaysProbes]);
 
   // Rebuild repairs layer
   useEffect(() => {
@@ -272,6 +294,7 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
 
     toggle(groups.fields, layers.fields);
     toggle(groups.probes, layers.probes);
+    toggle(groups.plantDays, layers.plantDays);
     toggle(groups.repairs, layers.repairs);
     toggle(groups.customers, layers.customers);
     toggle(groups.territory, layers.territory);
