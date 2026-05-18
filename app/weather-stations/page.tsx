@@ -38,7 +38,7 @@ export default async function WeatherStationsPage() {
       return {
         id: ws.id,
         stationName: ws.station_name || '',
-        model: ws.model?.value || '',
+        model: ws.model || '',
         billingEntityId: beId,
         billingEntityName: beId ? (beMap.get(beId) || ws.billing_entity?.[0]?.value || 'Unknown') : '',
         installLat: ws.install_lat || null,
@@ -56,8 +56,11 @@ export default async function WeatherStationsPage() {
       .map(be => ({ id: be.id, name: be.name || '' }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // Extract select options for dropdowns
-    const modelOptions = (wsOptions.model || []).map(o => o.value);
+    const modelOptions = [
+      'CropX Strato',
+      'Davis GroWeather Cabled',
+      'Davis Vantage Pro2',
+    ];
     const connectivityOptions = (wsOptions.connectivity_type || []).map(o => o.value);
     const statusOptions = (wsOptions.status || []).map(o => o.value);
 
@@ -76,7 +79,7 @@ export default async function WeatherStationsPage() {
       <WeatherStationsClient
         stations={[]}
         billingEntities={[]}
-        modelOptions={['Davis Vantage Pro2']}
+        modelOptions={['CropX Strato', 'Davis GroWeather Cabled', 'Davis Vantage Pro2']}
         connectivityOptions={['WiFi', 'Cellular', 'Other']}
         statusOptions={['Active', 'Offline', 'Decommissioned']}
       />
