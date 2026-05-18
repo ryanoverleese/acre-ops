@@ -226,11 +226,11 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
     for (const cell of cells) {
       const bounds = zoneBounds(cell.band, cell.col);
       const rect = L.rectangle(bounds, {
-        color: cell.isHome ? '#f59e0b' : '#ffffff',
-        weight: cell.isHome ? 3 : 2,
-        opacity: cell.isHome ? 1 : 0.7,
-        fillColor: cell.isHome ? '#f59e0b' : '#4a7a5b',
-        fillOpacity: cell.isHome ? 0.18 : 0.1,
+        color: '#ffffff',
+        weight: 2,
+        opacity: 0.7,
+        fillColor: '#4a7a5b',
+        fillOpacity: 0.1,
       });
 
       const center = zoneCenter(cell.band, cell.col);
