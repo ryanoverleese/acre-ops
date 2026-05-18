@@ -13,12 +13,15 @@
 export const CENTER_LAT = 40.593236;  // Olsen Cattle latitude
 export const CENTER_LNG = -99.028968; // Olsen Cattle longitude — western edge of M1E
 
-export const COL_WIDTH  = 0.2834;  // ~15 mi longitude step at 40°N
+export const COL_WIDTH  = 0.1892;  // ~10 mi longitude step at 40°N
+export const LAT_STEP   = 0.1449;  // ~10 mi latitude step
 
-// Latitude band thresholds (absolute degrees from CENTER_LAT)
-const M_LIMIT  = 0.2174;  // ~15 mi
-const NS_LIMIT = 0.5072;  // ~35 mi  (M_LIMIT + ~20 mi more)
-// beyond NS_LIMIT → FN or FS
+// Each band is exactly 10 miles tall
+// M  = 0–5 mi either side of center  (10 mi total)
+// N/S = 5–15 mi from center          (10 mi total)
+// FN/FS = 15+ mi from center         (10 mi tall, open-ended outward)
+const M_LIMIT  = LAT_STEP / 2;      // 5 mi
+const NS_LIMIT = LAT_STEP * 1.5;    // 15 mi
 
 export type LatBand = 'FN' | 'N' | 'M' | 'S' | 'FS';
 
@@ -72,11 +75,11 @@ export function zoneBounds(band: LatBand, col: number): [[number, number], [numb
       break;
     case 'FN':
       latSouth = CENTER_LAT + NS_LIMIT;
-      latNorth = CENTER_LAT + NS_LIMIT + (NS_LIMIT - M_LIMIT) * 2; // same height as N band, extended
+      latNorth = CENTER_LAT + NS_LIMIT + LAT_STEP;  // 10 mi tall
       break;
     case 'FS':
       latNorth = CENTER_LAT - NS_LIMIT;
-      latSouth = CENTER_LAT - NS_LIMIT - (NS_LIMIT - M_LIMIT) * 2;
+      latSouth = CENTER_LAT - NS_LIMIT - LAT_STEP;  // 10 mi tall
       break;
   }
 
