@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { zoneBounds, zoneCenter } from '@/lib/territory-grid';
+import { zoneBounds, zoneCenter, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import type { LatBand } from '@/lib/territory-grid';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
@@ -107,11 +107,20 @@ export default function UnifiedMap({ fields, probes, repairs, operations, cells,
     territory: L.LayerGroup;
   } | null>(null);
 
-  // Init map once
+  // Fly to computed center when it changes (after data loads)
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const [lat, lng] = center;
+    if (!isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0) {
+      mapRef.current.setView([lat, lng], zoom, { animate: false });
+    }
+  }, [center, zoom]);
+
+  // Init map once — always start at Olsen (hardcoded safe center)
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
-    const map = L.map(containerRef.current, { center, zoom, zoomControl: true });
+    const map = L.map(containerRef.current, { center: [CENTER_LAT, CENTER_LNG], zoom, zoomControl: true });
     L.tileLayer(SAT_URL, { attribution: '', maxZoom: 20 }).addTo(map);
     mapRef.current = map;
 
