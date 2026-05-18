@@ -151,42 +151,26 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false }:
             colorMode === 'days'      ? daysColor(ds) :
                                         cropColor(row.crop);
 
-          const tooltipLines: string[] = [row.fieldName, row.operation];
-          if (colorMode === 'installer') tooltipLines.push(row.plannedInstaller || 'Unassigned');
-          else if (colorMode === 'days')  tooltipLines.push(ds !== null ? `${ds} days` : 'No plant date');
-          else                           tooltipLines.push(row.crop || '—');
-
           return (
             <Marker
               key={`${row.fieldSeasonId}-${showLabels}`}
               position={[row.lat, row.lng]}
               icon={makePin(color, false)}
             >
-              {showLabels ? (
-                <Tooltip
-                  permanent
-                  direction="top"
-                  offset={[0, -10]}
-                  className="af-map-label"
-                >
-                  <div style={{ fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}>
-                    <strong style={{ display: 'block' }}>{row.fieldName}</strong>
-                    <span style={{ opacity: 0.7 }}>{row.operation}</span>
-                    {row.aiUfid && (
-                      <span style={{ display: 'block', opacity: 0.55, fontSize: '0.9em', fontFamily: 'monospace' }}>{row.aiUfid}</span>
-                    )}
-                  </div>
-                </Tooltip>
-              ) : (
-                <Tooltip direction="top" offset={[0, -10]}>
-                  <div style={{ fontSize: 12, lineHeight: 1.5 }}>
-                    <strong>{row.fieldName}</strong>
-                    {tooltipLines.slice(1).map((l, i) => (
-                      <div key={i} style={{ color: '#555' }}>{l}</div>
-                    ))}
-                  </div>
-                </Tooltip>
-              )}
+              <Tooltip
+                permanent={showLabels}
+                direction="top"
+                offset={[0, -10]}
+                className={showLabels ? 'af-map-label' : undefined}
+              >
+                <div style={{ fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}>
+                  <strong style={{ display: 'block' }}>{row.fieldName}</strong>
+                  <span style={{ opacity: 0.7 }}>{row.operation}</span>
+                  {row.aiUfid && (
+                    <span style={{ display: 'block', opacity: 0.55, fontSize: '0.9em', fontFamily: 'monospace' }}>{row.aiUfid}</span>
+                  )}
+                </div>
+              </Tooltip>
             </Marker>
           );
         })}
