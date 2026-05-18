@@ -24,6 +24,7 @@ const navSections: NavSection[] = [
     items: [
       { name: 'Dashboard', href: '/', icon: 'grid' },
       { name: 'CRM', href: '/crm', icon: 'users' },
+      { name: 'Map', href: '/map', icon: 'layers' },
       { name: 'Fields', href: '/fields', icon: 'map' },
       { name: 'Probes', href: '/probes', icon: 'cpu' },
       { name: 'Racks', href: '/racks', icon: 'rack' },
@@ -174,6 +175,11 @@ const icons: Record<string, ReactNode> = {
   sprout: (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 22V12m0 0C12 7 8 4 3 4c0 5 3 8 9 8zm0 0c0-5 4-8 9-8 0 5-3 8-9 8z" />
+    </svg>
+  ),
+  layers: (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
   ),
 };
