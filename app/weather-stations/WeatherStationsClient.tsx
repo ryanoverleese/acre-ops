@@ -6,6 +6,8 @@ import type { ProcessedWeatherStation, BillingEntityOption } from './page';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 
+const LocationPicker = dynamic(() => import('@/components/LocationPicker'), { ssr: false });
+
 const WeatherStationsMap = dynamic(() => import('@/components/WeatherStationsMap'), {
   ssr: false,
   loading: () => (
@@ -91,6 +93,7 @@ export default function WeatherStationsClient({
   const [sortColumn, setSortColumn] = useState<string>('stationName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [toast, setToast] = useState<string | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
     defaultWidths: DEFAULT_COLUMN_WIDTHS,
@@ -547,11 +550,11 @@ export default function WeatherStationsClient({
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className="detail-panel-overlay" onClick={() => { setShowAddModal(false); setIsEditing(false); }}>
+        <div className="detail-panel-overlay" onClick={() => { setShowAddModal(false); setIsEditing(false); setShowLocationPicker(false); }}>
           <div className="detail-panel" onClick={(e) => e.stopPropagation()}>
             <div className="detail-panel-header">
               <h3>{isEditing ? 'Edit Weather Station' : 'Add Weather Station'}</h3>
-              <button className="close-btn" onClick={() => { setShowAddModal(false); setIsEditing(false); }}>
+              <button className="close-btn" onClick={() => { setShowAddModal(false); setIsEditing(false); setShowLocationPicker(false); }}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="20" height="20">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -612,14 +615,24 @@ export default function WeatherStationsClient({
                     <input type="number" step="0.01" value={form.pricePaid} onChange={(e) => setForm({ ...form, pricePaid: e.target.value })} placeholder="0.00" />
                   </div>
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>Latitude</label>
-                    <input type="number" step="0.000001" value={form.installLat} onChange={(e) => setForm({ ...form, installLat: e.target.value })} placeholder="e.g., 40.123456" />
-                  </div>
-                  <div className="form-group">
-                    <label>Longitude</label>
-                    <input type="number" step="0.000001" value={form.installLng} onChange={(e) => setForm({ ...form, installLng: e.target.value })} placeholder="e.g., -98.654321" />
+                <div className="form-group">
+                  <label>Location</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setShowLocationPicker(true)}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >
+                      {form.installLat && form.installLng ? 'Move on Map' : 'Set on Map'}
+                    </button>
+                    {form.installLat && form.installLng ? (
+                      <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontVariantNumeric: 'tabular-nums' }}>
+                        {parseFloat(form.installLat).toFixed(6)}, {parseFloat(form.installLng).toFixed(6)}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>No location set</span>
+                    )}
                   </div>
                 </div>
                 <div className="form-group">
@@ -634,13 +647,26 @@ export default function WeatherStationsClient({
               </div>
             </div>
             <div className="detail-panel-footer">
-              <button className="btn btn-secondary" onClick={() => { setShowAddModal(false); setIsEditing(false); }}>Cancel</button>
+              <button className="btn btn-secondary" onClick={() => { setShowAddModal(false); setIsEditing(false); setShowLocationPicker(false); }}>Cancel</button>
               <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
                 {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Add Station'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Location Picker */}
+      {showLocationPicker && (
+        <LocationPicker
+          lat={form.installLat ? parseFloat(form.installLat) : null}
+          lng={form.installLng ? parseFloat(form.installLng) : null}
+          title="Set Station Location"
+          onLocationChange={(lat, lng) => {
+            setForm(f => ({ ...f, installLat: String(lat), installLng: String(lng) }));
+          }}
+          onClose={() => setShowLocationPicker(false)}
+        />
       )}
 
       {/* Toast */}
