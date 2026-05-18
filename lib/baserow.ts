@@ -371,6 +371,7 @@ export interface Field {
   drip_depth?: number;
   field_directions?: string;
   nrcs_field?: boolean;
+  ai_ufid?: string;
   plss_township?: number;
   plss_range?: number;
   plss_section?: number;
