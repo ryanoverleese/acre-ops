@@ -96,12 +96,19 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
       p.status?.value?.toLowerCase() === 'on order'
     ).length;
 
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayInstalledCount = currentSeasonAssignments.filter(pa =>
+      pa.probe_status?.value?.toLowerCase() === 'installed' &&
+      pa.install_date?.slice(0, 10) === todayStr
+    ).length;
+
     const stats: DashboardStats = {
       installedCount,
       assignedCount,
       unassignedCount,
       totalAssignments,
       probesOnOrder,
+      todayInstalledCount,
     };
 
     return { stats, openRepairs, recentOrders, installedProbes };

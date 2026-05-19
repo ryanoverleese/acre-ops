@@ -9,6 +9,7 @@ export interface DashboardStats {
   unassignedCount: number;
   totalAssignments: number;
   probesOnOrder: number;
+  todayInstalledCount: number;
 }
 
 export interface DashboardRepair {
@@ -160,6 +161,11 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
               <div className="stat-label">Installed</div>
               <div className="stat-value green">{stats.installedCount}</div>
               <div className="stat-change">{showInstalled ? 'Click to hide' : 'Click to view'}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-label">M&Ms Today</div>
+              <div className="stat-value" style={{ color: '#e8303a' }}>{stats.todayInstalledCount}</div>
+              <div className="stat-change">Probes installed today</div>
             </div>
             <div className="stat-card">
               <div className="stat-label">Unassigned</div>
