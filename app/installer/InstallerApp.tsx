@@ -111,15 +111,17 @@ function calcFlags(antennaType: string, sideDress: string) {
   return { pink: 1, blue: 5, white };
 }
 
-const TARGET_SIZE = 2 * 1024 * 1024;
+const TARGET_SIZE = 800 * 1024; // 800 KB target
 
 async function compressImage(file: File): Promise<File> {
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       let { width, height } = img;
-      if (file.size > TARGET_SIZE * 2) {
-        const scale = Math.sqrt(TARGET_SIZE / file.size);
+      // Scale down if image is large
+      const MAX_DIM = 1920;
+      if (width > MAX_DIM || height > MAX_DIM) {
+        const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
         width = Math.round(width * scale);
         height = Math.round(height * scale);
       }
@@ -128,7 +130,7 @@ async function compressImage(file: File): Promise<File> {
       canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
       canvas.toBlob(
         (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
-        'image/jpeg', 0.82
+        'image/jpeg', 0.78
       );
     };
     img.onerror = () => resolve(file);
@@ -1083,7 +1085,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
 
   const handlePhoto = async (field: 'end' | 'extra', file: File | null) => {
     if (!file) return;
-    const compressed = file.size > TARGET_SIZE ? await compressImage(file) : file;
+    const compressed = await compressImage(file);
     if (field === 'end') setPhotoEnd(compressed);
     else setPhotoExtra(compressed);
   };
