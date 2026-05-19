@@ -26,11 +26,7 @@ export async function GET(request: NextRequest) {
   if (!res.ok) return NextResponse.json({ logs: [] });
 
   const data = await res.json();
-  // Filter by installer name (linked row value)
-  const logs = (data.results ?? []).filter((row: Record<string, unknown>) => {
-    const inst = row.installer as Array<{ value: string }> | null;
-    return inst?.[0]?.value === installer;
-  });
+  const logs = (data.results ?? []).filter((row: Record<string, unknown>) => row.installer === installer);
 
   return NextResponse.json({ logs });
 }
@@ -39,14 +35,14 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { installer_id, date, start_miles, end_miles, notes } = body;
+    const { installer_name, date, start_miles, end_miles, notes } = body;
 
-    if (!installer_id || !date) {
-      return NextResponse.json({ error: 'installer_id and date required' }, { status: 400 });
+    if (!installer_name || !date) {
+      return NextResponse.json({ error: 'installer_name and date required' }, { status: 400 });
     }
 
     const payload: Record<string, unknown> = {
-      installer: [installer_id],
+      installer: installer_name,
       date,
     };
     if (start_miles != null) payload.start_miles = start_miles;

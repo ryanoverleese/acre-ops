@@ -2658,7 +2658,7 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
     setSaving(true);
     try {
       const payload = {
-        installer_id: session.installerId,
+        installer_name: session.installer,
         date: today,
         start_miles: start ? parseFloat(start) : null,
         end_miles: end ? parseFloat(end) : null,
