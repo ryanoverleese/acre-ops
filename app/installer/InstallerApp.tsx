@@ -1112,7 +1112,6 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
     }, 120);
 
     try {
-      setError('Step 1: building form data...');
       const fd = new FormData();
       fd.append('probeAssignmentId', String(a.id));
       fd.append('fieldSeasonId', String(a.fieldSeasonId));
@@ -1127,24 +1126,21 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       if (photoEnd) fd.append('photoFieldEnd', photoEnd);
       if (photoExtra) fd.append('photoExtra', photoExtra);
 
-      setError(`Step 2: sending to server (photo=${!!photoEnd})...`);
       const res = await fetch('/api/install', { method: 'POST', body: fd });
       clearInterval(interval);
-      setError(`Step 3: got response ${res.status}...`);
       if (!res.ok) {
         let msg = `Submit failed (${res.status}) — try again`;
         try { const d = await res.json(); msg = d.error || msg; } catch { /* non-JSON error body */ }
         setError(msg); setSubmitting(false); return;
       }
-      setError('Step 4: success, finishing...');
       submitProgressRef.current = 100; setSubmitProgress(100);
       await new Promise(r => setTimeout(r, 500));
       const flags = calcFlags(a.antennaType, a.sideDress);
       onSuccess({ fieldName: a.fieldName, probeSerial, flags }, a.id);
     } catch (err) {
       clearInterval(interval);
-      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-      setError(`Failed at: ${msg}`);
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Network error — ${msg}`);
       setSubmitting(false);
     }
   };
