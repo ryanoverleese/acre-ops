@@ -142,6 +142,8 @@ export async function POST(request: NextRequest) {
     // Update the probe_assignment record
     const probeAssignmentUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;
     console.log('PATCH URL:', probeAssignmentUrl);
+    const patchController = new AbortController();
+    const patchTimeout = setTimeout(() => patchController.abort(), 12000);
     const probeAssignmentResponse = await fetch(probeAssignmentUrl, {
       method: 'PATCH',
       headers: {
@@ -149,7 +151,9 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(probeAssignmentUpdate),
+      signal: patchController.signal,
     });
+    clearTimeout(patchTimeout);
 
     if (!probeAssignmentResponse.ok) {
       const errorText = await probeAssignmentResponse.text();
