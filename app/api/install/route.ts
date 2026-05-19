@@ -110,17 +110,22 @@ export async function POST(request: NextRequest) {
       probeAssignmentUpdate.install_notes = installNotes;
     }
     // Idempotency: if already marked Installed, return success without re-writing
-    const existingRes = await fetch(
-      `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`,
-      { headers: { Authorization: `Token ${BASEROW_TOKEN}` } }
-    );
-    if (existingRes.ok) {
-      const existing = await existingRes.json();
-      if (existing?.probe_status?.value === 'Installed') {
-        console.log('probe_assignment', probeAssignmentId, 'already installed — returning success');
-        return NextResponse.json({ success: true, probeAssignment: existing });
+    try {
+      const controller = new AbortController();
+      const idempotencyTimeout = setTimeout(() => controller.abort(), 4000);
+      const existingRes = await fetch(
+        `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`,
+        { headers: { Authorization: `Token ${BASEROW_TOKEN}` }, signal: controller.signal }
+      );
+      clearTimeout(idempotencyTimeout);
+      if (existingRes.ok) {
+        const existing = await existingRes.json();
+        if (existing?.probe_status?.value === 'Installed') {
+          console.log('probe_assignment', probeAssignmentId, 'already installed — returning success');
+          return NextResponse.json({ success: true, probeAssignment: existing });
+        }
       }
-    }
+    } catch { /* idempotency check timed out — proceed with install */ }
 
     if (pickupAccess !== null) {
       probeAssignmentUpdate.pick_up_access = pickupAccess;

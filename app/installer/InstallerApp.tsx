@@ -1128,7 +1128,11 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
 
       const res = await fetch('/api/install', { method: 'POST', body: fd });
       clearInterval(interval);
-      if (!res.ok) { const d = await res.json(); setError(d.error || 'Submit failed — try again'); setSubmitting(false); return; }
+      if (!res.ok) {
+        let msg = 'Submit failed — try again';
+        try { const d = await res.json(); msg = d.error || msg; } catch { /* non-JSON error body */ }
+        setError(msg); setSubmitting(false); return;
+      }
       // Jump to 100% and hold briefly before navigating
       submitProgressRef.current = 100; setSubmitProgress(100);
       await new Promise(r => setTimeout(r, 500));
