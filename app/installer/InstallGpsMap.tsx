@@ -111,7 +111,7 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
     <div style={{ position: 'relative' }}>
       <MapContainer
         center={center}
-        zoom={17}
+        zoom={15}
         maxZoom={21}
         style={{ height: 240, width: '100%' }}
         zoomControl={false}
