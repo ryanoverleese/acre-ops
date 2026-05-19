@@ -115,7 +115,7 @@ async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs:
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
     return {
-      stats: { installedCount: 0, assignedCount: 0, unassignedCount: 0, totalAssignments: 0, probesOnOrder: 0 },
+      stats: { installedCount: 0, assignedCount: 0, unassignedCount: 0, totalAssignments: 0, probesOnOrder: 0, todayInstalledCount: 0 },
       openRepairs: [],
       recentOrders: [],
       installedProbes: [],
