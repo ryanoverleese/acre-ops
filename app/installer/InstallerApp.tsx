@@ -462,6 +462,11 @@ function RouteScreen({
   const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
   const visible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
   const progress = assignments.length > 0 ? done.length / assignments.length : 0;
+  const [fireworksFired, setFireworksFired] = useState(false);
+  const allDone = !loading && assignments.length > 0 && todo.length === 0;
+  useEffect(() => {
+    if (allDone && !fireworksFired) setFireworksFired(true);
+  }, [allDone, fireworksFired]);
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -545,11 +550,12 @@ function RouteScreen({
               <polyline points="22 4 12 14.01 9 11.01" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginTop: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              {filter === 'todo' ? 'All done for today!' : 'Nothing here yet'}
+              {filter === 'todo' ? 'All done for today! 🎉' : 'Nothing here yet'}
             </div>
             <div style={{ fontSize: 13, marginTop: 4 }}>Switch filters to see other stops.</div>
           </div>
         )}
+        <Fireworks active={fireworksFired} />
         {!loading && visible.map(a => {
           const isInstalled = a.status.toLowerCase() === 'installed';
           const orderLabel = a.routeOrder || '—';
@@ -1625,6 +1631,86 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Fireworks ────────────────────────────────────────────────────────────────
+
+function Fireworks({ active }: { active: boolean }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!active) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    type Particle = { x: number; y: number; vx: number; vy: number; alpha: number; color: string; r: number };
+    const particles: Particle[] = [];
+    const COLORS = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98FB98', '#F0E68C', '#FF69B4'];
+
+    function burst(x: number, y: number) {
+      const count = 60 + Math.floor(Math.random() * 40);
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
+        const speed = 2 + Math.random() * 6;
+        particles.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          color: COLORS[Math.floor(Math.random() * COLORS.length)],
+          r: 2 + Math.random() * 3,
+        });
+      }
+    }
+
+    // Fire 8 bursts staggered across the screen
+    const launches = [
+      [0.2, 0.35], [0.5, 0.25], [0.8, 0.35],
+      [0.35, 0.55], [0.65, 0.5], [0.15, 0.6],
+      [0.5, 0.45], [0.85, 0.6],
+    ];
+    launches.forEach(([rx, ry], i) => {
+      setTimeout(() => burst(canvas.width * rx, canvas.height * ry), i * 180);
+    });
+
+    function tick() {
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.vy += 0.12; // gravity
+        p.alpha -= 0.018;
+        if (p.alpha <= 0) { particles.splice(i, 1); continue; }
+        ctx!.globalAlpha = p.alpha;
+        ctx!.fillStyle = p.color;
+        ctx!.beginPath();
+        ctx!.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+      ctx!.globalAlpha = 1;
+      if (particles.length > 0) rafRef.current = requestAnimationFrame(tick);
+    }
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [active]);
+
+  if (!active) return null;
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        pointerEvents: 'none', width: '100%', height: '100%',
+      }}
+    />
   );
 }
 
