@@ -109,6 +109,19 @@ export async function POST(request: NextRequest) {
     if (installNotes) {
       probeAssignmentUpdate.install_notes = installNotes;
     }
+    // Idempotency: if already marked Installed, return success without re-writing
+    const existingRes = await fetch(
+      `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`,
+      { headers: { Authorization: `Token ${BASEROW_TOKEN}` } }
+    );
+    if (existingRes.ok) {
+      const existing = await existingRes.json();
+      if (existing?.probe_status?.value === 'Installed') {
+        console.log('probe_assignment', probeAssignmentId, 'already installed — returning success');
+        return NextResponse.json({ success: true, probeAssignment: existing });
+      }
+    }
+
     if (pickupAccess !== null) {
       probeAssignmentUpdate.pick_up_access = pickupAccess;
     }
