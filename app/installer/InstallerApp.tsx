@@ -2616,7 +2616,8 @@ function MeScreen({
 interface MileageLog { id: number; date: string; start_miles: number | null; end_miles: number | null; notes: string; }
 
 function MileageScreen({ session, onBack }: { session: Session; onBack: () => void }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
   // Today's entry
   const [logId, setLogId] = useState<number | null>(null);
