@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'installer required' }, { status: 400 });
   }
 
-  let url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=500&order_by=-date`;
+  let url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=500`;
   if (date) {
     url += `&filters=${encodeURIComponent(JSON.stringify({
       filter_type: 'AND',
@@ -23,16 +23,25 @@ export async function GET(request: NextRequest) {
   }
 
   const res = await fetch(url, { headers: { Authorization: `Token ${TOKEN}` } });
-  if (!res.ok) return NextResponse.json({ logs: [] });
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Baserow mileage GET error:', res.status, err);
+    return NextResponse.json({ logs: [] });
+  }
 
   const data = await res.json();
+  console.log('mileage GET: total rows', data.results?.length, 'filtering for installer=', installer);
   const logs = (data.results ?? [])
     .filter((row: Record<string, unknown>) => row.installer === installer)
     .map((row: Record<string, unknown>) => ({
       ...row,
       date: typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
-    }));
+    }))
+    .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
+      String(b.date ?? '').localeCompare(String(a.date ?? ''))
+    );
 
+  console.log('mileage GET: matched', logs.length, 'logs');
   return NextResponse.json({ logs });
 }
 

@@ -2638,6 +2638,7 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
         const data = await res.json();
         if (cancelled) return;
         const logs: MileageLog[] = data.logs ?? [];
+        console.log('mileage client: received', logs.length, 'logs, today=', today, 'sample date=', logs[0]?.date);
         setAllLogs(logs);
         const todayLog = logs.find(l => l.date === today);
         if (todayLog) {
