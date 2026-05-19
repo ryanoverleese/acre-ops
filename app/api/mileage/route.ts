@@ -26,7 +26,12 @@ export async function GET(request: NextRequest) {
   if (!res.ok) return NextResponse.json({ logs: [] });
 
   const data = await res.json();
-  const logs = (data.results ?? []).filter((row: Record<string, unknown>) => row.installer === installer);
+  const logs = (data.results ?? [])
+    .filter((row: Record<string, unknown>) => row.installer === installer)
+    .map((row: Record<string, unknown>) => ({
+      ...row,
+      date: typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
+    }));
 
   return NextResponse.json({ logs });
 }
