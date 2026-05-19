@@ -1056,7 +1056,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
     photoEnd: !!photoEnd,
     rowDir: !!rowDir,
   };
-  const requiredKeys = ['serial', 'gps', 'crop', 'photoEnd', 'rowDir'] as const;
+  const requiredKeys = ['serial', 'gps', 'crop', 'rowDir'] as const;
   const completedCount = requiredKeys.filter(k => doneMap[k]).length;
   const progress = completedCount / requiredKeys.length;
   const canSubmit = completedCount === requiredKeys.length;
@@ -1092,7 +1092,6 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
 
   const handleSubmit = async () => {
     if (!gps) { setError('GPS location is required'); return; }
-    if (!photoEnd) { setError('Field end photo is required'); return; }
     setError(''); setSubmitting(true); setSubmitProgress(0); submitProgressRef.current = 0;
 
     // Simulated progress: fast 0→70, slow 70→92, stalls waiting for server
