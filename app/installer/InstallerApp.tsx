@@ -1126,9 +1126,10 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       await new Promise(r => setTimeout(r, 500));
       const flags = calcFlags(a.antennaType, a.sideDress);
       onSuccess({ fieldName: a.fieldName, probeSerial, flags }, a.id);
-    } catch {
+    } catch (err) {
       clearInterval(interval);
-      setError('Network error — check connection and try again');
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(`Network error — ${msg}`);
       setSubmitting(false);
     }
   };
