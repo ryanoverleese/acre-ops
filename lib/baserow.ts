@@ -72,6 +72,7 @@ export const TABLE_IDS = {
   documents: 861653,
   probe_rack: 934076,
   installers: 939826,
+  mileage_logs: 982999,
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;

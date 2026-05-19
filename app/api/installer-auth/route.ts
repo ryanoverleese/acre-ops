@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     if (row.pin !== String(pin)) {
       return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
     }
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, id: row.id });
   } catch (error) {
     console.error('installer-auth error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });

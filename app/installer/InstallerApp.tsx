@@ -53,6 +53,7 @@ type Filter = 'todo' | 'done' | 'all';
 
 interface Session {
   installer: string;
+  installerId: number;
   season: number;
 }
 
@@ -141,7 +142,7 @@ function loadSession(): Session | null {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    return s.installer ? s : null;
+    return s.installer && s.installerId ? s : null;
   } catch { return null; }
 }
 function saveSession(s: Session) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
@@ -351,10 +352,10 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ installer, pin }),
       });
+      const data = await res.json();
       if (res.ok) {
-        onLogin({ installer, season: currentYear });
+        onLogin({ installer, installerId: data.id, season: currentYear });
       } else {
-        const data = await res.json();
         setError(data.error || 'Incorrect PIN');
         setPin('');
       }
@@ -2530,6 +2531,7 @@ function MeScreen({
 
         {/* Menu */}
         <div style={{ padding: '20px 14px 0' }}>
+          <MileageCard session={session} />
           <MenuGroup label="Work">
             <MenuRow
               icon={
@@ -2585,6 +2587,134 @@ function MeScreen({
             />
           </MenuGroup>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mileage Card ─────────────────────────────────────────────────────────────
+
+interface MileageLog { id: number; start_miles: number | null; end_miles: number | null; notes: string; }
+
+function MileageCard({ session }: { session: Session }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [log, setLog] = useState<MileageLog | null>(null);
+  const [logId, setLogId] = useState<number | null>(null);
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/mileage?installer=${encodeURIComponent(session.installer)}&date=${today}`);
+        const data = await res.json();
+        if (cancelled) return;
+        const existing: MileageLog | undefined = data.logs?.[0];
+        if (existing) {
+          setLog(existing);
+          setLogId(existing.id);
+          setStart(existing.start_miles != null ? String(existing.start_miles) : '');
+          setEnd(existing.end_miles != null ? String(existing.end_miles) : '');
+          setNotes(existing.notes ?? '');
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [session.installer, today]);
+
+  const total = start && end ? (parseFloat(end) - parseFloat(start)).toFixed(1) : null;
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const payload = {
+        installer_id: session.installerId,
+        date: today,
+        start_miles: start ? parseFloat(start) : null,
+        end_miles: end ? parseFloat(end) : null,
+        notes,
+      };
+      if (logId) {
+        await fetch(`/api/mileage?id=${logId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        const res = await fetch('/api/mileage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const created = await res.json();
+        if (created?.id) setLogId(created.id);
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally { setSaving(false); }
+  };
+
+  void log;
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    background: 'var(--bone)', border: '1px solid var(--border-1)',
+    borderRadius: 'var(--r-sm)', padding: '9px 12px',
+    fontSize: 15, color: 'var(--ink)', outline: 'none',
+  };
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Mileage</div>
+      <div style={{
+        background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+        borderRadius: 'var(--r-lg)', overflow: 'hidden', padding: '14px 14px 10px',
+      }}>
+        <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 10 }}>{today}</div>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>Start miles</div>
+            <input
+              type="number" inputMode="decimal" placeholder="0.0"
+              value={start} onChange={e => setStart(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>End miles</div>
+            <input
+              type="number" inputMode="decimal" placeholder="0.0"
+              value={end} onChange={e => setEnd(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+        </div>
+        {total != null && (
+          <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 10 }}>
+            Total: <strong style={{ color: 'var(--ink)' }}>{total} mi</strong>
+          </div>
+        )}
+        <input
+          type="text" placeholder="Notes (optional)"
+          value={notes} onChange={e => setNotes(e.target.value)}
+          style={{ ...inputStyle, marginBottom: 10 }}
+        />
+        <button
+          onClick={handleSave}
+          disabled={saving || (!start && !end)}
+          style={{
+            width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
+            background: saved ? '#34c759' : 'var(--field-green)', color: 'var(--bone)',
+            border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            opacity: saving || (!start && !end) ? 0.5 : 1,
+          }}
+        >
+          {saved ? 'Saved ✓' : saving ? 'Saving…' : logId ? 'Update' : 'Save'}
+        </button>
       </div>
     </div>
   );
