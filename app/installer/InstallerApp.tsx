@@ -1115,7 +1115,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       if (pickupAccess !== null) fd.append('pickupAccess', String(pickupAccess));
       if (cropxId) fd.append('cropxTelemetryId', cropxId);
       if (notes) fd.append('installNotes', notes);
-      fd.append('photoFieldEnd', photoEnd);
+      if (photoEnd) fd.append('photoFieldEnd', photoEnd);
       if (photoExtra) fd.append('photoExtra', photoExtra);
 
       const res = await fetch('/api/install', { method: 'POST', body: fd });
