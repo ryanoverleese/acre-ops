@@ -2701,7 +2701,12 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
     width: '100%', boxSizing: 'border-box',
     background: 'var(--bone)', border: '1px solid var(--border-1)',
     borderRadius: 'var(--r-sm)', padding: '9px 12px',
-    fontSize: 15, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit',
+    fontSize: 15, color: 'var(--ink)', outline: 'none',
+    fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
+  };
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10, letterSpacing: '0.14em', fontFamily: 'var(--font-display)',
+    fontWeight: 600, textTransform: 'uppercase', color: 'var(--ink-2)', marginBottom: 4,
   };
 
   const fmtDate = (iso: string) => {
@@ -2727,7 +2732,7 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
         </button>
         <div style={{ textAlign: 'center' }}>
           <div className="af-topbar-title">Mileage log</div>
-          {seasonTotal > 0 && <div className="af-topbar-sub">{seasonTotal.toFixed(1)} mi total · {session.season} season</div>}
+          {seasonTotal > 0 && <div className="af-topbar-sub" style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }}>{seasonTotal.toFixed(1)} mi total · {session.season} season</div>}
         </div>
         <div style={{ width: 40 }} />
       </div>
@@ -2742,17 +2747,19 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
           }}>
             <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>Start miles</div>
+                <div style={labelStyle}>Start miles</div>
                 <input type="number" inputMode="decimal" placeholder="0.0" value={start} onChange={e => setStart(e.target.value)} style={inputStyle} />
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>End miles</div>
+                <div style={labelStyle}>End miles</div>
                 <input type="number" inputMode="decimal" placeholder="0.0" value={end} onChange={e => setEnd(e.target.value)} style={inputStyle} />
               </div>
             </div>
             {total != null && (
-              <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 10 }}>
-                Total: <strong style={{ color: 'var(--ink)' }}>{total} mi</strong>
+              <div style={{ marginBottom: 10, display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 10, letterSpacing: '0.14em', fontFamily: 'var(--font-display)', fontWeight: 600, textTransform: 'uppercase', color: 'var(--ink-2)' }}>Total</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{total}</span>
+                <span style={{ fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 600, color: 'var(--ink-2)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>mi</span>
               </div>
             )}
             <input type="text" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inputStyle, marginBottom: 10 }} />
@@ -2833,8 +2840,9 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
                         </div>
                       </div>
                       {logTotal != null && (
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)', flexShrink: 0 }}>
-                          {logTotal} mi
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, flexShrink: 0 }}>
+                          <span style={{ fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{logTotal}</span>
+                          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-2)' }}>mi</span>
                         </div>
                       )}
                       <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--stone-500)', flexShrink: 0, transform: isEditing ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
@@ -2847,14 +2855,14 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
                       <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border-1)' }}>
                         <div style={{ display: 'flex', gap: 10, marginTop: 10, marginBottom: 8 }}>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>Start miles</div>
+                            <div style={labelStyle}>Start miles</div>
                             <input type="number" inputMode="decimal" value={editStart} onChange={e => setEditStart(e.target.value)}
-                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit' }} />
+                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} />
                           </div>
                           <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>End miles</div>
+                            <div style={labelStyle}>End miles</div>
                             <input type="number" inputMode="decimal" value={editEnd} onChange={e => setEditEnd(e.target.value)}
-                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit' }} />
+                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums' }} />
                           </div>
                         </div>
                         <input type="text" placeholder="Notes (optional)" value={editNotes} onChange={e => setEditNotes(e.target.value)}
