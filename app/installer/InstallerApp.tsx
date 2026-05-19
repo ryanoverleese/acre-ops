@@ -2631,6 +2631,13 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
   const [allLogs, setAllLogs] = useState<MileageLog[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Inline edit state for history rows
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editStart, setEditStart] = useState('');
+  const [editEnd, setEditEnd] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -2775,24 +2782,97 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
               {pastLogs.map(log => {
                 const logTotal = log.start_miles != null && log.end_miles != null
                   ? (log.end_miles - log.start_miles).toFixed(1) : null;
+                const isEditing = editingId === log.id;
+
+                const openEdit = () => {
+                  setEditingId(log.id);
+                  setEditStart(log.start_miles != null ? String(log.start_miles) : '');
+                  setEditEnd(log.end_miles != null ? String(log.end_miles) : '');
+                  setEditNotes(log.notes ?? '');
+                };
+
+                const saveEdit = async () => {
+                  setEditSaving(true);
+                  try {
+                    await fetch(`/api/mileage?id=${log.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        start_miles: editStart ? parseFloat(editStart) : null,
+                        end_miles: editEnd ? parseFloat(editEnd) : null,
+                        notes: editNotes,
+                      }),
+                    });
+                    setAllLogs(prev => prev.map(l => l.id === log.id ? {
+                      ...l,
+                      start_miles: editStart ? parseFloat(editStart) : null,
+                      end_miles: editEnd ? parseFloat(editEnd) : null,
+                      notes: editNotes,
+                    } : l));
+                    setEditingId(null);
+                  } finally { setEditSaving(false); }
+                };
+
                 return (
                   <div key={log.id} style={{
-                    padding: '11px 14px',
                     background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-                    borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 12,
+                    borderRadius: 'var(--r-md)', overflow: 'hidden',
                   }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink)' }}>
-                        {fmtDate(log.date)}
+                    {/* Row header — always visible */}
+                    <button onClick={() => isEditing ? setEditingId(null) : openEdit()} style={{
+                      width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '11px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+                          {fmtDate(log.date)}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
+                          {log.start_miles ?? '—'} → {log.end_miles ?? '—'} mi
+                          {log.notes ? ` · ${log.notes}` : ''}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
-                        {log.start_miles ?? '—'} → {log.end_miles ?? '—'} mi
-                        {log.notes ? ` · ${log.notes}` : ''}
-                      </div>
-                    </div>
-                    {logTotal != null && (
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)', flexShrink: 0 }}>
-                        {logTotal} mi
+                      {logTotal != null && (
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)', flexShrink: 0 }}>
+                          {logTotal} mi
+                        </div>
+                      )}
+                      <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--stone-500)', flexShrink: 0, transform: isEditing ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>
+                        <polyline points="6 9 12 15 18 9" />
+                      </svg>
+                    </button>
+
+                    {/* Inline edit form */}
+                    {isEditing && (
+                      <div style={{ padding: '0 14px 12px', borderTop: '1px solid var(--border-1)' }}>
+                        <div style={{ display: 'flex', gap: 10, marginTop: 10, marginBottom: 8 }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>Start miles</div>
+                            <input type="number" inputMode="decimal" value={editStart} onChange={e => setEditStart(e.target.value)}
+                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit' }} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>End miles</div>
+                            <input type="number" inputMode="decimal" value={editEnd} onChange={e => setEditEnd(e.target.value)}
+                              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit' }} />
+                          </div>
+                        </div>
+                        <input type="text" placeholder="Notes (optional)" value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bone)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-sm)', padding: '8px 10px', fontSize: 14, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit', marginBottom: 8 }} />
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={saveEdit} disabled={editSaving}
+                            style={{ flex: 1, padding: '9px', borderRadius: 'var(--r-sm)', background: 'var(--field-green)', color: 'var(--bone)', border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', opacity: editSaving ? 0.5 : 1, fontFamily: 'inherit' }}>
+                            {editSaving ? 'Saving…' : 'Save changes'}
+                          </button>
+                          <button onClick={async () => {
+                            if (!confirm('Delete this entry?')) return;
+                            await fetch(`/api/mileage?id=${log.id}`, { method: 'DELETE' });
+                            setAllLogs(prev => prev.filter(l => l.id !== log.id));
+                            setEditingId(null);
+                          }} style={{ padding: '9px 14px', borderRadius: 'var(--r-sm)', background: 'none', color: '#ff3b30', border: '1px solid #ff3b30', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Delete
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

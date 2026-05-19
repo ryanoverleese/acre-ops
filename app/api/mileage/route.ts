@@ -82,6 +82,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// DELETE /api/mileage?id=123
+export async function DELETE(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
+
+  const res = await fetch(`${BASE}/${TABLE_IDS.mileage_logs}/${id}/`, {
+    method: 'DELETE',
+    headers: { Authorization: `Token ${TOKEN}` },
+  });
+
+  if (!res.ok && res.status !== 204) {
+    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true });
+}
+
 // PATCH /api/mileage?id=123 — update existing log
 export async function PATCH(request: NextRequest) {
   try {
