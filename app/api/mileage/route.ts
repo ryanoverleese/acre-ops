@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'installer required' }, { status: 400 });
   }
 
-  let url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=500`;
+  let url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=200`;
   if (date) {
     url += `&filters=${encodeURIComponent(JSON.stringify({
       filter_type: 'AND',
