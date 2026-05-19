@@ -1669,29 +1669,32 @@ function Fireworks({ active }: { active: boolean }) {
     const COLORS = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98FB98', '#F0E68C', '#FF69B4'];
 
     function burst(x: number, y: number) {
-      const count = 60 + Math.floor(Math.random() * 40);
+      const count = 120 + Math.floor(Math.random() * 80);
       for (let i = 0; i < count; i++) {
         const angle = (Math.PI * 2 * i) / count + Math.random() * 0.3;
-        const speed = 2 + Math.random() * 6;
+        const speed = 4 + Math.random() * 12;
         particles.push({
           x, y,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
           alpha: 1,
           color: COLORS[Math.floor(Math.random() * COLORS.length)],
-          r: 2 + Math.random() * 3,
+          r: 4 + Math.random() * 6,
         });
       }
     }
 
     // Fire 8 bursts staggered across the screen
     const launches = [
-      [0.2, 0.35], [0.5, 0.25], [0.8, 0.35],
-      [0.35, 0.55], [0.65, 0.5], [0.15, 0.6],
-      [0.5, 0.45], [0.85, 0.6],
+      [0.2, 0.25], [0.5, 0.15], [0.8, 0.25],
+      [0.35, 0.45], [0.65, 0.4], [0.15, 0.5],
+      [0.5, 0.35], [0.85, 0.5], [0.1, 0.3],
+      [0.9, 0.35], [0.3, 0.2], [0.7, 0.2],
+      [0.45, 0.55], [0.6, 0.3], [0.25, 0.6],
+      [0.75, 0.6],
     ];
     launches.forEach(([rx, ry], i) => {
-      setTimeout(() => burst(canvas.width * rx, canvas.height * ry), i * 180);
+      setTimeout(() => burst(canvas.width * rx, canvas.height * ry), i * 120);
     });
 
     function tick() {
@@ -1701,7 +1704,7 @@ function Fireworks({ active }: { active: boolean }) {
         p.x += p.vx;
         p.y += p.vy;
         p.vy += 0.12; // gravity
-        p.alpha -= 0.018;
+        p.alpha -= 0.009;
         if (p.alpha <= 0) { particles.splice(i, 1); continue; }
         ctx!.globalAlpha = p.alpha;
         ctx!.fillStyle = p.color;
