@@ -36,7 +36,7 @@ export interface InstallerAssignment {
   plannedInstaller: string;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'settings';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings';
 
 type MapProvider = 'google' | 'apple';
 const MAP_PROVIDER_KEY = 'af-map-provider';
@@ -242,11 +242,18 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             assignments={assignments}
             onLogout={handleLogout}
             onOpenHistory={() => setScreen('history')}
+            onOpenMileage={() => setScreen('mileage')}
             onOpenSettings={() => setScreen('settings')}
           />
         )}
         {screen === 'history' && session && (
           <HistoryScreen
+            session={session}
+            onBack={() => setScreen('me')}
+          />
+        )}
+        {screen === 'mileage' && session && (
+          <MileageScreen
             session={session}
             onBack={() => setScreen('me')}
           />
@@ -2409,12 +2416,13 @@ function FlagIcon({ size = 20 }: { size?: number }) {
 // ─── Me Screen ────────────────────────────────────────────────────────────────
 
 function MeScreen({
-  session, assignments, onLogout, onOpenHistory, onOpenSettings,
+  session, assignments, onLogout, onOpenHistory, onOpenMileage, onOpenSettings,
 }: {
   session: Session;
   assignments: InstallerAssignment[];
   onLogout: () => void;
   onOpenHistory: () => void;
+  onOpenMileage: () => void;
   onOpenSettings: () => void;
 }) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
@@ -2531,7 +2539,6 @@ function MeScreen({
 
         {/* Menu */}
         <div style={{ padding: '20px 14px 0' }}>
-          <MileageCard session={session} />
           <MenuGroup label="Work">
             <MenuRow
               icon={
@@ -2542,6 +2549,18 @@ function MeScreen({
               label="Install history"
               sub="All my installs this season"
               onClick={onOpenHistory}
+              showChevron
+            />
+            <MenuRow
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M12 2a10 10 0 100 20A10 10 0 0012 2z" /><path d="M12 6v6l4 2" /><path d="M5 12H3M21 12h-2M12 5V3M12 21v-2" />
+                  <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" />
+                </svg>
+              }
+              label="Mileage log"
+              sub="Track daily start & end miles"
+              onClick={onOpenMileage}
               showChevron
               last
             />
@@ -2592,13 +2611,14 @@ function MeScreen({
   );
 }
 
-// ─── Mileage Card ─────────────────────────────────────────────────────────────
+// ─── Mileage Screen ───────────────────────────────────────────────────────────
 
-interface MileageLog { id: number; start_miles: number | null; end_miles: number | null; notes: string; }
+interface MileageLog { id: number; date: string; start_miles: number | null; end_miles: number | null; notes: string; }
 
-function MileageCard({ session }: { session: Session }) {
+function MileageScreen({ session, onBack }: { session: Session; onBack: () => void }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [log, setLog] = useState<MileageLog | null>(null);
+
+  // Today's entry
   const [logId, setLogId] = useState<number | null>(null);
   const [start, setStart] = useState('');
   const [end, setEnd] = useState('');
@@ -2606,22 +2626,28 @@ function MileageCard({ session }: { session: Session }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Full history
+  const [allLogs, setAllLogs] = useState<MileageLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/mileage?installer=${encodeURIComponent(session.installer)}&date=${today}`);
+        const res = await fetch(`/api/mileage?installer=${encodeURIComponent(session.installer)}`);
         const data = await res.json();
         if (cancelled) return;
-        const existing: MileageLog | undefined = data.logs?.[0];
-        if (existing) {
-          setLog(existing);
-          setLogId(existing.id);
-          setStart(existing.start_miles != null ? String(existing.start_miles) : '');
-          setEnd(existing.end_miles != null ? String(existing.end_miles) : '');
-          setNotes(existing.notes ?? '');
+        const logs: MileageLog[] = data.logs ?? [];
+        setAllLogs(logs);
+        const todayLog = logs.find(l => l.date === today);
+        if (todayLog) {
+          setLogId(todayLog.id);
+          setStart(todayLog.start_miles != null ? String(todayLog.start_miles) : '');
+          setEnd(todayLog.end_miles != null ? String(todayLog.end_miles) : '');
+          setNotes(todayLog.notes ?? '');
         }
       } catch { /* ignore */ }
+      finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [session.installer, today]);
@@ -2644,6 +2670,7 @@ function MileageCard({ session }: { session: Session }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+        setAllLogs(prev => prev.map(l => l.id === logId ? { ...l, ...payload, date: today } : l));
       } else {
         const res = await fetch('/api/mileage', {
           method: 'POST',
@@ -2651,70 +2678,130 @@ function MileageCard({ session }: { session: Session }) {
           body: JSON.stringify(payload),
         });
         const created = await res.json();
-        if (created?.id) setLogId(created.id);
+        if (created?.id) {
+          setLogId(created.id);
+          setAllLogs(prev => [{ id: created.id, date: today, start_miles: payload.start_miles, end_miles: payload.end_miles, notes: payload.notes }, ...prev]);
+        }
       }
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally { setSaving(false); }
   };
 
-  void log;
-
   const inputStyle: React.CSSProperties = {
     width: '100%', boxSizing: 'border-box',
     background: 'var(--bone)', border: '1px solid var(--border-1)',
     borderRadius: 'var(--r-sm)', padding: '9px 12px',
-    fontSize: 15, color: 'var(--ink)', outline: 'none',
+    fontSize: 15, color: 'var(--ink)', outline: 'none', fontFamily: 'inherit',
   };
 
+  const fmtDate = (iso: string) => {
+    const d = new Date(iso + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase();
+  };
+
+  const pastLogs = allLogs.filter(l => l.date !== today);
+  const seasonTotal = allLogs.reduce((sum, l) => {
+    if (l.start_miles != null && l.end_miles != null) return sum + (l.end_miles - l.start_miles);
+    return sum;
+  }, 0);
+
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Mileage</div>
-      <div style={{
-        background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-        borderRadius: 'var(--r-lg)', overflow: 'hidden', padding: '14px 14px 10px',
-      }}>
-        <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 10 }}>{today}</div>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>Start miles</div>
-            <input
-              type="number" inputMode="decimal" placeholder="0.0"
-              value={start} onChange={e => setStart(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>End miles</div>
-            <input
-              type="number" inputMode="decimal" placeholder="0.0"
-              value={end} onChange={e => setEnd(e.target.value)}
-              style={inputStyle}
-            />
+    <div className="af-screen">
+      <div className="af-topbar">
+        <button
+          onClick={onBack}
+          style={{ color: 'var(--field-green)', padding: 6, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Back"
+        >
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Mileage log</div>
+          {seasonTotal > 0 && <div className="af-topbar-sub">{seasonTotal.toFixed(1)} mi total · {session.season} season</div>}
+        </div>
+        <div style={{ width: 40 }} />
+      </div>
+
+      <div className="af-body" style={{ padding: '14px 14px 24px', background: '#FFFFFF' }}>
+        {/* Today's entry */}
+        <div style={{ marginBottom: 22 }}>
+          <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Today — {fmtDate(today)}</div>
+          <div style={{
+            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+            borderRadius: 'var(--r-lg)', padding: '14px',
+          }}>
+            <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>Start miles</div>
+                <input type="number" inputMode="decimal" placeholder="0.0" value={start} onChange={e => setStart(e.target.value)} style={inputStyle} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: 'var(--ink-2)', marginBottom: 4 }}>End miles</div>
+                <input type="number" inputMode="decimal" placeholder="0.0" value={end} onChange={e => setEnd(e.target.value)} style={inputStyle} />
+              </div>
+            </div>
+            {total != null && (
+              <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 10 }}>
+                Total: <strong style={{ color: 'var(--ink)' }}>{total} mi</strong>
+              </div>
+            )}
+            <input type="text" placeholder="Notes (optional)" value={notes} onChange={e => setNotes(e.target.value)} style={{ ...inputStyle, marginBottom: 10 }} />
+            <button
+              onClick={handleSave}
+              disabled={saving || (!start && !end)}
+              style={{
+                width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
+                background: saved ? '#34c759' : 'var(--field-green)', color: 'var(--bone)',
+                border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                opacity: saving || (!start && !end) ? 0.5 : 1, fontFamily: 'inherit',
+              }}
+            >
+              {saved ? 'Saved ✓' : saving ? 'Saving…' : logId ? 'Update' : 'Save'}
+            </button>
           </div>
         </div>
-        {total != null && (
-          <div style={{ fontSize: 13, color: 'var(--ink-2)', marginBottom: 10 }}>
-            Total: <strong style={{ color: 'var(--ink)' }}>{total} mi</strong>
+
+        {/* History */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--stone-500)', fontSize: 13 }}>Loading…</div>
+        )}
+        {!loading && pastLogs.length > 0 && (
+          <div>
+            <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>History</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {pastLogs.map(log => {
+                const logTotal = log.start_miles != null && log.end_miles != null
+                  ? (log.end_miles - log.start_miles).toFixed(1) : null;
+                return (
+                  <div key={log.id} style={{
+                    padding: '11px 14px',
+                    background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+                    borderRadius: 'var(--r-md)', display: 'flex', alignItems: 'center', gap: 12,
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink)' }}>
+                        {fmtDate(log.date)}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
+                        {log.start_miles ?? '—'} → {log.end_miles ?? '—'} mi
+                        {log.notes ? ` · ${log.notes}` : ''}
+                      </div>
+                    </div>
+                    {logTotal != null && (
+                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: 'var(--ink)', flexShrink: 0 }}>
+                        {logTotal} mi
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
-        <input
-          type="text" placeholder="Notes (optional)"
-          value={notes} onChange={e => setNotes(e.target.value)}
-          style={{ ...inputStyle, marginBottom: 10 }}
-        />
-        <button
-          onClick={handleSave}
-          disabled={saving || (!start && !end)}
-          style={{
-            width: '100%', padding: '10px', borderRadius: 'var(--r-sm)',
-            background: saved ? '#34c759' : 'var(--field-green)', color: 'var(--bone)',
-            border: 'none', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            opacity: saving || (!start && !end) ? 0.5 : 1,
-          }}
-        >
-          {saved ? 'Saved ✓' : saving ? 'Saving…' : logId ? 'Update' : 'Save'}
-        </button>
+        {!loading && pastLogs.length === 0 && allLogs.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--stone-500)', fontSize: 13 }}>No previous entries</div>
+        )}
       </div>
     </div>
   );

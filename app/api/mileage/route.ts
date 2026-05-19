@@ -4,28 +4,29 @@ import { TABLE_IDS } from '@/lib/baserow';
 const BASE = 'https://api.baserow.io/api/database/rows/table';
 const TOKEN = process.env.BASEROW_API_TOKEN;
 
-// GET /api/mileage?installer=Brian&date=2026-05-18
+// GET /api/mileage?installer=Brian&date=2026-05-18  (date optional — omit for all logs)
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const installer = searchParams.get('installer');
   const date = searchParams.get('date');
 
-  if (!installer || !date) {
-    return NextResponse.json({ error: 'installer and date required' }, { status: 400 });
+  if (!installer) {
+    return NextResponse.json({ error: 'installer required' }, { status: 400 });
   }
 
-  const url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=200&filters=${encodeURIComponent(JSON.stringify({
-    filter_type: 'AND',
-    filters: [
-      { field: 'date', type: 'date_equal', value: date },
-    ],
-  }))}`;
+  let url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=500&order_by=-date`;
+  if (date) {
+    url += `&filters=${encodeURIComponent(JSON.stringify({
+      filter_type: 'AND',
+      filters: [{ field: 'date', type: 'date_equal', value: date }],
+    }))}`;
+  }
 
   const res = await fetch(url, { headers: { Authorization: `Token ${TOKEN}` } });
   if (!res.ok) return NextResponse.json({ logs: [] });
 
   const data = await res.json();
-  // Filter by installer name client-side (linked row value)
+  // Filter by installer name (linked row value)
   const logs = (data.results ?? []).filter((row: Record<string, unknown>) => {
     const inst = row.installer as Array<{ value: string }> | null;
     return inst?.[0]?.value === installer;
