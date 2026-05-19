@@ -115,26 +115,34 @@ const TARGET_SIZE = 800 * 1024; // 800 KB target
 
 async function compressImage(file: File): Promise<File> {
   return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      let { width, height } = img;
-      // Scale down if image is large
-      const MAX_DIM = 1920;
-      if (width > MAX_DIM || height > MAX_DIM) {
-        const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
-      }
-      const canvas = document.createElement('canvas');
-      canvas.width = width; canvas.height = height;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
-        'image/jpeg', 0.78
-      );
+    const reader = new FileReader();
+    reader.onerror = () => resolve(file);
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (!dataUrl) { resolve(file); return; }
+      const img = new Image();
+      img.onerror = () => resolve(file);
+      img.onload = () => {
+        let { width, height } = img;
+        const MAX_DIM = 1920;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { resolve(file); return; }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
+          'image/jpeg', 0.78
+        );
+      };
+      img.src = dataUrl;
     };
-    img.onerror = () => resolve(file);
-    img.src = URL.createObjectURL(file);
+    reader.readAsDataURL(file);
   });
 }
 
