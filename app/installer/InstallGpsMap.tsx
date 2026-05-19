@@ -33,7 +33,7 @@ function FollowUser({ pos }: { pos: { lat: number; lng: number } | null }) {
   useEffect(() => {
     if (!pos) return;
     if (!didInitialZoom.current) {
-      map.setView([pos.lat, pos.lng], 18);
+      map.setView([pos.lat, pos.lng], 15);
       didInitialZoom.current = true;
     } else {
       map.panTo([pos.lat, pos.lng], { animate: true, duration: 0.5 });
