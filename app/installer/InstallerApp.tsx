@@ -1391,7 +1391,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 5: Access */}
-        <InstallSection num={5} title="Access" done={pickupAccess !== null} hint="Is this probe's border flag easily accessed with a pickup?">
+        <InstallSection num={5} title="Pickup Access" done={pickupAccess !== null} hint="Is this probe's border flag easily accessed with a pickup?">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {([true, false] as const).map(val => (
               <button
