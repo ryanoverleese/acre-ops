@@ -1492,7 +1492,26 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           />
         </InstallSection>
 
-        {error && <div style={{ padding: '0 14px 8px' }}><div className="af-error-msg">{error}</div></div>}
+        {error && (
+          <div style={{ padding: '0 14px 8px' }}>
+            <div className="af-error-msg">{error}</div>
+            {error.includes('Network error') && (
+              <button
+                onClick={() => { setError(''); handleSubmit(); }}
+                style={{
+                  marginTop: 8, width: '100%', padding: '10px',
+                  background: 'var(--field-green)', color: 'var(--bone)',
+                  border: 'none', borderRadius: 'var(--r-sm)',
+                  fontFamily: 'var(--font-display)', fontWeight: 700,
+                  fontSize: 13, letterSpacing: '0.06em', textTransform: 'uppercase',
+                  cursor: 'pointer',
+                }}
+              >
+                Try again
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Submit button — bottom of scroll */}
         <div style={{ padding: '16px 14px calc(24px + env(safe-area-inset-bottom, 0px))', display: 'flex', flexDirection: 'column', gap: 10 }}>
