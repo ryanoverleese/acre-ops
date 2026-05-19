@@ -1401,9 +1401,9 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         {/* Section 6: Photos */}
         <InstallSection num={6} title="Photos" done={doneMap.photoEnd} hint="Field end shot + optional extra.">
           <div>
-            <input ref={photoEndRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+            <input ref={photoEndRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handlePhoto('end', e.target.files?.[0] ?? null)} />
-            <input ref={photoExtraRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+            <input ref={photoExtraRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handlePhoto('extra', e.target.files?.[0] ?? null)} />
             <div className="af-photos">
               <button
