@@ -463,10 +463,24 @@ function RouteScreen({
   const visible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
   const progress = assignments.length > 0 ? done.length / assignments.length : 0;
   const [fireworksFired, setFireworksFired] = useState(false);
+  const [fireworksKey, setFireworksKey] = useState(0);
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const allDone = !loading && assignments.length > 0 && todo.length === 0;
   useEffect(() => {
     if (allDone && !fireworksFired) setFireworksFired(true);
   }, [allDone, fireworksFired]);
+
+  function handleDateTap() {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 600);
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0;
+      setFireworksFired(true);
+      setFireworksKey(k => k + 1);
+    }
+  }
 
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -479,7 +493,7 @@ function RouteScreen({
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div className="greeting">Hi, {session.installer}</div>
-            <div className="date">{dateStr}</div>
+            <div className="date" onClick={handleDateTap} style={{ userSelect: 'none' }}>{dateStr}</div>
             <div className="subdate">Spring install · {session.season} season</div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -555,7 +569,7 @@ function RouteScreen({
             <div style={{ fontSize: 13, marginTop: 4 }}>Switch filters to see other stops.</div>
           </div>
         )}
-        <Fireworks active={fireworksFired} />
+        <Fireworks key={fireworksKey} active={fireworksFired} />
         {!loading && visible.map(a => {
           const isInstalled = a.status.toLowerCase() === 'installed';
           const orderLabel = a.routeOrder || '—';
