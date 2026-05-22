@@ -1060,7 +1060,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   const doneMap = {
     serial: serialDone,
     gps: !!gps,
-    crop: cropConfirmed !== null,
+    crop: a.crop ? cropConfirmed !== null : !!cropChanged,
     photoEnd: !!photoEnd,
     rowDir: !!rowDir,
   };
@@ -1118,7 +1118,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       fd.append('installer', installer);
       fd.append('lat', String(gps.lat));
       fd.append('lng', String(gps.lng));
-      fd.append('crop', cropConfirmed === false && cropChanged ? cropChanged : a.crop);
+      fd.append('crop', !a.crop ? cropChanged : cropConfirmed === false && cropChanged ? cropChanged : a.crop);
       if (rowDir) fd.append('rowDirection', rowDir);
       if (pickupAccess !== null) fd.append('pickupAccess', String(pickupAccess));
       if (cropxId) fd.append('cropxTelemetryId', cropxId);
@@ -1318,38 +1318,60 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 3: Crop confirmation */}
-        <InstallSection num={3} title="Crop confirmation" done={doneMap.crop} hint={`Planned: ${a.crop}`}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <button
-              aria-pressed={cropConfirmed === true ? 'true' : 'false'}
-              onClick={() => { setCropConfirmed(true); setCropChanged(''); }}
-              className="af-btn af-btn--lg"
-              style={{
-                background: cropConfirmed === true ? 'var(--field-green)' : 'var(--bone-raised)',
-                color: cropConfirmed === true ? 'var(--bone)' : 'var(--ink)',
-                border: `1.5px solid ${cropConfirmed === true ? 'var(--field-green)' : 'var(--stone-300)'}`,
-              }}
-            >
-              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              {a.crop}
-            </button>
-            <button
-              aria-pressed={cropConfirmed === false ? 'true' : 'false'}
-              onClick={() => setCropConfirmed(false)}
-              className="af-btn af-btn--lg"
-              style={{
-                background: cropConfirmed === false ? 'var(--dry)' : 'var(--bone-raised)',
-                color: cropConfirmed === false ? 'white' : 'var(--ink)',
-                border: `1.5px solid ${cropConfirmed === false ? 'var(--dry)' : 'var(--stone-300)'}`,
-              }}
-            >
-              Changed
-            </button>
-          </div>
-          {cropConfirmed === false && (
-            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <InstallSection num={3} title="Crop confirmation" done={doneMap.crop} hint={a.crop ? `Planned: ${a.crop}` : 'No planned crop'}>
+          {a.crop ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button
+                  aria-pressed={cropConfirmed === true ? 'true' : 'false'}
+                  onClick={() => { setCropConfirmed(true); setCropChanged(''); }}
+                  className="af-btn af-btn--lg"
+                  style={{
+                    background: cropConfirmed === true ? 'var(--field-green)' : 'var(--bone-raised)',
+                    color: cropConfirmed === true ? 'var(--bone)' : 'var(--ink)',
+                    border: `1.5px solid ${cropConfirmed === true ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                  }}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {a.crop}
+                </button>
+                <button
+                  aria-pressed={cropConfirmed === false ? 'true' : 'false'}
+                  onClick={() => setCropConfirmed(false)}
+                  className="af-btn af-btn--lg"
+                  style={{
+                    background: cropConfirmed === false ? 'var(--dry)' : 'var(--bone-raised)',
+                    color: cropConfirmed === false ? 'white' : 'var(--ink)',
+                    border: `1.5px solid ${cropConfirmed === false ? 'var(--dry)' : 'var(--stone-300)'}`,
+                  }}
+                >
+                  Changed
+                </button>
+              </div>
+              {cropConfirmed === false && (
+                <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum', 'Other'].map(opt => (
+                    <button
+                      key={opt}
+                      className="af-btn af-btn--lg"
+                      aria-pressed={cropChanged === opt ? 'true' : 'false'}
+                      onClick={() => setCropChanged(opt)}
+                      style={{
+                        background: cropChanged === opt ? 'var(--field-green)' : 'var(--bone-raised)',
+                        color: cropChanged === opt ? 'var(--bone)' : 'var(--ink)',
+                        border: `1.5px solid ${cropChanged === opt ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum', 'Other'].map(opt => (
                 <button
                   key={opt}
