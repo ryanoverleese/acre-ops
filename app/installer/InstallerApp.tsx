@@ -1571,7 +1571,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
             className="af-btn af-btn--primary af-btn--xl af-btn--block"
             onClick={handleSubmit}
             disabled={!canSubmit || submitting}
-            style={{ opacity: canSubmit ? 1 : 0.72 }}
+            style={{ opacity: canSubmit ? 1 : 0.72, minHeight: 88, fontSize: 22 }}
           >
             <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
               <polyline points="20 6 9 17 4 12" />
@@ -3482,7 +3482,7 @@ function SettingsScreen({ session, onBack, onAdHocInstall }: {
           textAlign: 'center', color: 'var(--stone-500)', fontSize: 11,
           lineHeight: 1.6, marginTop: 8,
         }}>
-          <div style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>ACRE FIELD · v1.0</div>
+          <div style={{ fontFamily: 'var(--font-mono)', letterSpacing: '0.08em' }}>ACRE FIELD · v1.0 · {process.env.NEXT_PUBLIC_GIT_SHA}</div>
           <div>Acre Insights · {session.season} season</div>
         </div>
       </div>
