@@ -486,6 +486,7 @@ function RouteScreen({
   const visible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
   const routeTotal = sessionDoneCount + todo.length;
   const progress = routeTotal > 0 ? sessionDoneCount / routeTotal : 0;
+
   const [fireworksFired, setFireworksFired] = useState(false);
   const [fireworksKey, setFireworksKey] = useState(0);
   const tapCountRef = useRef(0);
@@ -545,7 +546,7 @@ function RouteScreen({
 
         <div className="af-pb-row">
           <div className="af-pb-stat">
-            <div className="num">{sessionDoneCount}<span style={{ opacity: 0.4, fontSize: '0.6em' }}> / {routeTotal}</span></div>
+            <div className="num">{sessionDoneCount}</div>
             <div className="label">Done today</div>
           </div>
           <div className="af-pb-stat">
