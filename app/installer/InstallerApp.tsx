@@ -240,7 +240,6 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'map' && session && (
           <MapScreen
             assignments={assignments}
-            sessionInstalledIds={sessionInstalledIds}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
           />
@@ -1892,12 +1891,10 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
 
 function MapScreen({
   assignments,
-  sessionInstalledIds,
   onOpenField,
   onBack,
 }: {
   assignments: InstallerAssignment[];
-  sessionInstalledIds: Set<number>;
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
 }) {
@@ -1905,9 +1902,10 @@ function MapScreen({
     (assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0])?.id ?? null
   );
   const [layer, setLayer] = useState<'street' | 'satellite'>('street');
+  const [showInstalled, setShowInstalled] = useState(false);
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
-  const mapAssignments = assignments.filter(a => a.status.toLowerCase() !== 'installed' || sessionInstalledIds.has(a.id));
+  const mapAssignments = showInstalled ? assignments : assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const withCoords = mapAssignments.filter(a => a.lat && a.lng);
   const selected = assignments.find(a => a.id === selectedId) ?? null;
 
@@ -1984,6 +1982,25 @@ function MapScreen({
               </button>
             ))}
           </div>
+
+          {/* Show/hide installed toggle */}
+          <button
+            onClick={() => setShowInstalled(v => !v)}
+            style={{
+              position: 'absolute', top: 58, right: 14, zIndex: 400,
+              background: showInstalled ? 'var(--field-green)' : 'rgba(246,242,234,0.94)',
+              backdropFilter: 'blur(10px)',
+              border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
+              padding: '0 12px', minHeight: 32,
+              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: showInstalled ? 'var(--bone)' : 'var(--stone-700)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              cursor: 'pointer',
+            }}
+          >
+            {showInstalled ? 'Installed: On' : 'Installed: Off'}
+          </button>
         )}
 
         {/* Recenter on me */}
