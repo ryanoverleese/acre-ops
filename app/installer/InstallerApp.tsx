@@ -181,6 +181,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const [session, setSession] = useState<Session | null>(null);
   const [assignments, setAssignments] = useState<InstallerAssignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
+  const [sessionDoneCount, setSessionDoneCount] = useState(0);
   const [selected, setSelected] = useState<InstallerAssignment | null>(null);
   const [filter, setFilter] = useState<Filter>('todo');
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
@@ -198,6 +199,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
       const res = await fetch(url, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       setAssignments(data.assignments ?? []);
+      setSessionDoneCount(0);
     } catch { setAssignments([]); }
     finally { setLoadingAssignments(false); }
   }, []);
@@ -209,6 +211,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
     void data;
     playSuccessSound();
     setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: 'Installed' } : a));
+    setSessionDoneCount(prev => prev + 1);
     setSelected(null);
     setScreen('route');
   };
@@ -231,6 +234,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onSelect={handleSelectAssignment}
             onLogout={handleLogout}
             onRefresh={() => fetchAssignments(session, true)}
+            sessionDoneCount={sessionDoneCount}
           />
         )}
         {screen === 'map' && session && (
@@ -467,7 +471,7 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
 // ─── Route Screen ─────────────────────────────────────────────────────────────
 
 function RouteScreen({
-  session, assignments, loading, filter, onFilterChange, onSelect, onLogout, onRefresh,
+  session, assignments, loading, filter, onFilterChange, onSelect, onLogout, onRefresh, sessionDoneCount,
 }: {
   session: Session; assignments: InstallerAssignment[];
   loading: boolean; filter: Filter;
@@ -475,11 +479,13 @@ function RouteScreen({
   onSelect: (a: InstallerAssignment) => void;
   onLogout: () => void;
   onRefresh: () => void;
+  sessionDoneCount: number;
 }) {
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
   const visible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
-  const progress = assignments.length > 0 ? done.length / assignments.length : 0;
+  const routeTotal = sessionDoneCount + todo.length;
+  const progress = routeTotal > 0 ? sessionDoneCount / routeTotal : 0;
   const [fireworksFired, setFireworksFired] = useState(false);
   const [fireworksKey, setFireworksKey] = useState(0);
   const tapCountRef = useRef(0);
@@ -539,7 +545,7 @@ function RouteScreen({
 
         <div className="af-pb-row">
           <div className="af-pb-stat">
-            <div className="num">{done.length}<span style={{ opacity: 0.4, fontSize: '0.6em' }}> / {assignments.length}</span></div>
+            <div className="num">{sessionDoneCount}<span style={{ opacity: 0.4, fontSize: '0.6em' }}> / {routeTotal}</span></div>
             <div className="label">Done today</div>
           </div>
           <div className="af-pb-stat">
