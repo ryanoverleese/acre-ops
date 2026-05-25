@@ -181,7 +181,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const [session, setSession] = useState<Session | null>(null);
   const [assignments, setAssignments] = useState<InstallerAssignment[]>([]);
   const [loadingAssignments, setLoadingAssignments] = useState(false);
-  const [sessionDoneCount, setSessionDoneCount] = useState(0);
+  const [sessionInstalledIds, setSessionInstalledIds] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<InstallerAssignment | null>(null);
   const [filter, setFilter] = useState<Filter>('todo');
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
@@ -199,7 +199,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
       const res = await fetch(url, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       setAssignments(data.assignments ?? []);
-      setSessionDoneCount(0);
+      setSessionInstalledIds(new Set());
     } catch { setAssignments([]); }
     finally { setLoadingAssignments(false); }
   }, []);
@@ -211,7 +211,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
     void data;
     playSuccessSound();
     setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: 'Installed' } : a));
-    setSessionDoneCount(prev => prev + 1);
+    setSessionInstalledIds(prev => new Set([...prev, assignmentId]));
     setSelected(null);
     setScreen('route');
   };
@@ -234,12 +234,13 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onSelect={handleSelectAssignment}
             onLogout={handleLogout}
             onRefresh={() => fetchAssignments(session, true)}
-            sessionDoneCount={sessionDoneCount}
+            sessionInstalledIds={sessionInstalledIds}
           />
         )}
         {screen === 'map' && session && (
           <MapScreen
             assignments={assignments}
+            sessionInstalledIds={sessionInstalledIds}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
           />
@@ -471,7 +472,7 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
 // ─── Route Screen ─────────────────────────────────────────────────────────────
 
 function RouteScreen({
-  session, assignments, loading, filter, onFilterChange, onSelect, onLogout, onRefresh, sessionDoneCount,
+  session, assignments, loading, filter, onFilterChange, onSelect, onLogout, onRefresh, sessionInstalledIds,
 }: {
   session: Session; assignments: InstallerAssignment[];
   loading: boolean; filter: Filter;
@@ -479,14 +480,14 @@ function RouteScreen({
   onSelect: (a: InstallerAssignment) => void;
   onLogout: () => void;
   onRefresh: () => void;
-  sessionDoneCount: number;
+  sessionInstalledIds: Set<number>;
 }) {
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
   const visible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
+  const sessionDoneCount = assignments.filter(a => sessionInstalledIds.has(a.id)).length;
   const routeTotal = sessionDoneCount + todo.length;
   const progress = routeTotal > 0 ? sessionDoneCount / routeTotal : 0;
-
   const [fireworksFired, setFireworksFired] = useState(false);
   const [fireworksKey, setFireworksKey] = useState(0);
   const tapCountRef = useRef(0);
@@ -1891,10 +1892,12 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
 
 function MapScreen({
   assignments,
+  sessionInstalledIds,
   onOpenField,
   onBack,
 }: {
   assignments: InstallerAssignment[];
+  sessionInstalledIds: Set<number>;
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
 }) {
@@ -1904,7 +1907,8 @@ function MapScreen({
   const [layer, setLayer] = useState<'street' | 'satellite'>('street');
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
-  const withCoords = assignments.filter(a => a.lat && a.lng);
+  const mapAssignments = assignments.filter(a => a.status.toLowerCase() !== 'installed' || sessionInstalledIds.has(a.id));
+  const withCoords = mapAssignments.filter(a => a.lat && a.lng);
   const selected = assignments.find(a => a.id === selectedId) ?? null;
 
   const mapPoints = withCoords.map(a => ({
