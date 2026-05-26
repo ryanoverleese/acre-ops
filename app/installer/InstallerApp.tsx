@@ -3717,46 +3717,25 @@ function SummaryScreen({ session, onBack }: { session: Session; onBack: () => vo
               <div style={{ marginTop: 6, fontSize: 11, opacity: 0.6, textAlign: 'center' }}>{data.total} total assigned</div>
             </div>
 
-            {/* Per installer */}
-            <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>By installer</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {data.byInstaller.map((row) => {
-                const pct = row.total > 0 ? Math.round((row.installed / row.total) * 100) : 0;
-                return (
-                  <div
-                    key={row.installer}
-                    style={{
-                      background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-                      borderRadius: 'var(--r-lg)', padding: '14px 14px',
-                    }}
-                  >
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                      {row.installer}
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, textAlign: 'center', marginBottom: 10 }}>
-                      <div>
-                        <div style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--field-green)' }}>{row.installedToday}</div>
-                        <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>Today</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{row.installed}</div>
-                        <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>Total Done</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{row.remaining}</div>
-                        <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>Left</div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 22, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{pct}%</div>
-                        <div style={{ fontSize: 9, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-500)' }}>Done</div>
-                      </div>
-                    </div>
-                    <div style={{ background: 'var(--border-1)', borderRadius: 999, height: 5, overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--field-green)', borderRadius: 999, transition: 'width 0.4s ease' }} />
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Per installer — today only */}
+            <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Today by installer</div>
+            <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+              {data.byInstaller.filter(r => r.installedToday > 0).map((row, i, arr) => (
+                <div
+                  key={row.installer}
+                  style={{
+                    padding: '14px 16px',
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  }}
+                >
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15 }}>{row.installer}</div>
+                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700, color: 'var(--field-green)' }}>{row.installedToday}</div>
+                </div>
+              ))}
+              {data.byInstaller.filter(r => r.installedToday > 0).length === 0 && (
+                <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--stone-500)', fontSize: 13 }}>No installs yet today</div>
+              )}
             </div>
           </>
         )}
