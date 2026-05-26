@@ -2254,6 +2254,14 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
                       }}>
                         #{s.probeSerial || '—'}
                       </div>
+                      <div style={{
+                        fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 600,
+                        color: isLoaded ? 'var(--stone-400)' : 'var(--stone-600)',
+                        marginTop: 3, lineHeight: 1.3,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {s.fieldName}{s.operation ? ` · ${s.operation}` : ''}
+                      </div>
                       {s.probeBrand && (
                         <div style={{ marginTop: 4 }}>
                           <span style={{
