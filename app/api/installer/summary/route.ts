@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
       const fs = fieldSeasonMap.get(fsId);
       if (!fs) continue;
       if (Number(fs.season) !== season) continue;
-      if (!fs.ready_to_install && (pa.probe_status?.value ?? '').toLowerCase() !== 'installed') continue;
 
       const installer = fs.planned_installer?.value ?? 'Unassigned';
       if (!byInstaller[installer]) byInstaller[installer] = { total: 0, installed: 0 };
