@@ -3631,9 +3631,10 @@ interface SummaryData {
   season: number;
   total: number;
   installed: number;
+  installedToday: number;
   remaining: number;
   percent: number;
-  byInstaller: { installer: string; total: number; installed: number; remaining: number }[];
+  byInstaller: { installer: string; total: number; installed: number; installedToday: number; remaining: number }[];
 }
 
 function SummaryScreen({ session, onBack }: { session: Session; onBack: () => void }) {
@@ -3691,17 +3692,21 @@ function SummaryScreen({ session, onBack }: { session: Session; onBack: () => vo
           <>
             {/* Overall stats */}
             <div style={{ background: 'var(--field-green)', borderRadius: 'var(--r-lg)', padding: '18px 20px', marginBottom: 20, color: 'var(--bone)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.installed}</div>
-                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Done</div>
+                  <div style={{ fontSize: 28, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.installedToday}</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Today</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.remaining}</div>
+                  <div style={{ fontSize: 28, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.installed}</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Total Done</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 28, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.remaining}</div>
                   <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Left</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.percent}%</div>
+                  <div style={{ fontSize: 28, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.percent}%</div>
                   <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Done</div>
                 </div>
               </div>
@@ -3728,7 +3733,7 @@ function SummaryScreen({ session, onBack }: { session: Session; onBack: () => vo
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
                       <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>{row.installer}</div>
                       <div style={{ fontSize: 12, color: 'var(--stone-500)', fontFamily: 'var(--font-mono)' }}>
-                        {row.installed}/{row.total} · {row.remaining} left
+                        {row.installedToday} today · {row.installed}/{row.total} · {row.remaining} left
                       </div>
                     </div>
                     <div style={{ background: 'var(--border-1)', borderRadius: 999, height: 5, overflow: 'hidden' }}>

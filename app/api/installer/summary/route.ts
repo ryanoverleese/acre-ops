@@ -45,7 +45,8 @@ export async function GET(request: NextRequest) {
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
-    const byInstaller: Record<string, { total: number; installed: number }> = {};
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const byInstaller: Record<string, { total: number; installed: number; installedToday: number }> = {};
 
     for (const pa of probeAssignments) {
       const fsId = pa.field_season?.[0]?.id;
@@ -55,10 +56,13 @@ export async function GET(request: NextRequest) {
       if (Number(fs.season) !== season) continue;
 
       const installer = fs.planned_installer?.value ?? 'Unassigned';
-      if (!byInstaller[installer]) byInstaller[installer] = { total: 0, installed: 0 };
+      if (!byInstaller[installer]) byInstaller[installer] = { total: 0, installed: 0, installedToday: 0 };
       byInstaller[installer].total++;
       if ((pa.probe_status?.value ?? '').toLowerCase() === 'installed') {
         byInstaller[installer].installed++;
+        if (pa.install_date?.slice(0, 10) === today) {
+          byInstaller[installer].installedToday++;
+        }
       }
     }
 
@@ -67,17 +71,20 @@ export async function GET(request: NextRequest) {
         installer: name,
         total: counts.total,
         installed: counts.installed,
+        installedToday: counts.installedToday,
         remaining: counts.total - counts.installed,
       }))
       .sort((a, b) => b.total - a.total);
 
     const total = installerRows.reduce((s, r) => s + r.total, 0);
     const installed = installerRows.reduce((s, r) => s + r.installed, 0);
+    const installedToday = installerRows.reduce((s, r) => s + r.installedToday, 0);
 
     return NextResponse.json({
       season,
       total,
       installed,
+      installedToday,
       remaining: total - installed,
       percent: total > 0 ? Math.round((installed / total) * 100) : 0,
       byInstaller: installerRows,
