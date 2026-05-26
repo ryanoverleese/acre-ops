@@ -36,7 +36,7 @@ export interface InstallerAssignment {
   plannedInstaller: string;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings' | 'summary';
 
 type MapProvider = 'google' | 'apple';
 const MAP_PROVIDER_KEY = 'af-map-provider';
@@ -258,6 +258,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onOpenHistory={() => setScreen('history')}
             onOpenMileage={() => setScreen('mileage')}
             onOpenSettings={() => setScreen('settings')}
+            onOpenSummary={() => setScreen('summary')}
           />
         )}
         {screen === 'history' && session && (
@@ -278,6 +279,9 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onBack={() => setScreen('me')}
             onAdHocInstall={(a) => { setSelected(a); setScreen('field'); }}
           />
+        )}
+        {screen === 'summary' && session && (
+          <SummaryScreen session={session} onBack={() => setScreen('me')} />
         )}
         {screen === 'field' && selected && (
           <FieldScreen
@@ -1957,50 +1961,50 @@ function MapScreen({
 
         {/* Layer toggle */}
         {withCoords.length > 0 && (
-          <div style={{
-            position: 'absolute', top: 14, right: 14, zIndex: 400,
-            background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
-            border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
-            padding: 3, display: 'flex', gap: 2,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-          }}>
-            {(['street', 'satellite'] as const).map(lyr => (
-              <button
-                key={lyr}
-                onClick={() => setLayer(lyr)}
-                aria-pressed={layer === lyr ? 'true' : 'false'}
-                style={{
-                  minHeight: 32, padding: '0 12px', borderRadius: 999,
-                  fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  background: layer === lyr ? 'var(--field-green)' : 'transparent',
-                  color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
-                  border: 'none', cursor: 'pointer',
-                }}
-              >
-                {lyr === 'street' ? 'Map' : 'Satellite'}
-              </button>
-            ))}
-          </div>
-
-          {/* Show/hide installed toggle */}
-          <button
-            onClick={() => setShowInstalled(v => !v)}
-            style={{
-              position: 'absolute', top: 58, right: 14, zIndex: 400,
-              background: showInstalled ? 'var(--field-green)' : 'rgba(246,242,234,0.94)',
-              backdropFilter: 'blur(10px)',
+          <>
+            <div style={{
+              position: 'absolute', top: 14, right: 14, zIndex: 400,
+              background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
               border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
-              padding: '0 12px', minHeight: 32,
-              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: showInstalled ? 'var(--bone)' : 'var(--stone-700)',
+              padding: 3, display: 'flex', gap: 2,
               boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              cursor: 'pointer',
-            }}
-          >
-            {showInstalled ? 'Installed: On' : 'Installed: Off'}
-          </button>
+            }}>
+              {(['street', 'satellite'] as const).map(lyr => (
+                <button
+                  key={lyr}
+                  onClick={() => setLayer(lyr)}
+                  aria-pressed={layer === lyr ? 'true' : 'false'}
+                  style={{
+                    minHeight: 32, padding: '0 12px', borderRadius: 999,
+                    fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    background: layer === lyr ? 'var(--field-green)' : 'transparent',
+                    color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
+                    border: 'none', cursor: 'pointer',
+                  }}
+                >
+                  {lyr === 'street' ? 'Map' : 'Satellite'}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowInstalled(v => !v)}
+              style={{
+                position: 'absolute', top: 58, right: 14, zIndex: 400,
+                background: showInstalled ? 'var(--field-green)' : 'rgba(246,242,234,0.94)',
+                backdropFilter: 'blur(10px)',
+                border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
+                padding: '0 12px', minHeight: 32,
+                fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                letterSpacing: '0.1em', textTransform: 'uppercase',
+                color: showInstalled ? 'var(--bone)' : 'var(--stone-700)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                cursor: 'pointer',
+              }}
+            >
+              {showInstalled ? 'Installed: On' : 'Installed: Off'}
+            </button>
+          </>
         )}
 
         {/* Recenter on me */}
@@ -2498,7 +2502,7 @@ function FlagIcon({ size = 20 }: { size?: number }) {
 // ─── Me Screen ────────────────────────────────────────────────────────────────
 
 function MeScreen({
-  session, assignments, onLogout, onOpenHistory, onOpenMileage, onOpenSettings,
+  session, assignments, onLogout, onOpenHistory, onOpenMileage, onOpenSettings, onOpenSummary,
 }: {
   session: Session;
   assignments: InstallerAssignment[];
@@ -2506,6 +2510,7 @@ function MeScreen({
   onOpenHistory: () => void;
   onOpenMileage: () => void;
   onOpenSettings: () => void;
+  onOpenSummary: () => void;
 }) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const installedToday = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
@@ -2647,6 +2652,22 @@ function MeScreen({
               last
             />
           </MenuGroup>
+          {session.installer.toLowerCase().includes('ryan') && (
+            <MenuGroup label="Ops">
+              <MenuRow
+                icon={
+                  <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+                  </svg>
+                }
+                label="Install progress"
+                sub="All installers · today's counts"
+                onClick={onOpenSummary}
+                showChevron
+                last
+              />
+            </MenuGroup>
+          )}
           <MenuGroup label="App">
             <MenuRow
               icon={
@@ -3600,6 +3621,127 @@ function SettingsScreen({ session, onBack, onAdHocInstall }: {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Summary Screen (Ryan only) ───────────────────────────────────────────────
+
+interface SummaryData {
+  season: number;
+  total: number;
+  installed: number;
+  remaining: number;
+  percent: number;
+  byInstaller: { installer: string; total: number; installed: number; remaining: number }[];
+}
+
+function SummaryScreen({ session, onBack }: { session: Session; onBack: () => void }) {
+  const [data, setData] = useState<SummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = async (fresh = false) => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/installer/summary?season=${session.season}${fresh ? '&fresh=1' : ''}`);
+      const json = await res.json();
+      setData(json);
+    } catch { setError('Failed to load'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+
+  return (
+    <div className="af-screen">
+      <div className="af-topbar">
+        <button
+          onClick={onBack}
+          style={{ color: 'var(--field-green)', padding: 6, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}
+        >
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Install Progress</div>
+          <div style={{ fontSize: 10, color: 'var(--stone-500)', letterSpacing: '0.08em' }}>{session.season} season</div>
+        </div>
+        <button
+          onClick={() => load(true)}
+          disabled={loading}
+          style={{ width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--field-green)' }}
+        >
+          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="af-body" style={{ padding: '16px 14px 40px', background: '#fff', overflowY: 'auto' }}>
+        {loading && (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--stone-500)', fontSize: 13 }}>Loading…</div>
+        )}
+        {error && (
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--dry)', fontSize: 13 }}>{error}</div>
+        )}
+        {data && !loading && (
+          <>
+            {/* Overall stats */}
+            <div style={{ background: 'var(--field-green)', borderRadius: 'var(--r-lg)', padding: '18px 20px', marginBottom: 20, color: 'var(--bone)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.installed}</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Done</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.remaining}</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Left</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 32, fontFamily: 'var(--font-display)', fontWeight: 700 }}>{data.percent}%</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.7 }}>Done</div>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div style={{ marginTop: 14, background: 'rgba(246,242,234,0.2)', borderRadius: 999, height: 6, overflow: 'hidden' }}>
+                <div style={{ width: `${data.percent}%`, height: '100%', background: 'var(--bone)', borderRadius: 999, transition: 'width 0.4s ease' }} />
+              </div>
+              <div style={{ marginTop: 6, fontSize: 11, opacity: 0.6, textAlign: 'center' }}>{data.total} total assigned</div>
+            </div>
+
+            {/* Per installer */}
+            <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>By installer</div>
+            <div style={{ background: 'var(--bone-raised)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-lg)', overflow: 'hidden' }}>
+              {data.byInstaller.map((row, i) => {
+                const pct = row.total > 0 ? Math.round((row.installed / row.total) * 100) : 0;
+                return (
+                  <div
+                    key={row.installer}
+                    style={{
+                      padding: '14px 14px',
+                      borderBottom: i < data.byInstaller.length - 1 ? '1px solid var(--border-1)' : 'none',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                      <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>{row.installer}</div>
+                      <div style={{ fontSize: 12, color: 'var(--stone-500)', fontFamily: 'var(--font-mono)' }}>
+                        {row.installed}/{row.total} · {row.remaining} left
+                      </div>
+                    </div>
+                    <div style={{ background: 'var(--border-1)', borderRadius: 999, height: 5, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: 'var(--field-green)', borderRadius: 999, transition: 'width 0.4s ease' }} />
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--stone-500)', marginTop: 4, textAlign: 'right' }}>{pct}%</div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
