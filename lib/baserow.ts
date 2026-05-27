@@ -463,8 +463,8 @@ export interface ProbeAssignment {
   removal_notes?: string;
   install_lat?: number;
   install_lng?: number;
-  install_photo_field_end_url?: { url: string; name: string }[];
-  install_photo_extra_url?: { url: string; name: string }[];
+  install_photo_field_end?: { url: string; name: string }[];
+  install_photo_extra?: { url: string; name: string }[];
   install_notes?: string;
   grower_notified?: string;
   cropx_telemetry_id?: string;

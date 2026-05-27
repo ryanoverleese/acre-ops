@@ -146,10 +146,10 @@ export async function POST(request: NextRequest) {
       probeAssignmentUpdate.pick_up_access = pickupAccess;
     }
     if (photoFieldEndFile) {
-      probeAssignmentUpdate.install_photo_field_end_url = [{ name: photoFieldEndFile.name }];
+      probeAssignmentUpdate.install_photo_field_end = [{ name: photoFieldEndFile.name }];
     }
     if (photoExtraFile) {
-      probeAssignmentUpdate.install_photo_extra_url = [{ name: photoExtraFile.name }];
+      probeAssignmentUpdate.install_photo_extra = [{ name: photoExtraFile.name }];
     }
 
     console.log('Updating probe_assignment', probeAssignmentId, 'with install data:', JSON.stringify(probeAssignmentUpdate, null, 2));
