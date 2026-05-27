@@ -811,29 +811,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         </div>
                       )}
                     </div>
-                    <button
-                      className="btn btn-primary install-btn-full"
-                      onClick={() => handleLogInstall(assignment)}
-                    >
-                      Log Install
-                    </button>
                   </div>
-
-                  {/* Navigate Button */}
-                  {assignment.lat !== 0 && assignment.lng !== 0 && (
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${assignment.lat},${assignment.lng}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-secondary install-navigate-btn"
-                    >
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                      Navigate
-                    </a>
-                  )}
                 </div>
               </div>
             ))}
@@ -917,6 +895,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   <th>Installer</th>
                   <th>Install Date</th>
                   <th>GPS</th>
+                  <th>Photo</th>
                   <th></th>
                 </tr>
               </thead>
@@ -953,6 +932,13 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           style={{ textDecoration: 'underline' }}
                         >
                           {Number(probe.installLat).toFixed(5)}, {Number(probe.installLng).toFixed(5)}
+                        </a>
+                      ) : '—'}
+                    </td>
+                    <td>
+                      {probe.photoFieldEndUrl ? (
+                        <a href={probe.photoFieldEndUrl} target="_blank" rel="noopener noreferrer">
+                          <img src={probe.photoFieldEndUrl} alt="Install photo" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
                         </a>
                       ) : '—'}
                     </td>
