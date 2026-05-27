@@ -30,14 +30,15 @@ async function uploadFileToBaserow(file: File): Promise<BaserowFile | null> {
     });
 
     if (!response.ok) {
-      console.error('Baserow file upload error:', response.status, await response.text());
-      return null;
+      const errText = await response.text();
+      console.error('Baserow file upload error:', response.status, errText);
+      throw new Error(`Baserow upload ${response.status}: ${errText}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('Error uploading file to Baserow:', error);
-    return null;
+    throw error;
   }
 }
 
@@ -76,13 +77,27 @@ export async function POST(request: NextRequest) {
     // Upload photos if provided
     let photoFieldEndFile: BaserowFile | null = null;
     let photoExtraFile: BaserowFile | null = null;
+    const photoErrors: string[] = [];
+
+    console.log('photoFieldEnd size:', photoFieldEnd?.size ?? 'none');
+    console.log('photoExtra size:', photoExtra?.size ?? 'none');
 
     if (photoFieldEnd && photoFieldEnd.size > 0) {
-      photoFieldEndFile = await uploadFileToBaserow(photoFieldEnd);
+      try {
+        photoFieldEndFile = await uploadFileToBaserow(photoFieldEnd);
+      } catch (e) {
+        photoErrors.push(`Field end photo: ${(e as Error).message}`);
+        console.error('Field end photo upload failed:', e);
+      }
     }
 
     if (photoExtra && photoExtra.size > 0) {
-      photoExtraFile = await uploadFileToBaserow(photoExtra);
+      try {
+        photoExtraFile = await uploadFileToBaserow(photoExtra);
+      } catch (e) {
+        photoErrors.push(`Extra photo: ${(e as Error).message}`);
+        console.error('Extra photo upload failed:', e);
+      }
     }
 
     // Build the update data for probe_assignment
@@ -201,6 +216,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       probeAssignment: updatedProbeAssignment,
+      ...(photoErrors.length > 0 && { photoErrors }),
     });
   } catch (error) {
     console.error('Error logging install:', error);
