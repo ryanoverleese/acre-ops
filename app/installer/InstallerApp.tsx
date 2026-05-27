@@ -1922,6 +1922,7 @@ function MapScreen({
     fieldName: a.fieldName,
     operation: a.operation,
     probeSerial: a.probeSerial,
+    antennaType: a.antennaType,
   }));
 
   return (

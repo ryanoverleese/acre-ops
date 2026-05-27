@@ -14,6 +14,7 @@ export interface MapPoint {
   fieldName: string;
   operation: string;
   probeSerial?: string;
+  antennaType?: string;
 }
 
 type Layer = 'street' | 'satellite';
@@ -264,6 +265,11 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
               {p.probeSerial && (
                 <span style={{ display: 'block', opacity: 0.7, fontSize: '1em', marginTop: 1 }}>
                   #{p.probeSerial}
+                </span>
+              )}
+              {p.antennaType && (
+                <span style={{ display: 'block', opacity: 0.55, fontSize: '0.85em', marginTop: 1 }}>
+                  {p.antennaType}
                 </span>
               )}
             </Tooltip>
