@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       const fs = fieldSeasonMap.get(fsId);
       if (!fs) continue;
       if (Number(fs.season) !== season) continue;
+      if (fs.service_type?.[0]?.value === 'CropX Complete DIY') continue; // exclude DIY
       if (!pa.probe?.[0]?.id) continue; // must have a probe assigned
 
       const installer = fs.planned_installer?.value ?? 'Unassigned';
