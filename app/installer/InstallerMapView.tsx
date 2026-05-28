@@ -46,7 +46,7 @@ function makePin(label: string, installed: boolean, selected: boolean, hasNote =
       ">
         ${hasNote ? `<div style="
           position:absolute;top:-4px;right:-4px;
-          width:9px;height:9px;border-radius:50%;
+          width:13px;height:13px;border-radius:50%;
           background:#ef4444;border:2px solid #fff;
         "></div>` : ''}
       </div>
@@ -81,7 +81,7 @@ function makePin(label: string, installed: boolean, selected: boolean, hasNote =
       "></div>
       ${hasNote ? `<div style="
         position:absolute;top:-5px;right:-5px;
-        width:11px;height:11px;border-radius:50%;
+        width:13px;height:13px;border-radius:50%;
         background:#ef4444;border:2px solid #fff;
       "></div>` : ''}
     </div>
