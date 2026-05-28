@@ -1923,6 +1923,7 @@ function MapScreen({
     operation: a.operation,
     probeSerial: a.probeSerial,
     antennaType: a.antennaType,
+    placementNotes: a.fieldNotes,
   }));
 
   return (

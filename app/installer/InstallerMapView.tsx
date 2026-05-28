@@ -15,6 +15,7 @@ export interface MapPoint {
   operation: string;
   probeSerial?: string;
   antennaType?: string;
+  placementNotes?: string;
 }
 
 type Layer = 'street' | 'satellite';
@@ -28,7 +29,7 @@ interface Props {
 
 // Build a numbered "pin" as an inline SVG divIcon.
 // When routeOrder is unknown, fall back to a smaller plain dot pin (no '?').
-function makePin(label: string, installed: boolean, selected: boolean) {
+function makePin(label: string, installed: boolean, selected: boolean, hasNote = false) {
   const hasOrder = label && label !== '?';
   const bg = installed ? '#C8CDD5' : selected ? '#1F402A' : '#FFFFFF';
   const fg = installed ? '#6B7280' : selected ? '#F6F2EA' : '#0A0A0A';
@@ -72,6 +73,11 @@ function makePin(label: string, installed: boolean, selected: boolean) {
         width:10px;height:10px;background:${bg};
         border-right:2px solid ${stroke};border-bottom:2px solid ${stroke};
       "></div>
+      ${hasNote ? `<div style="
+        position:absolute;top:-5px;right:-5px;
+        width:11px;height:11px;border-radius:50%;
+        background:#ef4444;border:2px solid #fff;
+      "></div>` : ''}
     </div>
   `;
 
@@ -237,7 +243,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
           <Marker
             key={p.id}
             position={[p.lat, p.lng]}
-            icon={makePin(label, installed, selected)}
+            icon={makePin(label, installed, selected, !!p.placementNotes)}
             eventHandlers={{ click: () => onSelect(p.id) }}
           >
             <Tooltip
