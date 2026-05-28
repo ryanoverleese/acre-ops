@@ -1,10 +1,10 @@
 import { getProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
-import WorkflowsClient, { UninstallProbeData, OnOrderProbe } from './WorkflowsClient';
+import WorkflowsClient, { UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
 
 export const dynamic = 'force-dynamic';
 
-async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
+async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[]; rmaProbes: RmaProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 300),
@@ -50,6 +50,28 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 
+    // Build probe → assignments map for RMA (includes season so we can filter current year)
+    const probeToAssignments = new Map<number, { id: number; season: number }[]>();
+    for (const pa of probeAssignments) {
+      const probeId = pa.probe?.[0]?.id;
+      if (!probeId) continue;
+      const fsId = pa.field_season?.[0]?.id;
+      const season = fsId ? (fieldSeasonMap.get(fsId)?.season ?? 0) : 0;
+      const existing = probeToAssignments.get(probeId) ?? [];
+      existing.push({ id: pa.id, season: Number(season) });
+      probeToAssignments.set(probeId, existing);
+    }
+
+    const rmaProbes: RmaProbeData[] = probes
+      .filter(p => p.serial_number)
+      .map(p => ({
+        probeId: p.id,
+        probeSerial: p.serial_number?.toString() || '',
+        probeBrand: p.brand?.value || '',
+        assignments: probeToAssignments.get(p.id) ?? [],
+      }))
+      .sort((a, b) => a.probeSerial.localeCompare(b.probeSerial));
+
     const brandOptions = Array.from(new Set(probes.map(p => p.brand?.value).filter(Boolean) as string[])).sort();
 
     const onOrderProbes = probes
@@ -65,14 +87,14 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
         yearNew: p.year_new ?? null,
       }));
 
-    return { installedProbes, brandOptions, onOrderProbes };
+    return { installedProbes, rmaProbes, brandOptions, onOrderProbes };
   } catch (error) {
     console.error('Error fetching workflow data:', error);
-    return { installedProbes: [], brandOptions: [], onOrderProbes: [] };
+    return { installedProbes: [], rmaProbes: [], brandOptions: [], onOrderProbes: [] };
   }
 }
 
 export default async function WorkflowsPage() {
-  const { installedProbes, brandOptions, onOrderProbes } = await getWorkflowData();
-  return <WorkflowsClient installedProbes={installedProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
+  const { installedProbes, rmaProbes, brandOptions, onOrderProbes } = await getWorkflowData();
+  return <WorkflowsClient installedProbes={installedProbes} rmaProbes={rmaProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
 }

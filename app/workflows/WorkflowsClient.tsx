@@ -14,6 +14,13 @@ export interface UninstallProbeData {
   season: number;
 }
 
+export interface RmaProbeData {
+  probeId: number;
+  probeSerial: string;
+  probeBrand: string;
+  assignments: { id: number; season: number }[];
+}
+
 export interface OnOrderProbe {
   id: number;
   brand: string;
@@ -24,13 +31,14 @@ export interface OnOrderProbe {
 
 interface WorkflowsClientProps {
   installedProbes: UninstallProbeData[];
+  rmaProbes: RmaProbeData[];
   brandOptions: string[];
   onOrderProbes: OnOrderProbe[];
 }
 
 type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
-export default function WorkflowsClient({ installedProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
+export default function WorkflowsClient({ installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | 'rma' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
@@ -77,7 +85,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
   // RMA state
   const [rmaStep, setRmaStep] = useState<'select' | 'new-serial' | 'done'>('select');
   const [rmaSearch, setRmaSearch] = useState('');
-  const [rmaSelected, setRmaSelected] = useState<UninstallProbeData | null>(null);
+  const [rmaSelected, setRmaSelected] = useState<RmaProbeData | null>(null);
   const [rmaNewSerial, setRmaNewSerial] = useState('');
   const [rmaSaving, setRmaSaving] = useState(false);
   const [rmaError, setRmaError] = useState('');
@@ -105,15 +113,13 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
 
   const rmaFiltered = useMemo(() => {
     const q = rmaSearch.toLowerCase();
-    if (!q) return installedProbes;
-    return installedProbes.filter(
+    if (!q) return rmaProbes;
+    return rmaProbes.filter(
       (p) =>
-        p.fieldName.toLowerCase().includes(q) ||
         p.probeSerial.toLowerCase().includes(q) ||
-        p.probeBrand.toLowerCase().includes(q) ||
-        p.operation.toLowerCase().includes(q)
+        p.probeBrand.toLowerCase().includes(q)
     );
-  }, [installedProbes, rmaSearch]);
+  }, [rmaProbes, rmaSearch]);
 
   // On-order probes of the currently selected brand
   const matchingOnOrder = useMemo(() =>
@@ -139,28 +145,34 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
     setRmaSaving(true);
     setRmaError('');
     try {
-      // 1. Create new probe record
+      const currentYear = new Date().getFullYear();
+
+      // 1. Create new probe record with note referencing old serial
       const createRes = await fetch('/api/probes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           serial_number: rmaNewSerial.trim(),
           brand: rmaSelected.probeBrand,
-          year_new: new Date().getFullYear(),
+          year_new: currentYear,
           status: 'In Stock',
+          notes: `RMA replacement for #${rmaSelected.probeSerial}`,
         }),
       });
       if (!createRes.ok) throw new Error('Failed to create new probe');
       const createData = await createRes.json();
       const newProbeId: number = createData.id;
 
-      // 2. PATCH probe assignment to point to new probe
-      const paRes = await fetch(`/api/probe-assignments/${rmaSelected.assignmentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ probe: newProbeId }),
-      });
-      if (!paRes.ok) throw new Error('Failed to update probe assignment');
+      // 2. PATCH current-year probe assignments to point to new probe
+      const currentYearAssignments = rmaSelected.assignments.filter(a => a.season === currentYear);
+      for (const a of currentYearAssignments) {
+        const paRes = await fetch(`/api/probe-assignments/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ probe: newProbeId }),
+        });
+        if (!paRes.ok) throw new Error('Failed to update probe assignment');
+      }
 
       // 3. Delete old probe
       const oldProbeRes = await fetch(`/api/probes/${rmaSelected.probeId}`, {
@@ -192,8 +204,6 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
             serial: rmaSelected.probeSerial,
             reason: 'RMA – failed probe replaced',
             date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-            fieldName: rmaSelected.fieldName,
-            operation: rmaSelected.operation,
           }),
         });
       } catch { /* best-effort, skip */ }
@@ -931,21 +941,21 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   </svg>
                   <input
                     type="text"
-                    placeholder="Search by field, probe serial, brand, or operation..."
+                    placeholder="Search by serial number or brand..."
                     value={rmaSearch}
                     onChange={(e) => setRmaSearch(e.target.value)}
                     autoFocus
                   />
                 </div>
-                {installedProbes.length === 0 ? (
-                  <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No installed probes found for the current season.</p>
+                {rmaProbes.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No probes found.</p>
                 ) : rmaFiltered.length === 0 ? (
                   <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>No probes match your search.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {rmaFiltered.map((probe) => (
                       <div
-                        key={probe.assignmentId}
+                        key={probe.probeId}
                         onClick={() => { setRmaSelected(probe); setRmaStep('new-serial'); }}
                         style={{
                           border: '1px solid var(--border)',
@@ -962,12 +972,7 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                       >
                         <div>
                           <div style={{ fontWeight: 600, fontSize: 14 }}>
-                            {probe.fieldName}{probe.probeLabel ? ` — ${probe.probeLabel}` : ''}
-                          </div>
-                          <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 2 }}>
                             {probe.probeBrand} #{probe.probeSerial}
-                            {probe.operation ? ` · ${probe.operation}` : ''}
-                            {probe.installDate ? ` · Installed ${probe.installDate}` : ''}
                           </div>
                         </div>
                         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16" style={{ color: 'var(--text-muted)', flexShrink: 0 }}>
@@ -992,27 +997,9 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   </div>
                   <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Field</span>
-                      <span style={{ fontWeight: 600, fontSize: 13 }}>
-                        {rmaSelected.fieldName}{rmaSelected.probeLabel ? ` — ${rmaSelected.probeLabel}` : ''}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Probe</span>
-                      <span style={{ fontSize: 13 }}>{rmaSelected.probeBrand} #{rmaSelected.probeSerial}</span>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{rmaSelected.probeBrand} #{rmaSelected.probeSerial}</span>
                     </div>
-                    {rmaSelected.operation && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Operation</span>
-                        <span style={{ fontSize: 13 }}>{rmaSelected.operation}</span>
-                      </div>
-                    )}
-                    {rmaSelected.installDate && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Installed</span>
-                        <span style={{ fontSize: 13 }}>{rmaSelected.installDate}</span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1066,8 +1053,8 @@ export default function WorkflowsClient({ installedProbes, brandOptions, onOrder
                   <div style={{ fontWeight: 700, fontSize: 20, marginBottom: 6 }}>Swap complete!</div>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
                     <strong>{rmaSelected.probeBrand} #{rmaOldSerial}</strong> replaced with{' '}
-                    <strong>#{rmaNewSerial.trim()}</strong> on <strong>{rmaSelected.fieldName}</strong>.
-                    Old probe deleted.
+                    <strong>#{rmaNewSerial.trim()}</strong>.
+                    Old probe deleted. New probe notes reference the original serial.
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
