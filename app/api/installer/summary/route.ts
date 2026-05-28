@@ -54,6 +54,7 @@ export async function GET(request: NextRequest) {
       const fs = fieldSeasonMap.get(fsId);
       if (!fs) continue;
       if (Number(fs.season) !== season) continue;
+      if (!pa.probe?.[0]?.id) continue; // must have a probe assigned
 
       const installer = fs.planned_installer?.value ?? 'Unassigned';
       if (!byInstaller[installer]) byInstaller[installer] = { total: 0, installed: 0, installedToday: 0 };
