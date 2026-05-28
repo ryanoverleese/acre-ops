@@ -23,10 +23,7 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     const installedProbes: UninstallProbeData[] = probeAssignments
-      .filter((pa) => {
-        if (!pa.field_season?.[0]?.id) return false;
-        return pa.probe_status?.value?.toLowerCase() === 'installed';
-      })
+      .filter((pa) => !!pa.field_season?.[0]?.id)
       .map((pa) => {
         const fieldSeasonId = pa.field_season![0].id;
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
