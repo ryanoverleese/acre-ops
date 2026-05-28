@@ -398,8 +398,8 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             installLat: probe1Assignment?.install_lat,
             installLng: probe1Assignment?.install_lng,
             installNotes: probe1Assignment?.install_notes,
-            installPhotoFieldEndUrl: probe1Assignment?.install_photo_field_end_url?.[0]?.url,
-            installPhotoExtraUrl: probe1Assignment?.install_photo_extra_url?.[0]?.url,
+            installPhotoFieldEndUrl: probe1Assignment?.install_photo_field_end?.[0]?.url,
+            installPhotoExtraUrl: probe1Assignment?.install_photo_extra?.[0]?.url,
             // Approval — derived from probe_assignments
             approvalStatus: (() => {
               const statuses = [probe1Assignment, probe2Assignment]
@@ -502,8 +502,8 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
         installLat: pa.install_lat,
         installLng: pa.install_lng,
         installNotes: pa.install_notes,
-        installPhotoFieldEndUrl: pa.install_photo_field_end_url?.[0]?.url,
-        installPhotoExtraUrl: pa.install_photo_extra_url?.[0]?.url,
+        installPhotoFieldEndUrl: pa.install_photo_field_end?.[0]?.url,
+        installPhotoExtraUrl: pa.install_photo_extra?.[0]?.url,
         cropxTelemetryId: pa.cropx_telemetry_id,
         signalStrength: pa.signal_strength,
         // Approval data
