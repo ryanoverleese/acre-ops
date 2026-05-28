@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
       if (Number(fs.season) !== season) continue;
       if (fs.service_type?.[0]?.value === 'CropX Complete DIY') continue;
       if (!pa.probe?.[0]?.id) continue; // must have a probe assigned
+      const statusVal = (pa.probe_status?.value ?? '').toLowerCase();
+      if (!['installed', 'assigned', 'unassigned', ''].includes(statusVal)) continue;
 
       const installer = fs.planned_installer?.value ?? 'Unassigned';
       if (!byInstaller[installer]) byInstaller[installer] = { total: 0, installed: 0, installedToday: 0 };
