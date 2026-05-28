@@ -716,18 +716,8 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
       <header className="header">
         <div className="header-left">
           <h2>Installs</h2>
-          <span className="season-badge">{filteredAssignments.length} Ready</span>
         </div>
         <div className="header-right">
-          <SearchableSelect
-            value={installerFilter}
-            onChange={setInstallerFilter}
-            options={[
-              { value: 'all', label: 'All Installers' },
-              ...INSTALLERS.map((name) => ({ value: name, label: name })),
-            ]}
-            style={{ minWidth: 130 }}
-          />
           <button className="btn btn-primary" onClick={() => setShowPicker(true)}>
             Perform Install
           </button>
@@ -735,89 +725,6 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
       </header>
 
       <div className="content">
-        {filteredAssignments.length === 0 ? (
-          <div className="empty-state">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="install-empty-icon">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <h3 className="install-empty-title">All caught up!</h3>
-            <p className="text-muted">
-              {installerFilter !== 'all'
-                ? `No installs assigned to ${installerFilter}.`
-                : 'No probes ready for installation.'}
-            </p>
-          </div>
-        ) : (
-          <div className="install-list">
-            {filteredAssignments.map((assignment) => (
-              <div key={assignment.id} className="install-card">
-                {/* Route Order Badge */}
-                <div className="install-route-badge">
-                  <span className="install-route-badge-label">Stop</span>
-                  <span className="install-route-badge-number">
-                    {assignment.routeOrder || '—'}
-                  </span>
-                </div>
-
-                {/* Card Content */}
-                <div className="install-card-content">
-                  {/* Header */}
-                  <div className="install-card-header">
-                    <div className="install-card-header-row">
-                      <h3 className="install-field-name">
-                        {assignment.fieldName}
-                        {(assignment.probeNumber > 1 || assignment.label) && (
-                          <span className="install-probe-number-suffix">
-                            {' '}(Probe {assignment.probeNumber}{assignment.label ? ` — ${assignment.label}` : ''})
-                          </span>
-                        )}
-                      </h3>
-                      {assignment.plannedInstaller && (
-                        <span className="install-installer-badge">
-                          {assignment.plannedInstaller}
-                        </span>
-                      )}
-                    </div>
-                    <p className="install-operation">{assignment.operation}</p>
-                    <div className="install-tags-row">
-                      {assignment.crop && (
-                        <span className="install-crop-tag">
-                          {assignment.crop}
-                        </span>
-                      )}
-                      {assignment.antennaType && (
-                        <span className="install-antenna-tag">
-                          {assignment.antennaType}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Probe Info */}
-                  <div className="install-probe-info">
-                    <div className="install-probe-info-row">
-                      <div>
-                        <span className="install-probe-label">
-                          Probe {assignment.probeNumber}{assignment.label ? ` — ${assignment.label}` : ''}
-                        </span>
-                        <div className="install-probe-serial">
-                          #{assignment.probeSerial}
-                        </div>
-                      </div>
-                      {assignment.probeRack && (
-                        <div className="install-rack-info">
-                          <span className="install-rack-label">Rack</span>
-                          <div className="install-rack-value">{assignment.probeRack}{assignment.probeRackSlot ? `-${assignment.probeRackSlot}` : ''}</div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Installed Probes Section */}
         {installedProbes.length > 0 && (
           <div className="table-container" style={{ marginTop: 24 }}>
