@@ -43,7 +43,13 @@ function makePin(label: string, installed: boolean, selected: boolean, hasNote =
         background:${bg};border:2px solid ${stroke};
         box-shadow:0 3px 8px rgba(0,0,0,0.25);
         position:relative;transform:translateY(-2px);
-      "></div>
+      ">
+        ${hasNote ? `<div style="
+          position:absolute;top:-4px;right:-4px;
+          width:9px;height:9px;border-radius:50%;
+          background:#ef4444;border:2px solid #fff;
+        "></div>` : ''}
+      </div>
     `;
     return L.divIcon({
       className: 'af-leaflet-pin',
