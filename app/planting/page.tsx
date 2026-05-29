@@ -14,6 +14,7 @@ export interface PlantingRow {
   crop: string;
   plantingDate: string;
   plannedInstaller: string;
+  installGroup: number | null;
   routeOrder: string | null;
   gdu: number | null;
   probeCount: number;
@@ -87,6 +88,7 @@ export default async function PlantingPage() {
     crop: f.crop,
     plantingDate: f.plantingDate,
     plannedInstaller: f.plannedInstaller || '',
+    installGroup: f.installGroup ?? null,
     routeOrder: f.routeOrder ?? null,
     gdu: gduByDate.get(f.plantingDate) ?? null,
     probeCount: probeCountByFieldSeason.get(f.fieldSeasonId!) ?? 0,

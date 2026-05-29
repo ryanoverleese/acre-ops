@@ -7,13 +7,14 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { PlantingRow } from './page';
 
-export type ColorMode = 'installer' | 'days' | 'crop';
+export type ColorMode = 'installer' | 'days' | 'crop' | 'group';
 
 interface Props {
   rows: PlantingRow[];
   colorMode: ColorMode;
   showLabels?: boolean;
   onAssignInstaller?: (fieldSeasonId: number, installer: string) => void;
+  onAssignGroup?: (fieldSeasonId: number, group: number | null) => void;
 }
 
 const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
@@ -46,6 +47,18 @@ function cropColor(crop: string): string {
   if (c.includes('corn')) return '#ffd60a';
   if (c.includes('soy'))  return '#34c759';
   return '#c7c7cc';
+}
+
+// B groups: greens, R groups: blues, unassigned: gray
+const GROUP_COLORS: Record<string, string> = {
+  B1: '#1a7f37', B2: '#57bb6e', B3: '#a8dbb2', B4: '#d0f0d8',
+  R1: '#0050a0', R2: '#3a7fd4', R3: '#88b8ee', R4: '#c0d9f7',
+};
+
+function groupColor(installer: string, group: number | null): string {
+  if (!installer || group == null) return '#c7c7cc';
+  const key = `${installer.charAt(0).toUpperCase()}${group}`;
+  return GROUP_COLORS[key] ?? '#ff9f0a';
 }
 
 function daysSince(dateStr: string): number | null {
@@ -105,6 +118,17 @@ function Legend({ colorMode }: { colorMode: ColorMode }) {
       { color: '#2F6BB0', label: '26+ days — getting late' },
       { color: '#34c759', label: '16–26 days — ideal' },
       { color: '#ff3b30', label: '0–15 days — too early' },
+    ] :
+    colorMode === 'group' ? [
+      { color: GROUP_COLORS.B1, label: 'B1' },
+      { color: GROUP_COLORS.B2, label: 'B2' },
+      { color: GROUP_COLORS.B3, label: 'B3' },
+      { color: GROUP_COLORS.B4, label: 'B4' },
+      { color: GROUP_COLORS.R1, label: 'R1' },
+      { color: GROUP_COLORS.R2, label: 'R2' },
+      { color: GROUP_COLORS.R3, label: 'R3' },
+      { color: GROUP_COLORS.R4, label: 'R4' },
+      { color: '#c7c7cc', label: 'Unassigned' },
     ] : [
       { color: '#ffd60a', label: 'Corn' },
       { color: '#34c759', label: 'Soybean' },
@@ -130,7 +154,7 @@ function Legend({ colorMode }: { colorMode: ColorMode }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function PlantingMapView({ rows, colorMode, showLabels = false, onAssignInstaller }: Props) {
+export default function PlantingMapView({ rows, colorMode, showLabels = false, onAssignInstaller, onAssignGroup }: Props) {
   const valid = useMemo(() => rows.filter(r => r.lat && r.lng), [rows]);
   const center: [number, number] = valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
 
@@ -150,6 +174,7 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false, o
           const color =
             colorMode === 'installer' ? installerColor(row.plannedInstaller) :
             colorMode === 'days'      ? daysColor(ds) :
+            colorMode === 'group'     ? groupColor(row.plannedInstaller, row.installGroup) :
                                         cropColor(row.crop);
 
           const installerInitial = row.plannedInstaller ? row.plannedInstaller.charAt(0).toUpperCase() : null;
@@ -173,32 +198,57 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false, o
                   )}
                 </div>
               </Tooltip>
-              {onAssignInstaller && (
+              {(onAssignInstaller || onAssignGroup) && (
                 <Popup closeButton={false} offset={[0, -8]}>
-                  <div style={{ fontSize: 13, minWidth: 130 }}>
+                  <div style={{ fontSize: 13, minWidth: 150 }}>
                     <div style={{ fontWeight: 700, marginBottom: 10, lineHeight: 1.3 }}>{row.fieldName}</div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      {[['Brian', 'B', '#34c759'], ['Ryan', 'R', '#0071e3']] .map(([name, initial, bg]) => (
-                        <button
-                          key={name}
-                          onClick={() => onAssignInstaller(row.fieldSeasonId, row.plannedInstaller === name ? '' : name)}
-                          style={{
-                            width: 36, height: 36, borderRadius: '50%', border: 'none',
-                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                            background: row.plannedInstaller === name ? bg : '#e5e5ea',
-                            color: row.plannedInstaller === name ? '#fff' : '#1d1d1f',
-                            flexShrink: 0,
-                          }}
-                        >
-                          {initial}
-                        </button>
-                      ))}
-                      {installerInitial && (
-                        <span style={{ fontSize: 11, color: '#86868b', marginLeft: 2 }}>
-                          {row.plannedInstaller}
-                        </span>
-                      )}
-                    </div>
+                    {onAssignInstaller && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                        {[['Brian', 'B', '#34c759'], ['Ryan', 'R', '#0071e3']].map(([name, initial, bg]) => (
+                          <button
+                            key={name}
+                            onClick={() => onAssignInstaller(row.fieldSeasonId, row.plannedInstaller === name ? '' : name)}
+                            style={{
+                              width: 36, height: 36, borderRadius: '50%', border: 'none',
+                              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                              background: row.plannedInstaller === name ? bg : '#e5e5ea',
+                              color: row.plannedInstaller === name ? '#fff' : '#1d1d1f',
+                              flexShrink: 0,
+                            }}
+                          >
+                            {initial}
+                          </button>
+                        ))}
+                        {installerInitial && (
+                          <span style={{ fontSize: 11, color: '#86868b', marginLeft: 2 }}>{row.plannedInstaller}</span>
+                        )}
+                      </div>
+                    )}
+                    {onAssignGroup && (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {[1, 2, 3, 4, 5, 6].map((n) => {
+                          const key = row.plannedInstaller ? `${row.plannedInstaller.charAt(0).toUpperCase()}${n}` : null;
+                          const groupBg = key && GROUP_COLORS[key] ? GROUP_COLORS[key] : '#e5e5ea';
+                          const active = row.installGroup === n;
+                          return (
+                            <button
+                              key={n}
+                              onClick={() => onAssignGroup(row.fieldSeasonId, active ? null : n)}
+                              style={{
+                                width: 30, height: 30, borderRadius: 6, border: 'none',
+                                fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                                background: active ? groupBg : '#e5e5ea',
+                                color: active ? (groupBg === '#e5e5ea' ? '#1d1d1f' : '#fff') : '#1d1d1f',
+                                outline: active ? `2px solid ${groupBg}` : 'none',
+                                outlineOffset: 1,
+                              }}
+                            >
+                              {n}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </Popup>
               )}

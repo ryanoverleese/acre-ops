@@ -420,7 +420,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
           <div style={{ padding: '0 0 12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 10, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', gap: 6 }}>
-                {(['installer', 'days', 'crop'] as ColorMode[]).map((mode) => (
+                {(['installer', 'days', 'crop', 'group'] as ColorMode[]).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => setColorMode(mode)}
@@ -431,7 +431,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                       color: colorMode === mode ? '#fff' : '#1d1d1f',
                     }}
                   >
-                    {mode === 'installer' ? 'By Installer' : mode === 'days' ? 'By Days' : 'By Crop'}
+                    {mode === 'installer' ? 'By Installer' : mode === 'days' ? 'By Days' : mode === 'crop' ? 'By Crop' : 'By Group'}
                   </button>
                 ))}
               </div>
@@ -492,6 +492,14 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ planned_installer: installer }),
+                  });
+                }}
+                onAssignGroup={async (fieldSeasonId, group) => {
+                  updateRow(fieldSeasonId, { installGroup: group });
+                  await fetch(`/api/field-seasons/${fieldSeasonId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ install_group: group }),
                   });
                 }}
               />

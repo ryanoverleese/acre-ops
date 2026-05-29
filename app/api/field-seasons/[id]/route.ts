@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.route_order !== undefined) updateData.route_order = body.route_order;
     if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer || null;
     if (body.ready_to_install !== undefined) updateData.ready_to_install = body.ready_to_install;
+    if (body.install_group !== undefined) updateData.install_group = body.install_group ?? null;
 
 
     const patchData = addSpaceVariants(updateData);
