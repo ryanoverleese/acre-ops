@@ -157,6 +157,7 @@ export async function GET(request: NextRequest) {
           fieldNotes: [fs.notes, pa.placement_notes].filter(Boolean).join('\n\n'),
           installNotes: pa.install_notes ?? '',
           status: pa.probe_status?.value ?? 'Assigned',
+          installGroup: fs.install_group ?? null,
         };
       })
       .sort((a, b) => {

@@ -34,6 +34,7 @@ export interface InstallerAssignment {
   installNotes: string;
   status: string;
   plannedInstaller: string;
+  installGroup: number | null;
 }
 
 type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings' | 'summary';
@@ -485,9 +486,24 @@ function RouteScreen({
   onRefresh: () => void;
   sessionInstalledIds: Set<number>;
 }) {
+  const [activeGroups, setActiveGroups] = useState<Set<number>>(new Set());
+  const allGroups = [...new Set(assignments.map(a => a.installGroup).filter((g): g is number => g != null))].sort((a, b) => a - b);
+  const hasGroups = allGroups.length > 0;
+
+  function toggleGroup(n: number) {
+    setActiveGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n); else next.add(n);
+      return next;
+    });
+  }
+
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
-  const visible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
+  const baseVisible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
+  const visible = activeGroups.size > 0
+    ? baseVisible.filter(a => a.installGroup != null && activeGroups.has(a.installGroup))
+    : baseVisible;
   const sessionDoneCount = assignments.filter(a => sessionInstalledIds.has(a.id)).length;
   const routeTotal = sessionDoneCount + todo.length;
   const progress = routeTotal > 0 ? sessionDoneCount / routeTotal : 0;
@@ -577,6 +593,39 @@ function RouteScreen({
             </button>
           ))}
         </div>
+        {hasGroups && (
+          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            {allGroups.map(n => {
+              const active = activeGroups.has(n);
+              return (
+                <button
+                  key={n}
+                  onClick={() => toggleGroup(n)}
+                  style={{
+                    height: 30, minWidth: 36, paddingInline: 10, borderRadius: 8,
+                    border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                    background: active ? 'var(--field-green)' : 'var(--stone-100, #f3f4f6)',
+                    color: active ? 'var(--bone)' : 'var(--stone-600, #4b5563)',
+                  }}
+                >
+                  {n}
+                </button>
+              );
+            })}
+            {activeGroups.size > 0 && (
+              <button
+                onClick={() => setActiveGroups(new Set())}
+                style={{
+                  height: 30, paddingInline: 10, borderRadius: 8,
+                  border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+                  background: 'transparent', color: 'var(--stone-400, #9ca3af)',
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* List */}
