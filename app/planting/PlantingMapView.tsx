@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, Popup } from 'react-leaflet';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -13,6 +13,7 @@ interface Props {
   rows: PlantingRow[];
   colorMode: ColorMode;
   showLabels?: boolean;
+  onAssignInstaller?: (fieldSeasonId: number, installer: string) => void;
 }
 
 const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
@@ -129,7 +130,7 @@ function Legend({ colorMode }: { colorMode: ColorMode }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
-export default function PlantingMapView({ rows, colorMode, showLabels = false }: Props) {
+export default function PlantingMapView({ rows, colorMode, showLabels = false, onAssignInstaller }: Props) {
   const valid = useMemo(() => rows.filter(r => r.lat && r.lng), [rows]);
   const center: [number, number] = valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
 
@@ -151,6 +152,7 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false }:
             colorMode === 'days'      ? daysColor(ds) :
                                         cropColor(row.crop);
 
+          const installerInitial = row.plannedInstaller ? row.plannedInstaller.charAt(0).toUpperCase() : null;
           return (
             <Marker
               key={`${row.fieldSeasonId}-${showLabels}`}
@@ -171,6 +173,35 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false }:
                   )}
                 </div>
               </Tooltip>
+              {onAssignInstaller && (
+                <Popup closeButton={false} offset={[0, -8]}>
+                  <div style={{ fontSize: 13, minWidth: 130 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 10, lineHeight: 1.3 }}>{row.fieldName}</div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {[['Brian', 'B', '#34c759'], ['Ryan', 'R', '#0071e3']] .map(([name, initial, bg]) => (
+                        <button
+                          key={name}
+                          onClick={() => onAssignInstaller(row.fieldSeasonId, row.plannedInstaller === name ? '' : name)}
+                          style={{
+                            width: 36, height: 36, borderRadius: '50%', border: 'none',
+                            fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                            background: row.plannedInstaller === name ? bg : '#e5e5ea',
+                            color: row.plannedInstaller === name ? '#fff' : '#1d1d1f',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {initial}
+                        </button>
+                      ))}
+                      {installerInitial && (
+                        <span style={{ fontSize: 11, color: '#86868b', marginLeft: 2 }}>
+                          {row.plannedInstaller}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </Popup>
+              )}
             </Marker>
           );
         })}

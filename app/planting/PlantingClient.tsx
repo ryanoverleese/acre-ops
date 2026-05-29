@@ -482,7 +482,19 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
               )}
             </div>
             <div style={{ height: 520, borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
-              <PlantingMapView rows={mapRows} colorMode={colorMode} showLabels={showLabels} />
+              <PlantingMapView
+                rows={mapRows}
+                colorMode={colorMode}
+                showLabels={showLabels}
+                onAssignInstaller={async (fieldSeasonId, installer) => {
+                  updateRow(fieldSeasonId, { plannedInstaller: installer });
+                  await fetch(`/api/field-seasons/${fieldSeasonId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ planned_installer: installer }),
+                  });
+                }}
+              />
             </div>
           </div>
         )}
