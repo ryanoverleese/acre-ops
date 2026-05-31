@@ -251,7 +251,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'loadout' && session && (
           <LoadoutScreen
             session={session}
-            assignments={assignments}
+            assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
           />
         )}
         {screen === 'me' && session && (
@@ -504,10 +504,11 @@ function RouteScreen({
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const done = assignments.filter(a => a.status.toLowerCase() === 'installed');
-  const baseVisible = filter === 'todo' ? todo : filter === 'done' ? done : assignments;
-  const visible = activeGroups.size > 0
-    ? baseVisible.filter(a => a.installGroup != null && activeGroups.has(a.installGroup))
-    : baseVisible;
+  const groupFiltered = activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments;
+  const groupTodo = groupFiltered.filter(a => a.status.toLowerCase() !== 'installed');
+  const groupDone = groupFiltered.filter(a => a.status.toLowerCase() === 'installed');
+  const baseVisible = filter === 'todo' ? groupTodo : filter === 'done' ? groupDone : groupFiltered;
+  const visible = baseVisible;
   const sessionDoneCount = assignments.filter(a => sessionInstalledIds.has(a.id)).length;
   const routeTotal = sessionDoneCount + todo.length;
   const progress = routeTotal > 0 ? sessionDoneCount / routeTotal : 0;
@@ -594,7 +595,7 @@ function RouteScreen({
                 onClick={() => onFilterChange(f)}
               >
                 {f === 'todo' ? 'To install' : f === 'done' ? 'Done' : 'All'}
-                <span className="count">{f === 'todo' ? todo.length : f === 'done' ? done.length : assignments.length}</span>
+                <span className="count">{f === 'todo' ? groupTodo.length : f === 'done' ? groupDone.length : groupFiltered.length}</span>
               </button>
             ))}
           </div>
