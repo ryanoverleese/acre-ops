@@ -499,7 +499,10 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                   await fetch(`/api/field-seasons/${fieldSeasonId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ install_group: group }),
+                    body: JSON.stringify({
+                      install_group: group,
+                      ...(group != null && { ready_to_install: true }),
+                    }),
                   });
                 }}
               />
