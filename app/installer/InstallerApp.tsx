@@ -186,6 +186,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const [selected, setSelected] = useState<InstallerAssignment | null>(null);
   const [filter, setFilter] = useState<Filter>('todo');
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
+  const [activeGroups, setActiveGroups] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const s = loadSession();
@@ -236,11 +237,13 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onLogout={handleLogout}
             onRefresh={() => fetchAssignments(session, true)}
             sessionInstalledIds={sessionInstalledIds}
+            activeGroups={activeGroups}
+            onActiveGroupsChange={setActiveGroups}
           />
         )}
         {screen === 'map' && session && (
           <MapScreen
-            assignments={assignments}
+            assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
           />
@@ -476,7 +479,7 @@ function LoginScreen({ installerNames, onLogin }: { installerNames: string[]; on
 // ─── Route Screen ─────────────────────────────────────────────────────────────
 
 function RouteScreen({
-  session, assignments, loading, filter, onFilterChange, onSelect, onLogout, onRefresh, sessionInstalledIds,
+  session, assignments, loading, filter, onFilterChange, onSelect, onLogout, onRefresh, sessionInstalledIds, activeGroups, onActiveGroupsChange,
 }: {
   session: Session; assignments: InstallerAssignment[];
   loading: boolean; filter: Filter;
@@ -485,17 +488,18 @@ function RouteScreen({
   onLogout: () => void;
   onRefresh: () => void;
   sessionInstalledIds: Set<number>;
+  activeGroups: Set<number>;
+  onActiveGroupsChange: (groups: Set<number>) => void;
 }) {
-  const [activeGroups, setActiveGroups] = useState<Set<number>>(new Set());
   const allGroups = [...new Set(assignments.map(a => a.installGroup).filter((g): g is number => g != null))].sort((a, b) => a - b);
   const hasGroups = allGroups.length > 0;
 
   function toggleGroup(n: number) {
-    setActiveGroups(prev => {
-      const next = new Set(prev);
+    onActiveGroupsChange((() => {
+      const next = new Set(activeGroups);
       if (next.has(n)) next.delete(n); else next.add(n);
       return next;
-    });
+    })());
   }
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
@@ -620,7 +624,7 @@ function RouteScreen({
             })}
             {activeGroups.size > 0 && (
               <button
-                onClick={() => setActiveGroups(new Set())}
+                onClick={() => onActiveGroupsChange(new Set())}
                 style={{
                   height: 28, paddingInline: 10, borderRadius: 'var(--r-pill)',
                   border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
