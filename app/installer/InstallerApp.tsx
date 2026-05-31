@@ -580,21 +580,24 @@ function RouteScreen({
       </div>
 
       {/* Filter bar */}
-      <div className="af-filterbar">
-        <div className="af-segmented">
-          {(['todo', 'done', 'all'] as Filter[]).map(f => (
-            <button
-              key={f}
-              aria-pressed={filter === f ? 'true' : 'false'}
-              onClick={() => onFilterChange(f)}
-            >
-              {f === 'todo' ? 'To install' : f === 'done' ? 'Done' : 'All'}
-              <span className="count">{f === 'todo' ? todo.length : f === 'done' ? done.length : assignments.length}</span>
-            </button>
-          ))}
+      <div className="af-filterbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="af-segmented">
+            {(['todo', 'done', 'all'] as Filter[]).map(f => (
+              <button
+                key={f}
+                aria-pressed={filter === f ? 'true' : 'false'}
+                onClick={() => onFilterChange(f)}
+              >
+                {f === 'todo' ? 'To install' : f === 'done' ? 'Done' : 'All'}
+                <span className="count">{f === 'todo' ? todo.length : f === 'done' ? done.length : assignments.length}</span>
+              </button>
+            ))}
+          </div>
         </div>
         {hasGroups && (
-          <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-400)', marginRight: 2, fontFamily: 'var(--font-display)' }}>Group</span>
             {allGroups.map(n => {
               const active = activeGroups.has(n);
               return (
@@ -602,10 +605,13 @@ function RouteScreen({
                   key={n}
                   onClick={() => toggleGroup(n)}
                   style={{
-                    height: 30, minWidth: 36, paddingInline: 10, borderRadius: 8,
-                    border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                    background: active ? 'var(--field-green)' : 'var(--stone-100, #f3f4f6)',
-                    color: active ? 'var(--bone)' : 'var(--stone-600, #4b5563)',
+                    height: 28, paddingInline: 14, borderRadius: 'var(--r-pill)',
+                    border: active ? 'none' : '1.5px solid var(--border-1)',
+                    cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                    fontFamily: 'var(--font-display)', letterSpacing: '0.04em',
+                    background: active ? 'var(--field-green)' : 'transparent',
+                    color: active ? 'var(--bone)' : 'var(--stone-500)',
+                    transition: 'background 0.15s, color 0.15s',
                   }}
                 >
                   {n}
@@ -616,9 +622,10 @@ function RouteScreen({
               <button
                 onClick={() => setActiveGroups(new Set())}
                 style={{
-                  height: 30, paddingInline: 10, borderRadius: 8,
-                  border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-                  background: 'transparent', color: 'var(--stone-400, #9ca3af)',
+                  height: 28, paddingInline: 10, borderRadius: 'var(--r-pill)',
+                  border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
+                  background: 'transparent', color: 'var(--stone-400)',
+                  fontFamily: 'var(--font-display)', letterSpacing: '0.04em',
                 }}
               >
                 Clear
