@@ -320,15 +320,19 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
   const withInstaller = rows.filter((r) => r.plannedInstaller).length;
   const withRoute = rows.filter((r) => !!r.routeOrder).length;
 
-  // Per-installer field + probe counts (live, derived from rows state)
+  // Per-installer field + probe counts, with per-group breakdown
   const installerStats = useMemo(() => {
-    const map = new Map<string, { fields: number; probes: number }>();
+    const map = new Map<string, { fields: number; probes: number; groups: Map<string, number> }>();
     for (const r of rows) {
       const name = r.plannedInstaller;
       if (!name) continue;
-      const entry = map.get(name) ?? { fields: 0, probes: 0 };
+      const entry = map.get(name) ?? { fields: 0, probes: 0, groups: new Map() };
       entry.fields += 1;
       entry.probes += r.probeCount || 1;
+      if (r.installGroup != null) {
+        const gKey = `${name.charAt(0).toUpperCase()}${r.installGroup}`;
+        entry.groups.set(gKey, (entry.groups.get(gKey) ?? 0) + 1);
+      }
       map.set(name, entry);
     }
     return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
@@ -359,27 +363,42 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
         <div style={{
           display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 16,
         }}>
-          {installerStats.map(([name, stats]) => (
-            <div key={name} style={{
-              background: '#fff', border: '1px solid #e5e5ea', borderRadius: 10,
-              padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%', background: '#0071e3',
-                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 13, fontWeight: 700, flexShrink: 0,
+          {installerStats.map(([name, stats]) => {
+            const sortedGroups = [...stats.groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+            return (
+              <div key={name} style={{
+                background: '#fff', border: '1px solid #e5e5ea', borderRadius: 10,
+                padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
               }}>
-                {name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#1d1d1f' }}>{name}</div>
-                <div style={{ fontSize: 12, color: '#86868b', marginTop: 1 }}>
-                  {stats.fields} field{stats.fields !== 1 ? 's' : ''} · {stats.probes} probe{stats.probes !== 1 ? 's' : ''}
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', background: '#0071e3',
+                  color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 13, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1d1d1f' }}>{name}</div>
+                  <div style={{ fontSize: 12, color: '#86868b', marginTop: 1 }}>
+                    {stats.fields} field{stats.fields !== 1 ? 's' : ''} · {stats.probes} probe{stats.probes !== 1 ? 's' : ''}
+                  </div>
+                  {sortedGroups.length > 0 && (
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 6 }}>
+                      {sortedGroups.map(([gKey, count]) => (
+                        <span key={gKey} style={{
+                          fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
+                          background: '#f0f4ff', color: '#3b5bdb', letterSpacing: '0.02em',
+                        }}>
+                          {gKey} <span style={{ fontWeight: 500, opacity: 0.75 }}>{count}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
