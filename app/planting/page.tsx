@@ -65,6 +65,8 @@ export default async function PlantingPage() {
 
   const plantingFields = fields.filter((f) => {
     if (!f.fieldSeasonId) return false;
+    // Exclude CropX customer installs — Ryan does recommendations only, not physical installs
+    if (f.serviceType?.toLowerCase().includes('cropx')) return false;
     // Hide fields where every assigned probe has already been installed
     const total = probeCountByFieldSeason.get(f.fieldSeasonId) ?? 0;
     const installed = installedCountByFieldSeason.get(f.fieldSeasonId) ?? 0;
