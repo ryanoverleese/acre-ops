@@ -331,7 +331,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
       entry.probes += r.probeCount || 1;
       if (r.installGroup != null) {
         const gKey = `${name.charAt(0).toUpperCase()}${r.installGroup}`;
-        entry.groups.set(gKey, (entry.groups.get(gKey) ?? 0) + 1);
+        entry.groups.set(gKey, (entry.groups.get(gKey) ?? 0) + (r.probeCount || 1));
       }
       map.set(name, entry);
     }
