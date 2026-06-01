@@ -277,7 +277,10 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
       result = result.filter((r) =>
         r.fieldName.toLowerCase().includes(q) ||
         r.operation.toLowerCase().includes(q) ||
-        r.plannedInstaller.toLowerCase().includes(q)
+        r.plannedInstaller.toLowerCase().includes(q) ||
+        (r.installGroup != null && r.plannedInstaller
+          ? `${r.plannedInstaller.charAt(0).toUpperCase()}${r.installGroup}`.toLowerCase().includes(q)
+          : false)
       );
     }
 
