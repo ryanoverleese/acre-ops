@@ -8,7 +8,7 @@ import { useResizableColumns } from '@/hooks/useResizableColumns';
 
 const DEFAULT_COLUMN_WIDTHS = {
   fieldName: 160, operation: 140, crop: 100, plantingDate: 110,
-  daysSince: 70, gdu: 70, stage: 90, routeOrder: 80, plannedInstaller: 130,
+  daysSince: 70, gdu: 70, stage: 90, group: 60, routeOrder: 80, plannedInstaller: 130,
 } as const;
 const COL_STORAGE_KEY = 'planting-column-widths';
 
@@ -19,7 +19,7 @@ interface Props {
   installerOptions: string[];
 }
 
-type SortCol = 'fieldName' | 'operation' | 'crop' | 'plantingDate' | 'daysSince' | 'gdu' | 'routeOrder' | 'plannedInstaller';
+type SortCol = 'fieldName' | 'operation' | 'crop' | 'plantingDate' | 'daysSince' | 'gdu' | 'installGroup' | 'routeOrder' | 'plannedInstaller';
 type SortDir = 'asc' | 'desc';
 
 function formatDate(dateStr: string): string {
@@ -292,6 +292,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
         case 'plantingDate':     av = a.plantingDate; bv = b.plantingDate; break;
         case 'daysSince':        av = daysSince(a.plantingDate); bv = daysSince(b.plantingDate); break;
         case 'gdu':              av = a.gdu ?? -1; bv = b.gdu ?? -1; break;
+        case 'installGroup':     av = a.installGroup ?? 999; bv = b.installGroup ?? 999; break;
         case 'routeOrder':       av = a.routeOrder || 'zzz'; bv = b.routeOrder || 'zzz'; break;
         case 'plannedInstaller': av = a.plannedInstaller; bv = b.plannedInstaller; break;
       }
@@ -547,6 +548,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                 <span>Stage</span>
                 <div className={`resize-handle${resizingColumn === 'stage' ? ' active' : ''}`} onMouseDown={(e) => handleResizeStart('stage', e)} onDoubleClick={() => handleResetColumnWidth('stage')} title="Drag to resize, double-click to reset" />
               </th>
+              <SortTh label="Group"      col="installGroup"     {...sortProps} resizeKey="group"            resizing={resizingColumn === 'group'}       style={{ textAlign: 'center' }} />
               <SortTh label="Route #"    col="routeOrder"       {...sortProps} resizeKey="routeOrder"       resizing={resizingColumn === 'routeOrder'}  style={{ textAlign: 'center' }} />
               <SortTh label="Installer"  col="plannedInstaller" {...sortProps} resizeKey="plannedInstaller" resizing={resizingColumn === 'plannedInstaller'} />
             </tr>
@@ -554,7 +556,7 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#86868b' }}>
                   No fields found.
                 </td>
               </tr>
@@ -583,6 +585,18 @@ export default function PlantingClient({ rows: initialRows, installerOptions }: 
                   </td>
                   <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#0071e3' }}>
                     {growthStage(row.gdu, row.crop) ?? <span style={{ color: '#c7c7cc', fontWeight: 400 }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {row.installGroup != null && row.plannedInstaller ? (
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 7px', borderRadius: 5,
+                        background: '#f0f4ff', color: '#3b5bdb',
+                      }}>
+                        {row.plannedInstaller.charAt(0).toUpperCase()}{row.installGroup}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#c7c7cc' }}>—</span>
+                    )}
                   </td>
                   <RouteCell
                     fieldSeasonId={row.fieldSeasonId}
