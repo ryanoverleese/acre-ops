@@ -49,10 +49,10 @@ function cropColor(crop: string): string {
   return '#c7c7cc';
 }
 
-// B groups: greens, R groups: blues, unassigned: gray
+// B groups: greens/teals/warm, R groups: reds/blues/oranges — fully saturated for contrast
 const GROUP_COLORS: Record<string, string> = {
-  B1: '#1a7f37', B2: '#57bb6e', B3: '#a8dbb2', B4: '#d0f0d8',
-  R1: '#0050a0', R2: '#3a7fd4', R3: '#88b8ee', R4: '#c0d9f7',
+  B1: '#1a7f37', B2: '#0077b6', B3: '#f0a500', B4: '#7b2d8b',
+  R1: '#c62828', R2: '#e65100', R3: '#00796b', R4: '#283593',
 };
 
 function groupColor(installer: string, group: number | null): string {
