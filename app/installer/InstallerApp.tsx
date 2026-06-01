@@ -1985,6 +1985,8 @@ function MapScreen({
     probeSerial: a.probeSerial,
     antennaType: a.antennaType,
     placementNotes: a.fieldNotes,
+    probeRack: a.probeRack,
+    probeRackSlot: a.probeRackSlot,
   }));
 
   return (

@@ -16,6 +16,8 @@ export interface MapPoint {
   probeSerial?: string;
   antennaType?: string;
   placementNotes?: string;
+  probeRack?: string;
+  probeRackSlot?: number | null;
 }
 
 type Layer = 'street' | 'satellite';
@@ -282,6 +284,11 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
               {p.antennaType && (
                 <span style={{ display: 'block', opacity: 0.55, fontSize: '0.85em', marginTop: 1 }}>
                   {p.antennaType}
+                </span>
+              )}
+              {p.probeRack && (
+                <span style={{ display: 'block', opacity: 0.7, fontSize: '0.85em', marginTop: 1, fontVariantNumeric: 'tabular-nums' }}>
+                  R{p.probeRack}{p.probeRackSlot != null ? `·${p.probeRackSlot}` : ''}
                 </span>
               )}
             </Tooltip>
