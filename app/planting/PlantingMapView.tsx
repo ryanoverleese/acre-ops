@@ -57,7 +57,7 @@ const GROUP_COLORS: Record<string, string> = {
 
 function groupColor(installer: string, group: number | null): string {
   if (!installer || group == null) return '#c7c7cc';
-  const key = `${installer.charAt(0).toUpperCase()}${group}`;
+  const key = `${installer.charAt(0).toUpperCase()}${Number(group)}`;
   return GROUP_COLORS[key] ?? '#ff9f0a';
 }
 
@@ -229,7 +229,7 @@ export default function PlantingMapView({ rows, colorMode, showLabels = false, o
                         {[1, 2, 3, 4, 5, 6].map((n) => {
                           const key = row.plannedInstaller ? `${row.plannedInstaller.charAt(0).toUpperCase()}${n}` : null;
                           const groupBg = key && GROUP_COLORS[key] ? GROUP_COLORS[key] : '#e5e5ea';
-                          const active = row.installGroup === n;
+                          const active = Number(row.installGroup) === n;
                           return (
                             <button
                               key={n}

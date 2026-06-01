@@ -390,7 +390,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             // Install planning fields
             routeOrder: fs.route_order,
             plannedInstaller: fs.planned_installer?.value,
-            installGroup: fs.install_group ?? null,
+            installGroup: fs.install_group != null ? Number(fs.install_group) : null,
             readyToInstall: fs.ready_to_install,
             aiUfid: field.ai_ufid || '',
             nrcsField: field.nrcs_field,
