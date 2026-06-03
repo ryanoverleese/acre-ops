@@ -843,33 +843,34 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
         {/* Satellite mini-map + drag handle */}
         {a.lat && a.lng && (
-          <>
-            <div style={{
+          <div
+            onTouchStart={(e) => { dragY.current = e.touches[0].clientY; }}
+            onTouchEnd={(e) => {
+              if (dragY.current == null) return;
+              const delta = e.changedTouches[0].clientY - dragY.current;
+              if (!mapExpanded && delta > 30) setMapExpanded(true);
+              if (mapExpanded && delta < -30) setMapExpanded(false);
+              dragY.current = null;
+            }}
+            style={{
               height: mapExpanded ? 'calc(100dvh - 220px)' : 240,
               position: 'relative', background: '#c8d5b9',
               transition: 'height 350ms cubic-bezier(0.4,0,0.2,1)',
+              touchAction: 'none',
+            }}
+          >
+            <FieldMiniMap lat={a.lat} lng={a.lng} expanded={mapExpanded} />
+            {/* Drag handle — floats at bottom of map, always visible */}
+            <div style={{
+              position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1001,
+              display: 'flex', justifyContent: 'center', alignItems: 'flex-end',
+              paddingBottom: 10, paddingTop: 20,
+              background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.18))',
+              pointerEvents: 'none',
             }}>
-              <FieldMiniMap lat={a.lat} lng={a.lng} expanded={mapExpanded} />
+              <div style={{ width: 40, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.85)' }} />
             </div>
-            {/* Drag handle */}
-            <div
-              onTouchStart={(e) => { dragY.current = e.touches[0].clientY; }}
-              onTouchEnd={(e) => {
-                if (dragY.current == null) return;
-                const delta = e.changedTouches[0].clientY - dragY.current;
-                if (!mapExpanded && delta > 30) setMapExpanded(true);
-                if (mapExpanded && delta < -30) setMapExpanded(false);
-                dragY.current = null;
-              }}
-              style={{
-                display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
-                paddingTop: 8, paddingBottom: 12, background: '#fff', touchAction: 'none', cursor: 'ns-resize',
-                borderBottom: '1px solid var(--border-1)',
-              }}
-            >
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
-            </div>
-          </>
+          </div>
         )}
 
         {/* Title */}
