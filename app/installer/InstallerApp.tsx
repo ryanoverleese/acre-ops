@@ -2148,7 +2148,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
     setLoaded(prev => {
       const next = { ...prev, [serial]: !prev[serial] };
       localStorage.setItem(LOADED_KEY, JSON.stringify(next));
-      setTimeout(() => setSortLoaded(next), 600);
+      setTimeout(() => setSortLoaded(next), 1000);
       return next;
     });
   };
