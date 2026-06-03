@@ -752,6 +752,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
   const mapsUrl = a.lat && a.lng ? mapsUrlFor(a.lat, a.lng, getMapProvider()) : null;
   const isDone = a.status.toLowerCase() === 'installed';
   const [mapExpanded, setMapExpanded] = useState(false);
+  const dragY = useRef<number | null>(null);
 
   // Edit mode for installed probes
   const [editMode, setEditMode] = useState<null | 'location' | 'note' | 'serial'>(null);
@@ -840,19 +841,35 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       </div>
 
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
-        {/* Satellite mini-map */}
+        {/* Satellite mini-map + drag handle */}
         {a.lat && a.lng && (
-          <div style={{
-            height: mapExpanded ? 'calc(100dvh - 220px)' : 240,
-            position: 'relative', background: '#c8d5b9',
-            transition: 'height 350ms cubic-bezier(0.4,0,0.2,1)',
-          }}>
-            <FieldMiniMap
-              lat={a.lat} lng={a.lng}
-              expanded={mapExpanded}
-              onToggleExpand={() => setMapExpanded(v => !v)}
-            />
-          </div>
+          <>
+            <div style={{
+              height: mapExpanded ? 'calc(100dvh - 220px)' : 240,
+              position: 'relative', background: '#c8d5b9',
+              transition: 'height 350ms cubic-bezier(0.4,0,0.2,1)',
+            }}>
+              <FieldMiniMap lat={a.lat} lng={a.lng} expanded={mapExpanded} />
+            </div>
+            {/* Drag handle */}
+            <div
+              onTouchStart={(e) => { dragY.current = e.touches[0].clientY; }}
+              onTouchEnd={(e) => {
+                if (dragY.current == null) return;
+                const delta = e.changedTouches[0].clientY - dragY.current;
+                if (!mapExpanded && delta > 30) setMapExpanded(true);
+                if (mapExpanded && delta < -30) setMapExpanded(false);
+                dragY.current = null;
+              }}
+              style={{
+                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                height: 22, background: '#fff', touchAction: 'none', cursor: 'ns-resize',
+                borderBottom: '1px solid var(--border-1)',
+              }}
+            >
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#d1d5db' }} />
+            </div>
+          </>
         )}
 
         {/* Title */}
