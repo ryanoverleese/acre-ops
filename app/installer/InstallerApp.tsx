@@ -841,7 +841,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
         {/* Satellite mini-map */}
         {a.lat && a.lng && (
-          <div style={{ height: 220, position: 'relative', background: '#c8d5b9' }}>
+          <div style={{ height: 300, position: 'relative', background: '#c8d5b9' }}>
             <FieldMiniMap lat={a.lat} lng={a.lng} />
           </div>
         )}
