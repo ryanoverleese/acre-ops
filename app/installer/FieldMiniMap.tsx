@@ -89,10 +89,10 @@ function RecenterListener({ posRef }: { posRef: React.MutableRefObject<{ lat: nu
 
 const btnStyle: React.CSSProperties = {
   width: 40, height: 40, borderRadius: '50%',
-  background: '#fff', border: 'none',
-  boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+  background: 'var(--bone-raised,#f5f1e8)', border: '1px solid var(--border-1,#e0ddd6)',
+  boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  cursor: 'pointer',
+  cursor: 'pointer', color: 'var(--field-green,#1F402A)',
 };
 
 interface Props {
@@ -142,18 +142,16 @@ export default function FieldMiniMap({ lat, lng, expanded, onToggleExpand }: Pro
         )}
       </button>
 
-      {/* Recenter — bottom-right */}
+      {/* Recenter — bottom-right, matches main map button */}
       <button
         onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-field'))}
-        style={{ ...btnStyle, position: 'absolute', bottom: 12, right: 12, zIndex: 1000 }}
-        title="Center on my location"
+        style={{ ...btnStyle, position: 'absolute', bottom: 14, right: 14, zIndex: 1000, width: 48, height: 48 }}
+        aria-label="Recenter on my location"
       >
-        <svg width="20" height="20" fill="none" stroke="#1F402A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="3" />
-          <line x1="12" y1="2" x2="12" y2="6" />
-          <line x1="12" y1="18" x2="12" y2="22" />
-          <line x1="2" y1="12" x2="6" y2="12" />
-          <line x1="18" y1="12" x2="22" y2="12" />
+          <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+          <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
         </svg>
       </button>
     </div>
