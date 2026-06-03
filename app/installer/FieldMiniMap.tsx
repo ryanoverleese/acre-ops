@@ -53,6 +53,16 @@ function CenterOn({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
+function InvalidateSize({ expanded }: { expanded: boolean }) {
+  const map = useMap();
+  useEffect(() => {
+    // Give the CSS transition time to finish, then tell Leaflet the size changed
+    const t = setTimeout(() => map.invalidateSize(), 360);
+    return () => clearTimeout(t);
+  }, [map, expanded]);
+  return null;
+}
+
 function UserLocation({ posRef }: { posRef: React.MutableRefObject<{ lat: number; lng: number } | null> }) {
   const [pos, setPos] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -121,6 +131,7 @@ export default function FieldMiniMap({ lat, lng, expanded, onToggleExpand }: Pro
         <UserLocation posRef={posRef} />
         <RecenterListener posRef={posRef} />
         <CenterOn lat={lat} lng={lng} />
+        <InvalidateSize expanded={expanded} />
       </MapContainer>
 
       {/* Expand/collapse — bottom-left */}
