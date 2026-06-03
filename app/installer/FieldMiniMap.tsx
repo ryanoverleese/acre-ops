@@ -98,81 +98,48 @@ const btnStyle: React.CSSProperties = {
 interface Props {
   lat: number;
   lng: number;
+  expanded: boolean;
+  onToggleExpand: () => void;
 }
 
-export default function FieldMiniMap({ lat, lng }: Props) {
+export default function FieldMiniMap({ lat, lng, expanded, onToggleExpand }: Props) {
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
 
   if (!lat || !lng) return null;
 
-  const mapEl = (
-    <MapContainer
-      center={[lat, lng]}
-      zoom={15}
-      style={{ width: '100%', height: '100%' }}
-      zoomControl={false}
-      attributionControl={false}
-    >
-      <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-      <Marker position={[lat, lng]} icon={pin()} interactive={false} />
-      <UserLocation posRef={posRef} />
-      <RecenterListener posRef={posRef} />
-      <CenterOn lat={lat} lng={lng} />
-    </MapContainer>
-  );
-
-  if (fullscreen) {
-    return (
-      <div style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: '#000',
-      }}>
-        {mapEl}
-
-        {/* Close — top-left, easy to reach */}
-        <button
-          onClick={() => setFullscreen(false)}
-          style={{ ...btnStyle, position: 'absolute', top: 52, left: 12, zIndex: 10000 }}
-          title="Exit fullscreen"
-        >
-          <svg width="18" height="18" fill="none" stroke="#1F402A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-
-        {/* Recenter — bottom-right */}
-        <button
-          onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-field'))}
-          style={{ ...btnStyle, position: 'absolute', bottom: 32, right: 12, zIndex: 10000 }}
-          title="Center on my location"
-        >
-          <svg width="20" height="20" fill="none" stroke="#1F402A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="3" />
-            <line x1="12" y1="2" x2="12" y2="6" />
-            <line x1="12" y1="18" x2="12" y2="22" />
-            <line x1="2" y1="12" x2="6" y2="12" />
-            <line x1="18" y1="12" x2="22" y2="12" />
-          </svg>
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      {mapEl}
-
-      {/* Expand — bottom-left, right-thumb reachable */}
-      <button
-        onClick={() => setFullscreen(true)}
-        style={{ ...btnStyle, position: 'absolute', bottom: 12, left: 12, zIndex: 1000 }}
-        title="Expand map"
+      <MapContainer
+        center={[lat, lng]}
+        zoom={15}
+        style={{ width: '100%', height: '100%' }}
+        zoomControl={false}
+        attributionControl={false}
       >
-        <svg width="18" height="18" fill="none" stroke="#1F402A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-          <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
-          <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-        </svg>
+        <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
+        <Marker position={[lat, lng]} icon={pin()} interactive={false} />
+        <UserLocation posRef={posRef} />
+        <RecenterListener posRef={posRef} />
+        <CenterOn lat={lat} lng={lng} />
+      </MapContainer>
+
+      {/* Expand/collapse — bottom-left */}
+      <button
+        onClick={onToggleExpand}
+        style={{ ...btnStyle, position: 'absolute', bottom: 12, left: 12, zIndex: 1000 }}
+        title={expanded ? 'Collapse map' : 'Expand map'}
+      >
+        {expanded ? (
+          <svg width="18" height="18" fill="none" stroke="#1F402A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+            <line x1="10" y1="14" x2="3" y2="21" /><line x1="21" y1="3" x2="14" y2="10" />
+          </svg>
+        ) : (
+          <svg width="18" height="18" fill="none" stroke="#1F402A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+            <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+          </svg>
+        )}
       </button>
 
       {/* Recenter — bottom-right */}

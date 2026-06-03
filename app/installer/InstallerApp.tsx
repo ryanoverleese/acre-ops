@@ -751,6 +751,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
 }) {
   const mapsUrl = a.lat && a.lng ? mapsUrlFor(a.lat, a.lng, getMapProvider()) : null;
   const isDone = a.status.toLowerCase() === 'installed';
+  const [mapExpanded, setMapExpanded] = useState(false);
 
   // Edit mode for installed probes
   const [editMode, setEditMode] = useState<null | 'location' | 'note' | 'serial'>(null);
@@ -841,8 +842,16 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
         {/* Satellite mini-map */}
         {a.lat && a.lng && (
-          <div style={{ height: 240, position: 'relative', background: '#c8d5b9' }}>
-            <FieldMiniMap lat={a.lat} lng={a.lng} />
+          <div style={{
+            height: mapExpanded ? 'calc(100dvh - 220px)' : 240,
+            position: 'relative', background: '#c8d5b9',
+            transition: 'height 350ms cubic-bezier(0.4,0,0.2,1)',
+          }}>
+            <FieldMiniMap
+              lat={a.lat} lng={a.lng}
+              expanded={mapExpanded}
+              onToggleExpand={() => setMapExpanded(v => !v)}
+            />
           </div>
         )}
 
