@@ -1966,7 +1966,7 @@ function MapScreen({
   const [selectedId, setSelectedId] = useState<number | null>(
     (assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0])?.id ?? null
   );
-  const [layer, setLayer] = useState<'street' | 'satellite'>('street');
+  const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
