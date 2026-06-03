@@ -841,17 +841,17 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
         {/* Satellite mini-map */}
         {a.lat && a.lng && (
-          <div style={{ height: 240, position: 'relative', background: '#c8d5b9' }}>
+          <div style={{ height: '50dvh', position: 'relative', background: '#c8d5b9' }}>
             <FieldMiniMap lat={a.lat} lng={a.lng} />
           </div>
         )}
 
         {/* Title */}
-        <div style={{ padding: '18px 18px 14px' }}>
-          <div className="af-eyebrow">{a.operation}</div>
-          <div className="af-display-text" style={{ fontSize: 32, marginTop: 6, textTransform: 'uppercase' }}>{a.fieldName}</div>
+        <div style={{ padding: '10px 14px 8px' }}>
+          <div className="af-eyebrow" style={{ fontSize: 10 }}>{a.operation}</div>
+          <div className="af-display-text" style={{ fontSize: 24, marginTop: 3, textTransform: 'uppercase' }}>{a.fieldName}</div>
           {isDone && (
-            <span className="af-chip af-chip--installed" style={{ marginTop: 10 }}>
+            <span className="af-chip af-chip--installed" style={{ marginTop: 6 }}>
               <svg width="12" height="12" stroke="currentColor" strokeWidth="3" fill="none" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>
               Installed
             </span>
@@ -861,47 +861,47 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
         {/* Stat grid */}
         <div style={{ padding: '0 14px' }}>
           <div className="af-statgrid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-            <div className="stat"><span className="lbl">Crop</span><span className="val">{a.crop || '—'}</span></div>
-            <div className="stat"><span className="lbl">Antenna</span><span className="val">{a.antennaType || '—'}</span></div>
+            <div className="stat"><span className="lbl">Crop</span><span className="val" style={{ fontSize: 13 }}>{a.crop || '—'}</span></div>
+            <div className="stat"><span className="lbl">Antenna</span><span className="val" style={{ fontSize: 13 }}>{a.antennaType || '—'}</span></div>
           </div>
         </div>
 
         {/* Probe card */}
-        <div style={{ padding: '16px 14px 0' }}>
-          <div className="af-eyebrow" style={{ marginBottom: 8 }}>Probe to install</div>
-          <div className="af-probe">
+        <div style={{ padding: '10px 14px 0' }}>
+          <div className="af-eyebrow" style={{ marginBottom: 6, fontSize: 10 }}>Probe to install</div>
+          <div className="af-probe" style={{ padding: '8px 12px' }}>
             <div className="sprite">
-              <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="2" /><path d="M16.24 7.76a6 6 0 010 8.49m-8.48-.01a6 6 0 010-8.49m11.31-2.82a10 10 0 010 14.14m-14.14 0a10 10 0 010-14.14" />
               </svg>
             </div>
             <div className="info">
-              <div className="serial">{a.probeSerial ? `#${a.probeSerial}` : 'Not assigned'}</div>
-              <div className="brand">{a.probeBrand}{a.label ? ` · ${a.label}` : ''}</div>
+              <div className="serial" style={{ fontSize: 14 }}>{a.probeSerial ? `#${a.probeSerial}` : 'Not assigned'}</div>
+              <div className="brand" style={{ fontSize: 12 }}>{a.probeBrand}{a.label ? ` · ${a.label}` : ''}</div>
             </div>
           </div>
         </div>
 
         {/* Install note / access notes */}
         {a.fieldNotes && (
-          <div style={{ padding: '16px 14px 0' }}>
-            <div className="af-install-note">
-              <div className="note-label">Install Note</div>
-              <div style={{ fontSize: 15, lineHeight: 1.45, color: 'var(--ink)', fontWeight: 500 }}>{a.fieldNotes}</div>
+          <div style={{ padding: '10px 14px 0' }}>
+            <div className="af-install-note" style={{ padding: '8px 10px' }}>
+              <div className="note-label" style={{ fontSize: 10 }}>Install Note</div>
+              <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--ink)', fontWeight: 500 }}>{a.fieldNotes}</div>
             </div>
           </div>
         )}
 
         {/* Open in Maps — compact */}
         {mapsUrl && (
-          <div style={{ padding: '12px 14px 0' }}>
+          <div style={{ padding: '8px 14px 0' }}>
             <a
               href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 7,
-                padding: '7px 12px',
+                padding: '6px 10px',
                 background: 'var(--bone-raised)',
                 border: '1.5px solid var(--border-1)',
                 borderRadius: 'var(--r-lg)',
@@ -909,10 +909,10 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
                 color: 'var(--field-green)',
               }}
             >
-              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
               </svg>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Open in Maps
               </span>
               {a.lat && a.lng && (
