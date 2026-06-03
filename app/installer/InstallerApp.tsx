@@ -841,7 +841,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
         {/* Satellite mini-map */}
         {a.lat && a.lng && (
-          <div style={{ height: 300, position: 'relative', background: '#c8d5b9' }}>
+          <div style={{ height: 240, position: 'relative', background: '#c8d5b9' }}>
             <FieldMiniMap lat={a.lat} lng={a.lng} />
           </div>
         )}
@@ -863,7 +863,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
           <div className="af-statgrid" style={{ gridTemplateColumns: '1fr 2fr 1fr' }}>
             <div className="stat"><span className="lbl">Crop</span><span className="val">{a.crop || '—'}</span></div>
             <div className="stat"><span className="lbl">Brand</span><span className="val" style={{ fontSize: 13 }}>{a.probeBrand || '—'}</span></div>
-            <div className="stat"><span className="lbl">Antenna</span><span className="val" style={{ fontSize: 11, lineHeight: 1.2 }}>{a.antennaType || '—'}</span></div>
+            <div className="stat"><span className="lbl">Antenna</span><span className="val">{a.antennaType || '—'}</span></div>
           </div>
         </div>
 
