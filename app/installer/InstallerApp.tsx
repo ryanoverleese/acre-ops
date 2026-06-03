@@ -860,10 +860,9 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
 
         {/* Stat grid */}
         <div style={{ padding: '0 14px' }}>
-          <div className="af-statgrid">
+          <div className="af-statgrid" style={{ gridTemplateColumns: '1fr 2fr 1fr' }}>
             <div className="stat"><span className="lbl">Crop</span><span className="val">{a.crop || '—'}</span></div>
             <div className="stat"><span className="lbl">Brand</span><span className="val" style={{ fontSize: 13 }}>{a.probeBrand || '—'}</span></div>
-            <div className="stat"><span className="lbl">Rows</span><span className="val" style={{ fontSize: a.rowDirection ? 14 : 17 }}>{a.rowDirection || '—'}</span></div>
             <div className="stat"><span className="lbl">Antenna</span><span className="val" style={{ fontSize: 11, lineHeight: 1.2 }}>{a.antennaType || '—'}</span></div>
           </div>
         </div>
