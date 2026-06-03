@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   getCachedRows,
   getRows,
-  getProbeAssignments,
   type Field,
   type FieldSeason,
   type Probe,
+  type ProbeAssignment,
   type Operation,
   type BillingEntity,
   type Contact,
@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
       operations: fresh ? getRows<Operation>('operations') : getCachedRows<Operation>('operations', undefined, 300),
       contacts: fresh ? getRows<Contact>('contacts') : getCachedRows<Contact>('contacts', undefined, 300),
       rackSlots: fresh ? getRows<ProbeRackSlot>('probe_rack') : getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
+      probeAssignments: fresh ? getRows<ProbeAssignment>('probe_assignments') : getCachedRows<ProbeAssignment>('probe_assignments', undefined, 30),
     };
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts, rackSlots] =
       await Promise.all([
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
         read.probes,
         read.billingEntities,
         read.operations,
-        getProbeAssignments(),
+        read.probeAssignments,
         read.contacts,
         read.rackSlots,
       ]);
