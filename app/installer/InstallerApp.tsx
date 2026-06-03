@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 // Leaflet needs window — render only on the client
 const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: false });
 const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
+const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -838,15 +839,12 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
       </div>
 
       <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
-        {/* Decorative green header strip */}
-        <div className="af-field-hero" style={{ height: 90 }}>
-          <TopoDeco />
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'flex-end', padding: '0 20px 16px', color: 'var(--bone)' }}>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>
-              Field Info
-            </div>
+        {/* Satellite mini-map */}
+        {a.lat && a.lng && (
+          <div style={{ height: 220, position: 'relative', background: '#c8d5b9' }}>
+            <FieldMiniMap lat={a.lat} lng={a.lng} />
           </div>
-        </div>
+        )}
 
         {/* Title */}
         <div style={{ padding: '18px 18px 14px' }}>
@@ -896,48 +894,6 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
           </div>
         )}
 
-        {/* Open in Maps — secondary action near thumb zone */}
-        {mapsUrl && (
-          <div style={{ padding: '20px 14px 0' }}>
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '14px 16px',
-                background: 'var(--bone-raised)',
-                border: '1.5px solid var(--border-1)',
-                borderRadius: 'var(--r-lg)',
-                textDecoration: 'none',
-                color: 'var(--field-green)',
-              }}
-            >
-              <div style={{
-                width: 42, height: 42, borderRadius: 10, flexShrink: 0,
-                background: 'var(--sage-wash)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
-                </svg>
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, letterSpacing: '0.08em', textTransform: 'uppercase', lineHeight: 1 }}>
-                  Open in Maps
-                </div>
-                {a.lat && a.lng && (
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--stone-500)', marginTop: 4 }}>
-                    {a.lat.toFixed(5)}°N · {Math.abs(a.lng).toFixed(5)}°W
-                  </div>
-                )}
-              </div>
-              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0, opacity: 0.5 }}>
-                <line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" />
-              </svg>
-            </a>
-          </div>
-        )}
       </div>
 
       {/* CTA — Start Install (not yet done) */}
