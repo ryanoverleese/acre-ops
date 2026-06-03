@@ -894,6 +894,38 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
           </div>
         )}
 
+        {/* Open in Maps — compact */}
+        {mapsUrl && (
+          <div style={{ padding: '12px 14px 0' }}>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+                padding: '7px 12px',
+                background: 'var(--bone-raised)',
+                border: '1.5px solid var(--border-1)',
+                borderRadius: 'var(--r-lg)',
+                textDecoration: 'none',
+                color: 'var(--field-green)',
+              }}
+            >
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+              </svg>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                Open in Maps
+              </span>
+              {a.lat && a.lng && (
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--stone-500)' }}>
+                  {a.lat.toFixed(4)}°N · {Math.abs(a.lng).toFixed(4)}°W
+                </span>
+              )}
+            </a>
+          </div>
+        )}
+
       </div>
 
       {/* CTA — Start Install (not yet done) */}
