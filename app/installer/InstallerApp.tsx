@@ -862,8 +862,8 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
                 dragY.current = null;
               }}
               style={{
-                display: 'flex', justifyContent: 'center', alignItems: 'center',
-                height: 22, background: '#fff', touchAction: 'none', cursor: 'ns-resize',
+                display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+                paddingTop: 8, paddingBottom: 12, background: '#fff', touchAction: 'none', cursor: 'ns-resize',
                 borderBottom: '1px solid var(--border-1)',
               }}
             >
