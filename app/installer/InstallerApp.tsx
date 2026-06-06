@@ -189,6 +189,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const [filter, setFilter] = useState<Filter>('todo');
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [activeGroups, setActiveGroups] = useState<Set<number>>(new Set());
+  const [initialRepairId, setInitialRepairId] = useState<number | null>(null);
 
   useEffect(() => {
     const s = loadSession();
@@ -249,6 +250,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
             season={session.season}
+            onSelectRepair={(id) => { setInitialRepairId(id); setScreen('repairs'); }}
           />
         )}
         {screen === 'loadout' && session && (
@@ -293,7 +295,9 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'repairs' && session && (
           <RepairsScreen
             season={session.season}
-            onBack={() => setScreen('route')}
+            onBack={() => { setInitialRepairId(null); setScreen('route'); }}
+            initialRepairId={initialRepairId ?? undefined}
+            onClearInitial={() => setInitialRepairId(null)}
           />
         )}
         {screen === 'field' && selected && (
@@ -1963,18 +1967,20 @@ function MapScreen({
   onOpenField,
   onBack,
   season,
+  onSelectRepair,
 }: {
   assignments: InstallerAssignment[];
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
   season: number;
+  onSelectRepair?: (id: number) => void;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(
     (assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0])?.id ?? null
   );
   const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
-  const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; problem: string }[]>([]);
+  const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; operation: string; problem: string }[]>([]);
   useEffect(() => {
     fetch(`/api/installer/repairs?season=${season}`, { cache: 'no-store' })
       .then(r => r.json())
@@ -2034,6 +2040,7 @@ function MapScreen({
             onSelect={setSelectedId}
             layer={layer}
             repairPoints={repairPoints}
+            onSelectRepair={onSelectRepair}
           />
         )}
 

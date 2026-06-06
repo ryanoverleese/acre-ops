@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -25,6 +25,7 @@ export interface RepairMapPoint {
   lat: number;
   lng: number;
   fieldName: string;
+  operation: string;
   problem: string;
 }
 
@@ -36,6 +37,7 @@ interface Props {
   onSelect: (id: number) => void;
   layer: Layer;
   repairPoints?: RepairMapPoint[];
+  onSelectRepair?: (id: number) => void;
 }
 
 // Build a numbered "pin" as an inline SVG divIcon.
@@ -239,7 +241,7 @@ function makeRepairPin() {
   });
 }
 
-export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints }: Props) {
+export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
 
   // Expose current user location through a ref so the recenter listener can read it
@@ -332,19 +334,30 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
           key={`repair-${r.id}`}
           position={[r.lat, r.lng]}
           icon={makeRepairPin()}
-          interactive={false}
+          eventHandlers={{ click: () => onSelectRepair?.(r.id) }}
         >
-          <Tooltip
-            permanent={false}
-            direction="top"
-            offset={[0, -10]}
-          >
-            <div style={{ fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}>
-              <strong style={{ display: 'block', color: '#ef4444' }}>⚠ Repair</strong>
-              <span style={{ display: 'block' }}>{r.fieldName}</span>
-              {r.problem && <span style={{ display: 'block', opacity: 0.7 }}>{r.problem.slice(0, 40)}{r.problem.length > 40 ? '…' : ''}</span>}
+          <Popup closeButton={false} offset={[0, -10]}>
+            <div style={{ fontSize: 13, minWidth: 160 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                <strong style={{ fontSize: 14 }}>{r.fieldName}</strong>
+              </div>
+              {r.operation && <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>{r.operation}</div>}
+              {r.problem && <div style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4, color: '#374151' }}>{r.problem.slice(0, 60)}{r.problem.length > 60 ? '…' : ''}</div>}
+              {onSelectRepair && (
+                <button
+                  onClick={() => onSelectRepair(r.id)}
+                  style={{
+                    width: '100%', padding: '7px 0', borderRadius: 6, border: 'none',
+                    background: '#ef4444', color: '#fff', fontWeight: 700,
+                    fontSize: 12, cursor: 'pointer', letterSpacing: '0.04em',
+                  }}
+                >
+                  Open Ticket →
+                </button>
+              )}
             </div>
-          </Tooltip>
+          </Popup>
         </Marker>
       ))}
 

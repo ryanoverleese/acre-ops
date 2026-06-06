@@ -373,9 +373,11 @@ function CloseOutForm({ repair, onBack, onSaved }: {
 
 // ── RepairsScreen ─────────────────────────────────────────────────────────────
 
-export default function RepairsScreen({ season, onBack }: {
+export default function RepairsScreen({ season, onBack, initialRepairId, onClearInitial }: {
   season: number;
   onBack: () => void;
+  initialRepairId?: number;
+  onClearInitial?: () => void;
 }) {
   const [repairs, setRepairs] = useState<InstallerRepair[]>([]);
   const [loading, setLoading] = useState(true);
@@ -387,7 +389,14 @@ export default function RepairsScreen({ season, onBack }: {
     try {
       const res = await fetch(`/api/installer/repairs?season=${season}${fresh ? '&fresh=1' : ''}`, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
-      setRepairs(data.repairs ?? []);
+      const loaded: InstallerRepair[] = data.repairs ?? [];
+      setRepairs(loaded);
+      // If navigated here from map, auto-open that repair's closeout
+      if (initialRepairId) {
+        const target = loaded.find(r => r.id === initialRepairId);
+        if (target) { setSelected(target); setSubscreen('closeout'); }
+        onClearInitial?.();
+      }
     } finally {
       setLoading(false);
     }
