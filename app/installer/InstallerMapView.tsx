@@ -336,6 +336,15 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
           icon={makeRepairPin()}
           eventHandlers={{ click: () => onSelectRepair?.(r.id) }}
         >
+          <Tooltip
+            permanent
+            direction="bottom"
+            offset={[0, -2]}
+            className="af-map-label af-map-label--repair"
+          >
+            <strong style={{ display: 'block', color: '#ef4444' }}>{r.fieldName}</strong>
+            {r.operation && <span style={{ display: 'block', opacity: 0.75 }}>{r.operation}</span>}
+          </Tooltip>
           <Popup closeButton={false} offset={[0, -10]}>
             <div style={{ fontSize: 13, minWidth: 160 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
