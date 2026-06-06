@@ -4,11 +4,8 @@ import {
   type Field,
   type FieldSeason,
   type ProbeAssignment,
-  type Operation,
   type BillingEntity,
-  type Contact,
 } from '@/lib/baserow';
-import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,18 +14,15 @@ export async function GET(request: NextRequest) {
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
 
   try {
-    const [fieldSeasons, fields, probeAssignments, billingEntities, operations, contacts] = await Promise.all([
+    const [fieldSeasons, fields, probeAssignments, billingEntities] = await Promise.all([
       getCachedRows<FieldSeason>('field_seasons', undefined, 60),
       getCachedRows<Field>('fields', undefined, 120),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
       getCachedRows<BillingEntity>('billing_entities', undefined, 300),
-      getCachedRows<Operation>('operations', undefined, 300),
-      getCachedRows<Contact>('contacts', undefined, 300),
     ]);
 
-    const operationMap = buildOperationMap(operations);
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
     const fieldMap = new Map(fields.map(f => [f.id, f]));
+    const billingEntityMap = new Map(billingEntities.map(be => [be.id, be]));
 
     const paByFs = new Map<number, { probeAssignmentId: number; probeNumber: number; label: string }[]>();
     for (const pa of probeAssignments) {
@@ -48,11 +42,8 @@ export async function GET(request: NextRequest) {
       .map(fs => {
         const fieldId = fs.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
-        let operationName = '';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) operationName = operationMap.get(opId) || '';
-        }
+        const beId = field?.billing_entity?.[0]?.id;
+        const operationName = beId ? (billingEntityMap.get(beId)?.name ?? '') : '';
         return {
           fieldSeasonId: fs.id,
           fieldName: field?.name ?? '',
