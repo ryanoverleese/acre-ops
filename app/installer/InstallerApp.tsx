@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: false });
 const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
+import RepairsScreen from './RepairsScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ export interface InstallerAssignment {
   installGroup: number | null;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings' | 'summary';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings' | 'summary' | 'repairs';
 
 type MapProvider = 'google' | 'apple';
 const MAP_PROVIDER_KEY = 'af-map-provider';
@@ -247,6 +248,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
+            season={session.season}
           />
         )}
         {screen === 'loadout' && session && (
@@ -288,6 +290,12 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'summary' && session && (
           <SummaryScreen session={session} onBack={() => setScreen('me')} />
         )}
+        {screen === 'repairs' && session && (
+          <RepairsScreen
+            season={session.season}
+            onBack={() => setScreen('route')}
+          />
+        )}
         {screen === 'field' && selected && (
           <FieldScreen
             assignment={selected}
@@ -314,14 +322,16 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         <BottomBar
           current={screen}
           onNav={setScreen}
+          installer={session?.installer ?? ''}
         />
       )}
     </div>
   );
 }
 
-function BottomBar({ current, onNav }: { current: Screen; onNav: (s: Screen) => void }) {
+function BottomBar({ current, onNav, installer }: { current: Screen; onNav: (s: Screen) => void; installer: string }) {
   const isRoute = current === 'route' || current === 'field' || current === 'install' || current === 'success';
+  const isRyan = installer.toLowerCase() === 'ryan';
   return (
     <div className="af-bottombar">
       <button className="af-tab" aria-current={isRoute ? 'true' : undefined} onClick={() => onNav('route')}>
@@ -344,6 +354,14 @@ function BottomBar({ current, onNav }: { current: Screen; onNav: (s: Screen) => 
         </svg>
         Loadout
       </button>
+      {isRyan && (
+        <button className="af-tab" aria-current={current === 'repairs' ? 'true' : undefined} onClick={() => onNav('repairs')}>
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+          </svg>
+          Repairs
+        </button>
+      )}
       <button className="af-tab" aria-current={current === 'me' ? 'true' : undefined} onClick={() => onNav('me')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
@@ -1944,16 +1962,24 @@ function MapScreen({
   assignments,
   onOpenField,
   onBack,
+  season,
 }: {
   assignments: InstallerAssignment[];
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
+  season: number;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(
     (assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0])?.id ?? null
   );
   const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
+  const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; problem: string }[]>([]);
+  useEffect(() => {
+    fetch(`/api/installer/repairs?season=${season}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(d => setRepairPoints((d.repairs ?? []).filter((r: { lat: number; lng: number }) => r.lat && r.lng)));
+  }, [season]);
 
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const mapAssignments = showInstalled ? assignments : assignments.filter(a => a.status.toLowerCase() !== 'installed');
@@ -2007,6 +2033,7 @@ function MapScreen({
             selectedId={selectedId}
             onSelect={setSelectedId}
             layer={layer}
+            repairPoints={repairPoints}
           />
         )}
 

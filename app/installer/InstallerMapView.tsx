@@ -20,6 +20,14 @@ export interface MapPoint {
   probeRackSlot?: number | null;
 }
 
+export interface RepairMapPoint {
+  id: number;
+  lat: number;
+  lng: number;
+  fieldName: string;
+  problem: string;
+}
+
 type Layer = 'street' | 'satellite';
 
 interface Props {
@@ -27,6 +35,7 @@ interface Props {
   selectedId: number | null;
   onSelect: (id: number) => void;
   layer: Layer;
+  repairPoints?: RepairMapPoint[];
 }
 
 // Build a numbered "pin" as an inline SVG divIcon.
@@ -209,7 +218,28 @@ function RecenterListener({ getUserPos }: { getUserPos: () => { lat: number; lng
   return null;
 }
 
-export default function InstallerMapView({ points, selectedId, onSelect, layer }: Props) {
+function makeRepairPin() {
+  const html = `
+    <div style="
+      width:36px;height:36px;border-radius:50%;
+      background:#ef4444;border:3px solid #fff;
+      display:flex;align-items:center;justify-content:center;
+      box-shadow:0 4px 12px rgba(239,68,68,0.5);
+    ">
+      <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
+      </svg>
+    </div>
+  `;
+  return L.divIcon({
+    className: 'af-leaflet-repair-pin',
+    html,
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+  });
+}
+
+export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
 
   // Expose current user location through a ref so the recenter listener can read it
@@ -295,6 +325,28 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer }
           </Marker>
         );
       })}
+
+      {/* Repair pins */}
+      {(repairPoints ?? []).filter(r => r.lat && r.lng).map(r => (
+        <Marker
+          key={`repair-${r.id}`}
+          position={[r.lat, r.lng]}
+          icon={makeRepairPin()}
+          interactive={false}
+        >
+          <Tooltip
+            permanent={false}
+            direction="top"
+            offset={[0, -10]}
+          >
+            <div style={{ fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}>
+              <strong style={{ display: 'block', color: '#ef4444' }}>⚠ Repair</strong>
+              <span style={{ display: 'block' }}>{r.fieldName}</span>
+              {r.problem && <span style={{ display: 'block', opacity: 0.7 }}>{r.problem.slice(0, 40)}{r.problem.length > 40 ? '…' : ''}</span>}
+            </div>
+          </Tooltip>
+        </Marker>
+      ))}
 
       <UserLocation />
       <FitBounds points={valid} />
