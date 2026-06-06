@@ -421,8 +421,8 @@ export default function RepairsScreen({ season, onBack }: {
           onClick={() => setSubscreen('create')}
           style={{
             width: 44, height: 44, borderRadius: 10,
-            background: 'rgba(246,242,234,0.14)', border: '1px solid rgba(246,242,234,0.3)',
-            color: 'var(--bone)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+            background: 'var(--bone-raised,#f0ede8)', border: '1px solid var(--border-1)',
+            color: 'var(--field-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           }}
           aria-label="New repair"
         >
