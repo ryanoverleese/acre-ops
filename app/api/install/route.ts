@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     const lat = parseFloat(formData.get('lat') as string);
     const lng = parseFloat(formData.get('lng') as string);
     const crop = formData.get('crop') as string;
+    const antennaType = formData.get('antennaType') as string | null;
     const changedProbeIdStr = formData.get('changedProbeId') as string | null;
     const changedProbeId = changedProbeIdStr ? parseInt(changedProbeIdStr, 10) : null;
     const cropxTelemetryId = formData.get('cropxTelemetryId') as string | null;
@@ -125,6 +126,9 @@ export async function POST(request: NextRequest) {
     }
     if (installNotes) {
       probeAssignmentUpdate.install_notes = installNotes;
+    }
+    if (antennaType) {
+      probeAssignmentUpdate.antenna_type = antennaType;
     }
     // Idempotency: if already marked Installed, return success without re-writing
     try {

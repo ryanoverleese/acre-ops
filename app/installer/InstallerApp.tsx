@@ -105,6 +105,17 @@ function probeBadgeColors(brand: string, antenna = ''): { bg: string; fg: string
   return { bg: 'var(--sage-wash)', fg: 'var(--field-green)' };                                                      // default sage
 }
 
+const ANTENNA_OPTIONS = [
+  'Sentek Stub',
+  'CropX Stub',
+  'CropX Stub + White Flag',
+  'CropX Stub + No Flag',
+  "Sentek 10'",
+  "CropX 10'",
+  "CropX 6'",
+  'ASK',
+];
+
 function calcFlags(antennaType: string, sideDress: string) {
   const antenna = antennaType.toLowerCase();
   const sd = sideDress.toLowerCase();
@@ -1543,6 +1554,8 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   }, []);
   const [cropConfirmed, setCropConfirmed] = useState<null | true | false>(null);
   const [cropChanged, setCropChanged] = useState('');
+  const [antennaConfirmed, setAntennaConfirmed] = useState<null | true | false>(null);
+  const [antennaChanged, setAntennaChanged] = useState('');
   const [rowDir, setRowDir] = useState<string | null>(null);
   const [pickupAccess, setPickupAccess] = useState<boolean | null>(null);
   const [cropxId, setCropxId] = useState('');
@@ -1564,10 +1577,11 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
     serial: serialDone,
     gps: !!gps,
     crop: a.crop ? cropConfirmed !== null : !!cropChanged,
+    antenna: a.antennaType ? (antennaConfirmed === true || (antennaConfirmed === false && !!antennaChanged)) : !!antennaChanged,
     photoEnd: !!photoEnd,
     rowDir: !!rowDir,
   };
-  const requiredKeys = ['serial', 'gps', 'crop', 'rowDir'] as const;
+  const requiredKeys = ['serial', 'gps', 'crop', 'antenna', 'rowDir'] as const;
   const completedCount = requiredKeys.filter(k => doneMap[k]).length;
   const progress = completedCount / requiredKeys.length;
   const canSubmit = completedCount === requiredKeys.length;
@@ -1622,6 +1636,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       fd.append('lat', String(gps.lat));
       fd.append('lng', String(gps.lng));
       fd.append('crop', !a.crop ? cropChanged : cropConfirmed === false && cropChanged ? cropChanged : a.crop);
+      fd.append('antennaType', !a.antennaType ? antennaChanged : antennaConfirmed === false && antennaChanged ? antennaChanged : a.antennaType);
       if (rowDir) fd.append('rowDirection', rowDir);
       if (pickupAccess !== null) fd.append('pickupAccess', String(pickupAccess));
       if (cropxId) fd.append('cropxTelemetryId', cropxId);
@@ -1894,8 +1909,82 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           )}
         </InstallSection>
 
-        {/* Section 4: Row direction */}
-        <InstallSection num={4} title="Row direction" done={doneMap.rowDir} hint="Planting rows run…">
+        {/* Section 4: Antenna confirmation */}
+        <InstallSection num={4} title="Antenna confirmation" done={doneMap.antenna} hint={a.antennaType ? `Planned: ${a.antennaType}` : 'No planned antenna'}>
+          {a.antennaType ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button
+                  aria-pressed={antennaConfirmed === true ? 'true' : 'false'}
+                  onClick={() => { setAntennaConfirmed(true); setAntennaChanged(''); }}
+                  className="af-btn af-btn--lg"
+                  style={{
+                    background: antennaConfirmed === true ? 'var(--field-green)' : 'var(--bone-raised)',
+                    color: antennaConfirmed === true ? 'var(--bone)' : 'var(--ink)',
+                    border: `1.5px solid ${antennaConfirmed === true ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                  }}
+                >
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  {a.antennaType}
+                </button>
+                <button
+                  aria-pressed={antennaConfirmed === false ? 'true' : 'false'}
+                  onClick={() => setAntennaConfirmed(false)}
+                  className="af-btn af-btn--lg"
+                  style={{
+                    background: antennaConfirmed === false ? 'var(--dry)' : 'var(--bone-raised)',
+                    color: antennaConfirmed === false ? 'white' : 'var(--ink)',
+                    border: `1.5px solid ${antennaConfirmed === false ? 'var(--dry)' : 'var(--stone-300)'}`,
+                  }}
+                >
+                  Changed
+                </button>
+              </div>
+              {antennaConfirmed === false && (
+                <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {ANTENNA_OPTIONS.map(opt => (
+                    <button
+                      key={opt}
+                      className="af-btn af-btn--lg"
+                      aria-pressed={antennaChanged === opt ? 'true' : 'false'}
+                      onClick={() => setAntennaChanged(opt)}
+                      style={{
+                        background: antennaChanged === opt ? 'var(--field-green)' : 'var(--bone-raised)',
+                        color: antennaChanged === opt ? 'var(--bone)' : 'var(--ink)',
+                        border: `1.5px solid ${antennaChanged === opt ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {ANTENNA_OPTIONS.map(opt => (
+                <button
+                  key={opt}
+                  className="af-btn af-btn--lg"
+                  aria-pressed={antennaChanged === opt ? 'true' : 'false'}
+                  onClick={() => setAntennaChanged(opt)}
+                  style={{
+                    background: antennaChanged === opt ? 'var(--field-green)' : 'var(--bone-raised)',
+                    color: antennaChanged === opt ? 'var(--bone)' : 'var(--ink)',
+                    border: `1.5px solid ${antennaChanged === opt ? 'var(--field-green)' : 'var(--stone-300)'}`,
+                  }}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
+        </InstallSection>
+
+        {/* Section 5: Row direction */}
+        <InstallSection num={5} title="Row direction" done={doneMap.rowDir} hint="Planting rows run…">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {(['N–S', 'E–W', 'NE–SW', 'NW–SE'] as const).map(dir => (
               <button
@@ -1915,8 +2004,8 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           </div>
         </InstallSection>
 
-        {/* Section 5: Access */}
-        <InstallSection num={5} title="Pickup Access" done={pickupAccess !== null} hint="Is this probe's border flag easily accessed with a pickup?">
+        {/* Section 6: Access */}
+        <InstallSection num={6} title="Pickup Access" done={pickupAccess !== null} hint="Is this probe's border flag easily accessed with a pickup?">
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {([true, false] as const).map(val => (
               <button
@@ -1936,8 +2025,8 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
           </div>
         </InstallSection>
 
-        {/* Section 6: Photos */}
-        <InstallSection num={6} title="Photos" done={doneMap.photoEnd} hint="Field end shot + optional extra.">
+        {/* Section 7: Photos */}
+        <InstallSection num={7} title="Photos" done={doneMap.photoEnd} hint="Field end shot + optional extra.">
           <div>
             <input ref={photoEndRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={e => handlePhoto('end', e.target.files?.[0] ?? null)} />
@@ -2010,7 +2099,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 6: CropX telemetry ID */}
-        <InstallSection num={7} title="CropX telemetry ID" done={!!cropxId} hint="Only needed for CropX White Gateways.">
+        <InstallSection num={8} title="CropX telemetry ID" done={!!cropxId} hint="Only needed for CropX White Gateways.">
           <input
             className="af-input af-mono"
             placeholder="000000"
@@ -2021,7 +2110,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         </InstallSection>
 
         {/* Section 7: Install notes */}
-        <InstallSection num={8} title="Install notes" done={!!notes} hint="Optional — anything unusual?">
+        <InstallSection num={9} title="Install notes" done={!!notes} hint="Optional — anything unusual?">
           <textarea
             className="af-textarea"
             placeholder="Residue heavy, soil dry on top, grower mentioned replant in west end…"
