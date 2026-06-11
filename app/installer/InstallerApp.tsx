@@ -112,8 +112,6 @@ const ANTENNA_OPTIONS = [
   'CropX Stub + No Flag',
   "Sentek 10'",
   "CropX 10'",
-  "CropX 6'",
-  'ASK',
 ];
 
 function calcFlags(antennaType: string, sideDress: string) {
