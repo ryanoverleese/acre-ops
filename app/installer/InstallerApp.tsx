@@ -1617,11 +1617,11 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
     if (!gps) { setError('GPS location is required'); return; }
     setError(''); setSubmitting(true); setSubmitProgress(0); submitProgressRef.current = 0;
 
-    // Simulated progress: fast 0→70, slow 70→92, stalls waiting for server
+    // Trickle progress as fallback; real upload progress (XHR) jumps it forward.
+    // Caps at 92 while waiting on the server response.
     const interval = setInterval(() => {
       const cur = submitProgressRef.current;
-      const increment = cur < 40 ? 3 : cur < 70 ? 1.5 : cur < 85 ? 0.5 : cur < 92 ? 0.15 : 0;
-      const next = Math.min(cur + increment, 92);
+      const next = Math.min(cur + (cur < 85 ? 0.4 : 0.15), 92);
       submitProgressRef.current = next;
       setSubmitProgress(next);
     }, 120);
@@ -1642,11 +1642,32 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
       if (photoEnd) fd.append('photoFieldEnd', photoEnd);
       if (photoExtra) fd.append('photoExtra', photoExtra);
 
-      const res = await fetch('/api/install', { method: 'POST', body: fd });
+      // XHR instead of fetch: real upload progress + a timeout so a stalled
+      // connection can't hang the submit forever. Safe to retry — the API
+      // is idempotent (already-installed assignments return success).
+      const res = await new Promise<{ status: number; body: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/api/install');
+        xhr.timeout = 75000;
+        xhr.upload.onprogress = (e) => {
+          if (!e.lengthComputable) return;
+          // Upload drives 0→85; the trickle interval covers server processing 85→92
+          const pct = Math.min(85, (e.loaded / e.total) * 85);
+          if (pct > submitProgressRef.current) {
+            submitProgressRef.current = pct;
+            setSubmitProgress(pct);
+          }
+        };
+        xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText });
+        xhr.onerror = () => reject(new Error('Connection failed — check signal and try again'));
+        xhr.ontimeout = () => reject(new Error('Timed out on weak signal — it is safe to hit Log install again'));
+        xhr.onabort = () => reject(new Error('Upload cancelled — try again'));
+        xhr.send(fd);
+      });
       clearInterval(interval);
-      if (!res.ok) {
+      if (res.status < 200 || res.status >= 300) {
         let msg = `Submit failed (${res.status}) — try again`;
-        try { const d = await res.json(); msg = d.error || msg; } catch { /* non-JSON error body */ }
+        try { const d = JSON.parse(res.body); msg = d.error || msg; } catch { /* non-JSON error body */ }
         setError(msg); setSubmitting(false); return;
       }
       submitProgressRef.current = 100; setSubmitProgress(100);
