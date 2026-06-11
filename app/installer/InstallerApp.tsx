@@ -269,6 +269,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onOpenSettings={() => setScreen('settings')}
             onOpenSummary={() => setScreen('summary')}
             onOpenProbes={() => setScreen('probes')}
+            onOpenLocations={() => setScreen('locations')}
           />
         )}
         {screen === 'history' && session && (
@@ -302,7 +303,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
           />
         )}
         {screen === 'locations' && session && (
-          <LocationsScreen />
+          <LocationsScreen onBack={() => setScreen('me')} />
         )}
         {screen === 'probes' && session && (
           <ProbesScreen onBack={() => setScreen('me')} />
@@ -365,12 +366,6 @@ function BottomBar({ current, onNav, installer }: { current: Screen; onNav: (s: 
         </svg>
         Loadout
       </button>
-      <button className="af-tab" aria-current={current === 'locations' ? 'true' : undefined} onClick={() => onNav('locations')}>
-        <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
-        </svg>
-        Locations
-      </button>
       {isRyan && (
         <button className="af-tab" aria-current={current === 'repairs' ? 'true' : undefined} onClick={() => onNav('repairs')}>
           <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
@@ -416,7 +411,7 @@ interface FieldLocation {
   placementNotes?: string;
 }
 
-function LocationsScreen() {
+function LocationsScreen({ onBack }: { onBack: () => void }) {
   const [locations, setLocations] = useState<FieldLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -448,7 +443,13 @@ function LocationsScreen() {
   return (
     <div className="af-screen">
       <div className="af-topbar">
-        <div style={{ width: 40 }} />
+        <button
+          onClick={onBack}
+          style={{ color: 'var(--field-green)', padding: 6, display: 'flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer' }}
+          aria-label="Back"
+        >
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+        </button>
         <div style={{ textAlign: 'center' }}>
           <div className="af-topbar-title">Locations</div>
           <div className="af-topbar-sub">{locations.length} field{locations.length !== 1 ? 's' : ''}</div>
@@ -3042,7 +3043,7 @@ function FlagIcon({ size = 20 }: { size?: number }) {
 // ─── Me Screen ────────────────────────────────────────────────────────────────
 
 function MeScreen({
-  session, assignments, onLogout, onOpenHistory, onOpenMileage, onOpenSettings, onOpenSummary, onOpenProbes,
+  session, assignments, onLogout, onOpenHistory, onOpenMileage, onOpenSettings, onOpenSummary, onOpenProbes, onOpenLocations,
 }: {
   session: Session;
   assignments: InstallerAssignment[];
@@ -3052,6 +3053,7 @@ function MeScreen({
   onOpenSettings: () => void;
   onOpenSummary: () => void;
   onOpenProbes: () => void;
+  onOpenLocations: () => void;
 }) {
   const initials = session.installer.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const installedToday = assignments.filter(a => a.status.toLowerCase() === 'installed').length;
@@ -3189,6 +3191,17 @@ function MeScreen({
               label="Mileage log"
               sub="Track daily start & end miles"
               onClick={onOpenMileage}
+              showChevron
+            />
+            <MenuRow
+              icon={
+                <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" />
+                </svg>
+              }
+              label="Locations"
+              sub="Find & navigate to any field"
+              onClick={onOpenLocations}
               showChevron
             />
             <MenuRow
