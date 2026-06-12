@@ -30,6 +30,12 @@ interface UnassignedProbe {
   brand: string;
 }
 
+function navigateUrl(lat: number, lng: number): string {
+  const provider = typeof window !== 'undefined' && localStorage.getItem('af-map-provider') === 'apple' ? 'apple' : 'google';
+  if (provider === 'apple') return `https://maps.apple.com/?q=${lat},${lng}&ll=${lat},${lng}`;
+  return `https://maps.google.com/?q=${lat},${lng}`;
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', fontSize: 16,
   border: '1.5px solid var(--border-1)', borderRadius: 10,
@@ -282,6 +288,28 @@ function CloseOutForm({ repair, onBack, onSaved }: {
             <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18 }}>Reported {repair.reportedAt}</div>
           )}
         </div>
+
+        {/* Navigate to probe */}
+        {!!(repair.lat && repair.lng) && (
+          <a
+            href={navigateUrl(repair.lat, repair.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px', borderRadius: 12, textDecoration: 'none',
+              background: 'var(--bone-raised,#f0ede8)', border: '1.5px solid var(--border-1)',
+              color: 'var(--field-green)',
+              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+            }}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <polygon points="3 11 22 2 13 21 11 13 3 11" />
+            </svg>
+            Navigate to probe
+          </a>
+        )}
 
         {/* How fixed */}
         <div>
