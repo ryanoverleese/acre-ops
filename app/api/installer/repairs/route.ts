@@ -57,13 +57,27 @@ export async function GET(request: NextRequest) {
         const probeId = pa?.probe?.[0]?.id;
         const probe = probeId ? probeMap.get(probeId) : null;
 
+        // Prefer the probe's installed coords for this season: the repair's linked
+        // probe_assignment first, else any installed assignment on the same field_season.
+        let installLat = toNum(pa?.install_lat);
+        let installLng = toNum(pa?.install_lng);
+        if ((!installLat || !installLng) && fsId) {
+          const fallbackPa = probeAssignments.find(
+            p => p.field_season?.[0]?.id === fsId && toNum(p.install_lat) && toNum(p.install_lng)
+          );
+          if (fallbackPa) {
+            installLat = toNum(fallbackPa.install_lat);
+            installLng = toNum(fallbackPa.install_lng);
+          }
+        }
+
         return {
           id: r.id,
           fieldSeasonId: fsId ?? 0,
           fieldName: field?.name ?? 'Unknown Field',
           operation: operationName,
-          lat: toNum(field?.lat),
-          lng: toNum(field?.lng),
+          lat: installLat || toNum(field?.lat),
+          lng: installLng || toNum(field?.lng),
           problem: r.problem ?? '',
           reportedAt: r.reported_at ?? '',
           probeSerial: probe?.serial_number?.toString() ?? '',
