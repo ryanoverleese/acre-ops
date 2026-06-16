@@ -84,6 +84,7 @@ export async function GET(request: NextRequest) {
           probeAssignmentId: paId ?? null,
           probeNumber: pa ? (toNum(pa.probe_number) || 1) : null,
           label: pa?.label ?? '',
+          watchList: !!r.watch_list,
         };
       });
 

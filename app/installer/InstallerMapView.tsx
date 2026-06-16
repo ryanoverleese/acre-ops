@@ -27,6 +27,7 @@ export interface RepairMapPoint {
   fieldName: string;
   operation: string;
   problem: string;
+  watchList?: boolean;
 }
 
 type Layer = 'street' | 'satellite';
@@ -245,13 +246,16 @@ function RecenterListener({ getUserPos }: { getUserPos: () => { lat: number; lng
   return null;
 }
 
-function makeRepairPin() {
+function makeRepairPin(watch = false) {
+  // Watch-list repairs are a softer "keep an eye on it" state → light blue.
+  const bg = watch ? '#38BDF8' : '#ef4444';
+  const glow = watch ? 'rgba(56,189,248,0.5)' : 'rgba(239,68,68,0.5)';
   const html = `
     <div style="
       width:36px;height:36px;border-radius:50%;
-      background:#ef4444;border:3px solid #fff;
+      background:${bg};border:3px solid #fff;
       display:flex;align-items:center;justify-content:center;
-      box-shadow:0 4px 12px rgba(239,68,68,0.5);
+      box-shadow:0 4px 12px ${glow};
     ">
       <svg width="16" height="16" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
         <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
@@ -356,11 +360,13 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
       })}
 
       {/* Repair pins */}
-      {(repairPoints ?? []).filter(r => r.lat && r.lng).map(r => (
+      {(repairPoints ?? []).filter(r => r.lat && r.lng).map(r => {
+       const repairColor = r.watchList ? '#0EA5E9' : '#ef4444';
+       return (
         <Marker
           key={`repair-${r.id}`}
           position={[r.lat, r.lng]}
-          icon={makeRepairPin()}
+          icon={makeRepairPin(r.watchList)}
           eventHandlers={{ click: () => onSelectRepair?.(r.id) }}
         >
           <Tooltip
@@ -369,15 +375,16 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
             offset={[0, -2]}
             className="af-map-label af-map-label--repair"
           >
-            <strong style={{ display: 'block', color: '#ef4444' }}>{r.fieldName}</strong>
+            <strong style={{ display: 'block', color: repairColor }}>{r.fieldName}</strong>
             {r.operation && <span style={{ display: 'block', opacity: 0.75 }}>{r.operation}</span>}
           </Tooltip>
           <Popup closeButton={false} offset={[0, -10]}>
             <div style={{ fontSize: 13, minWidth: 160 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: repairColor, flexShrink: 0 }} />
                 <strong style={{ fontSize: 14 }}>{r.fieldName}</strong>
               </div>
+              {r.watchList && <div style={{ fontSize: 10, fontWeight: 700, color: '#0EA5E9', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Watch List</div>}
               {r.operation && <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6 }}>{r.operation}</div>}
               {r.problem && <div style={{ fontSize: 12, marginBottom: 10, lineHeight: 1.4, color: '#374151' }}>{r.problem.slice(0, 60)}{r.problem.length > 60 ? '…' : ''}</div>}
               {onSelectRepair && (
@@ -385,7 +392,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
                   onClick={() => onSelectRepair(r.id)}
                   style={{
                     width: '100%', padding: '7px 0', borderRadius: 6, border: 'none',
-                    background: '#ef4444', color: '#fff', fontWeight: 700,
+                    background: repairColor, color: '#fff', fontWeight: 700,
                     fontSize: 12, cursor: 'pointer', letterSpacing: '0.04em',
                   }}
                 >
@@ -395,7 +402,8 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
             </div>
           </Popup>
         </Marker>
-      ))}
+       );
+      })}
 
       <UserLocation />
       {!initialView && <FitBounds points={valid} />}

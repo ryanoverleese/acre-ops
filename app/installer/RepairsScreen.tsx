@@ -15,6 +15,7 @@ interface InstallerRepair {
   probeAssignmentId: number | null;
   probeNumber: number | null;
   label: string;
+  watchList?: boolean;
 }
 
 interface FieldOption {
@@ -225,6 +226,27 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
   const [newSerial, setNewSerial] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [watchOn, setWatchOn] = useState(!!repair.watchList);
+  const [savingWatch, setSavingWatch] = useState(false);
+
+  // Flag this repair as "watch list" (light-blue pin) without closing it out.
+  const toggleWatch = async () => {
+    const next = !watchOn;
+    setWatchOn(next);
+    setSavingWatch(true);
+    try {
+      const res = await fetch(`/api/repairs/${repair.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ watch_list: next }),
+      });
+      if (!res.ok) setWatchOn(!next); // revert on failure
+    } catch {
+      setWatchOn(!next);
+    } finally {
+      setSavingWatch(false);
+    }
+  };
 
   useEffect(() => {
     if (!probeReplaced) return;
@@ -297,6 +319,40 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
           {repair.reportedAt && (
             <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18 }}>Reported {repair.reportedAt}</div>
           )}
+        </div>
+
+        {/* Watch list toggle — light-blue pin, keep an eye on it without closing */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 14px', borderRadius: 12,
+          background: watchOn ? '#E0F2FE' : 'var(--bone-raised,#f0ede8)',
+          border: `1.5px solid ${watchOn ? '#7DD3FC' : 'var(--border-1)'}`,
+        }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 14, color: watchOn ? '#0369A1' : 'var(--ink)' }}>
+              Watch List
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
+              {savingWatch ? 'Saving…' : watchOn ? 'Shown light blue on the map' : 'Keep an eye on it, not urgent'}
+            </div>
+          </div>
+          <button
+            onClick={toggleWatch}
+            disabled={savingWatch}
+            aria-pressed={watchOn}
+            style={{
+              width: 52, height: 30, borderRadius: 15, border: 'none', cursor: 'pointer',
+              background: watchOn ? '#0EA5E9' : '#d1d5db',
+              position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+            }}
+          >
+            <div style={{
+              position: 'absolute', top: 4, left: watchOn ? 26 : 4,
+              width: 22, height: 22, borderRadius: 11,
+              background: '#fff', transition: 'left 0.2s',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+            }} />
+          </button>
         </div>
 
         {/* Navigate to probe */}

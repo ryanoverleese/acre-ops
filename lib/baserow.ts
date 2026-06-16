@@ -440,6 +440,7 @@ export interface Repair {
   notified_customer?: boolean;
   probe_replaced?: boolean;
   new_probe_serial?: string;
+  watch_list?: boolean;
 }
 
 export interface ProbeAssignment {

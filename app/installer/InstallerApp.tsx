@@ -2520,7 +2520,7 @@ function MapScreen({
   );
   const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
-  const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; operation: string; problem: string }[]>([]);
+  const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; operation: string; problem: string; watchList?: boolean }[]>([]);
   useEffect(() => {
     fetch(`/api/installer/repairs?season=${season}`, { cache: 'no-store' })
       .then(r => r.json())

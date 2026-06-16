@@ -29,6 +29,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.notified_customer !== undefined) updateData.notified_customer = body.notified_customer;
     if (body.probe_replaced !== undefined) updateData.probe_replaced = body.probe_replaced;
     if (body.new_probe_serial !== undefined) updateData.new_probe_serial = body.new_probe_serial;
+    if (body.watch_list !== undefined) updateData.watch_list = body.watch_list;
     if (body.field_season !== undefined) {
       updateData.field_season = body.field_season ? [body.field_season] : [];
     }
