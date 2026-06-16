@@ -199,6 +199,12 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const [successData, setSuccessData] = useState<SuccessData | null>(null);
   const [activeGroups, setActiveGroups] = useState<Set<number>>(new Set());
   const [initialRepairId, setInitialRepairId] = useState<number | null>(null);
+  // Where the Repairs screen should return to on Back ('route' normally,
+  // 'map' when a repair was opened by tapping its pin on the map).
+  const [repairReturn, setRepairReturn] = useState<Screen>('route');
+  // Last map center/zoom, so returning to the map lands you right where you were
+  // instead of re-fitting to all stops.
+  const mapViewRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
 
   useEffect(() => {
     const s = loadSession();
@@ -259,7 +265,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
             season={session.season}
-            onSelectRepair={(id) => { setInitialRepairId(id); setScreen('repairs'); }}
+            savedViewRef={mapViewRef}
+            onSelectRepair={(id) => { setInitialRepairId(id); setRepairReturn('map'); setScreen('repairs'); }}
           />
         )}
         {screen === 'loadout' && session && (
@@ -306,7 +313,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'repairs' && session && (
           <RepairsScreen
             season={session.season}
-            onBack={() => { setInitialRepairId(null); setScreen('route'); }}
+            onBack={() => { setInitialRepairId(null); const dest = repairReturn; setRepairReturn('route'); setScreen(dest); }}
             initialRepairId={initialRepairId ?? undefined}
             onClearInitial={() => setInitialRepairId(null)}
           />
@@ -2498,12 +2505,14 @@ function MapScreen({
   onOpenField,
   onBack,
   season,
+  savedViewRef,
   onSelectRepair,
 }: {
   assignments: InstallerAssignment[];
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
   season: number;
+  savedViewRef?: React.MutableRefObject<{ center: [number, number]; zoom: number } | null>;
   onSelectRepair?: (id: number) => void;
 }) {
   const [selectedId, setSelectedId] = useState<number | null>(
@@ -2572,6 +2581,8 @@ function MapScreen({
             layer={layer}
             repairPoints={repairPoints}
             onSelectRepair={onSelectRepair}
+            initialView={savedViewRef?.current ?? null}
+            onViewChange={(v) => { if (savedViewRef) savedViewRef.current = v; }}
           />
         )}
 

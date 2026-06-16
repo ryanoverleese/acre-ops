@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface InstallerRepair {
   id: number;
@@ -212,10 +212,11 @@ function CreateRepairForm({ season, onBack, onSaved }: {
 
 // ── CloseOutForm ──────────────────────────────────────────────────────────────
 
-function CloseOutForm({ repair, onBack, onSaved }: {
+function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
   repair: InstallerRepair;
   onBack: () => void;
   onSaved: () => void;
+  fromMap?: boolean;
 }) {
   const [fix, setFix] = useState('');
   const [probeReplaced, setProbeReplaced] = useState(false);
@@ -258,7 +259,16 @@ function CloseOutForm({ repair, onBack, onSaved }: {
   return (
     <div className="af-screen">
       <div className="af-topbar">
-        <button onClick={onBack} style={backBtnStyle}>Cancel</button>
+        <button onClick={onBack} style={backBtnStyle}>
+          {fromMap ? (
+            <>
+              <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+              Map
+            </>
+          ) : 'Cancel'}
+        </button>
         <div style={{ textAlign: 'center' }}>
           <div className="af-topbar-title">Close Out</div>
         </div>
@@ -411,6 +421,9 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
   const [loading, setLoading] = useState(true);
   const [subscreen, setSubscreen] = useState<'list' | 'create' | 'closeout'>('list');
   const [selected, setSelected] = useState<InstallerRepair | null>(null);
+  // True when the open closeout was reached by tapping a repair pin on the map;
+  // its Back button then returns straight to the map instead of the list.
+  const openedFromMapRef = useRef(false);
 
   const fetchRepairs = async (fresh = false) => {
     setLoading(true);
@@ -422,7 +435,7 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
       // If navigated here from map, auto-open that repair's closeout
       if (initialRepairId) {
         const target = loaded.find(r => r.id === initialRepairId);
-        if (target) { setSelected(target); setSubscreen('closeout'); }
+        if (target) { openedFromMapRef.current = true; setSelected(target); setSubscreen('closeout'); }
         onClearInitial?.();
       }
     } finally {
@@ -432,13 +445,24 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
 
   useEffect(() => { fetchRepairs(); }, []);
 
-  const handleSaved = () => { setSubscreen('list'); setSelected(null); fetchRepairs(true); };
+  const handleSaved = () => { openedFromMapRef.current = false; setSubscreen('list'); setSelected(null); fetchRepairs(true); };
 
   if (subscreen === 'create') {
     return <CreateRepairForm season={season} onBack={() => setSubscreen('list')} onSaved={handleSaved} />;
   }
   if (subscreen === 'closeout' && selected) {
-    return <CloseOutForm repair={selected} onBack={() => { setSubscreen('list'); setSelected(null); }} onSaved={handleSaved} />;
+    const fromMap = openedFromMapRef.current;
+    return (
+      <CloseOutForm
+        repair={selected}
+        fromMap={fromMap}
+        onBack={() => {
+          if (fromMap) { openedFromMapRef.current = false; onBack(); }
+          else { setSubscreen('list'); setSelected(null); }
+        }}
+        onSaved={handleSaved}
+      />
+    );
   }
 
   return (
@@ -486,7 +510,7 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
           repairs.map(r => (
             <button
               key={r.id}
-              onClick={() => { setSelected(r); setSubscreen('closeout'); }}
+              onClick={() => { openedFromMapRef.current = false; setSelected(r); setSubscreen('closeout'); }}
               style={{
                 display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
                 padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',

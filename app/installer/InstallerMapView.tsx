@@ -31,6 +31,11 @@ export interface RepairMapPoint {
 
 type Layer = 'street' | 'satellite';
 
+interface MapView {
+  center: [number, number];
+  zoom: number;
+}
+
 interface Props {
   points: MapPoint[];
   selectedId: number | null;
@@ -38,6 +43,10 @@ interface Props {
   layer: Layer;
   repairPoints?: RepairMapPoint[];
   onSelectRepair?: (id: number) => void;
+  // When provided, restore this center/zoom on mount instead of fitting to all
+  // points (used to return to the exact spot after viewing a repair ticket).
+  initialView?: MapView | null;
+  onViewChange?: (v: MapView) => void;
 }
 
 // Build a numbered "pin" as an inline SVG divIcon.
@@ -129,6 +138,22 @@ function ZoomLabelGate({ threshold = 12 }: { threshold?: number }) {
     map.on('zoomend', update);
     return () => { map.off('zoomend', update); };
   }, [map, threshold]);
+  return null;
+}
+
+// Report center/zoom up to the parent whenever the user pans or zooms, so the
+// view can be restored after leaving and returning to the map.
+function ViewTracker({ onViewChange }: { onViewChange?: (v: MapView) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!onViewChange) return;
+    const report = () => {
+      const c = map.getCenter();
+      onViewChange({ center: [c.lat, c.lng], zoom: map.getZoom() });
+    };
+    map.on('moveend', report);
+    return () => { map.off('moveend', report); };
+  }, [map, onViewChange]);
   return null;
 }
 
@@ -241,7 +266,7 @@ function makeRepairPin() {
   });
 }
 
-export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair }: Props) {
+export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, initialView, onViewChange }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
 
   // Expose current user location through a ref so the recenter listener can read it
@@ -256,13 +281,15 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
-  // Default center: first point or Nebraska center as a fallback
-  const center: [number, number] = valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
+  // Default center: restored view, else first point, else Nebraska center.
+  const center: [number, number] = initialView
+    ? initialView.center
+    : valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
 
   return (
     <MapContainer
       center={center}
-      zoom={11}
+      zoom={initialView ? initialView.zoom : 11}
       style={{ position: 'absolute', inset: 0, background: '#dde5d0' }}
       zoomControl={false}
       attributionControl
@@ -371,7 +398,8 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
       ))}
 
       <UserLocation />
-      <FitBounds points={valid} />
+      {!initialView && <FitBounds points={valid} />}
+      <ViewTracker onViewChange={onViewChange} />
       <RecenterListener getUserPos={() => userPosRef.current} />
       <ZoomLabelGate threshold={8} />
     </MapContainer>
