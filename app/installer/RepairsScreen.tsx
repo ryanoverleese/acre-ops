@@ -228,6 +228,7 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
   const [error, setError] = useState('');
   const [watchOn, setWatchOn] = useState(!!repair.watchList);
   const [savingWatch, setSavingWatch] = useState(false);
+  const [reportNote, setReportNote] = useState('');
 
   // Flag this repair as "watch list" (light-blue pin) without closing it out.
   const toggleWatch = async () => {
@@ -276,6 +277,34 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
       if (!res.ok) { setError('Failed to save — try again'); setSubmitting(false); return; }
       onSaved();
     } catch { setError('Network error'); setSubmitting(false); }
+  };
+
+  const buildReport = () => {
+    const today = new Date().toISOString().split('T')[0];
+    const parts = [`Repair Report — ${repair.fieldName}`];
+    if (repair.probeSerial) parts.push(`Probe: #${repair.probeSerial}${repair.label ? ` (${repair.label})` : ''}`);
+    parts.push(`Date repaired: ${today}`);
+    parts.push('');
+    if (repair.problem) parts.push(`Problem: ${repair.problem}`);
+    if (fix.trim()) parts.push(`Repair note: ${fix.trim()}`);
+    parts.push('');
+    parts.push('-Ryan');
+    return parts.join('\n');
+  };
+
+  const handleSendReport = async () => {
+    const msg = buildReport();
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Repair — ${repair.fieldName}`, text: msg });
+      } else {
+        await navigator.clipboard.writeText(msg);
+        setReportNote('Copied to clipboard');
+        setTimeout(() => setReportNote(''), 2500);
+      }
+    } catch {
+      /* user dismissed the share sheet — nothing to do */
+    }
   };
 
   return (
@@ -460,6 +489,26 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
         >
           {submitting ? 'Saving…' : 'Mark Repaired ✓'}
         </button>
+
+        <button
+          onClick={handleSendReport}
+          disabled={!fix.trim()}
+          style={{
+            padding: '14px', borderRadius: 12, cursor: fix.trim() ? 'pointer' : 'default',
+            background: '#fff', color: 'var(--field-green)',
+            border: '1.5px solid var(--field-green)',
+            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+            opacity: fix.trim() ? 1 : 0.5,
+          }}
+        >
+          Send Report
+        </button>
+        {reportNote && (
+          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--field-green)', fontWeight: 600 }}>
+            {reportNote}
+          </div>
+        )}
       </div>
     </div>
   );
