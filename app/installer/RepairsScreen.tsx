@@ -39,10 +39,17 @@ function navigateUrl(lat: number, lng: number): string {
   return `https://maps.google.com/?q=${lat},${lng}`;
 }
 
+function fmtDate(iso: string): string {
+  if (!iso) return '';
+  const [y, m, d] = iso.split('-');
+  if (!y || !m || !d) return iso;
+  return `${Number(m)}/${Number(d)}/${y}`;
+}
+
 function buildRepairReport(repair: InstallerRepair, fix: string, dateStr: string): string {
   const parts = [`Repair Report — ${repair.fieldName}`];
   if (repair.probeSerial) parts.push(`Probe: #${repair.probeSerial}${repair.label ? ` (${repair.label})` : ''}`);
-  parts.push(`Date repaired: ${dateStr}`);
+  parts.push(`Date repaired: ${fmtDate(dateStr)}`);
   parts.push('');
   if (repair.problem) parts.push(`Problem: ${repair.problem}`);
   if (fix.trim()) parts.push(`Repair note: ${fix.trim()}`);
@@ -354,7 +361,7 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
             <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18, fontFamily: 'var(--font-mono)' }}>#{repair.probeSerial}</div>
           )}
           {repair.reportedAt && (
-            <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18 }}>Reported {repair.reportedAt}</div>
+            <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18 }}>Reported {fmtDate(repair.reportedAt)}</div>
           )}
         </div>
 
@@ -575,7 +582,7 @@ function ReportView({ repair, onBack }: { repair: InstallerRepair; onBack: () =>
               <span style={{ fontWeight: 600 }}>Repair note: </span>{repair.fix}
             </div>
           )}
-          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 6, marginLeft: 18 }}>Repaired {dateStr}</div>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 6, marginLeft: 18 }}>Repaired {fmtDate(dateStr)}</div>
         </div>
 
         <button
@@ -746,7 +753,7 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
                   {r.fieldName}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{done ? r.repairedAt : r.reportedAt}</div>
+                <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{fmtDate(done ? r.repairedAt ?? '' : r.reportedAt)}</div>
               </div>
               {r.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18 }}>{r.operation}</div>}
               {done ? (
