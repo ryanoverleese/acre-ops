@@ -16,6 +16,8 @@ interface InstallerRepair {
   probeNumber: number | null;
   label: string;
   watchList?: boolean;
+  fix?: string;
+  repairedAt?: string;
 }
 
 interface FieldOption {
@@ -35,6 +37,31 @@ function navigateUrl(lat: number, lng: number): string {
   const provider = typeof window !== 'undefined' && localStorage.getItem('af-map-provider') === 'apple' ? 'apple' : 'google';
   if (provider === 'apple') return `https://maps.apple.com/?q=${lat},${lng}&ll=${lat},${lng}`;
   return `https://maps.google.com/?q=${lat},${lng}`;
+}
+
+function buildRepairReport(repair: InstallerRepair, fix: string, dateStr: string): string {
+  const parts = [`Repair Report — ${repair.fieldName}`];
+  if (repair.probeSerial) parts.push(`Probe: #${repair.probeSerial}${repair.label ? ` (${repair.label})` : ''}`);
+  parts.push(`Date repaired: ${dateStr}`);
+  parts.push('');
+  if (repair.problem) parts.push(`Problem: ${repair.problem}`);
+  if (fix.trim()) parts.push(`Repair note: ${fix.trim()}`);
+  parts.push('');
+  parts.push('-Ryan');
+  return parts.join('\n');
+}
+
+async function shareRepairReport(repair: InstallerRepair, msg: string, onCopied: () => void) {
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: `Repair — ${repair.fieldName}`, text: msg });
+    } else {
+      await navigator.clipboard.writeText(msg);
+      onCopied();
+    }
+  } catch {
+    /* user dismissed the share sheet — nothing to do */
+  }
 }
 
 const inputStyle: React.CSSProperties = {
@@ -279,32 +306,13 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
     } catch { setError('Network error'); setSubmitting(false); }
   };
 
-  const buildReport = () => {
-    const today = new Date().toISOString().split('T')[0];
-    const parts = [`Repair Report — ${repair.fieldName}`];
-    if (repair.probeSerial) parts.push(`Probe: #${repair.probeSerial}${repair.label ? ` (${repair.label})` : ''}`);
-    parts.push(`Date repaired: ${today}`);
-    parts.push('');
-    if (repair.problem) parts.push(`Problem: ${repair.problem}`);
-    if (fix.trim()) parts.push(`Repair note: ${fix.trim()}`);
-    parts.push('');
-    parts.push('-Ryan');
-    return parts.join('\n');
-  };
-
   const handleSendReport = async () => {
-    const msg = buildReport();
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: `Repair — ${repair.fieldName}`, text: msg });
-      } else {
-        await navigator.clipboard.writeText(msg);
-        setReportNote('Copied to clipboard');
-        setTimeout(() => setReportNote(''), 2500);
-      }
-    } catch {
-      /* user dismissed the share sheet — nothing to do */
-    }
+    const today = new Date().toISOString().split('T')[0];
+    const msg = buildRepairReport(repair, fix, today);
+    await shareRepairReport(repair, msg, () => {
+      setReportNote('Copied to clipboard');
+      setTimeout(() => setReportNote(''), 2500);
+    });
   };
 
   return (
@@ -514,6 +522,83 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
   );
 }
 
+// ── ReportView (completed repair, resend report) ──────────────────────────────
+
+function ReportView({ repair, onBack }: { repair: InstallerRepair; onBack: () => void }) {
+  const [reportNote, setReportNote] = useState('');
+  const dateStr = repair.repairedAt || new Date().toISOString().split('T')[0];
+
+  const handleSend = async () => {
+    const msg = buildRepairReport(repair, repair.fix ?? '', dateStr);
+    await shareRepairReport(repair, msg, () => {
+      setReportNote('Copied to clipboard');
+      setTimeout(() => setReportNote(''), 2500);
+    });
+  };
+
+  return (
+    <div className="af-screen">
+      <div className="af-topbar">
+        <button onClick={onBack} style={backBtnStyle}>
+          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="af-topbar-title">Repair Report</div>
+        </div>
+        <div style={{ width: 60 }} />
+      </div>
+
+      <div className="af-body" style={{ padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{
+          padding: '12px 14px', background: '#f0fdf4', borderRadius: 12,
+          border: '1.5px solid #bbf7d0',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--field-green)', flexShrink: 0 }} />
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{repair.fieldName}</div>
+          </div>
+          {repair.probeSerial && (
+            <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18, fontFamily: 'var(--font-mono)' }}>
+              #{repair.probeSerial}{repair.label ? ` · ${repair.label}` : ''}
+            </div>
+          )}
+          {repair.problem && (
+            <div style={{ fontSize: 14, color: 'var(--ink)', marginTop: 8, marginLeft: 18, lineHeight: 1.4 }}>
+              <span style={{ fontWeight: 600 }}>Problem: </span>{repair.problem}
+            </div>
+          )}
+          {repair.fix && (
+            <div style={{ fontSize: 14, color: 'var(--ink)', marginTop: 6, marginLeft: 18, lineHeight: 1.4 }}>
+              <span style={{ fontWeight: 600 }}>Repair note: </span>{repair.fix}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 6, marginLeft: 18 }}>Repaired {dateStr}</div>
+        </div>
+
+        <button
+          onClick={handleSend}
+          style={{
+            padding: '16px', borderRadius: 12, border: 'none', cursor: 'pointer',
+            background: 'var(--field-green)', color: 'var(--bone)',
+            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18,
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}
+        >
+          Send Report
+        </button>
+        {reportNote && (
+          <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--field-green)', fontWeight: 600 }}>
+            {reportNote}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── RepairsScreen ─────────────────────────────────────────────────────────────
 
 export default function RepairsScreen({ season, onBack, initialRepairId, onClearInitial }: {
@@ -524,21 +609,23 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
 }) {
   const [repairs, setRepairs] = useState<InstallerRepair[]>([]);
   const [loading, setLoading] = useState(true);
-  const [subscreen, setSubscreen] = useState<'list' | 'create' | 'closeout'>('list');
+  const [subscreen, setSubscreen] = useState<'list' | 'create' | 'closeout' | 'report'>('list');
+  const [tab, setTab] = useState<'open' | 'done'>('open');
   const [selected, setSelected] = useState<InstallerRepair | null>(null);
   // True when the open closeout was reached by tapping a repair pin on the map;
   // its Back button then returns straight to the map instead of the list.
   const openedFromMapRef = useRef(false);
 
-  const fetchRepairs = async (fresh = false) => {
+  const fetchRepairs = async (fresh = false, t: 'open' | 'done' = tab) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/installer/repairs?season=${season}${fresh ? '&fresh=1' : ''}`, fresh ? { cache: 'no-store' } : undefined);
+      const status = t === 'done' ? '&status=completed' : '';
+      const res = await fetch(`/api/installer/repairs?season=${season}${status}${fresh ? '&fresh=1' : ''}`, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       const loaded: InstallerRepair[] = data.repairs ?? [];
       setRepairs(loaded);
-      // If navigated here from map, auto-open that repair's closeout
-      if (initialRepairId) {
+      // If navigated here from map, auto-open that repair's closeout (open tab only)
+      if (t === 'open' && initialRepairId) {
         const target = loaded.find(r => r.id === initialRepairId);
         if (target) { openedFromMapRef.current = true; setSelected(target); setSubscreen('closeout'); }
         onClearInitial?.();
@@ -548,9 +635,9 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
     }
   };
 
-  useEffect(() => { fetchRepairs(); }, []);
+  useEffect(() => { fetchRepairs(false, tab); }, [tab]);
 
-  const handleSaved = () => { openedFromMapRef.current = false; setSubscreen('list'); setSelected(null); fetchRepairs(true); };
+  const handleSaved = () => { openedFromMapRef.current = false; setSubscreen('list'); setSelected(null); fetchRepairs(true, 'open'); };
 
   if (subscreen === 'create') {
     return <CreateRepairForm season={season} onBack={() => setSubscreen('list')} onSaved={handleSaved} />;
@@ -569,6 +656,9 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
       />
     );
   }
+  if (subscreen === 'report' && selected) {
+    return <ReportView repair={selected} onBack={() => { setSubscreen('list'); setSelected(null); }} />;
+  }
 
   return (
     <div className="af-screen">
@@ -581,7 +671,7 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
         </button>
         <div style={{ textAlign: 'center' }}>
           <div className="af-topbar-title">Repairs</div>
-          <div className="af-topbar-sub">{loading ? '…' : `${repairs.length} open`}</div>
+          <div className="af-topbar-sub">{loading ? '…' : `${repairs.length} ${tab === 'done' ? 'completed' : 'open'}`}</div>
         </div>
         <button
           onClick={() => setSubscreen('create')}
@@ -599,6 +689,26 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
       </div>
 
       <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10, background: '#fff' }}>
+        {/* Open / History tabs */}
+        <div style={{ display: 'flex', gap: 8, padding: '2px 0 6px' }}>
+          {(['open', 'done'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => { if (t !== tab) { setTab(t); setRepairs([]); } }}
+              style={{
+                flex: 1, padding: '9px 0', borderRadius: 10, cursor: 'pointer',
+                border: `1.5px solid ${tab === t ? 'var(--field-green)' : 'var(--border-1)'}`,
+                background: tab === t ? 'var(--field-green)' : '#fff',
+                color: tab === t ? 'var(--bone)' : 'var(--stone-500)',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}
+            >
+              {t === 'open' ? 'Open' : 'History'}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)', fontFamily: 'var(--font-display)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Loading…
@@ -608,14 +718,22 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
             <svg width="40" height="40" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ margin: '0 auto 12px', display: 'block', opacity: 0.4 }}>
               <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
             </svg>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>No open repairs</div>
-            <div style={{ fontSize: 13 }}>Tap + to log a new ticket</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              {tab === 'done' ? 'No completed repairs' : 'No open repairs'}
+            </div>
+            <div style={{ fontSize: 13 }}>{tab === 'done' ? 'Closed-out repairs show up here' : 'Tap + to log a new ticket'}</div>
           </div>
         ) : (
-          repairs.map(r => (
+          repairs.map(r => {
+            const done = tab === 'done';
+            return (
             <button
               key={r.id}
-              onClick={() => { openedFromMapRef.current = false; setSelected(r); setSubscreen('closeout'); }}
+              onClick={() => {
+                openedFromMapRef.current = false;
+                setSelected(r);
+                setSubscreen(done ? 'report' : 'closeout');
+              }}
               style={{
                 display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
                 padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
@@ -624,17 +742,25 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : '#ef4444', flexShrink: 0 }} />
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
                   {r.fieldName}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{r.reportedAt}</div>
+                <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{done ? r.repairedAt : r.reportedAt}</div>
               </div>
               {r.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18 }}>{r.operation}</div>}
-              {r.problem && (
-                <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
-                  {r.problem.length > 80 ? r.problem.slice(0, 80) + '…' : r.problem}
-                </div>
+              {done ? (
+                r.fix && (
+                  <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
+                    {r.fix.length > 80 ? r.fix.slice(0, 80) + '…' : r.fix}
+                  </div>
+                )
+              ) : (
+                r.problem && (
+                  <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
+                    {r.problem.length > 80 ? r.problem.slice(0, 80) + '…' : r.problem}
+                  </div>
+                )
               )}
               {r.probeSerial && (
                 <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18, fontFamily: 'var(--font-mono)' }}>
@@ -642,7 +768,8 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
                 </div>
               )}
             </button>
-          ))
+            );
+          })
         )}
       </div>
     </div>

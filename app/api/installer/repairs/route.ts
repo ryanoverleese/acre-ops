@@ -15,6 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fresh = searchParams.get('fresh') === '1';
+  const completed = searchParams.get('status') === 'completed';
 
   try {
     const c = <T>(table: Parameters<typeof getCachedRows>[0], ttl: number): Promise<T[]> =>
@@ -41,8 +42,8 @@ export async function GET(request: NextRequest) {
       return 0;
     };
 
-    const openRepairs = repairs
-      .filter(r => !r.repaired_at)
+    const selected = repairs
+      .filter(r => (completed ? !!r.repaired_at : !r.repaired_at))
       .map(r => {
         const fsId = r.field_season?.[0]?.id;
         const fs = fsId ? fieldSeasonMap.get(fsId) : null;
@@ -85,10 +86,16 @@ export async function GET(request: NextRequest) {
           probeNumber: pa ? (toNum(pa.probe_number) || 1) : null,
           label: pa?.label ?? '',
           watchList: !!r.watch_list,
+          fix: r.fix ?? '',
+          repairedAt: r.repaired_at ?? '',
         };
       });
 
-    return NextResponse.json({ repairs: openRepairs });
+    if (completed) {
+      selected.sort((a, b) => (b.repairedAt || '').localeCompare(a.repairedAt || ''));
+    }
+
+    return NextResponse.json({ repairs: selected });
   } catch (error) {
     console.error('installer repairs error:', error);
     return NextResponse.json({ error: 'Failed to fetch repairs' }, { status: 500 });
