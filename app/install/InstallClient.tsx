@@ -194,6 +194,16 @@ const initialFormData: InstallFormData = {
 
 const INSTALLERS = ['Brian', 'Daine', 'Ryan', 'Ryan and Kasen'];
 const CROPS = ['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum'];
+const ANTENNA_TYPES = [
+  'Sentek Stub',
+  'CropX Stub',
+  'CropX Stub + White Flag',
+  'CropX Stub + No Flag',
+  "Sentek 10'",
+  "CropX 10'",
+  "CropX 6'",
+  'ASK',
+];
 
 export interface InstalledProbeData {
   id: number;
@@ -215,6 +225,7 @@ export interface InstalledProbeData {
   growerNotified: string;
   photoFieldEndUrl: string;
   photoExtraUrl: string;
+  antennaType: string;
 }
 
 interface EditInstallForm {
@@ -272,6 +283,30 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
   const [showBatchNotify, setShowBatchNotify] = useState(false);
   const [batchCopied, setBatchCopied] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [antennaAudit, setAntennaAudit] = useState(false);
+  const [antennaFilter, setAntennaFilter] = useState<'all' | 'missing'>('all');
+  const [savingAntenna, setSavingAntenna] = useState<Set<number>>(new Set());
+  const [savedAntenna, setSavedAntenna] = useState<Set<number>>(new Set());
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+
+  const handleAntennaChange = async (probeId: number, value: string) => {
+    setInstalledProbes(prev => prev.map(p => (p.id === probeId ? { ...p, antennaType: value } : p)));
+    setSavingAntenna(prev => new Set(prev).add(probeId));
+    try {
+      const res = await fetch(`/api/probe-assignments/${probeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ antenna_type: value || null }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setSavedAntenna(prev => new Set(prev).add(probeId));
+      setTimeout(() => setSavedAntenna(prev => { const n = new Set(prev); n.delete(probeId); return n; }), 1500);
+    } catch {
+      alert('Failed to save antenna type — try again.');
+    } finally {
+      setSavingAntenna(prev => { const n = new Set(prev); n.delete(probeId); return n; });
+    }
+  };
 
   const handleEditInstall = (probe: InstalledProbeData) => {
     setEditingInstall(probe);
@@ -486,6 +521,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     if (operationFilter === 'all') return installedProbes;
     return installedProbes.filter(p => p.operation === operationFilter);
   }, [installedProbes, operationFilter]);
+
+  // Antenna audit list: optionally narrow to installs with missing/unconfirmed antenna
+  const auditProbes = useMemo(() => {
+    if (antennaFilter === 'missing') {
+      return filteredInstalled.filter(p => !p.antennaType || p.antennaType === 'ASK');
+    }
+    return filteredInstalled;
+  }, [filteredInstalled, antennaFilter]);
+
+  const missingAntennaCount = useMemo(
+    () => filteredInstalled.filter(p => !p.antennaType || p.antennaType === 'ASK').length,
+    [filteredInstalled]
+  );
 
   const toggleProbeSelection = (id: number) => {
     setSelectedProbeIds(prev => {
@@ -754,6 +802,16 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                   </svg>
                   Map
                 </button>
+                <button
+                  className={`btn ${antennaAudit ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ fontSize: 13 }}
+                  onClick={() => { setAntennaAudit(v => !v); setShowMap(false); }}
+                >
+                  Antenna Audit
+                  {missingAntennaCount > 0 && (
+                    <span className="season-badge" style={{ marginLeft: 6 }}>{missingAntennaCount}</span>
+                  )}
+                </button>
                 {batchMode ? (
                   <>
                     <button
@@ -784,6 +842,74 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 />
               </div>
             )}
+            {antennaAudit ? (
+              <div style={{ padding: '12px 16px' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+                  <button
+                    className={`btn ${antennaFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: 13 }}
+                    onClick={() => setAntennaFilter('all')}
+                  >
+                    All ({filteredInstalled.length})
+                  </button>
+                  <button
+                    className={`btn ${antennaFilter === 'missing' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ fontSize: 13 }}
+                    onClick={() => setAntennaFilter('missing')}
+                  >
+                    Needs Antenna ({missingAntennaCount})
+                  </button>
+                </div>
+                {auditProbes.length === 0 ? (
+                  <div className="text-muted" style={{ padding: 24, textAlign: 'center' }}>
+                    {antennaFilter === 'missing' ? 'No installs are missing an antenna type. 🎉' : 'No installs found.'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+                    {auditProbes.map((probe) => {
+                      const needs = !probe.antennaType || probe.antennaType === 'ASK';
+                      return (
+                        <div key={probe.id} style={{ border: '1px solid var(--border-color)', borderRadius: 8, overflow: 'hidden', background: 'var(--card-bg)' }}>
+                          {probe.photoFieldEndUrl ? (
+                            <img
+                              src={probe.photoFieldEndUrl}
+                              alt="Install photo"
+                              onClick={() => setLightboxUrl(probe.photoFieldEndUrl)}
+                              style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }}
+                            />
+                          ) : (
+                            <div style={{ width: '100%', height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-subtle, #f4f6f8)', color: 'var(--text-muted)', fontSize: 13 }}>
+                              No photo
+                            </div>
+                          )}
+                          <div style={{ padding: 12 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14 }}>{probe.fieldName}</div>
+                            <div className="text-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                              #{probe.probeSerial}{(probe.probeNumber > 1 || probe.label) ? ` (P${probe.probeNumber}${probe.label ? ` — ${probe.label}` : ''})` : ''} · {probe.operation}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <select
+                                className="install-form-input"
+                                value={probe.antennaType || ''}
+                                onChange={(e) => handleAntennaChange(probe.id, e.target.value)}
+                                disabled={savingAntenna.has(probe.id)}
+                                style={{ flex: 1, fontSize: 13, borderColor: needs ? 'var(--danger, #de350b)' : undefined }}
+                              >
+                                <option value="">— Not set —</option>
+                                {ANTENNA_TYPES.map(a => <option key={a} value={a}>{a}</option>)}
+                              </select>
+                              {savingAntenna.has(probe.id) && <span className="text-muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Saving…</span>}
+                              {savedAntenna.has(probe.id) && <span style={{ fontSize: 12, color: 'var(--accent-primary)', whiteSpace: 'nowrap' }}>Saved ✓</span>}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+            <>
             <table className="desktop-table">
               <thead>
                 <tr>
@@ -922,9 +1048,27 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 </div>
               ))}
             </div>
+            </>
+            )}
           </div>
         )}
       </div>
+
+      {/* Antenna photo lightbox */}
+      {lightboxUrl && (
+        <div
+          className="detail-panel-overlay"
+          onClick={() => setLightboxUrl(null)}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <img
+            src={lightboxUrl}
+            alt="Install photo"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '92vw', maxHeight: '92vh', objectFit: 'contain', borderRadius: 8 }}
+          />
+        </div>
+      )}
 
       {/* View Install Detail Modal */}
       {viewingInstall && (

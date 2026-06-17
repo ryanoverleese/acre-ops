@@ -210,6 +210,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           growerNotified: pa.grower_notified || '',
           photoFieldEndUrl: pa.install_photo_field_end?.[0]?.url || '',
           photoExtraUrl: pa.install_photo_extra?.[0]?.url || '',
+          antennaType: pa.antenna_type?.value || '',
         };
       })
       .sort((a, b) => (b.installDate || '').localeCompare(a.installDate || ''));
