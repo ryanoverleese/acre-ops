@@ -1,11 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-primary: #f7f5f2;
-  --bg-secondary: #edeae5;
-  --bg-tertiary: #e4e0d9;
+  --bg-primary: #f6f5f4;
+  --bg-secondary: #ebeae8;
+  --bg-tertiary: #e1e0dd;
   --bg-card: #ffffff;
-  --bg-hover: #f0ede8;
+  --bg-hover: #eeedeb;
   --bg-elevated: #ffffff;
 
   --text-primary: #1a1815;
