@@ -1,20 +1,20 @@
 @import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-primary: #f7f5f2;
-  --bg-secondary: #edeae5;
-  --bg-tertiary: #e4e0d9;
+  --bg-primary: #f7f7ff;
+  --bg-secondary: #eceef7;
+  --bg-tertiary: #e0e3f0;
   --bg-card: #ffffff;
-  --bg-hover: #f0ede8;
+  --bg-hover: #f0f1fb;
   --bg-elevated: #ffffff;
 
-  --text-primary: #1a1815;
-  --text-secondary: #57534e;
-  --text-muted: #78716c;
+  --text-primary: #3d5a6c;
+  --text-secondary: #58707f;
+  --text-muted: #7c919e;
 
-  --accent-primary: #4a7a5b;
-  --accent-primary-dim: rgba(74, 122, 91, 0.12);
-  --accent-primary-hover: #3d6a4e;
+  --accent-primary: #72a98f;
+  --accent-primary-dim: rgba(114, 169, 143, 0.14);
+  --accent-primary-hover: #5d9079;
   --accent-blue: #0284c7;
   --accent-blue-dim: rgba(2, 132, 199, 0.1);
   --accent-amber: #d97706;
@@ -35,8 +35,8 @@
   --overlay-medium: rgba(0, 0, 0, 0.5);
   --overlay-heavy: rgba(0, 0, 0, 0.6);
 
-  --border: #e7e5e4;
-  --border-strong: #d6d3d1;
+  --border: #dde0ec;
+  --border-strong: #c9cdde;
   --radius: 12px;
   --radius-xs: 4px;
   --radius-sm: 8px;
@@ -85,226 +85,8 @@
   --sidebar-border: var(--border);
 
   /* Notification unread */
-  --notification-unread-bg: rgba(74, 122, 91, 0.06);
-  --notification-unread-hover: rgba(74, 122, 91, 0.1);
-}
-
-/* ═══ Color Themes ═══ */
-
-/* River — Cool water blue */
-[data-theme="river"] {
-  --bg-primary: #f0f4f7;
-  --bg-secondary: #e0e7ee;
-  --bg-tertiary: #cdd7e1;
-  --bg-card: #ffffff;
-  --bg-hover: #e8edf3;
-  --bg-elevated: #ffffff;
-  --text-primary: #12202e;
-  --text-secondary: #3e5468;
-  --text-muted: #5e7488;
-  --accent-primary: #1a6fa0;
-  --accent-primary-dim: rgba(26, 111, 160, 0.12);
-  --accent-primary-hover: #155a82;
-  --border: #d5dee7;
-  --border-strong: #c0ccd8;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(26, 111, 160, 0.06);
-  --notification-unread-hover: rgba(26, 111, 160, 0.1);
-}
-
-/* Clay — Terracotta + Sienna */
-[data-theme="clay"] {
-  --bg-primary: #f7f3ef;
-  --bg-secondary: #ede5db;
-  --bg-tertiary: #e0d5c8;
-  --bg-card: #ffffff;
-  --bg-hover: #f1ebe3;
-  --bg-elevated: #ffffff;
-  --text-primary: #201812;
-  --text-secondary: #5c493a;
-  --text-muted: #7a6555;
-  --accent-primary: #a0522d;
-  --accent-primary-dim: rgba(160, 82, 45, 0.12);
-  --accent-primary-hover: #854422;
-  --border: #e3d8cc;
-  --border-strong: #d4c6b7;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(160, 82, 45, 0.06);
-  --notification-unread-hover: rgba(160, 82, 45, 0.1);
-}
-
-/* Stone — Neutral gray + Slate */
-[data-theme="stone"] {
-  --bg-primary: #f2f3f4;
-  --bg-secondary: #e4e6e8;
-  --bg-tertiary: #d5d8dc;
-  --bg-card: #ffffff;
-  --bg-hover: #eaecee;
-  --bg-elevated: #ffffff;
-  --text-primary: #1a1d22;
-  --text-secondary: #4a5060;
-  --text-muted: #686f80;
-  --accent-primary: #546478;
-  --accent-primary-dim: rgba(84, 100, 120, 0.12);
-  --accent-primary-hover: #455566;
-  --border: #dcdee2;
-  --border-strong: #cacdd3;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(84, 100, 120, 0.06);
-  --notification-unread-hover: rgba(84, 100, 120, 0.1);
-}
-
-/* Harvest — Golden wheat + Dark amber */
-[data-theme="harvest"] {
-  --bg-primary: #f8f5ee;
-  --bg-secondary: #f0eadb;
-  --bg-tertiary: #e5dcc8;
-  --bg-card: #ffffff;
-  --bg-hover: #f3eee2;
-  --bg-elevated: #ffffff;
-  --text-primary: #1c1a10;
-  --text-secondary: #5c5635;
-  --text-muted: #7a7350;
-  --accent-primary: #b07d10;
-  --accent-primary-dim: rgba(176, 125, 16, 0.12);
-  --accent-primary-hover: #96690a;
-  --border: #e5dece;
-  --border-strong: #d6cdba;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(176, 125, 16, 0.06);
-  --notification-unread-hover: rgba(176, 125, 16, 0.1);
-}
-
-/* Cedar — Warm red-brown + Mahogany */
-[data-theme="cedar"] {
-  --bg-primary: #f6f2f0;
-  --bg-secondary: #eae3de;
-  --bg-tertiary: #ddd3cc;
-  --bg-card: #ffffff;
-  --bg-hover: #f0e9e4;
-  --bg-elevated: #ffffff;
-  --text-primary: #1e1412;
-  --text-secondary: #5a4038;
-  --text-muted: #785c52;
-  --accent-primary: #8b3a2a;
-  --accent-primary-dim: rgba(139, 58, 42, 0.12);
-  --accent-primary-hover: #742f20;
-  --border: #e4d9d3;
-  --border-strong: #d5c7be;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(139, 58, 42, 0.06);
-  --notification-unread-hover: rgba(139, 58, 42, 0.1);
-}
-
-/* Moss — Deep green + Forest */
-[data-theme="moss"] {
-  --bg-primary: #f1f4f2;
-  --bg-secondary: #e0e6e1;
-  --bg-tertiary: #ced8d0;
-  --bg-card: #ffffff;
-  --bg-hover: #e8ede9;
-  --bg-elevated: #ffffff;
-  --text-primary: #0e1810;
-  --text-secondary: #374d3c;
-  --text-muted: #566e5c;
-  --accent-primary: #2d5a3a;
-  --accent-primary-dim: rgba(45, 90, 58, 0.12);
-  --accent-primary-hover: #234a2e;
-  --border: #d8e0da;
-  --border-strong: #c3cec6;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(45, 90, 58, 0.06);
-  --notification-unread-hover: rgba(45, 90, 58, 0.1);
-}
-
-/* Dusk — Twilight mauve + Plum */
-[data-theme="dusk"] {
-  --bg-primary: #f4f2f5;
-  --bg-secondary: #e6e0ea;
-  --bg-tertiary: #d8d0df;
-  --bg-card: #ffffff;
-  --bg-hover: #ede9f0;
-  --bg-elevated: #ffffff;
-  --text-primary: #1a1520;
-  --text-secondary: #4e4058;
-  --text-muted: #6b5c76;
-  --accent-primary: #7a4a8a;
-  --accent-primary-dim: rgba(122, 74, 138, 0.12);
-  --accent-primary-hover: #653c74;
-  --border: #dfd8e5;
-  --border-strong: #cec4d6;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(122, 74, 138, 0.06);
-  --notification-unread-hover: rgba(122, 74, 138, 0.1);
-}
-
-/* Iron — Cool steel gray */
-[data-theme="iron"] {
-  --bg-primary: #f0f1f2;
-  --bg-secondary: #e0e2e5;
-  --bg-tertiary: #d0d3d8;
-  --bg-card: #ffffff;
-  --bg-hover: #e8eaec;
-  --bg-elevated: #ffffff;
-  --text-primary: #161a1e;
-  --text-secondary: #404850;
-  --text-muted: #606870;
-  --accent-primary: #475569;
-  --accent-primary-dim: rgba(71, 85, 105, 0.12);
-  --accent-primary-hover: #3a4758;
-  --border: #d8dbdf;
-  --border-strong: #c5c9cf;
-  --sidebar-bg: #ffffff;
-  --sidebar-bg-hover: var(--bg-hover);
-  --sidebar-bg-active: var(--accent-primary-dim);
-  --sidebar-text: var(--text-secondary);
-  --sidebar-text-hover: var(--text-primary);
-  --sidebar-text-muted: var(--text-muted);
-  --sidebar-border: var(--border);
-  --notification-unread-bg: rgba(71, 85, 105, 0.06);
-  --notification-unread-hover: rgba(71, 85, 105, 0.1);
+  --notification-unread-bg: rgba(114, 169, 143, 0.08);
+  --notification-unread-hover: rgba(114, 169, 143, 0.12);
 }
 
 * {
