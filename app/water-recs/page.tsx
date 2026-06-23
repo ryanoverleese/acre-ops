@@ -25,6 +25,7 @@ export interface WaterRecRecord {
   recommendation: string;
   suggestedWaterDay: string;
   priority: boolean;
+  reportType: string;
 }
 
 export default async function WaterRecsPage() {
@@ -114,6 +115,8 @@ export default async function WaterRecsPage() {
         suggestedWaterDay: wr.suggested_water_day?.value || '',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         priority: !!(wr as any).priority,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        reportType: (wr as any).report_type?.value || '',
       };
     });
 

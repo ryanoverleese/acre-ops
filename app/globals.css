@@ -8920,6 +8920,95 @@ tr.expanded-row:hover {
   margin-top: 4px;
 }
 
+/* AI suggestion banners (opt-in) */
+.wr-suggestion {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px dashed var(--accent-primary);
+  background: var(--accent-primary-dim);
+}
+
+.wr-suggestion-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+  margin-bottom: 6px;
+  display: block;
+}
+
+.wr-suggestion-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.wr-suggestion-row + .wr-suggestion-row {
+  margin-top: 8px;
+}
+
+.wr-suggestion-text {
+  font-size: 14px;
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.4;
+}
+
+.wr-suggestion-day {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.wr-suggestion-use {
+  flex-shrink: 0;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent-primary);
+  background: var(--accent-primary);
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.wr-suggestion-use:disabled {
+  background: transparent;
+  color: var(--text-secondary);
+  border-color: var(--border);
+  cursor: default;
+}
+
+.wr-suggestion-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.wr-suggestion-inline .wr-suggestion-label {
+  margin-bottom: 0;
+}
+
+.wr-suggestion-inline .wr-suggestion-text {
+  flex: 1;
+  min-width: 140px;
+}
+
+.wr-suggestion-dot {
+  color: var(--accent-primary);
+  font-size: 18px;
+  line-height: 1;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .wr-ref-panel {
   margin-bottom: 16px;
   border: 1px solid var(--border);

@@ -116,13 +116,37 @@ export default function WaterRecsClient({
   // Get water recs for current operation this week
   const weekRange = useMemo(() => getWeekRange(reportDate), [reportDate]);
 
+  // Auto-written SUGGESTIONS are tagged with these report types (the engine writes
+  // them; the app's own saves use 'full'/'update'). They must NEVER be treated as
+  // saved recs — they only feed the opt-in "Use this..." banner below.
+  const SUGGESTION_TAGS = ['full_report', 'water_day_update'];
+  const savedRecs = useMemo(
+    () => waterRecs.filter(wr => !SUGGESTION_TAGS.includes(wr.reportType)),
+    [waterRecs]
+  );
+
   const thisWeekRecs = useMemo(() => {
-    return waterRecs.filter(wr =>
+    return savedRecs.filter(wr =>
       currentFieldSeasonIds.has(wr.fieldSeasonId) &&
       wr.date >= weekRange.start &&
       wr.date <= weekRange.end
     );
-  }, [waterRecs, currentFieldSeasonIds, weekRange]);
+  }, [savedRecs, currentFieldSeasonIds, weekRange]);
+
+  // Today's suggestions for the current operation, keyed by field season
+  const suggestionByFs = useMemo(() => {
+    const m = new Map<number, WaterRecRecord>();
+    waterRecs.forEach(wr => {
+      if (
+        SUGGESTION_TAGS.includes(wr.reportType) &&
+        wr.date === reportDate &&
+        currentFieldSeasonIds.has(wr.fieldSeasonId)
+      ) {
+        m.set(wr.fieldSeasonId, wr);
+      }
+    });
+    return m;
+  }, [waterRecs, reportDate, currentFieldSeasonIds]);
 
   // Find the full report (earliest date this week with recs)
   const fullReportRecs = useMemo(() => {
@@ -134,23 +158,23 @@ export default function WaterRecsClient({
 
   // Existing recs for the selected date (for overwrite detection)
   const existingRecsForDate = useMemo(() => {
-    return waterRecs.filter(wr =>
+    return savedRecs.filter(wr =>
       currentFieldSeasonIds.has(wr.fieldSeasonId) &&
       wr.date === reportDate
     );
-  }, [waterRecs, currentFieldSeasonIds, reportDate]);
+  }, [savedRecs, currentFieldSeasonIds, reportDate]);
 
-  // Operations that need reports this week
+  // Operations that need reports this week (suggestions don't count as a report)
   const opsNeedingReports = useMemo(() => {
     const opsWithRecs = new Set<number>();
-    waterRecs.forEach(wr => {
+    savedRecs.forEach(wr => {
       if (wr.date >= weekRange.start && wr.date <= weekRange.end) {
         const opId = fsToOperation[wr.fieldSeasonId];
         if (opId) opsWithRecs.add(opId);
       }
     });
     return operations.filter(op => !opsWithRecs.has(op.id));
-  }, [operations, waterRecs, weekRange, fsToOperation]);
+  }, [operations, savedRecs, weekRange, fsToOperation]);
 
   // Re-init forms when operation/mode/date changes
   const [lastInitKey, setLastInitKey] = useState('');
@@ -528,6 +552,7 @@ export default function WaterRecsClient({
             const form = fieldForms[field.fieldSeasonId];
             if (!form) return null;
             const isPriority = form.priority;
+            const suggestion = suggestionByFs.get(field.fieldSeasonId);
 
             return (
               <div
@@ -556,7 +581,12 @@ export default function WaterRecsClient({
                     className="wr-field-info"
                     onClick={() => updateField(field.fieldSeasonId, { expanded: !form.expanded })}
                   >
-                    <span className="wr-field-name">{field.fieldName}</span>
+                    <span className="wr-field-name">
+                      {field.fieldName}
+                      {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
+                        <span className="wr-suggestion-dot" title="Suggestion available">&bull;</span>
+                      )}
+                    </span>
                     <span className="wr-field-meta">
                       {field.crop} &middot; {field.acres} ac
                     </span>
@@ -586,6 +616,37 @@ export default function WaterRecsClient({
                 {/* Expanded recommendation area */}
                 {form.expanded && (
                   <div className="wr-expanded-area">
+                    {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
+                      <div className="wr-suggestion">
+                        <div className="wr-suggestion-label">Suggested</div>
+                        {suggestion.recommendation && (
+                          <div className="wr-suggestion-row">
+                            <div className="wr-suggestion-text">{suggestion.recommendation}</div>
+                            <button
+                              type="button"
+                              className="wr-suggestion-use"
+                              disabled={form.recommendation === suggestion.recommendation}
+                              onClick={() => updateField(field.fieldSeasonId, { recommendation: suggestion.recommendation })}
+                            >
+                              {form.recommendation === suggestion.recommendation ? 'Used' : 'Use this rec'}
+                            </button>
+                          </div>
+                        )}
+                        {suggestion.suggestedWaterDay && (
+                          <div className="wr-suggestion-row">
+                            <div className="wr-suggestion-day">Water day: {suggestion.suggestedWaterDay}</div>
+                            <button
+                              type="button"
+                              className="wr-suggestion-use"
+                              disabled={form.waterDay === suggestion.suggestedWaterDay}
+                              onClick={() => updateField(field.fieldSeasonId, { waterDay: suggestion.suggestedWaterDay })}
+                            >
+                              {form.waterDay === suggestion.suggestedWaterDay ? 'Used' : 'Use this day'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <textarea
                       className={`wr-rec-textarea${isPriority && !form.recommendation.trim() ? ' error' : ''}`}
                       value={form.recommendation}
@@ -667,6 +728,7 @@ export default function WaterRecsClient({
             const form = fieldForms[field.fieldSeasonId];
             if (!form) return null;
             const isUpdated = form.updateStatus === 'updated';
+            const suggestion = suggestionByFs.get(field.fieldSeasonId);
 
             return (
               <div
@@ -681,6 +743,34 @@ export default function WaterRecsClient({
                     </span>
                   )}
                 </div>
+
+                {suggestion && suggestion.suggestedWaterDay && (() => {
+                  const newDay = suggestion.suggestedWaterDay;
+                  const sameAsEarly = !!form.originalDay && newDay === form.originalDay;
+                  const used = sameAsEarly
+                    ? form.updateStatus === 'continue'
+                    : isUpdated && form.waterDay === newDay;
+                  return (
+                    <div className="wr-suggestion wr-suggestion-inline">
+                      <span className="wr-suggestion-label">Suggested</span>
+                      <span className="wr-suggestion-text">
+                        {sameAsEarly
+                          ? `Continue with early-week suggestion of ${newDay}`
+                          : `Latest water day updated to ${newDay}`}
+                      </span>
+                      <button
+                        type="button"
+                        className="wr-suggestion-use"
+                        disabled={used}
+                        onClick={() => updateField(field.fieldSeasonId, sameAsEarly
+                          ? { updateStatus: 'continue', waterDay: form.originalDay }
+                          : { updateStatus: 'updated', waterDay: newDay })}
+                      >
+                        {used ? 'Used' : (sameAsEarly ? 'Continue' : `Update to ${newDay}`)}
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 <div className="wr-toggle-group">
                   <button
