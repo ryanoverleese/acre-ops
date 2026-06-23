@@ -184,23 +184,25 @@ export default function WaterRecsClient({
     if (currentOperation) {
       const forms: Record<number, FieldForm> = {};
       currentOperation.fields.forEach(field => {
+        const suggestion = suggestionByFs.get(field.fieldSeasonId);
         if (mode === 'update') {
           const fullRec = fullReportRecs.find(r => r.fieldSeasonId === field.fieldSeasonId);
+          const day = fullRec?.suggestedWaterDay || suggestion?.suggestedWaterDay || '';
           forms[field.fieldSeasonId] = {
-            waterDay: fullRec?.suggestedWaterDay || '',
+            waterDay: day,
             priority: false,
             recommendation: '',
-            expanded: false,
+            expanded: true,
             updateStatus: 'continue',
-            originalDay: fullRec?.suggestedWaterDay || '',
+            originalDay: day,
           };
         } else {
           const existing = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId);
           forms[field.fieldSeasonId] = {
-            waterDay: existing?.suggestedWaterDay || '',
+            waterDay: existing?.suggestedWaterDay || suggestion?.suggestedWaterDay || '',
             priority: existing?.priority || false,
             recommendation: existing?.recommendation || '',
-            expanded: !!(existing?.recommendation),
+            expanded: true,
             updateStatus: 'continue',
             originalDay: '',
           };
@@ -577,10 +579,7 @@ export default function WaterRecsClient({
                   </button>
 
                   {/* Field name + crop */}
-                  <div
-                    className="wr-field-info"
-                    onClick={() => updateField(field.fieldSeasonId, { expanded: !form.expanded })}
-                  >
+                  <div className="wr-field-info">
                     <span className="wr-field-name">
                       {field.fieldName}
                       {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
@@ -600,17 +599,6 @@ export default function WaterRecsClient({
                     placeholder="Water day..."
                     style={{ minWidth: 120 }}
                   />
-
-                  {/* Expand chevron */}
-                  <button
-                    className="wr-chevron-btn"
-                    onClick={() => updateField(field.fieldSeasonId, { expanded: !form.expanded })}
-                  >
-                    <svg className="wr-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"
-                      style={{ transform: form.expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
                 </div>
 
                 {/* Expanded recommendation area */}
