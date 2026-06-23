@@ -136,7 +136,7 @@ async function compressImage(file: File): Promise<File> {
       img.onerror = () => resolve(file);
       img.onload = () => {
         let { width, height } = img;
-        const MAX_DIM = 1920;
+        const MAX_DIM = 1280;
         if (width > MAX_DIM || height > MAX_DIM) {
           const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
           width = Math.round(width * scale);
@@ -149,7 +149,7 @@ async function compressImage(file: File): Promise<File> {
         ctx.drawImage(img, 0, 0, width, height);
         canvas.toBlob(
           (blob) => resolve(blob ? new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), { type: 'image/jpeg' }) : file),
-          'image/jpeg', 0.78
+          'image/jpeg', 0.6
         );
       };
       img.src = dataUrl;
