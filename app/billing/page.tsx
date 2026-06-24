@@ -112,9 +112,17 @@ async function getBillingData(): Promise<BillingData> {
       const opNames = billingToOperationNames.get(be.id) || [];
       const linkedContacts = beToContacts.get(be.id) || [];
 
-      // Find all seasons this billing entity has field seasons for
+      // Find all seasons this billing entity has field seasons for OR an invoice for.
+      // Union of the field-service rollup and the invoices table keyed on billing_entity,
+      // so invoice-only entities (e.g. a Davis weather station, no probe field_seasons) still show.
       const beSeasonsSet = new Set<number>();
       beSeasonLines.forEach((_, key) => {
+        const [beIdStr, seasonStr] = key.split('-');
+        if (parseInt(beIdStr) === be.id) {
+          beSeasonsSet.add(parseInt(seasonStr));
+        }
+      });
+      invoicesByBEAndSeason.forEach((_, key) => {
         const [beIdStr, seasonStr] = key.split('-');
         if (parseInt(beIdStr) === be.id) {
           beSeasonsSet.add(parseInt(seasonStr));
@@ -127,8 +135,12 @@ async function getBillingData(): Promise<BillingData> {
         const lines = beSeasonLines.get(key) || [];
         const invoice = invoicesByBEAndSeason.get(key);
 
-        // Calculate totals from lines
-        const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
+        // Calculate totals from lines. For invoice-only entities (no field-service
+        // rollup), fall back to the invoice's own amount so the row still has a value.
+        const linesSubtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
+        const subtotal = lines.length > 0
+          ? linesSubtotal
+          : (invoice?.amount != null ? Number(invoice.amount) : 0);
 
         // Create processed invoice structure
         const processedInvoice = {
@@ -141,7 +153,11 @@ async function getBillingData(): Promise<BillingData> {
           paidAt: invoice?.paid_at,
           notes: invoice?.notes || '',
           checkNumber: invoice?.check_number ? Number(invoice.check_number) : undefined,
-          actualBilledAmount: invoice?.actual_billed_amount ? Number(invoice.actual_billed_amount) : undefined,
+          // For invoice-only entities (no field-service lines), fall back to the invoice's
+          // own amount so Actual Billed is populated. Line-based rows keep null = unentered.
+          actualBilledAmount: invoice?.actual_billed_amount != null
+            ? Number(invoice.actual_billed_amount)
+            : (lines.length === 0 && invoice?.amount != null ? Number(invoice.amount) : undefined),
           invoiceNumber: invoice?.invoice_number ? Number(invoice.invoice_number) : undefined,
           matchedInQb: invoice?.matched_in_qb ?? false,
           lines: lines.map((line) => ({

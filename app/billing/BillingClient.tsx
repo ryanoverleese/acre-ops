@@ -532,9 +532,15 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
   // Calculate totals for filtered entities
   const totalOnOrder = filteredEntities.reduce((sum, be) => sum + getOnOrderTotal(be.id), 0);
-  const totalSubtotal = filteredEntities.reduce((sum, be) =>
-    sum + be.invoices.reduce((invSum, inv) =>
-      invSum + inv.lines.reduce((lineSum, line) => lineSum + (line.rate * line.quantity), 0), 0), 0) + totalOnOrder;
+  // Calculated subtotal for an entity (lines + on-order). Invoice-only entities have
+  // neither, so fall back to the invoice's own amount so they count in totals.
+  const entityCalcSubtotal = (be: ProcessedBillingEntity) => {
+    const base = be.invoices.reduce((invSum, inv) =>
+      invSum + inv.lines.reduce((lineSum, line) => lineSum + (line.rate * line.quantity), 0), 0)
+      + getOnOrderTotal(be.id);
+    return base > 0 ? base : (be.invoices[0]?.amount ?? 0);
+  };
+  const totalSubtotal = filteredEntities.reduce((sum, be) => sum + entityCalcSubtotal(be), 0);
 
   const totalDiscount = filteredEntities.reduce((sum, be) =>
     sum + be.invoices.reduce((invSum, inv) =>
@@ -584,7 +590,8 @@ export default function BillingClient({ billingEntities: initialEntities, availa
     if (!inv) return getOnOrderTotal(be.id);
     const subtotal = inv.lines.reduce((s, l) => s + (l.rate * l.quantity), 0);
     const { discount } = calculateBulkDiscount(inv.lines, be.operationBulkFieldCount || 0);
-    return subtotal - discount + getOnOrderTotal(be.id);
+    const base = subtotal - discount + getOnOrderTotal(be.id);
+    return base > 0 ? base : (inv.amount ?? 0);
   };
   const totalInvoicedCalculated = invoicedEntities.reduce((sum, be) => sum + calcEntityTotal(be), 0);
   const totalInvoicedActual = invoicedEntities.reduce((sum, be) => {
@@ -776,7 +783,9 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                   const isExpanded = expandedEntities.has(be.id);
                   const lines = invoice?.lines || [];
                   const onOrderTotal = getOnOrderTotal(be.id);
-                  const subtotal = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0) + onOrderTotal;
+                  const linesAndOnOrder = lines.reduce((sum, line) => sum + (line.rate * line.quantity), 0) + onOrderTotal;
+                  // Invoice-only entities have no lines/on-order; fall back to the invoice amount.
+                  const subtotal = linesAndOnOrder > 0 ? linesAndOnOrder : (invoice?.amount ?? 0);
                   const { discount, eligibleCount } = calculateBulkDiscount(lines, be.operationBulkFieldCount || 0);
                   const total = subtotal - discount;
 
