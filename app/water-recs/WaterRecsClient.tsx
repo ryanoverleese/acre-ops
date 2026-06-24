@@ -166,56 +166,48 @@ export default function WaterRecsClient({
     return m;
   }, [waterRecs, reportDate, currentFieldSeasonIds]);
 
-  // Farm-level read: group this operation's fields into look-alikes vs standouts
-  // and compose a draft overview for the operation message box. All derived from
-  // today's per-field suggestions — no extra data needed.
+  // Farm-level read: sort this operation's fields into reference buckets from
+  // today's per-field suggestions — high priority, pulling a lot (due soon),
+  // not taking much water (no near-term day), and the steady rest. Just a
+  // grouped at-a-glance reference for Ryan, NOT a customer message.
   const farmInsight = useMemo(() => {
     if (!currentOperation || suggestionByFs.size === 0) return null;
-    const items = currentOperation.fields
-      .map(f => {
-        const s = suggestionByFs.get(f.fieldSeasonId);
-        return s ? { name: f.fieldName, day: s.suggestedWaterDay || '', priority: !!s.priority } : null;
-      })
-      .filter((x): x is { name: string; day: string; priority: boolean } => x !== null);
-    if (!items.length) return null;
 
-    const standouts = items.filter(i => i.priority);
-    const due = items.filter(i => !i.priority && i.day);
-    const holding = items.filter(i => !i.priority && !i.day);
-
-    const dueByDay = new Map<string, string[]>();
-    due.forEach(i => {
-      if (!dueByDay.has(i.day)) dueByDay.set(i.day, []);
-      dueByDay.get(i.day)!.push(i.name);
-    });
-
-    const fmt = (names: string[]) =>
-      names.length <= 1 ? (names[0] || '') :
-      names.length === 2 ? `${names[0]} and ${names[1]}` :
-      `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`;
-
-    const parts: string[] = [];
-    if (holding.length) {
-      parts.push(
-        !standouts.length && !due.length
-          ? 'The whole place is holding steady and reading about the same right now.'
-          : `Most of the place is holding steady — ${holding.length} field${holding.length > 1 ? 's' : ''} riding along about the same.`
-      );
-    }
-    dueByDay.forEach((names, day) => {
-      parts.push(`${fmt(names)} ${names.length > 1 ? 'are' : 'is'} coming due around ${day}.`);
-    });
-    if (standouts.length) {
-      parts.push(`Keep a closer eye on ${fmt(standouts.map(s => s.name))} — ${standouts.length > 1 ? "they're" : "it's"} standing out from the rest.`);
-    }
-
-    return {
-      overviewText: parts.join(' '),
-      standoutNames: new Set(standouts.map(s => s.name)),
-      holdingCount: holding.length,
-      standoutCount: standouts.length,
+    const date = new Date(reportDate + 'T12:00:00');
+    const jsDay = date.getDay();
+    const startIndex = jsDay === 0 ? 6 : jsDay - 1; // Mon=0 index of report date
+    const daysOut = (weekday: string): number | null => {
+      const t = DAY_NAMES.indexOf(weekday);
+      if (t < 0) return null;
+      return (t - startIndex + 7) % 7; // 0 = report date's day
     };
-  }, [currentOperation, suggestionByFs]);
+
+    const highPriority: string[] = [];
+    const pullingALot: string[] = [];
+    const notTakingWater: string[] = [];
+    const steady: string[] = [];
+
+    currentOperation.fields.forEach(f => {
+      const s = suggestionByFs.get(f.fieldSeasonId);
+      if (!s) return;
+      const name = f.fieldName;
+      if (s.priority) { highPriority.push(name); return; }
+      const d = s.suggestedWaterDay ? daysOut(s.suggestedWaterDay) : null;
+      if (d !== null && d <= 2) pullingALot.push(name);
+      else if (d === null) notTakingWater.push(name);
+      else steady.push(name);
+    });
+
+    const groups = [
+      { key: 'priority', label: 'High priority', names: highPriority, cls: 'priority' },
+      { key: 'pulling', label: 'Pulling a lot — due soon', names: pullingALot, cls: 'pulling' },
+      { key: 'slow', label: 'Not taking much water', names: notTakingWater, cls: 'slow' },
+      { key: 'steady', label: 'Steady / on schedule', names: steady, cls: 'steady' },
+    ].filter(g => g.names.length > 0);
+
+    if (!groups.length) return null;
+    return { groups, standoutNames: new Set(highPriority) };
+  }, [currentOperation, suggestionByFs, reportDate]);
 
   // Find the full report (earliest date this week with recs)
   const fullReportRecs = useMemo(() => {
@@ -607,25 +599,16 @@ export default function WaterRecsClient({
       {/* ============ FULL REPORT MODE ============ */}
       {currentOperation && mode === 'full' && (
         <div>
-          {/* Farm-level overview suggestion */}
-          {farmInsight && farmInsight.overviewText && (
-            <div className="wr-suggestion wr-farm-suggestion">
-              <div className="wr-suggestion-label">
-                Suggested overview
-                {farmInsight.standoutCount > 0 && ` · ${farmInsight.standoutCount} standing out`}
-                {farmInsight.holdingCount > 0 && ` · ${farmInsight.holdingCount} look similar`}
-              </div>
-              <div className="wr-suggestion-row">
-                <div className="wr-suggestion-text">{farmInsight.overviewText}</div>
-                <button
-                  type="button"
-                  className="wr-suggestion-use"
-                  disabled={overview.trim() === farmInsight.overviewText}
-                  onClick={() => setOverview(farmInsight.overviewText)}
-                >
-                  {overview.trim() === farmInsight.overviewText ? 'Used' : 'Use this overview'}
-                </button>
-              </div>
+          {/* Farm-level reference: fields sorted into buckets (for Ryan, not the customer) */}
+          {farmInsight && (
+            <div className="wr-farm-groups">
+              <div className="wr-farm-groups-title">Field groups &middot; for your reference</div>
+              {farmInsight.groups.map(g => (
+                <div key={g.key} className={`wr-farm-group ${g.cls}`}>
+                  <span className="wr-farm-group-label">{g.label} ({g.names.length})</span>
+                  <span className="wr-farm-group-names">{g.names.join(', ')}</span>
+                </div>
+              ))}
             </div>
           )}
 

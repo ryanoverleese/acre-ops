@@ -9013,6 +9013,53 @@ tr.expanded-row:hover {
   margin-bottom: 12px;
 }
 
+/* Farm-level grouped reference panel (high priority / pulling a lot / etc.) */
+.wr-farm-groups {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.wr-farm-groups-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.wr-farm-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 6px 0 6px 10px;
+  border-left: 3px solid var(--border);
+}
+
+.wr-farm-group + .wr-farm-group {
+  margin-top: 6px;
+}
+
+.wr-farm-group.priority { border-left-color: #ef4444; }
+.wr-farm-group.pulling  { border-left-color: #f59e0b; }
+.wr-farm-group.slow     { border-left-color: #3b82f6; }
+.wr-farm-group.steady   { border-left-color: var(--accent-primary); }
+
+.wr-farm-group-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.wr-farm-group-names {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .wr-standout-chip {
   display: inline-block;
   margin-left: 8px;
