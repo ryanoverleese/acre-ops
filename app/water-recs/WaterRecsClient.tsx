@@ -206,7 +206,21 @@ export default function WaterRecsClient({
     ].filter(g => g.names.length > 0);
 
     if (!groups.length) return null;
-    return { groups, standoutNames: new Set(highPriority) };
+
+    // "Acting unlike its neighbors": the lone outlier(s) within this farm —
+    // pulling hard while the rest is calm, or sitting flat while the rest pulls.
+    // Only flag when there's a clear majority and a small minority going against it.
+    const active = [...highPriority, ...pullingALot]; // wants water now-ish
+    const calm = [...notTakingWater, ...steady];      // riding along
+    const total = active.length + calm.length;
+    let standsApart: string[] = [];
+    if (total >= 3 && active.length && calm.length) {
+      const minor = Math.max(1, Math.floor(total * 0.34));
+      if (active.length <= calm.length && active.length <= minor) standsApart = active;
+      else if (calm.length < active.length && calm.length <= minor) standsApart = calm;
+    }
+
+    return { groups, standsApart, standoutNames: new Set(standsApart) };
   }, [currentOperation, suggestionByFs, reportDate]);
 
   // Find the full report (earliest date this week with recs)
@@ -603,6 +617,11 @@ export default function WaterRecsClient({
           {farmInsight && (
             <div className="wr-farm-groups">
               <div className="wr-farm-groups-title">Field groups &middot; for your reference</div>
+              {farmInsight.standsApart.length > 0 && (
+                <div className="wr-farm-note">
+                  Acting unlike the rest of this farm: <strong>{farmInsight.standsApart.join(', ')}</strong> — worth a closer look.
+                </div>
+              )}
               {farmInsight.groups.map(g => (
                 <div key={g.key} className={`wr-farm-group ${g.cls}`}>
                   <span className="wr-farm-group-label">{g.label} ({g.names.length})</span>
@@ -661,7 +680,7 @@ export default function WaterRecsClient({
                         <span className="wr-suggestion-dot" title="Suggestion available">&bull;</span>
                       )}
                       {isStandout && (
-                        <span className="wr-standout-chip" title="Stands out from the rest of this farm">stands out</span>
+                        <span className="wr-standout-chip" title="Acting unlike the rest of this farm">stands out</span>
                       )}
                     </span>
                     <span className="wr-field-meta">
@@ -669,7 +688,7 @@ export default function WaterRecsClient({
                     </span>
                     {isStandout && (
                       <span className="wr-just-for-you">
-                        Just for you — this one&apos;s stepping out from the group, worth a look.
+                        Just for you — acting different from the rest of this farm, worth a look.
                       </span>
                     )}
                   </div>

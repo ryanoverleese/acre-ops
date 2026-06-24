@@ -9031,6 +9031,20 @@ tr.expanded-row:hover {
   margin-bottom: 8px;
 }
 
+.wr-farm-note {
+  margin-bottom: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: var(--radius);
+  border: 1px dashed #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.wr-farm-note strong {
+  color: var(--text-primary);
+}
+
 .wr-farm-group {
   display: flex;
   flex-wrap: wrap;
