@@ -9009,6 +9009,36 @@ tr.expanded-row:hover {
   vertical-align: middle;
 }
 
+.wr-farm-suggestion {
+  margin-bottom: 12px;
+}
+
+.wr-standout-chip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-radius: 10px;
+  background: var(--status-amber, #d98a00);
+  color: #fff;
+  vertical-align: middle;
+}
+
+.wr-field-card.standout {
+  border-left: 3px solid var(--status-amber, #d98a00);
+}
+
+.wr-just-for-you {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
 .wr-ref-panel {
   margin-bottom: 16px;
   border: 1px solid var(--border);
