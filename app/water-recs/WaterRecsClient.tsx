@@ -97,6 +97,8 @@ export default function WaterRecsClient({
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showReference, setShowReference] = useState(true);
+  // Which past-week rec is showing per field (0 = most recent prior week)
+  const [pastIdx, setPastIdx] = useState<Record<number, number>>({});
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -124,6 +126,22 @@ export default function WaterRecsClient({
     () => waterRecs.filter(wr => !SUGGESTION_TAGS.includes(wr.reportType)),
     [waterRecs]
   );
+
+  // Past weeks' SAVED full recs per field, newest-first. Powers the read-only
+  // "step back through prior weeks" history shown above each rec box. Only
+  // 'full' recs with actual text, and only from weeks before the one being
+  // written (so the in-progress report never shows up as its own history).
+  const pastRecsByFs = useMemo(() => {
+    const m = new Map<number, WaterRecRecord[]>();
+    savedRecs.forEach(wr => {
+      if (wr.reportType === 'full' && wr.recommendation.trim() && wr.date < weekRange.start) {
+        if (!m.has(wr.fieldSeasonId)) m.set(wr.fieldSeasonId, []);
+        m.get(wr.fieldSeasonId)!.push(wr);
+      }
+    });
+    m.forEach(list => list.sort((a, b) => b.date.localeCompare(a.date)));
+    return m;
+  }, [savedRecs, weekRange]);
 
   const thisWeekRecs = useMemo(() => {
     return savedRecs.filter(wr =>
@@ -686,6 +704,51 @@ export default function WaterRecsClient({
                 {/* Expanded recommendation area */}
                 {form.expanded && (
                   <div className="wr-expanded-area">
+                    {(() => {
+                      const past = pastRecsByFs.get(field.fieldSeasonId);
+                      if (!past || !past.length) return null;
+                      const idx = Math.min(pastIdx[field.fieldSeasonId] || 0, past.length - 1);
+                      const rec = past[idx];
+                      const when = new Date(rec.date + 'T12:00:00').toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric',
+                      });
+                      return (
+                        <div className="wr-pastrec">
+                          <div className="wr-pastrec-head">
+                            <span className="wr-pastrec-when">
+                              Past week · {when}{rec.priority ? ' · priority' : ''}
+                            </span>
+                            {past.length > 1 && (
+                              <span className="wr-pastrec-nav">
+                                <button
+                                  type="button"
+                                  className="wr-pastrec-btn"
+                                  disabled={idx >= past.length - 1}
+                                  onClick={() => setPastIdx(p => ({ ...p, [field.fieldSeasonId]: idx + 1 }))}
+                                  title="Older week"
+                                >
+                                  &lsaquo;
+                                </button>
+                                <span className="wr-pastrec-count">{idx + 1} of {past.length}</span>
+                                <button
+                                  type="button"
+                                  className="wr-pastrec-btn"
+                                  disabled={idx <= 0}
+                                  onClick={() => setPastIdx(p => ({ ...p, [field.fieldSeasonId]: idx - 1 }))}
+                                  title="Newer week"
+                                >
+                                  &rsaquo;
+                                </button>
+                              </span>
+                            )}
+                          </div>
+                          <div className="wr-pastrec-text">{rec.recommendation}</div>
+                          {rec.suggestedWaterDay && (
+                            <div className="wr-pastrec-day">Water day: {rec.suggestedWaterDay}</div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
                       <div className="wr-suggestion">
                         <div className="wr-suggestion-label">Suggested</div>
