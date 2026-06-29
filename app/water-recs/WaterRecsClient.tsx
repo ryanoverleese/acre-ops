@@ -108,6 +108,30 @@ export default function WaterRecsClient({
   const [recPersisted, setRecPersisted] = useState<Record<number, string>>({});
   const [recSaveStatus, setRecSaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
 
+  // Per-field water-day save tracking
+  const [dayPersisted, setDayPersisted] = useState<Record<number, string>>({});
+  const [daySaveStatus, setDaySaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
+
+  // Report timer — tracks how long you spend per operation
+  const [timerStart, setTimerStart] = useState<number | null>(null);
+  const [timerElapsed, setTimerElapsed] = useState(0);
+  const [dayTotal, setDayTotal] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = localStorage.getItem('wr-timer-today');
+    if (!stored) return 0;
+    const parsed = JSON.parse(stored);
+    const today = new Date().toISOString().split('T')[0];
+    return parsed.date === today ? parsed.total : 0;
+  });
+  const [opsCompleted, setOpsCompleted] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    const stored = localStorage.getItem('wr-timer-today');
+    if (!stored) return 0;
+    const parsed = JSON.parse(stored);
+    const today = new Date().toISOString().split('T')[0];
+    return parsed.date === today ? (parsed.ops || 0) : 0;
+  });
+
   // Permanent per-field season note (lives on field_season, persists all year,
   // resets next season). Seeded once from the loaded data; edits save on blur.
   const [fieldNotes, setFieldNotes] = useState<Record<number, string>>(() => {
@@ -130,6 +154,74 @@ export default function WaterRecsClient({
       setNoteStatus(s => ({ ...s, [fsId]: 'error' }));
     }
   }, []);
+
+  // Timer: tick every second when running
+  useEffect(() => {
+    if (!timerStart) return;
+    const interval = setInterval(() => {
+      setTimerElapsed(Math.floor((Date.now() - timerStart) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timerStart]);
+
+  // Start timer when an operation is selected
+  useEffect(() => {
+    if (selectedOperationId) {
+      setTimerStart(Date.now());
+      setTimerElapsed(0);
+    }
+  }, [selectedOperationId]);
+
+  // Past week history from localStorage
+  const pastHistory = useMemo(() => {
+    if (typeof window === 'undefined') return null;
+    const raw = localStorage.getItem('wr-timer-history');
+    if (!raw) return null;
+    const history: { date: string; total: number; ops: number; finishedAt: string }[] = JSON.parse(raw);
+    // Find last Monday's entry (same day of week)
+    const today = new Date();
+    const dayOfWeek = today.getDay();
+    const lastWeek = new Date(today);
+    lastWeek.setDate(today.getDate() - 7);
+    const lastWeekStr = lastWeek.toISOString().split('T')[0];
+    return history.find(h => h.date === lastWeekStr) || (history.length > 0 ? history[history.length - 1] : null);
+  }, []);
+
+  // Save water day immediately when dropdown changes
+  const saveWaterDay = useCallback(async (fsId: number, day: string) => {
+    if (mode !== 'full') return;
+    const form = fieldForms[fsId];
+    if (!form) return;
+    if (day === (dayPersisted[fsId] ?? '')) return;
+
+    setDaySaveStatus(s => ({ ...s, [fsId]: 'saving' }));
+    try {
+      const res = await fetch('/api/water-recs/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          records: [{
+            field_season: fsId,
+            date: reportDate,
+            recommendation: form.recommendation || '',
+            suggested_water_day: day,
+            priority: form.priority,
+            report_type: 'full',
+          }],
+          scopeFieldSeasons: [fsId],
+          reportType: 'full',
+        }),
+      });
+      if (res.ok) {
+        setDayPersisted(p => ({ ...p, [fsId]: day }));
+        setDaySaveStatus(s => ({ ...s, [fsId]: 'saved' }));
+      } else {
+        setDaySaveStatus(s => ({ ...s, [fsId]: 'error' }));
+      }
+    } catch {
+      setDaySaveStatus(s => ({ ...s, [fsId]: 'error' }));
+    }
+  }, [mode, fieldForms, dayPersisted, reportDate]);
 
   const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
@@ -363,6 +455,14 @@ export default function WaterRecsClient({
       });
       setRecPersisted(persisted);
       setRecSaveStatus({});
+      // Seed water-day persisted baseline
+      const dayBaseline: Record<number, string> = {};
+      currentOperation.fields.forEach(field => {
+        const existing = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId);
+        dayBaseline[field.fieldSeasonId] = existing?.suggestedWaterDay || '';
+      });
+      setDayPersisted(dayBaseline);
+      setDaySaveStatus({});
       // Load saved overview for this operation+date (report_type "overview",
       // anchored to the first field_season of the operation)
       const anchorFs = currentOperation.fields[0]?.fieldSeasonId;
@@ -529,6 +629,28 @@ export default function WaterRecsClient({
           records.forEach(r => { next[r.field_season] = 'saved'; });
           return next;
         });
+        // Bank this operation's time
+        if (timerStart) {
+          const elapsed = Math.floor((Date.now() - timerStart) / 1000);
+          const newTotal = dayTotal + elapsed;
+          const newOps = opsCompleted + 1;
+          setDayTotal(newTotal);
+          setOpsCompleted(newOps);
+          setTimerStart(null);
+          setTimerElapsed(0);
+          const today = new Date().toISOString().split('T')[0];
+          localStorage.setItem('wr-timer-today', JSON.stringify({
+            date: today, total: newTotal, ops: newOps,
+            finishedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          }));
+          // Append to history (keep last 30 days)
+          const raw = localStorage.getItem('wr-timer-history');
+          const history: { date: string; total: number; ops: number; finishedAt: string }[] = raw ? JSON.parse(raw) : [];
+          const idx = history.findIndex(h => h.date === today);
+          const entry = { date: today, total: newTotal, ops: newOps, finishedAt: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) };
+          if (idx >= 0) history[idx] = entry; else history.push(entry);
+          localStorage.setItem('wr-timer-history', JSON.stringify(history.slice(-30)));
+        }
         showToast(`Saved ${data.created} water recommendations`);
       } else if (response.ok && data.created === 0) {
         console.error('Bulk save errors:', data.errors);
@@ -774,6 +896,23 @@ export default function WaterRecsClient({
               {Object.values(fieldForms).filter(f => f.updateStatus === 'updated').length} updated
             </span>
           )}
+          <span className="wr-timer-section">
+            {timerStart && (
+              <span className="wr-timer">
+                {Math.floor(timerElapsed / 60)}:{String(timerElapsed % 60).padStart(2, '0')}
+              </span>
+            )}
+            {dayTotal > 0 && (
+              <span className="wr-timer-total">
+                Today: {Math.floor(dayTotal / 60)}m across {opsCompleted} op{opsCompleted !== 1 ? 's' : ''}
+              </span>
+            )}
+            {pastHistory && (
+              <span className="wr-timer-past">
+                Last time: {Math.floor(pastHistory.total / 60)}m — done by {pastHistory.finishedAt}
+              </span>
+            )}
+          </span>
         </div>
       )}
 
@@ -871,14 +1010,22 @@ export default function WaterRecsClient({
                   </div>
 
                   {/* Water day dropdown */}
-                  <SearchableSelect
-                    value={form.waterDay}
-                    onChange={(v) => updateField(field.fieldSeasonId, { waterDay: v })}
-                    options={waterDayOptions}
-                    placeholder="Water day..."
-                    className={!form.waterDay ? 'wr-water-day-empty' : ''}
-                    style={{ minWidth: 120 }}
-                  />
+                  <div className="wr-water-day-wrap">
+                    <SearchableSelect
+                      value={form.waterDay}
+                      onChange={(v) => {
+                        updateField(field.fieldSeasonId, { waterDay: v });
+                        saveWaterDay(field.fieldSeasonId, v);
+                      }}
+                      options={waterDayOptions}
+                      placeholder="Water day..."
+                      className={!form.waterDay ? 'wr-water-day-empty' : ''}
+                      style={{ minWidth: 120 }}
+                    />
+                    {daySaveStatus[field.fieldSeasonId] === 'saving' && <span className="wr-day-pill">saving…</span>}
+                    {daySaveStatus[field.fieldSeasonId] === 'saved' && <span className="wr-day-pill wr-day-saved">saved</span>}
+                    {daySaveStatus[field.fieldSeasonId] === 'error' && <span className="wr-day-pill wr-day-error">error</span>}
+                  </div>
                 </div>
 
                 {/* Permanent season note — always visible, saves on blur */}

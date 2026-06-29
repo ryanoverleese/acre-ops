@@ -9083,6 +9083,44 @@ tr.expanded-row:hover {
   color: var(--text-secondary);
 }
 
+/* Water day wrap + save pill */
+.wr-water-day-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.wr-day-pill {
+  font-size: 10px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.wr-day-saved { color: var(--accent, #2f6f4f); }
+.wr-day-error { color: #c0392b; }
+
+/* Report timer */
+.wr-timer-section {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+}
+.wr-timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  background: var(--bg-tertiary);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.wr-timer-total {
+  color: var(--text-secondary);
+}
+.wr-timer-past {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .wr-water-day-empty {
   background: var(--bg-tertiary, #d0d0d0) !important;
   opacity: 0.75;
@@ -9117,9 +9155,9 @@ tr.expanded-row:hover {
 /* Permanent per-field season note */
 .wr-fieldnote {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
-  margin: 8px 0 2px;
+  margin: 4px 14px 2px;
 }
 
 .wr-fieldnote-input {
