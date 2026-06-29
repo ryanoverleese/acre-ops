@@ -521,6 +521,8 @@ export default function WaterRecsClient({
           records.forEach(r => { next[r.field_season] = 'saved'; });
           return next;
         });
+        // Also save the overview if it changed
+        await saveOverview();
         showToast(`Saved ${data.created} water recommendations`);
       } else if (response.ok && data.created === 0) {
         console.error('Bulk save errors:', data.errors);
