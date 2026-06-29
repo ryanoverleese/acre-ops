@@ -597,7 +597,7 @@ export default function WaterRecsClient({
     if (priorityFields.length > 0) {
       lines.push('⚠️ HIGH PRIORITY:', '');
       priorityFields.forEach(f => {
-        lines.push(f.name.toUpperCase());
+        lines.push(f.name);
         lines.push(f.rec, '');
       });
     }
@@ -605,7 +605,7 @@ export default function WaterRecsClient({
     if (normalFields.length > 0) {
       lines.push('NORMAL PRIORITY:', '');
       normalFields.forEach(f => {
-        lines.push(f.name.toUpperCase());
+        lines.push(f.name);
         lines.push(f.rec, '');
       });
     }
