@@ -9349,6 +9349,18 @@ tr.expanded-row:hover {
   align-self: center;
 }
 
+.wr-autosave {
+  font-size: 12px;
+  font-weight: 500;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.wr-autosave-saving { color: var(--text-muted); }
+.wr-autosave-saved { color: var(--accent-primary); }
+.wr-autosave-error { color: #c0392b; }
+
 .wr-toast {
   position: fixed;
   bottom: 24px;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import SearchableSelect from '@/components/SearchableSelect';
 import type { OperationGroup, WaterRecRecord } from './page';
 
@@ -96,6 +96,14 @@ export default function WaterRecsClient({
   const [fieldForms, setFieldForms] = useState<Record<number, FieldForm>>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  // Auto-save plumbing: a status pill + a dirty counter the debounce watches.
+  // lastSavedIds tracks the rows THIS session created so the next save deletes
+  // them instead of stacking duplicates (existingRecsForDate is frozen at load).
+  const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [dirtyCount, setDirtyCount] = useState(0);
+  const lastSavedIdsRef = useRef<number[]>([]);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markDirty = useCallback(() => setDirtyCount(c => c + 1), []);
   const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
   const [pastIdx, setPastIdx] = useState<Record<number, number>>({});
@@ -293,6 +301,8 @@ export default function WaterRecsClient({
       ...prev,
       [fsId]: { ...prev[fsId], ...updates },
     }));
+    // expanded is just UI chrome — don't trigger an auto-save for it
+    if (!(Object.keys(updates).length === 1 && 'expanded' in updates)) markDirty();
   };
 
   // Navigate between operations
@@ -305,6 +315,50 @@ export default function WaterRecsClient({
   };
 
   // Save report
+  // Build the records array from the current forms (shared by manual + auto save)
+  const collectRecords = useCallback(() => {
+    const records: { field_season: number; date: string; recommendation: string; suggested_water_day: string; priority: boolean; report_type: string }[] = [];
+    if (!currentOperation) return records;
+    currentOperation.fields.forEach(field => {
+      const form = fieldForms[field.fieldSeasonId];
+      if (!form) return;
+      if (mode === 'full') {
+        if (form.waterDay || form.recommendation.trim()) {
+          records.push({
+            field_season: field.fieldSeasonId,
+            date: reportDate,
+            recommendation: form.recommendation.trim(),
+            suggested_water_day: form.waterDay,
+            priority: form.priority,
+            report_type: 'full',
+          });
+        }
+      } else {
+        const day = form.updateStatus === 'updated' ? form.waterDay : form.originalDay;
+        if (day) {
+          records.push({
+            field_season: field.fieldSeasonId,
+            date: reportDate,
+            recommendation: form.updateStatus === 'updated' ? `Updated to ${day}` : '',
+            suggested_water_day: day,
+            priority: false,
+            report_type: 'update',
+          });
+        }
+      }
+    });
+    return records;
+  }, [currentOperation, fieldForms, mode, reportDate]);
+
+  // Rows to wipe before re-inserting: the ones present at page load for this
+  // date PLUS anything this session already created (so saves never duplicate).
+  const buildDeleteIds = useCallback(() => {
+    return Array.from(new Set([
+      ...existingRecsForDate.map(r => r.id),
+      ...lastSavedIdsRef.current,
+    ]));
+  }, [existingRecsForDate]);
+
   const handleSave = async () => {
     if (!currentOperation) return;
 
@@ -323,37 +377,7 @@ export default function WaterRecsClient({
     setSaving(true);
 
     try {
-      const records: { field_season: number; date: string; recommendation: string; suggested_water_day: string; priority: boolean; report_type: string }[] = [];
-
-      currentOperation.fields.forEach(field => {
-        const form = fieldForms[field.fieldSeasonId];
-        if (!form) return;
-
-        if (mode === 'full') {
-          if (form.waterDay || form.recommendation.trim()) {
-            records.push({
-              field_season: field.fieldSeasonId,
-              date: reportDate,
-              recommendation: form.recommendation.trim(),
-              suggested_water_day: form.waterDay,
-              priority: form.priority,
-              report_type: 'full',
-            });
-          }
-        } else {
-          const day = form.updateStatus === 'updated' ? form.waterDay : form.originalDay;
-          if (day) {
-            records.push({
-              field_season: field.fieldSeasonId,
-              date: reportDate,
-              recommendation: form.updateStatus === 'updated' ? `Updated to ${day}` : '',
-              suggested_water_day: day,
-              priority: false,
-              report_type: 'update',
-            });
-          }
-        }
-      });
+      const records = collectRecords();
 
       if (records.length === 0) {
         showToast('Nothing to save - set water days or write recommendations first');
@@ -361,7 +385,7 @@ export default function WaterRecsClient({
         return;
       }
 
-      const deleteIds = existingRecsForDate.map(r => r.id);
+      const deleteIds = buildDeleteIds();
 
       const response = await fetch('/api/water-recs/bulk', {
         method: 'POST',
@@ -371,19 +395,67 @@ export default function WaterRecsClient({
 
       const data = await response.json();
       if (response.ok && data.created > 0) {
+        lastSavedIdsRef.current = data.createdIds || [];
+        setSavedStatus('saved');
         showToast(`Saved ${data.created} water recommendations`);
       } else if (response.ok && data.created === 0) {
         console.error('Bulk save errors:', data.errors);
+        setSavedStatus('error');
         showToast(`Failed to save - ${data.errors?.[0]?.substring(0, 80) || 'Baserow rejected records'}`);
       } else {
+        setSavedStatus('error');
         showToast('Failed to save - please try again');
       }
     } catch {
+      setSavedStatus('error');
       showToast('Failed to save - please try again');
     } finally {
       setSaving(false);
     }
   };
+
+  // Silent auto-save: same write path as the button, but no toasts/validation —
+  // just keeps Baserow in sync as Ryan types and shows a small status pill.
+  const autoSave = useCallback(async () => {
+    if (!currentOperation) return;
+    const records = collectRecords();
+    if (records.length === 0) return; // nothing worth persisting yet
+    setSavedStatus('saving');
+    try {
+      const deleteIds = buildDeleteIds();
+      const response = await fetch('/api/water-recs/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteIds, records }),
+      });
+      const data = await response.json();
+      if (response.ok && data.created > 0) {
+        lastSavedIdsRef.current = data.createdIds || [];
+        setSavedStatus('saved');
+      } else {
+        setSavedStatus('error');
+      }
+    } catch {
+      setSavedStatus('error');
+    }
+  }, [currentOperation, collectRecords, buildDeleteIds]);
+
+  // Debounced auto-save: fire ~1.5s after the last edit. dirtyCount only bumps
+  // on real user edits, so initial form hydration never triggers a save.
+  useEffect(() => {
+    if (dirtyCount === 0) return;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => { void autoSave(); }, 1500);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [dirtyCount, autoSave]);
+
+  // Switching operation/mode/date loads a different set of rows — reset the
+  // session's created-id tracker and the status pill so we don't delete the
+  // wrong rows or show a stale "saved".
+  useEffect(() => {
+    lastSavedIdsRef.current = [];
+    setSavedStatus('idle');
+  }, [selectedOperationId, mode, reportDate]);
 
   // Build copy text for Full Report
   const buildFullReportText = (): string => {
@@ -636,7 +708,7 @@ export default function WaterRecsClient({
             <textarea
               className="wr-textarea"
               value={overview}
-              onChange={(e) => setOverview(e.target.value)}
+              onChange={(e) => { setOverview(e.target.value); markDirty(); }}
               placeholder="General overview message for this operation (optional)..."
               rows={3}
             />
@@ -953,6 +1025,13 @@ export default function WaterRecsClient({
           >
             Copy All
           </button>
+          {savedStatus !== 'idle' && (
+            <span className={`wr-autosave wr-autosave-${savedStatus}`}>
+              {savedStatus === 'saving' && 'Saving…'}
+              {savedStatus === 'saved' && 'All changes saved'}
+              {savedStatus === 'error' && 'Auto-save failed — use Save'}
+            </span>
+          )}
           {existingRecsForDate.length > 0 && (
             <span className="wr-existing-hint">
               {existingRecsForDate.length} existing rec{existingRecsForDate.length !== 1 ? 's' : ''} for this date will be replaced

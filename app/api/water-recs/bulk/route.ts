@@ -67,10 +67,11 @@ export async function POST(request: NextRequest) {
       })
     );
 
-    const successful = created.filter(Boolean);
+    const successful = created.filter(Boolean) as { id: number }[];
     return NextResponse.json({
       success: successful.length > 0,
       created: successful.length,
+      createdIds: successful.map(r => r.id),
       total: records.length,
       errors: errors.length > 0 ? errors : undefined,
     });
