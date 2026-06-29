@@ -427,6 +427,9 @@ export interface FieldSeason {
   approval_notes?: string;
   approval_date?: string;
   approval_sent?: string;
+  // Free-form note Ryan keeps per field for the whole season (resets next season,
+  // since each season is a new field_season row). Shown on the Water Recs page.
+  field_note?: string;
 }
 
 export interface Repair {

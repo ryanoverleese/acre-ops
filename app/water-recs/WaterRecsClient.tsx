@@ -98,6 +98,29 @@ export default function WaterRecsClient({
   const [toast, setToast] = useState<string | null>(null);
   // Small status pill next to the Save button (saving / saved / error).
   const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Permanent per-field season note (lives on field_season, persists all year,
+  // resets next season). Seeded once from the loaded data; edits save on blur.
+  const [fieldNotes, setFieldNotes] = useState<Record<number, string>>(() => {
+    const m: Record<number, string> = {};
+    operations.forEach(op => op.fields.forEach(f => { m[f.fieldSeasonId] = f.fieldNote || ''; }));
+    return m;
+  });
+  const [noteStatus, setNoteStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
+
+  const saveFieldNote = useCallback(async (fsId: number, note: string) => {
+    setNoteStatus(s => ({ ...s, [fsId]: 'saving' }));
+    try {
+      const res = await fetch('/api/water-recs/field-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fieldSeasonId: fsId, note }),
+      });
+      setNoteStatus(s => ({ ...s, [fsId]: res.ok ? 'saved' : 'error' }));
+    } catch {
+      setNoteStatus(s => ({ ...s, [fsId]: 'error' }));
+    }
+  }, []);
   const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
   const [pastIdx, setPastIdx] = useState<Record<number, number>>({});
@@ -729,6 +752,25 @@ export default function WaterRecsClient({
                     placeholder="Water day..."
                     style={{ minWidth: 120 }}
                   />
+                </div>
+
+                {/* Permanent season note — always visible, saves on blur */}
+                <div className="wr-fieldnote">
+                  <textarea
+                    className="wr-fieldnote-input"
+                    value={fieldNotes[field.fieldSeasonId] ?? ''}
+                    onChange={(e) => setFieldNotes(n => ({ ...n, [field.fieldSeasonId]: e.target.value }))}
+                    onBlur={(e) => saveFieldNote(field.fieldSeasonId, e.target.value)}
+                    placeholder="Season note for this field (saved all year)…"
+                    rows={1}
+                  />
+                  {noteStatus[field.fieldSeasonId] && (
+                    <span className={`wr-fieldnote-status wr-fieldnote-${noteStatus[field.fieldSeasonId]}`}>
+                      {noteStatus[field.fieldSeasonId] === 'saving' && 'saving…'}
+                      {noteStatus[field.fieldSeasonId] === 'saved' && 'saved'}
+                      {noteStatus[field.fieldSeasonId] === 'error' && 'not saved'}
+                    </span>
+                  )}
                 </div>
 
                 {/* Expanded recommendation area */}

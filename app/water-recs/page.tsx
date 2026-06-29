@@ -10,6 +10,7 @@ export interface ReportField {
   fieldName: string;
   crop: string;
   acres: number;
+  fieldNote: string;
 }
 
 export interface OperationGroup {
@@ -90,6 +91,7 @@ export default async function WaterRecsPage() {
         fieldName: field.name || 'Unknown',
         crop: fs.crop?.value || '',
         acres: field.acres || 0,
+        fieldNote: fs.field_note || '',
       });
     });
 
