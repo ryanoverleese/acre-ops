@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import SearchableSelect from '@/components/SearchableSelect';
 import type { OperationGroup, WaterRecRecord } from './page';
 
@@ -96,14 +96,8 @@ export default function WaterRecsClient({
   const [fieldForms, setFieldForms] = useState<Record<number, FieldForm>>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  // Auto-save plumbing: a status pill + a dirty counter the debounce watches.
-  // lastSavedIds tracks the rows THIS session created so the next save deletes
-  // them instead of stacking duplicates (existingRecsForDate is frozen at load).
+  // Small status pill next to the Save button (saving / saved / error).
   const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [dirtyCount, setDirtyCount] = useState(0);
-  const lastSavedIdsRef = useRef<number[]>([]);
-  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const markDirty = useCallback(() => setDirtyCount(c => c + 1), []);
   const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
   const [pastIdx, setPastIdx] = useState<Record<number, number>>({});
@@ -301,8 +295,6 @@ export default function WaterRecsClient({
       ...prev,
       [fsId]: { ...prev[fsId], ...updates },
     }));
-    // expanded is just UI chrome — don't trigger an auto-save for it
-    if (!(Object.keys(updates).length === 1 && 'expanded' in updates)) markDirty();
   };
 
   // Navigate between operations
@@ -350,15 +342,6 @@ export default function WaterRecsClient({
     return records;
   }, [currentOperation, fieldForms, mode, reportDate]);
 
-  // Rows to wipe before re-inserting: the ones present at page load for this
-  // date PLUS anything this session already created (so saves never duplicate).
-  const buildDeleteIds = useCallback(() => {
-    return Array.from(new Set([
-      ...existingRecsForDate.map(r => r.id),
-      ...lastSavedIdsRef.current,
-    ]));
-  }, [existingRecsForDate]);
-
   const handleSave = async () => {
     if (!currentOperation) return;
 
@@ -385,17 +368,21 @@ export default function WaterRecsClient({
         return;
       }
 
-      const deleteIds = buildDeleteIds();
-
       const response = await fetch('/api/water-recs/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deleteIds, records }),
+        body: JSON.stringify({
+          records,
+          // Self-cleaning scope: the whole operation's fields + this mode's type.
+          // The server decides what to delete from live data, so a stale tab can
+          // never pile up duplicates (it used to send frozen page-load ids).
+          scopeFieldSeasons: currentOperation.fields.map(f => f.fieldSeasonId),
+          reportType: mode === 'full' ? 'full' : 'update',
+        }),
       });
 
       const data = await response.json();
       if (response.ok && data.created > 0) {
-        lastSavedIdsRef.current = data.createdIds || [];
         setSavedStatus('saved');
         showToast(`Saved ${data.created} water recommendations`);
       } else if (response.ok && data.created === 0) {
@@ -414,46 +401,15 @@ export default function WaterRecsClient({
     }
   };
 
-  // Silent auto-save: same write path as the button, but no toasts/validation —
-  // just keeps Baserow in sync as Ryan types and shows a small status pill.
-  const autoSave = useCallback(async () => {
-    if (!currentOperation) return;
-    const records = collectRecords();
-    if (records.length === 0) return; // nothing worth persisting yet
-    setSavedStatus('saving');
-    try {
-      const deleteIds = buildDeleteIds();
-      const response = await fetch('/api/water-recs/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deleteIds, records }),
-      });
-      const data = await response.json();
-      if (response.ok && data.created > 0) {
-        lastSavedIdsRef.current = data.createdIds || [];
-        setSavedStatus('saved');
-      } else {
-        setSavedStatus('error');
-      }
-    } catch {
-      setSavedStatus('error');
-    }
-  }, [currentOperation, collectRecords, buildDeleteIds]);
-
-  // Debounced auto-save: fire ~1.5s after the last edit. dirtyCount only bumps
-  // on real user edits, so initial form hydration never triggers a save.
-  useEffect(() => {
-    if (dirtyCount === 0) return;
-    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = setTimeout(() => { void autoSave(); }, 1500);
-    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
-  }, [dirtyCount, autoSave]);
+  // AUTO-SAVE REMOVED. A debounced auto-save once ran away on a stale tab —
+  // every fire batch-created ~42 rows but deleted frozen page-load ids that were
+  // already gone, so duplicates piled up endlessly. Saving is manual via the
+  // Save button, and the bulk route now self-cleans server-side so even repeated
+  // manual saves can't duplicate.
 
   // Switching operation/mode/date loads a different set of rows — reset the
-  // session's created-id tracker and the status pill so we don't delete the
-  // wrong rows or show a stale "saved".
+  // status pill so it doesn't show a stale "saved".
   useEffect(() => {
-    lastSavedIdsRef.current = [];
     setSavedStatus('idle');
   }, [selectedOperationId, mode, reportDate]);
 
@@ -708,7 +664,7 @@ export default function WaterRecsClient({
             <textarea
               className="wr-textarea"
               value={overview}
-              onChange={(e) => { setOverview(e.target.value); markDirty(); }}
+              onChange={(e) => setOverview(e.target.value)}
               placeholder="General overview message for this operation (optional)..."
               rows={3}
             />
@@ -1028,8 +984,8 @@ export default function WaterRecsClient({
           {savedStatus !== 'idle' && (
             <span className={`wr-autosave wr-autosave-${savedStatus}`}>
               {savedStatus === 'saving' && 'Saving…'}
-              {savedStatus === 'saved' && 'All changes saved'}
-              {savedStatus === 'error' && 'Auto-save failed — use Save'}
+              {savedStatus === 'saved' && 'Saved'}
+              {savedStatus === 'error' && 'Save failed — try again'}
             </span>
           )}
           {existingRecsForDate.length > 0 && (
