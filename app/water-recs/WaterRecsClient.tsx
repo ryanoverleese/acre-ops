@@ -283,7 +283,7 @@ export default function WaterRecsClient({
   // them; the app's own saves use 'full'/'update'). They must NEVER be treated as
   // saved recs — they only feed the opt-in "Use this..." banner below.
   const SUGGESTION_TAGS = ['full_report', 'water_day_update'];
-  const EXCLUDE_FROM_FIELD_RECS = new Set([...SUGGESTION_TAGS, 'overview']);
+  const EXCLUDE_FROM_FIELD_RECS = new Set([...SUGGESTION_TAGS, 'overview', 'farm_insight']);
   const savedRecs = useMemo(
     () => waterRecs.filter(wr => !EXCLUDE_FROM_FIELD_RECS.has(wr.reportType)),
     [waterRecs]
@@ -924,6 +924,21 @@ export default function WaterRecsClient({
       {/* ============ FULL REPORT MODE ============ */}
       {currentOperation && mode === 'full' && (
         <div>
+          {/* Claude's farm insight — generated Mon/Tue morning */}
+          {(() => {
+            const anchorFs = currentOperation.fields[0]?.fieldSeasonId;
+            const insight = anchorFs
+              ? waterRecs.find(wr => wr.fieldSeasonId === anchorFs && wr.date === reportDate && wr.reportType === 'farm_insight')
+              : undefined;
+            if (!insight?.recommendation) return null;
+            return (
+              <div className="wr-farm-insight">
+                <div className="wr-farm-insight-title">What to watch this week</div>
+                <div className="wr-farm-insight-text">{insight.recommendation}</div>
+              </div>
+            );
+          })()}
+
           {/* Farm-level reference: fields sorted into buckets (for Ryan, not the customer) */}
           {farmInsight && (
             <div className="wr-farm-groups">

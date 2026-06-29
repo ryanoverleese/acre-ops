@@ -9031,6 +9031,29 @@ tr.expanded-row:hover {
   background: var(--bg-secondary);
 }
 
+/* Farm insight from Claude */
+.wr-farm-insight {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent, #2f6f4f);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+.wr-farm-insight-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.wr-farm-insight-text {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
 .wr-farm-groups-title {
   font-size: 11px;
   font-weight: 600;
