@@ -487,11 +487,19 @@ export default function WaterRecsClient({
 
     setSaving(true);
 
+    // Always save overview first, even if no field recs
+    await saveOverview();
+
     try {
       const records = collectRecords();
 
       if (records.length === 0) {
-        showToast('Nothing to save - set water days or write recommendations first');
+        const overviewChanged = overview.trim() !== overviewPersisted.trim();
+        if (overviewChanged) {
+          showToast('Overview saved');
+        } else {
+          showToast('Nothing to save - set water days or write recommendations first');
+        }
         setSaving(false);
         return;
       }
@@ -521,8 +529,6 @@ export default function WaterRecsClient({
           records.forEach(r => { next[r.field_season] = 'saved'; });
           return next;
         });
-        // Also save the overview if it changed
-        await saveOverview();
         showToast(`Saved ${data.created} water recommendations`);
       } else if (response.ok && data.created === 0) {
         console.error('Bulk save errors:', data.errors);
