@@ -488,13 +488,13 @@ export default function WaterRecsClient({
     setSaving(true);
 
     // Always save overview first, even if no field recs
+    const overviewChanged = overview.trim() !== overviewPersisted.trim();
     await saveOverview();
 
     try {
       const records = collectRecords();
 
       if (records.length === 0) {
-        const overviewChanged = overview.trim() !== overviewPersisted.trim();
         if (overviewChanged) {
           showToast('Overview saved');
         } else {
