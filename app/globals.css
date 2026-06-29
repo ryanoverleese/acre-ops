@@ -8805,7 +8805,16 @@ tr.expanded-row:hover {
 
 .wr-overview-wrap {
   margin-bottom: 16px;
+  position: relative;
 }
+.wr-overview-status {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  display: inline-block;
+}
+.wr-overview-saved { color: var(--status-green, #2e7d32); }
+.wr-overview-error { color: var(--status-red, #c62828); }
 
 .wr-textarea {
   width: 100%;
@@ -9072,6 +9081,11 @@ tr.expanded-row:hover {
 .wr-farm-group-names {
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.wr-water-day-empty {
+  background: var(--bg-tertiary, #d0d0d0) !important;
+  opacity: 0.75;
 }
 
 .wr-standout-chip {

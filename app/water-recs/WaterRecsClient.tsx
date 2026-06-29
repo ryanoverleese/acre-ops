@@ -93,6 +93,8 @@ export default function WaterRecsClient({
 
   const [mode, setMode] = useState<'full' | 'update'>('full');
   const [overview, setOverview] = useState('');
+  const [overviewPersisted, setOverviewPersisted] = useState('');
+  const [overviewStatus, setOverviewStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [fieldForms, setFieldForms] = useState<Record<number, FieldForm>>({});
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -128,6 +130,7 @@ export default function WaterRecsClient({
       setNoteStatus(s => ({ ...s, [fsId]: 'error' }));
     }
   }, []);
+
   const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
   const [pastIdx, setPastIdx] = useState<Record<number, number>>({});
@@ -142,6 +145,40 @@ export default function WaterRecsClient({
     [operations, selectedOperationId]
   );
 
+  // Save the overview note as a special "overview" row in water_recs.
+  // Uses the first field_season of the operation as an anchor so the
+  // existing cleanup logic can scope it properly.
+  const saveOverview = useCallback(async () => {
+    if (!currentOperation || overview.trim() === overviewPersisted.trim()) return;
+    const anchorFs = currentOperation.fields[0]?.fieldSeasonId;
+    if (!anchorFs) return;
+    setOverviewStatus('saving');
+    try {
+      const res = await fetch('/api/water-recs/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          records: [{
+            field_season: anchorFs,
+            date: reportDate,
+            recommendation: overview.trim(),
+            report_type: 'overview',
+          }],
+          scopeFieldSeasons: [anchorFs],
+          reportType: 'overview',
+        }),
+      });
+      if (res.ok) {
+        setOverviewPersisted(overview.trim());
+        setOverviewStatus('saved');
+      } else {
+        setOverviewStatus('error');
+      }
+    } catch {
+      setOverviewStatus('error');
+    }
+  }, [currentOperation, overview, overviewPersisted, reportDate]);
+
   const currentFieldSeasonIds = useMemo(
     () => new Set(currentOperation?.fields.map(f => f.fieldSeasonId) || []),
     [currentOperation]
@@ -154,8 +191,9 @@ export default function WaterRecsClient({
   // them; the app's own saves use 'full'/'update'). They must NEVER be treated as
   // saved recs — they only feed the opt-in "Use this..." banner below.
   const SUGGESTION_TAGS = ['full_report', 'water_day_update'];
+  const EXCLUDE_FROM_FIELD_RECS = new Set([...SUGGESTION_TAGS, 'overview']);
   const savedRecs = useMemo(
-    () => waterRecs.filter(wr => !SUGGESTION_TAGS.includes(wr.reportType)),
+    () => waterRecs.filter(wr => !EXCLUDE_FROM_FIELD_RECS.has(wr.reportType)),
     [waterRecs]
   );
 
@@ -325,7 +363,15 @@ export default function WaterRecsClient({
       });
       setRecPersisted(persisted);
       setRecSaveStatus({});
-      if (!existingRecsForDate.length) setOverview('');
+      // Load saved overview for this operation+date (report_type "overview",
+      // anchored to the first field_season of the operation)
+      const anchorFs = currentOperation.fields[0]?.fieldSeasonId;
+      const overviewRec = anchorFs
+        ? waterRecs.find(wr => wr.fieldSeasonId === anchorFs && wr.date === reportDate && wr.reportType === 'overview')
+        : undefined;
+      setOverview(overviewRec?.recommendation || '');
+      setOverviewPersisted(overviewRec?.recommendation?.trim() || '');
+      setOverviewStatus('idle');
     }
   }
 
@@ -756,9 +802,13 @@ export default function WaterRecsClient({
               className="wr-textarea"
               value={overview}
               onChange={(e) => setOverview(e.target.value)}
+              onBlur={() => saveOverview()}
               placeholder="General overview message for this operation (optional)..."
               rows={3}
             />
+            {overviewStatus === 'saving' && <span className="wr-overview-status">saving…</span>}
+            {overviewStatus === 'saved' && <span className="wr-overview-status wr-overview-saved">saved</span>}
+            {overviewStatus === 'error' && <span className="wr-overview-status wr-overview-error">not saved</span>}
           </div>
 
           {/* Field cards */}
@@ -818,6 +868,7 @@ export default function WaterRecsClient({
                     onChange={(v) => updateField(field.fieldSeasonId, { waterDay: v })}
                     options={waterDayOptions}
                     placeholder="Water day..."
+                    className={!form.waterDay ? 'wr-water-day-empty' : ''}
                     style={{ minWidth: 120 }}
                   />
                 </div>
