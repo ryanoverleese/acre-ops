@@ -9144,6 +9144,37 @@ tr.expanded-row:hover {
 .wr-fieldnote-saved { color: var(--accent, #2f6f4f); }
 .wr-fieldnote-error { color: #c0392b; }
 
+/* Per-recommendation save pill */
+.wr-recpill {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border-radius: 999px;
+}
+
+.wr-recpill-saved {
+  color: #1e7a44;
+  background: rgba(46, 111, 79, 0.12);
+}
+
+.wr-recpill-saving {
+  color: #8a6d1a;
+  background: rgba(180, 140, 30, 0.12);
+}
+
+.wr-recpill-dirty {
+  color: #8a6d1a;
+  background: rgba(180, 140, 30, 0.15);
+}
+
+.wr-recpill-error {
+  color: #c0392b;
+  background: rgba(192, 57, 43, 0.12);
+}
+
 .wr-ref-panel {
   margin-bottom: 16px;
   border: 1px solid var(--border);

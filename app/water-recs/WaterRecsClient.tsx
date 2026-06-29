@@ -99,6 +99,13 @@ export default function WaterRecsClient({
   // Small status pill next to the Save button (saving / saved / error).
   const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
+  // Per-recommendation save tracking. `recPersisted` holds the rec text currently
+  // in Baserow for each field; `recSaveStatus` drives the little pill. When you
+  // click out of a recommendation it saves just that field through the (now
+  // idempotent) bulk route, so it can't duplicate or wipe anything else.
+  const [recPersisted, setRecPersisted] = useState<Record<number, string>>({});
+  const [recSaveStatus, setRecSaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
+
   // Permanent per-field season note (lives on field_season, persists all year,
   // resets next season). Seeded once from the loaded data; edits save on blur.
   const [fieldNotes, setFieldNotes] = useState<Record<number, string>>(() => {
@@ -309,6 +316,15 @@ export default function WaterRecsClient({
         }
       });
       setFieldForms(forms);
+      // Seed the per-rec "persisted" baseline from what's already saved for this
+      // date, and clear any stale save pills from the previous view.
+      const persisted: Record<number, string> = {};
+      currentOperation.fields.forEach(field => {
+        const existing = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId);
+        persisted[field.fieldSeasonId] = (existing?.recommendation || '').trim();
+      });
+      setRecPersisted(persisted);
+      setRecSaveStatus({});
       if (!existingRecsForDate.length) setOverview('');
     }
   }
@@ -319,6 +335,49 @@ export default function WaterRecsClient({
       [fsId]: { ...prev[fsId], ...updates },
     }));
   };
+
+  // Save a SINGLE field's recommendation (full mode) when you click out of it.
+  // Goes through the idempotent bulk route scoped to just this field, so it can
+  // create/replace this one row without ever touching the rest of the operation.
+  const saveOneRec = useCallback(async (fsId: number) => {
+    if (mode !== 'full') return;
+    const form = fieldForms[fsId];
+    if (!form) return;
+    const rec = form.recommendation.trim();
+    // Nothing to persist (no day, no text) — skip without clearing anything.
+    if (!form.waterDay && !rec) return;
+    // No change since last save — don't re-hit Baserow.
+    if (rec === (recPersisted[fsId] ?? '')) return;
+
+    setRecSaveStatus(s => ({ ...s, [fsId]: 'saving' }));
+    try {
+      const res = await fetch('/api/water-recs/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          records: [{
+            field_season: fsId,
+            date: reportDate,
+            recommendation: rec,
+            suggested_water_day: form.waterDay,
+            priority: form.priority,
+            report_type: 'full',
+          }],
+          scopeFieldSeasons: [fsId],
+          reportType: 'full',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.created > 0) {
+        setRecPersisted(p => ({ ...p, [fsId]: rec }));
+        setRecSaveStatus(s => ({ ...s, [fsId]: 'saved' }));
+      } else {
+        setRecSaveStatus(s => ({ ...s, [fsId]: 'error' }));
+      }
+    } catch {
+      setRecSaveStatus(s => ({ ...s, [fsId]: 'error' }));
+    }
+  }, [mode, fieldForms, reportDate, recPersisted]);
 
   // Navigate between operations
   const currentOpIndex = operations.findIndex(o => o.id === selectedOperationId);
@@ -407,6 +466,15 @@ export default function WaterRecsClient({
       const data = await response.json();
       if (response.ok && data.created > 0) {
         setSavedStatus('saved');
+        // Refresh the per-field saved baseline so every rec pill turns green.
+        const persisted: Record<number, string> = {};
+        records.forEach(r => { persisted[r.field_season] = (r.recommendation || '').trim(); });
+        setRecPersisted(prev => ({ ...prev, ...persisted }));
+        setRecSaveStatus(prev => {
+          const next = { ...prev };
+          records.forEach(r => { next[r.field_season] = 'saved'; });
+          return next;
+        });
         showToast(`Saved ${data.created} water recommendations`);
       } else if (response.ok && data.created === 0) {
         console.error('Bulk save errors:', data.errors);
@@ -856,9 +924,21 @@ export default function WaterRecsClient({
                       className={`wr-rec-textarea${isPriority && !form.recommendation.trim() ? ' error' : ''}`}
                       value={form.recommendation}
                       onChange={(e) => updateField(field.fieldSeasonId, { recommendation: e.target.value })}
+                      onBlur={() => saveOneRec(field.fieldSeasonId)}
                       placeholder={isPriority ? 'Priority field - recommendation required...' : 'Write a recommendation (or leave blank for status quo)...'}
                       rows={3}
                     />
+                    {(() => {
+                      const st = recSaveStatus[field.fieldSeasonId];
+                      const dirty = form.recommendation.trim() !== (recPersisted[field.fieldSeasonId] ?? '');
+                      let label = '';
+                      let cls = '';
+                      if (st === 'saving') { label = 'Saving…'; cls = 'saving'; }
+                      else if (st === 'error') { label = 'Not saved — click Save'; cls = 'error'; }
+                      else if (dirty && form.recommendation.trim()) { label = 'Unsaved'; cls = 'dirty'; }
+                      else if (!dirty && form.recommendation.trim()) { label = 'Saved'; cls = 'saved'; }
+                      return label ? <span className={`wr-recpill wr-recpill-${cls}`}>{label}</span> : null;
+                    })()}
                     {isPriority && !form.recommendation.trim() && (
                       <div className="wr-rec-error">
                         Priority fields must have a written recommendation
