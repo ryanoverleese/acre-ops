@@ -333,7 +333,7 @@ export default function WaterRecsClient({
   // not taking much water (no near-term day), and the steady rest. Just a
   // grouped at-a-glance reference for Ryan, NOT a customer message.
   const farmInsight = useMemo(() => {
-    if (!currentOperation || suggestionByFs.size === 0) return null;
+    if (!currentOperation) return null;
 
     const date = new Date(reportDate + 'T12:00:00');
     const jsDay = date.getDay();
@@ -350,13 +350,12 @@ export default function WaterRecsClient({
     const steady: string[] = [];
 
     currentOperation.fields.forEach(f => {
-      const s = suggestionByFs.get(f.fieldSeasonId);
-      if (!s) return;
+      const form = fieldForms[f.fieldSeasonId];
       const name = f.fieldName;
-      if (s.priority) { highPriority.push(name); return; }
-      const d = s.suggestedWaterDay ? daysOut(s.suggestedWaterDay) : null;
+      if (form?.priority) { highPriority.push(name); return; }
+      const d = form?.waterDay ? daysOut(form.waterDay) : null;
       if (d !== null && d <= 2) pullingALot.push(name);
-      else if (d === null) notTakingWater.push(name);
+      else if (!form?.waterDay) notTakingWater.push(name);
       else steady.push(name);
     });
 
