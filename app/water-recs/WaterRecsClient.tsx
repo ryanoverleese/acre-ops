@@ -1054,7 +1054,7 @@ export default function WaterRecsClient({
                           { key: 'Sa', label: 'Saturday' },
                           { key: 'Su', label: 'Sunday' },
                         ];
-                        const mods = ['Morn', 'Eve', 'Next'];
+                        const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
 
                         const setDay = (label: string) => {
                           const newDay = day === label ? '' : label;
@@ -1063,6 +1063,12 @@ export default function WaterRecsClient({
                           saveWaterDay(field.fieldSeasonId, combined);
                         };
                         const setMod = (m: string) => {
+                          if (m === 'ASAP') {
+                            const newVal = val === 'ASAP' ? '' : 'ASAP';
+                            updateField(field.fieldSeasonId, { waterDay: newVal });
+                            saveWaterDay(field.fieldSeasonId, newVal);
+                            return;
+                          }
                           const newMod = mod === m ? '' : m;
                           const combined = newMod && day ? `${newMod} ${day}` : day;
                           updateField(field.fieldSeasonId, { waterDay: combined });
@@ -1084,7 +1090,7 @@ export default function WaterRecsClient({
                               <button
                                 key={m}
                                 type="button"
-                                className={`wr-pill wr-pill-mod${mod === m ? ' active' : ''}`}
+                                className={`wr-pill wr-pill-mod${m === 'ASAP' ? (val === 'ASAP' ? ' active' : '') : (mod === m ? ' active' : '')}`}
                                 onClick={() => setMod(m)}
                               >{m}</button>
                             ))}
