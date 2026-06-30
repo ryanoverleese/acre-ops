@@ -2566,7 +2566,7 @@ function MapScreen({
 
       {/* Map area */}
       <div style={{ flex: 1, position: 'relative', background: '#dde5d0' }}>
-        {withCoords.length === 0 ? (
+        {withCoords.length === 0 && repairPoints.length === 0 ? (
           <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
             <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
@@ -2587,7 +2587,7 @@ function MapScreen({
         )}
 
         {/* Layer toggle */}
-        {withCoords.length > 0 && (
+        {(withCoords.length > 0 || repairPoints.length > 0) && (
           <>
             <div style={{
               position: 'absolute', top: 14, right: 14, zIndex: 400,
