@@ -928,7 +928,7 @@ export default function WaterRecsClient({
           {(() => {
             const anchorFs = currentOperation.fields[0]?.fieldSeasonId;
             const insight = anchorFs
-              ? waterRecs.find(wr => wr.fieldSeasonId === anchorFs && wr.date === reportDate && wr.reportType === 'farm_insight')
+              ? waterRecs.find(wr => wr.fieldSeasonId === anchorFs && wr.date >= weekRange.start && wr.date <= weekRange.end && wr.reportType === 'farm_insight')
               : undefined;
             if (!insight?.recommendation) return null;
             return (
