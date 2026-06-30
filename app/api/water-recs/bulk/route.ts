@@ -21,10 +21,10 @@ function buildPayload(rec: IncomingRec): Record<string, unknown> {
     date: rec.date,
     recommendation: rec.recommendation || '',
   };
-  // Single-select fields: only include when non-empty (empty string is invalid)
-  if (rec.suggested_water_day) {
-    payload.suggested_water_day = rec.suggested_water_day;
-    payload['suggested water day'] = rec.suggested_water_day;
+  // Text field — always include (empty string clears it)
+  if (rec.suggested_water_day !== undefined) {
+    payload.suggested_water_day = rec.suggested_water_day || '';
+    payload['suggested water day'] = rec.suggested_water_day || '';
   }
   if (rec.priority !== undefined) payload.priority = rec.priority;
   if (rec.report_type) {

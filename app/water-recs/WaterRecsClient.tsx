@@ -353,7 +353,8 @@ export default function WaterRecsClient({
       const form = fieldForms[f.fieldSeasonId];
       const name = f.fieldName;
       if (form?.priority) { highPriority.push(name); return; }
-      const d = form?.waterDay ? daysOut(form.waterDay) : null;
+      const dayName = form?.waterDay ? DAY_NAMES.find(dn => form.waterDay.includes(dn)) : undefined;
+      const d = dayName ? daysOut(dayName) : null;
       if (d !== null && d <= 2) pullingALot.push(name);
       else if (!form?.waterDay) notTakingWater.push(name);
       else steady.push(name);
@@ -731,12 +732,17 @@ export default function WaterRecsClient({
       });
     }
 
-    const scheduleDays = waterDayOptions.filter(d => waterSchedule[d.value]?.length);
+    const scheduleDays = Object.keys(waterSchedule).sort((a, b) => {
+      // Sort by day of week order, with modifiers secondary
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const getBase = (s: string) => dayOrder.find(d => s.includes(d)) || s;
+      return dayOrder.indexOf(getBase(a)) - dayOrder.indexOf(getBase(b));
+    });
     if (scheduleDays.length > 0) {
-      lines.push('💧 Water Schedule:', '');
-      scheduleDays.forEach(d => {
-        const sorted = [...waterSchedule[d.value]].sort((a, b) => a.localeCompare(b));
-        lines.push(`${d.value}:`);
+      lines.push('Water Schedule:', '');
+      scheduleDays.forEach(day => {
+        const sorted = [...waterSchedule[day]].sort((a, b) => a.localeCompare(b));
+        lines.push(`${day}:`);
         sorted.forEach(name => lines.push(name));
         lines.push('');
       });
@@ -1023,22 +1029,72 @@ export default function WaterRecsClient({
                     )}
                   </div>
 
-                  {/* Water day dropdown */}
+                  {/* Water day pills */}
                   <div className="wr-water-day-wrap">
-                    <SearchableSelect
-                      value={form.waterDay}
-                      onChange={(v) => {
-                        updateField(field.fieldSeasonId, { waterDay: v });
-                        saveWaterDay(field.fieldSeasonId, v);
-                      }}
-                      options={waterDayOptions}
-                      placeholder="Water day..."
-                      className={!form.waterDay ? 'wr-water-day-empty' : ''}
-                      style={{ minWidth: 120 }}
-                    />
-                    {daySaveStatus[field.fieldSeasonId] === 'saving' && <span className="wr-day-pill">saving…</span>}
-                    {daySaveStatus[field.fieldSeasonId] === 'saved' && <span className="wr-day-pill wr-day-saved">saved</span>}
-                    {daySaveStatus[field.fieldSeasonId] === 'error' && <span className="wr-day-pill wr-day-error">error</span>}
+                    <div className="wr-day-pills">
+                      {(() => {
+                        // Parse current value into modifier + day
+                        const val = form.waterDay || '';
+                        const parts = val.split(' ');
+                        let mod = '';
+                        let day = '';
+                        if (['Next', 'Morn', 'Eve'].includes(parts[0]) && parts.length > 1) {
+                          mod = parts[0];
+                          day = parts.slice(1).join(' ');
+                        } else {
+                          day = val;
+                        }
+
+                        const days = [
+                          { key: 'M', label: 'Monday' },
+                          { key: 'T', label: 'Tuesday' },
+                          { key: 'W', label: 'Wednesday' },
+                          { key: 'R', label: 'Thursday' },
+                          { key: 'F', label: 'Friday' },
+                          { key: 'Sa', label: 'Saturday' },
+                          { key: 'Su', label: 'Sunday' },
+                        ];
+                        const mods = ['Morn', 'Eve', 'Next'];
+
+                        const setDay = (label: string) => {
+                          const newDay = day === label ? '' : label;
+                          const combined = mod && newDay ? `${mod} ${newDay}` : newDay;
+                          updateField(field.fieldSeasonId, { waterDay: combined });
+                          saveWaterDay(field.fieldSeasonId, combined);
+                        };
+                        const setMod = (m: string) => {
+                          const newMod = mod === m ? '' : m;
+                          const combined = newMod && day ? `${newMod} ${day}` : day;
+                          updateField(field.fieldSeasonId, { waterDay: combined });
+                          saveWaterDay(field.fieldSeasonId, combined);
+                        };
+
+                        return (
+                          <>
+                            {days.map(d => (
+                              <button
+                                key={d.key}
+                                type="button"
+                                className={`wr-pill${day === d.label ? ' active' : ''}`}
+                                onClick={() => setDay(d.label)}
+                              >{d.key}</button>
+                            ))}
+                            <span className="wr-pill-divider" />
+                            {mods.map(m => (
+                              <button
+                                key={m}
+                                type="button"
+                                className={`wr-pill wr-pill-mod${mod === m ? ' active' : ''}`}
+                                onClick={() => setMod(m)}
+                              >{m}</button>
+                            ))}
+                          </>
+                        );
+                      })()}
+                    </div>
+                    {daySaveStatus[field.fieldSeasonId] === 'saving' && <span className="wr-day-status">saving…</span>}
+                    {daySaveStatus[field.fieldSeasonId] === 'saved' && <span className="wr-day-status wr-day-saved">saved</span>}
+                    {daySaveStatus[field.fieldSeasonId] === 'error' && <span className="wr-day-status wr-day-error">error</span>}
                   </div>
                 </div>
 

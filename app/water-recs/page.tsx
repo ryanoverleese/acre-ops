@@ -114,7 +114,7 @@ export default async function WaterRecsPage() {
         fieldSeasonId: fsId,
         date: wr.date || '',
         recommendation: wr.recommendation || '',
-        suggestedWaterDay: wr.suggested_water_day?.value || '',
+        suggestedWaterDay: (typeof wr.suggested_water_day === 'object' ? wr.suggested_water_day?.value : wr.suggested_water_day) || '',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         priority: !!(wr as any).priority,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
