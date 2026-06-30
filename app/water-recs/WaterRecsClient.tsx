@@ -1080,15 +1080,25 @@ export default function WaterRecsClient({
 
                         return (
                           <>
-                            {days.map(d => (
-                              <button
-                                key={d.key}
-                                type="button"
-                                className={`wr-pill${day === d.label ? ' active' : ''}${sugDayName === d.label && day !== d.label ? ' suggested' : ''}`}
-                                onClick={() => setDay(d.label)}
-                                title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
-                              >{d.key}</button>
-                            ))}
+                            {days.map(d => {
+                              const todayIdx = new Date().getDay(); // 0=Sun
+                              const dayIdx = DAY_NAMES.indexOf(d.label);
+                              // DAY_NAMES is Mon=0, but JS getDay is Mon=1, Sun=0
+                              const jsIdx = dayIdx === 6 ? 0 : dayIdx + 1;
+                              const away = (jsIdx - todayIdx + 7) % 7;
+                              return (
+                                <button
+                                  key={d.key}
+                                  type="button"
+                                  className={`wr-pill${day === d.label ? ' active' : ''}${sugDayName === d.label && day !== d.label ? ' suggested' : ''}`}
+                                  onClick={() => setDay(d.label)}
+                                  title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
+                                >
+                                  {d.key}
+                                  <span className="wr-pill-days">{away === 0 ? '·' : away}</span>
+                                </button>
+                              );
+                            })}
                             <span className="wr-pill-divider" />
                             {mods.map(m => (
                               <button

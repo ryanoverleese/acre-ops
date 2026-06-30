@@ -9120,8 +9120,8 @@ tr.expanded-row:hover {
 }
 .wr-pill {
   width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  height: 32px;
+  border-radius: 14px;
   border: 1px solid var(--border);
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -9129,9 +9129,10 @@ tr.expanded-row:hover {
   font-weight: 600;
   cursor: pointer;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 0;
+  padding: 2px 0;
   transition: all 0.15s;
 }
 .wr-pill:hover {
@@ -9145,6 +9146,17 @@ tr.expanded-row:hover {
 }
 .wr-pill.suggested {
   border: 2px dashed var(--accent, #2f6f4f);
+}
+.wr-pill-days {
+  display: block;
+  font-size: 7px;
+  font-weight: 400;
+  opacity: 0.4;
+  line-height: 1;
+  margin-top: -1px;
+}
+.wr-pill.active .wr-pill-days {
+  opacity: 0.6;
 }
 .wr-pill-mod {
   width: auto;
