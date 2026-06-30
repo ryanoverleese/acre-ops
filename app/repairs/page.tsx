@@ -63,6 +63,8 @@ async function getRepairsData(): Promise<{
         probeSerial,
         probeReplaced: repair.probe_replaced || false,
         newProbeSerial: repair.new_probe_serial,
+        lat: field?.lat,
+        lng: field?.lng,
       };
     }).sort((a, b) => {
       if (a.status !== b.status) return a.status === 'open' ? -1 : 1;

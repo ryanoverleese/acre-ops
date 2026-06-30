@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import EmptyState from '@/components/EmptyState';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+
+const RepairsMap = lazy(() => import('./RepairsMap'));
 
 export interface ProcessedRepair {
   id: number;
@@ -22,6 +24,8 @@ export interface ProcessedRepair {
   probeSerial?: string | null;
   probeReplaced?: boolean;
   newProbeSerial?: string;
+  lat?: number;
+  lng?: number;
 }
 
 export interface FieldSeasonOption {
@@ -90,6 +94,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
   const [editForm, setEditForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [view, setView] = useState<'table' | 'map'>('table');
   const [sortColumn, setSortColumn] = useState<string>('reportedAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [showCompleteModal, setShowCompleteModal] = useState(false);
@@ -394,6 +399,32 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
           </div>
         </div>
 
+        <div className="repairs-view-toggle">
+          <button
+            className={`repairs-toggle-btn${view === 'table' ? ' active' : ''}`}
+            onClick={() => setView('table')}
+          >Table</button>
+          <button
+            className={`repairs-toggle-btn${view === 'map' ? ' active' : ''}`}
+            onClick={() => setView('map')}
+          >Map</button>
+        </div>
+
+        {view === 'map' && (
+          <div style={{ height: 500, marginBottom: 16 }}>
+            <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Loading map...</div>}>
+              <RepairsMap
+                repairs={repairs}
+                onSelect={(id) => {
+                  const repair = repairs.find(r => r.id === id);
+                  if (repair) { setSelectedRepair(repair); setShowEditModal(true); }
+                }}
+              />
+            </Suspense>
+          </div>
+        )}
+
+        {view === 'table' && (
         <div className="table-container">
           <div className="table-header">
             <h3 className="table-title">
@@ -646,6 +677,7 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
             )}
           </div>
         </div>
+        )}
       </div>
 
       {showAddModal && (
