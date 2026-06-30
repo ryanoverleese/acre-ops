@@ -69,8 +69,11 @@ async function getRepairsData(): Promise<{
       return new Date(b.reportedAt).getTime() - new Date(a.reportedAt).getTime();
     });
 
-    // Build field season options for the dropdown
-    const fieldSeasonOptions: FieldSeasonOption[] = fieldSeasons.map((fs) => {
+    // Build field season options for the dropdown (current season only)
+    const currentYear = new Date().getFullYear();
+    const fieldSeasonOptions: FieldSeasonOption[] = fieldSeasons.filter(
+      fs => String(fs.season) === String(currentYear)
+    ).map((fs) => {
       const fieldLink = fs.field?.[0];
       const field = fieldLink ? fieldMap.get(fieldLink.id) : null;
       // Find probe 1 from probe_assignments
