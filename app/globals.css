@@ -2383,6 +2383,16 @@ tr.selected {
   gap: 16px;
 }
 
+.repair-open-warning {
+  background: #fff3e0;
+  border-left: 3px solid #e65100;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #bf360c;
+  margin-top: 4px;
+}
+
 .form-group {
   display: flex;
   flex-direction: column;

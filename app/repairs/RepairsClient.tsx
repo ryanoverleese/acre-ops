@@ -115,6 +115,14 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
     );
   }, [addForm.field_season, probeAssignmentOptions]);
 
+  // Check if a field already has an open repair
+  const openRepairWarning = useMemo(() => {
+    if (!addForm.field_season) return null;
+    const fsId = parseInt(addForm.field_season, 10);
+    const openRepair = repairs.find(r => r.fieldSeasonId === fsId && r.status === 'open');
+    return openRepair || null;
+  }, [addForm.field_season, repairs]);
+
   // Handle field selection - auto-select probe if only one exists
   const handleFieldSelect = (fieldSeasonId: string) => {
     const probes = probeAssignmentOptions.filter(
@@ -664,6 +672,11 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                     }))}
                     placeholder="Select field..."
                   />
+                  {openRepairWarning && (
+                    <div className="repair-open-warning">
+                      This field already has an open repair — reported {formatDate(openRepairWarning.reportedAt)}: &ldquo;{openRepairWarning.problem}&rdquo;
+                    </div>
+                  )}
                 </div>
                 {availableProbeAssignments.length > 1 && (
                   <div className="form-group">
