@@ -436,7 +436,7 @@ export default function WaterRecsClient({
         } else {
           const existing = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId);
           forms[field.fieldSeasonId] = {
-            waterDay: existing?.suggestedWaterDay || suggestion?.suggestedWaterDay || '',
+            waterDay: existing?.suggestedWaterDay || '',
             priority: existing?.priority || false,
             recommendation: existing?.recommendation || '',
             expanded: true,
