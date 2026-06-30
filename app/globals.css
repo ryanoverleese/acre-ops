@@ -9143,6 +9143,9 @@ tr.expanded-row:hover {
   color: #fff;
   border-color: var(--accent, #2f6f4f);
 }
+.wr-pill.suggested {
+  border: 2px dashed var(--accent, #2f6f4f);
+}
 .wr-pill-mod {
   width: auto;
   border-radius: 14px;

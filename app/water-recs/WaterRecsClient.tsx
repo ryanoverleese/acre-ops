@@ -1075,14 +1075,18 @@ export default function WaterRecsClient({
                           saveWaterDay(field.fieldSeasonId, combined);
                         };
 
+                        const sugDay = suggestion?.suggestedWaterDay || '';
+                        const sugDayName = DAY_NAMES.find(dn => sugDay.includes(dn)) || '';
+
                         return (
                           <>
                             {days.map(d => (
                               <button
                                 key={d.key}
                                 type="button"
-                                className={`wr-pill${day === d.label ? ' active' : ''}`}
+                                className={`wr-pill${day === d.label ? ' active' : ''}${sugDayName === d.label && day !== d.label ? ' suggested' : ''}`}
                                 onClick={() => setDay(d.label)}
+                                title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
                               >{d.key}</button>
                             ))}
                             <span className="wr-pill-divider" />
