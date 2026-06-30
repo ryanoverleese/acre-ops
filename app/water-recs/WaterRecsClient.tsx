@@ -716,7 +716,7 @@ export default function WaterRecsClient({
     });
 
     if (priorityFields.length > 0) {
-      lines.push('⚠️ HIGH PRIORITY:', '');
+      lines.push('HIGH PRIORITY:', '');
       priorityFields.forEach(f => {
         lines.push(f.name);
         lines.push(f.rec, '');
