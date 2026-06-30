@@ -979,8 +979,14 @@ function RouteScreen({
   const tapCountRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const allDone = !loading && assignments.length > 0 && todo.length === 0;
+  // Only fire fireworks when you finish the last install during this session,
+  // not when you open the page with everything already done
+  const hadTodoRef = useRef(false);
   useEffect(() => {
-    if (allDone && !fireworksFired) setFireworksFired(true);
+    if (todo.length > 0) hadTodoRef.current = true;
+  }, [todo.length]);
+  useEffect(() => {
+    if (allDone && hadTodoRef.current && !fireworksFired) setFireworksFired(true);
   }, [allDone, fireworksFired]);
 
   function handleDateTap() {
