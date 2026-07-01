@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import EmptyState from '@/components/EmptyState';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 
-const RepairsMap = lazy(() => import('./RepairsMap'));
+const RepairsMap = dynamic(() => import('./RepairsMap'), { ssr: false });
 
 export interface ProcessedRepair {
   id: number;
@@ -412,15 +413,13 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
 
         {view === 'map' && (
           <div style={{ height: 500, marginBottom: 16 }}>
-            <Suspense fallback={<div style={{ padding: 40, textAlign: 'center' }}>Loading map...</div>}>
-              <RepairsMap
-                repairs={repairs}
-                onSelect={(id) => {
-                  const repair = repairs.find(r => r.id === id);
-                  if (repair) { setSelectedRepair(repair); setShowEditModal(true); }
-                }}
-              />
-            </Suspense>
+            <RepairsMap
+              repairs={repairs}
+              onSelect={(id) => {
+                const repair = repairs.find(r => r.id === id);
+                if (repair) { setSelectedRepair(repair); setShowEditModal(true); }
+              }}
+            />
           </div>
         )}
 
