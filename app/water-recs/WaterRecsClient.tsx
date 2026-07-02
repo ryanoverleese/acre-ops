@@ -554,13 +554,14 @@ export default function WaterRecsClient({
           });
         }
       } else {
-        const day = form.updateStatus === 'updated' ? form.waterDay : form.originalDay;
-        if (day) {
+        // Only fields marked "updated" get a new update record;
+        // "continue" fields keep their full-report record untouched.
+        if (form.updateStatus === 'updated' && form.waterDay) {
           records.push({
             field_season: field.fieldSeasonId,
             date: reportDate,
-            recommendation: form.updateStatus === 'updated' ? `Updated to ${day}` : '',
-            suggested_water_day: day,
+            recommendation: `Updated to ${form.waterDay}`,
+            suggested_water_day: form.waterDay,
             priority: false,
             report_type: 'update',
           });
@@ -1364,19 +1365,95 @@ export default function WaterRecsClient({
                     className={`wr-update-toggle-btn${isUpdated ? ' active-updated' : ''}`}
                     onClick={() => updateField(field.fieldSeasonId, { updateStatus: 'updated' })}
                   >
-                    Updated
+                    Update
                   </button>
                 </div>
 
-                {isUpdated && (
-                  <SearchableSelect
-                    value={form.waterDay}
-                    onChange={(v) => updateField(field.fieldSeasonId, { waterDay: v })}
-                    options={waterDayOptions}
-                    placeholder="New day..."
-                    style={{ minWidth: 120 }}
-                  />
-                )}
+                {/* Day picker pills — shown for both Continue and Update */}
+                <div className="wr-water-day-wrap">
+                  <div className="wr-day-pills">
+                    {(() => {
+                      const val = form.waterDay || '';
+                      const parts = val.split(' ');
+                      let mod = '';
+                      let day = '';
+                      if (['Next', 'Morn', 'Eve'].includes(parts[0]) && parts.length > 1) {
+                        mod = parts[0];
+                        day = parts.slice(1).join(' ');
+                      } else {
+                        day = val;
+                      }
+
+                      const days = [
+                        { key: 'M', label: 'Monday' },
+                        { key: 'T', label: 'Tuesday' },
+                        { key: 'W', label: 'Wednesday' },
+                        { key: 'R', label: 'Thursday' },
+                        { key: 'F', label: 'Friday' },
+                        { key: 'Sa', label: 'Saturday' },
+                        { key: 'Su', label: 'Sunday' },
+                      ];
+                      const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
+
+                      const setDay = (label: string) => {
+                        const newDay = day === label ? '' : label;
+                        const combined = mod && newDay ? `${mod} ${newDay}` : newDay;
+                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: newDay !== form.originalDay ? 'updated' : 'continue' });
+                        saveWaterDay(field.fieldSeasonId, combined);
+                      };
+                      const setMod = (m: string) => {
+                        if (m === 'ASAP') {
+                          const newVal = val === 'ASAP' ? '' : 'ASAP';
+                          updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: 'updated' });
+                          saveWaterDay(field.fieldSeasonId, newVal);
+                          return;
+                        }
+                        const newMod = mod === m ? '' : m;
+                        const combined = newMod && day ? `${newMod} ${day}` : day;
+                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: 'updated' });
+                        saveWaterDay(field.fieldSeasonId, combined);
+                      };
+
+                      const sugDay = suggestion?.suggestedWaterDay || '';
+                      const sugDayName = DAY_NAMES.find(dn => sugDay.includes(dn)) || '';
+
+                      return (
+                        <>
+                          {days.map(d => {
+                            const todayIdx = new Date().getDay();
+                            const dayIdx = DAY_NAMES.indexOf(d.label);
+                            const jsIdx = dayIdx === 6 ? 0 : dayIdx + 1;
+                            const away = (jsIdx - todayIdx + 7) % 7;
+                            return (
+                              <button
+                                key={d.key}
+                                type="button"
+                                className={`wr-pill${day === d.label ? ' active' : ''}${sugDayName === d.label && day !== d.label ? ' suggested' : ''}`}
+                                onClick={() => setDay(d.label)}
+                                title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
+                              >
+                                {d.key}
+                                <span className="wr-pill-days">{away === 0 ? '·' : away}</span>
+                              </button>
+                            );
+                          })}
+                          <span className="wr-pill-divider" />
+                          {mods.map(m => (
+                            <button
+                              key={m}
+                              type="button"
+                              className={`wr-pill wr-pill-mod${m === 'ASAP' ? (val === 'ASAP' ? ' active' : '') : (mod === m ? ' active' : '')}`}
+                              onClick={() => setMod(m)}
+                            >{m}</button>
+                          ))}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {daySaveStatus[field.fieldSeasonId] === 'saving' && <span className="wr-day-status">saving…</span>}
+                  {daySaveStatus[field.fieldSeasonId] === 'saved' && <span className="wr-day-status wr-day-saved">saved</span>}
+                  {daySaveStatus[field.fieldSeasonId] === 'error' && <span className="wr-day-status wr-day-error">error</span>}
+                </div>
               </div>
             );
           })}
