@@ -426,7 +426,9 @@ export default function WaterRecsClient({
           const fullRec = fullReportRecs.find(r => r.fieldSeasonId === field.fieldSeasonId);
           const day = fullRec?.suggestedWaterDay || suggestion?.suggestedWaterDay || '';
           forms[field.fieldSeasonId] = {
-            waterDay: day,
+            // Start with nothing selected so the early-week day shows only as a
+            // shaded reference. Ryan confirms (taps) to commit it for the late week.
+            waterDay: '',
             priority: false,
             recommendation: '',
             expanded: true,
