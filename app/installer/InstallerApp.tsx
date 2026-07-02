@@ -2521,8 +2521,10 @@ function MapScreen({
   savedViewRef?: React.MutableRefObject<{ center: [number, number]; zoom: number } | null>;
   onSelectRepair?: (id: number) => void;
 }) {
+  // Preselect the next stop still to do; when the day is done, select nothing
+  // (no bottom card) — tapping a pin still selects it.
   const [selectedId, setSelectedId] = useState<number | null>(
-    (assignments.find(a => a.status.toLowerCase() !== 'installed') ?? assignments[0])?.id ?? null
+    assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null
   );
   const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
