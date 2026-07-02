@@ -1230,7 +1230,7 @@ export default function WaterRecsClient({
                                   title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
                                 >
                                   {d.key}
-                                  <span className="wr-pill-days">{away === 0 ? '·' : away}</span>
+                                  <span className="wr-pill-days">{away + 1}</span>
                                 </button>
                               );
                             })}
@@ -1545,7 +1545,7 @@ export default function WaterRecsClient({
                                 title={titleParts.length ? titleParts.join(' · ') : d.label}
                               >
                                 {d.key}
-                                <span className="wr-pill-days">{away === 0 ? '·' : away}</span>
+                                <span className="wr-pill-days">{away + 1}</span>
                               </button>
                             );
                           })}
