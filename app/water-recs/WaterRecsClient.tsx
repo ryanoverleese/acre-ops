@@ -36,6 +36,12 @@ function getWeekRange(dateStr: string): { start: string; end: string } {
   };
 }
 
+// Ryan's report routes, in the exact order he writes them. Mon & Thu use one
+// order, Tue & Fri the other (full report early week, update late week).
+// Values are operation ids (from Baserow operations table 817295).
+const ROUTE_MON_THU = [36, 48, 72, 34, 53, 79, 82, 166, 49, 52, 64, 40, 55, 133, 75, 80, 83, 86];
+const ROUTE_TUE_FRI = [67, 35, 76, 47, 68, 51, 91, 77, 66, 69, 39, 90, 41, 92, 265, 46, 56, 87];
+
 export default function WaterRecsClient({
   operations,
   waterRecs,
@@ -102,7 +108,12 @@ export default function WaterRecsClient({
     const op = params.get('op');
     const m = params.get('mode');
     const d = params.get('date');
-    if (op && operations.some(o => String(o.id) === op)) setSelectedOperationId(Number(op));
+    if (op && operations.some(o => String(o.id) === op)) {
+      setSelectedOperationId(Number(op));
+    } else if (orderedOps.length > 0) {
+      // Fresh load with no saved op: start at the top of today's route.
+      setSelectedOperationId(orderedOps[0].id);
+    }
     if (m === 'full' || m === 'update') setMode(m);
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setReportDate(d);
     // Run once on mount to read the incoming URL.
@@ -618,13 +629,38 @@ export default function WaterRecsClient({
     }
   }, [mode, fieldForms, reportDate, recPersisted]);
 
-  // Navigate between operations
-  const currentOpIndex = operations.findIndex(o => o.id === selectedOperationId);
+  // Report route: which customer order to walk. Auto-picks by the report date's
+  // weekday (Mon/Thu = one order, Tue/Fri = the other); can be overridden.
+  const [routeChoice, setRouteChoice] = useState<'auto' | 'mon_thu' | 'tue_fri'>('auto');
+  const autoRoute: 'mon_thu' | 'tue_fri' = useMemo(() => {
+    const wd = new Date(reportDate + 'T12:00:00').getDay(); // 0=Sun … 2=Tue,5=Fri
+    return wd === 2 || wd === 5 ? 'tue_fri' : 'mon_thu';
+  }, [reportDate]);
+  const activeRoute = routeChoice === 'auto' ? autoRoute : routeChoice;
+
+  // Operations in route order: route customers first (in route order, only those
+  // present this week), then anyone not in the route, alphabetically.
+  const orderedOps = useMemo(() => {
+    const routeIds = activeRoute === 'tue_fri' ? ROUTE_TUE_FRI : ROUTE_MON_THU;
+    const byId = new Map(operations.map(o => [o.id, o]));
+    const inRoute = routeIds.map(id => byId.get(id)).filter(Boolean) as typeof operations;
+    const routeSet = new Set(routeIds);
+    const rest = operations
+      .filter(o => !routeSet.has(o.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return [...inRoute, ...rest];
+  }, [operations, activeRoute]);
+
+  // Navigate between operations, following the route order
+  const currentOpIndex = orderedOps.findIndex(o => o.id === selectedOperationId);
+  const nextOp = currentOpIndex >= 0 && currentOpIndex < orderedOps.length - 1
+    ? orderedOps[currentOpIndex + 1] : null;
+  const prevOp = currentOpIndex > 0 ? orderedOps[currentOpIndex - 1] : null;
   const goToPrevOp = () => {
-    if (currentOpIndex > 0) setSelectedOperationId(operations[currentOpIndex - 1].id);
+    if (prevOp) setSelectedOperationId(prevOp.id);
   };
   const goToNextOp = () => {
-    if (currentOpIndex < operations.length - 1) setSelectedOperationId(operations[currentOpIndex + 1].id);
+    if (nextOp) setSelectedOperationId(nextOp.id);
   };
 
   // Save report
@@ -992,20 +1028,38 @@ export default function WaterRecsClient({
           </button>
         </div>
 
+        {/* Route toggle: which customer order to walk */}
+        <div className="wr-route-pills" title="Report order — auto-picks by weekday">
+          {(['auto', 'mon_thu', 'tue_fri'] as const).map(r => (
+            <button
+              key={r}
+              className={`wr-route-pill${routeChoice === r ? ' active' : ''}`}
+              onClick={() => setRouteChoice(r)}
+            >
+              {r === 'auto' ? `Auto (${autoRoute === 'tue_fri' ? 'Tu/Fr' : 'Mo/Th'})` : r === 'mon_thu' ? 'Mo/Th' : 'Tu/Fr'}
+            </button>
+          ))}
+        </div>
+
         <div className="wr-pagination">
           <button
             className="wr-page-btn"
             onClick={goToPrevOp}
-            disabled={currentOpIndex <= 0}
+            disabled={!prevOp}
+            title={prevOp ? `Prev: ${prevOp.name}` : ''}
           >
             &larr; Prev
           </button>
+          <span className="wr-route-progress">
+            {currentOpIndex >= 0 ? currentOpIndex + 1 : '–'} / {orderedOps.length}
+          </span>
           <button
-            className="wr-page-btn"
+            className="wr-page-btn wr-page-next"
             onClick={goToNextOp}
-            disabled={currentOpIndex >= operations.length - 1}
+            disabled={!nextOp}
+            title={nextOp ? `Next: ${nextOp.name}` : ''}
           >
-            Next &rarr;
+            {nextOp ? <>Next: <b>{nextOp.name}</b> &rarr;</> : <>Next &rarr;</>}
           </button>
         </div>
       </div>

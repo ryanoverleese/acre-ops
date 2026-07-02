@@ -8799,6 +8799,7 @@ tr.expanded-row:hover {
   display: flex;
   gap: 4px;
   margin-left: auto;
+  align-items: center;
 }
 
 .wr-page-btn {
@@ -8808,11 +8809,55 @@ tr.expanded-row:hover {
   background: var(--bg-card);
   color: var(--text-primary);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .wr-page-btn:disabled {
   cursor: default;
   opacity: 0.4;
+}
+
+/* Next button highlights the upcoming customer name */
+.wr-page-next {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wr-page-next b {
+  font-weight: 600;
+}
+
+.wr-route-progress {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 0 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Route (report order) selector */
+.wr-route-pills {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+.wr-route-pill {
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wr-route-pill.active {
+  background: var(--accent-primary);
+  color: #fff;
 }
 
 .wr-stats-bar {
