@@ -1438,23 +1438,20 @@ export default function WaterRecsClient({
                         const newDay = day === label ? '' : label;
                         const combined = mod && newDay ? `${mod} ${newDay}` : newDay;
                         updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: newDay !== form.originalDay ? 'updated' : 'continue' });
-                        saveWaterDay(field.fieldSeasonId, combined);
                       };
                       const setMod = (m: string) => {
                         if (m === 'ASAP') {
                           const newVal = val === 'ASAP' ? '' : 'ASAP';
                           updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: 'updated' });
-                          saveWaterDay(field.fieldSeasonId, newVal);
                           return;
                         }
                         const newMod = mod === m ? '' : m;
                         const combined = newMod && day ? `${newMod} ${day}` : day;
                         updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: 'updated' });
-                        saveWaterDay(field.fieldSeasonId, combined);
                       };
 
-                      const sugDay = suggestion?.suggestedWaterDay || '';
-                      const sugDayName = DAY_NAMES.find(dn => sugDay.includes(dn)) || '';
+                      // Early-week day from full report
+                      const origDayName = DAY_NAMES.find(dn => (form.originalDay || '').includes(dn)) || '';
 
                       return (
                         <>
@@ -1463,13 +1460,14 @@ export default function WaterRecsClient({
                             const dayIdx = DAY_NAMES.indexOf(d.label);
                             const jsIdx = dayIdx === 6 ? 0 : dayIdx + 1;
                             const away = (jsIdx - todayIdx + 7) % 7;
+                            const isOrig = origDayName === d.label && day !== d.label;
                             return (
                               <button
                                 key={d.key}
                                 type="button"
-                                className={`wr-pill${day === d.label ? ' active' : ''}${sugDayName === d.label && day !== d.label ? ' suggested' : ''}`}
+                                className={`wr-pill${day === d.label ? ' active' : ''}${isOrig ? ' early-week' : ''}`}
                                 onClick={() => setDay(d.label)}
-                                title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
+                                title={isOrig ? `Early week: ${form.originalDay}` : d.label}
                               >
                                 {d.key}
                                 <span className="wr-pill-days">{away === 0 ? '·' : away}</span>
