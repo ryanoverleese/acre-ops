@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import SearchableSelect from '@/components/SearchableSelect';
 import type { OperationGroup, WaterRecRecord } from './page';
 
@@ -92,6 +92,35 @@ export default function WaterRecsClient({
   }, [reportDate, rawDayOptions]);
 
   const [mode, setMode] = useState<'full' | 'update'>('full');
+
+  // Keep the selected customer, report type, and date in the URL so a refresh
+  // (or a shared/bookmarked link) lands back on the same view instead of
+  // resetting to the first operation. Uses history.replaceState so it never
+  // triggers a page refetch.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const op = params.get('op');
+    const m = params.get('mode');
+    const d = params.get('date');
+    if (op && operations.some(o => String(o.id) === op)) setSelectedOperationId(Number(op));
+    if (m === 'full' || m === 'update') setMode(m);
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setReportDate(d);
+    // Run once on mount to read the incoming URL.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const skipFirstUrlSync = useRef(true);
+  useEffect(() => {
+    // Skip the mount run so we don't clobber the URL before restore reads it.
+    if (skipFirstUrlSync.current) { skipFirstUrlSync.current = false; return; }
+    if (selectedOperationId == null) return;
+    const params = new URLSearchParams();
+    params.set('op', String(selectedOperationId));
+    params.set('mode', mode);
+    params.set('date', reportDate);
+    window.history.replaceState(null, '', `${window.location.pathname}?${params.toString()}`);
+  }, [selectedOperationId, mode, reportDate]);
+
   const [overview, setOverview] = useState('');
   const [overviewPersisted, setOverviewPersisted] = useState('');
   const [overviewStatus, setOverviewStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
