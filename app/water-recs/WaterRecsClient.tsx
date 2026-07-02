@@ -1150,7 +1150,7 @@ export default function WaterRecsClient({
                         const todayJsDay = new Date().getDay(); // 0=Sun
                         const todayIdx = todayJsDay === 0 ? 6 : todayJsDay - 1; // 0=Mon
                         const days = [...allDays.slice(todayIdx), ...allDays.slice(0, todayIdx)];
-                        const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
+                        const mods = ['Morn', 'Eve', 'Next', 'ASAP', 'Hold'];
 
                         const setDay = (label: string) => {
                           const newDay = day === label ? '' : label;
@@ -1159,8 +1159,9 @@ export default function WaterRecsClient({
                           saveWaterDay(field.fieldSeasonId, combined);
                         };
                         const setMod = (m: string) => {
-                          if (m === 'ASAP') {
-                            const newVal = val === 'ASAP' ? '' : 'ASAP';
+                          // ASAP and Hold are standalone states, not day modifiers.
+                          if (m === 'ASAP' || m === 'Hold') {
+                            const newVal = val === m ? '' : m;
                             updateField(field.fieldSeasonId, { waterDay: newVal });
                             saveWaterDay(field.fieldSeasonId, newVal);
                             return;
@@ -1200,7 +1201,7 @@ export default function WaterRecsClient({
                               <button
                                 key={m}
                                 type="button"
-                                className={`wr-pill wr-pill-mod${m === 'ASAP' ? (val === 'ASAP' ? ' active' : '') : (mod === m ? ' active' : '')}`}
+                                className={`wr-pill wr-pill-mod${(m === 'ASAP' || m === 'Hold') ? (val === m ? ' active' : '') : (mod === m ? ' active' : '')}`}
                                 onClick={() => setMod(m)}
                               >{m}</button>
                             ))}
@@ -1452,7 +1453,7 @@ export default function WaterRecsClient({
                       const todayJsDay = new Date().getDay();
                       const todayIdx = todayJsDay === 0 ? 6 : todayJsDay - 1;
                       const days = [...allDays.slice(todayIdx), ...allDays.slice(0, todayIdx)];
-                      const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
+                      const mods = ['Morn', 'Eve', 'Next', 'ASAP', 'Hold'];
 
                       // Clicking a day creates the late-week record right away
                       // (or removes it when the day is cleared).
@@ -1463,8 +1464,9 @@ export default function WaterRecsClient({
                         saveUpdateDay(field.fieldSeasonId, combined);
                       };
                       const setMod = (m: string) => {
-                        if (m === 'ASAP') {
-                          const newVal = val === 'ASAP' ? '' : 'ASAP';
+                        // ASAP and Hold are standalone states, not day modifiers.
+                        if (m === 'ASAP' || m === 'Hold') {
+                          const newVal = val === m ? '' : m;
                           updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: newVal ? 'updated' : 'continue' });
                           saveUpdateDay(field.fieldSeasonId, newVal);
                           return;
@@ -1511,7 +1513,7 @@ export default function WaterRecsClient({
                             <button
                               key={m}
                               type="button"
-                              className={`wr-pill wr-pill-mod${m === 'ASAP' ? (val === 'ASAP' ? ' active' : '') : (mod === m ? ' active' : '')}`}
+                              className={`wr-pill wr-pill-mod${(m === 'ASAP' || m === 'Hold') ? (val === m ? ' active' : '') : (mod === m ? ' active' : '')}`}
                               onClick={() => setMod(m)}
                             >{m}</button>
                           ))}
