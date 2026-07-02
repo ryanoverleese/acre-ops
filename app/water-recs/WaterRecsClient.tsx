@@ -682,6 +682,17 @@ export default function WaterRecsClient({
   }, [selectedOperationId, mode, reportDate]);
 
   // Build copy text for Full Report
+  // Replace a day name with "Today (Thursday)" when it matches today
+  const todayLabel = (dayStr: string): string => {
+    const todayName = DAY_NAMES[(new Date().getDay() + 6) % 7]; // JS Sun=0 → DAY_NAMES Mon=0
+    if (dayStr === todayName) return `Today (${todayName})`;
+    // Handle modifier prefixes like "Morn Thursday"
+    if (dayStr.endsWith(todayName) && dayStr !== todayName) {
+      return dayStr.replace(todayName, `Today (${todayName})`);
+    }
+    return dayStr;
+  };
+
   const buildFullReportText = (): string => {
     if (!currentOperation) return '';
     const lines: string[] = [];
@@ -743,7 +754,7 @@ export default function WaterRecsClient({
       lines.push('Water Schedule:', '');
       scheduleDays.forEach(day => {
         const sorted = [...waterSchedule[day]].sort((a, b) => a.localeCompare(b));
-        lines.push(`${day}:`);
+        lines.push(`${todayLabel(day)}:`);
         sorted.forEach(name => lines.push(name));
         lines.push('');
       });
@@ -778,13 +789,13 @@ export default function WaterRecsClient({
 
     if (continueFields.length > 0) {
       lines.push('Continue as scheduled:');
-      continueFields.forEach(f => lines.push(`${f.name} - ${f.day}`));
+      continueFields.forEach(f => lines.push(`${f.name} - ${todayLabel(f.day)}`));
       lines.push('');
     }
 
     if (updatedFields.length > 0) {
       lines.push('Updated water days:');
-      updatedFields.forEach(f => lines.push(`${f.name} - moved to ${f.day}`));
+      updatedFields.forEach(f => lines.push(`${f.name} - moved to ${todayLabel(f.day)}`));
     }
 
     return lines.join('\n').trim();
