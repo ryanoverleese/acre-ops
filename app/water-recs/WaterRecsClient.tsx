@@ -108,14 +108,23 @@ export default function WaterRecsClient({
     const op = params.get('op');
     const m = params.get('mode');
     const d = params.get('date');
-    if (op && operations.some(o => String(o.id) === op)) {
-      setSelectedOperationId(Number(op));
-    } else if (orderedOps.length > 0) {
-      // Fresh load with no saved op: start at the top of today's route.
-      setSelectedOperationId(orderedOps[0].id);
-    }
     if (m === 'full' || m === 'update') setMode(m);
     if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setReportDate(d);
+    // Which customer to land on. Keep the saved op only if it's part of TODAY's
+    // route (a genuine mid-route refresh). If it's from the other day's route
+    // (or there's no saved op), start at the top of today's route instead.
+    const opNum = op && operations.some(o => String(o.id) === op) ? Number(op) : null;
+    const dstr = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : reportDate;
+    const isTueFri = [2, 5].includes(new Date(dstr + 'T12:00:00').getDay());
+    const otherRouteIds = isTueFri ? ROUTE_MON_THU : ROUTE_TUE_FRI;
+    if (opNum != null && !otherRouteIds.includes(opNum)) {
+      setSelectedOperationId(opNum);
+    } else {
+      const routeIds = isTueFri ? ROUTE_TUE_FRI : ROUTE_MON_THU;
+      const byId = new Map(operations.map(o => [o.id, o]));
+      const top = routeIds.map(id => byId.get(id)).find(Boolean) || operations[0];
+      if (top) setSelectedOperationId(top.id);
+    }
     // Run once on mount to read the incoming URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -663,6 +672,19 @@ export default function WaterRecsClient({
     if (nextOp) setSelectedOperationId(nextOp.id);
   };
 
+  // Pick a route from the toggle; if the current customer isn't in that route,
+  // jump to that route's first customer so the toggle actually moves you there.
+  const chooseRoute = (r: 'auto' | 'mon_thu' | 'tue_fri') => {
+    setRouteChoice(r);
+    const eff = r === 'auto' ? autoRoute : r;
+    const ids = eff === 'tue_fri' ? ROUTE_TUE_FRI : ROUTE_MON_THU;
+    if (selectedOperationId == null || !ids.includes(selectedOperationId)) {
+      const byId = new Map(operations.map(o => [o.id, o]));
+      const top = ids.map(id => byId.get(id)).find(Boolean);
+      if (top) setSelectedOperationId(top.id);
+    }
+  };
+
   // Save report
   // Build the records array from the current forms (shared by manual + auto save)
   const collectRecords = useCallback(() => {
@@ -1034,7 +1056,7 @@ export default function WaterRecsClient({
             <button
               key={r}
               className={`wr-route-pill${routeChoice === r ? ' active' : ''}`}
-              onClick={() => setRouteChoice(r)}
+              onClick={() => chooseRoute(r)}
             >
               {r === 'auto' ? `Auto (${autoRoute === 'tue_fri' ? 'Tu/Fr' : 'Mo/Th'})` : r === 'mon_thu' ? 'Mo/Th' : 'Tu/Fr'}
             </button>
