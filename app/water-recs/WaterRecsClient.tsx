@@ -486,7 +486,7 @@ export default function WaterRecsClient({
             priority: false,
             recommendation: '',
             expanded: true,
-            updateStatus: clickedDay ? 'updated' : 'continue',
+            updateStatus: clickedDay && clickedDay !== earlyDay ? 'updated' : 'continue',
             originalDay: earlyDay,
           };
         } else {
@@ -1465,24 +1465,27 @@ export default function WaterRecsClient({
                       const mods = ['Morn', 'Eve', 'Next', 'ASAP', 'Hold'];
 
                       // Clicking a day creates the late-week record right away
-                      // (or removes it when the day is cleared).
+                      // (or removes it when cleared). Same day as early week =>
+                      // "continue as scheduled"; a different day => "updated".
+                      const statusFor = (v: string) =>
+                        v && v !== form.originalDay ? 'updated' : 'continue';
                       const setDay = (label: string) => {
                         const newDay = day === label ? '' : label;
                         const combined = mod && newDay ? `${mod} ${newDay}` : newDay;
-                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: combined ? 'updated' : 'continue' });
+                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: statusFor(combined) });
                         saveUpdateDay(field.fieldSeasonId, combined);
                       };
                       const setMod = (m: string) => {
                         // ASAP and Hold are standalone states, not day modifiers.
                         if (m === 'ASAP' || m === 'Hold') {
                           const newVal = val === m ? '' : m;
-                          updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: newVal ? 'updated' : 'continue' });
+                          updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: statusFor(newVal) });
                           saveUpdateDay(field.fieldSeasonId, newVal);
                           return;
                         }
                         const newMod = mod === m ? '' : m;
                         const combined = newMod && day ? `${newMod} ${day}` : day;
-                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: combined ? 'updated' : 'continue' });
+                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: statusFor(combined) });
                         saveUpdateDay(field.fieldSeasonId, combined);
                       };
 
