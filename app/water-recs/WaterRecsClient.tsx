@@ -878,7 +878,7 @@ export default function WaterRecsClient({
     };
 
     if (updatedFields.length > 0) {
-      lines.push('Updated water days:', '');
+      lines.push('Updated day to water near probe:', '');
       lines.push(...buildSchedule(updatedFields));
     }
 
