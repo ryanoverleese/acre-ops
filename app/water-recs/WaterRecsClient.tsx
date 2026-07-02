@@ -1046,7 +1046,7 @@ export default function WaterRecsClient({
                           day = val;
                         }
 
-                        const days = [
+                        const allDays = [
                           { key: 'M', label: 'Monday' },
                           { key: 'T', label: 'Tuesday' },
                           { key: 'W', label: 'Wednesday' },
@@ -1055,6 +1055,10 @@ export default function WaterRecsClient({
                           { key: 'Sa', label: 'Saturday' },
                           { key: 'Su', label: 'Sunday' },
                         ];
+                        // Rotate so today's day is first
+                        const todayJsDay = new Date().getDay(); // 0=Sun
+                        const todayIdx = todayJsDay === 0 ? 6 : todayJsDay - 1; // 0=Mon
+                        const days = [...allDays.slice(todayIdx), ...allDays.slice(0, todayIdx)];
                         const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
 
                         const setDay = (label: string) => {
@@ -1384,7 +1388,7 @@ export default function WaterRecsClient({
                         day = val;
                       }
 
-                      const days = [
+                      const allDays = [
                         { key: 'M', label: 'Monday' },
                         { key: 'T', label: 'Tuesday' },
                         { key: 'W', label: 'Wednesday' },
@@ -1393,6 +1397,9 @@ export default function WaterRecsClient({
                         { key: 'Sa', label: 'Saturday' },
                         { key: 'Su', label: 'Sunday' },
                       ];
+                      const todayJsDay = new Date().getDay();
+                      const todayIdx = todayJsDay === 0 ? 6 : todayJsDay - 1;
+                      const days = [...allDays.slice(todayIdx), ...allDays.slice(0, todayIdx)];
                       const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
 
                       const setDay = (label: string) => {
