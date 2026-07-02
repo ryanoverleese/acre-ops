@@ -9186,6 +9186,10 @@ tr.expanded-row:hover {
   background: color-mix(in srgb, var(--accent, #2f6f4f) 15%, var(--bg-secondary));
   border-color: color-mix(in srgb, var(--accent, #2f6f4f) 30%, var(--border));
 }
+/* Suggested + early-week on the same pill: keep the crisp accent outline over the shade */
+.wr-pill.early-week.suggested {
+  border: 2px dashed var(--accent, #2f6f4f);
+}
 .wr-pill-days {
   display: block;
   font-size: 8px;

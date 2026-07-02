@@ -1362,34 +1362,6 @@ export default function WaterRecsClient({
                   )}
                 </div>
 
-                {suggestion && suggestion.suggestedWaterDay && (() => {
-                  const newDay = suggestion.suggestedWaterDay;
-                  const sameAsEarly = !!form.originalDay && newDay === form.originalDay;
-                  const used = sameAsEarly
-                    ? form.updateStatus === 'continue'
-                    : isUpdated && form.waterDay === newDay;
-                  return (
-                    <div className="wr-suggestion wr-suggestion-inline">
-                      <span className="wr-suggestion-label">Suggested</span>
-                      <span className="wr-suggestion-text">
-                        {sameAsEarly
-                          ? `Continue with early-week suggestion of ${newDay}`
-                          : `Latest water day updated to ${newDay}`}
-                      </span>
-                      <button
-                        type="button"
-                        className="wr-suggestion-use"
-                        disabled={used}
-                        onClick={() => updateField(field.fieldSeasonId, sameAsEarly
-                          ? { updateStatus: 'continue', waterDay: form.originalDay }
-                          : { updateStatus: 'updated', waterDay: newDay })}
-                      >
-                        {used ? 'Used' : (sameAsEarly ? 'Continue' : `Update to ${newDay}`)}
-                      </button>
-                    </div>
-                  );
-                })()}
-
                 <div className="wr-toggle-group">
                   <button
                     className={`wr-update-toggle-btn${!isUpdated ? ' active-continue' : ''}`}
@@ -1450,8 +1422,11 @@ export default function WaterRecsClient({
                         updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: 'updated' });
                       };
 
-                      // Early-week day from full report
+                      // Early-week day from full report (auto-shaded)
                       const origDayName = DAY_NAMES.find(dn => (form.originalDay || '').includes(dn)) || '';
+                      // Engine's suggested day (auto-outlined)
+                      const sugDay = suggestion?.suggestedWaterDay || '';
+                      const sugDayName = DAY_NAMES.find(dn => sugDay.includes(dn)) || '';
 
                       return (
                         <>
@@ -1461,13 +1436,17 @@ export default function WaterRecsClient({
                             const jsIdx = dayIdx === 6 ? 0 : dayIdx + 1;
                             const away = (jsIdx - todayIdx + 7) % 7;
                             const isOrig = origDayName === d.label && day !== d.label;
+                            const isSug = sugDayName === d.label && day !== d.label;
+                            const titleParts = [];
+                            if (isSug) titleParts.push(`Suggested: ${sugDay}`);
+                            if (isOrig) titleParts.push(`Early week: ${form.originalDay}`);
                             return (
                               <button
                                 key={d.key}
                                 type="button"
-                                className={`wr-pill${day === d.label ? ' active' : ''}${isOrig ? ' early-week' : ''}`}
+                                className={`wr-pill${day === d.label ? ' active' : ''}${isOrig ? ' early-week' : ''}${isSug ? ' suggested' : ''}`}
                                 onClick={() => setDay(d.label)}
-                                title={isOrig ? `Early week: ${form.originalDay}` : d.label}
+                                title={titleParts.length ? titleParts.join(' · ') : d.label}
                               >
                                 {d.key}
                                 <span className="wr-pill-days">{away === 0 ? '·' : away}</span>
