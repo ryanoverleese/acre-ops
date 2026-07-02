@@ -9539,8 +9539,8 @@ tr.expanded-row:hover {
 .wr-update-ref {
   flex-basis: 100%;
   width: 100%;
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 13px;
+  line-height: 1.4;
   color: var(--text-secondary);
   margin-top: 4px;
   padding-top: 6px;

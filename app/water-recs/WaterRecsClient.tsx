@@ -301,7 +301,6 @@ export default function WaterRecsClient({
     }
   }, [mode, reportDate, updateRowId]);
 
-  const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
   const [pastIdx, setPastIdx] = useState<Record<number, number>>({});
 
@@ -1389,52 +1388,7 @@ export default function WaterRecsClient({
       {/* ============ UPDATE MODE ============ */}
       {currentOperation && mode === 'update' && (
         <div>
-          {/* Reference panel */}
-          {fullReportRecs.length > 0 && (
-            <div className="wr-ref-panel">
-              <div
-                className="wr-ref-header"
-                onClick={() => setShowReference(!showReference)}
-              >
-                <span className="wr-ref-title">
-                  Full Report Reference ({fullReportRecs[0]?.date})
-                </span>
-                <svg className="wr-ref-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18"
-                  style={{ transform: showReference ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              {showReference && (
-                <div className="wr-ref-body">
-                  {fullReportRecs.map(rec => {
-                    const name = fsToFieldName[rec.fieldSeasonId] || 'Unknown';
-                    return (
-                      <div key={rec.id} className="wr-ref-item">
-                        <div className="wr-ref-item-header">
-                          <span className="wr-ref-field-name">{name}</span>
-                          {rec.suggestedWaterDay && (
-                            <span className="wr-ref-day-badge">
-                              {rec.suggestedWaterDay}
-                            </span>
-                          )}
-                          {rec.priority && (
-                            <span className="wr-ref-priority-badge">
-                              PRIORITY
-                            </span>
-                          )}
-                        </div>
-                        {rec.recommendation && (
-                          <div className="wr-ref-rec-text">
-                            {rec.recommendation}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Full-report reference now lives inline on each field tile below. */}
 
           {fullReportRecs.length === 0 && (
             <div className="wr-warning-banner">
