@@ -111,6 +111,9 @@ export default function WaterRecsClient({
   // Per-field water-day save tracking
   const [dayPersisted, setDayPersisted] = useState<Record<number, string>>({});
   const [daySaveStatus, setDaySaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
+  // In update mode, the id of the saved 'update' row per field for this date, so
+  // clicking a day creates/replaces it and un-clicking removes it.
+  const [updateRowId, setUpdateRowId] = useState<Record<number, number | null>>({});
 
   // Report timer — tracks how long you spend per operation
   const [timerStart, setTimerStart] = useState<number | null>(null);
@@ -222,6 +225,52 @@ export default function WaterRecsClient({
       setDaySaveStatus(s => ({ ...s, [fsId]: 'error' }));
     }
   }, [mode, fieldForms, dayPersisted, reportDate]);
+
+  // Update mode: clicking a day immediately creates (or replaces) a late-week
+  // 'update' record for that field; un-clicking deletes it. No batch save needed.
+  const saveUpdateDay = useCallback(async (fsId: number, day: string) => {
+    if (mode !== 'update') return;
+    setDaySaveStatus(s => ({ ...s, [fsId]: 'saving' }));
+    try {
+      if (!day) {
+        // Deselected — remove the record we created for this field+date, if any.
+        const rowId = updateRowId[fsId];
+        if (rowId) {
+          const res = await fetch(`/api/water-recs/${rowId}`, { method: 'DELETE' });
+          if (!res.ok) { setDaySaveStatus(s => ({ ...s, [fsId]: 'error' })); return; }
+        }
+        setUpdateRowId(m => ({ ...m, [fsId]: null }));
+        setDaySaveStatus(s => ({ ...s, [fsId]: 'saved' }));
+        return;
+      }
+      const res = await fetch('/api/water-recs/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          records: [{
+            field_season: fsId,
+            date: reportDate,
+            recommendation: `Updated to ${day}`,
+            suggested_water_day: day,
+            priority: false,
+            report_type: 'update',
+          }],
+          scopeFieldSeasons: [fsId],
+          reportType: 'update',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        const newId = data?.createdIds?.[0] ?? null;
+        setUpdateRowId(m => ({ ...m, [fsId]: newId }));
+        setDaySaveStatus(s => ({ ...s, [fsId]: 'saved' }));
+      } else {
+        setDaySaveStatus(s => ({ ...s, [fsId]: 'error' }));
+      }
+    } catch {
+      setDaySaveStatus(s => ({ ...s, [fsId]: 'error' }));
+    }
+  }, [mode, reportDate, updateRowId]);
 
   const [showReference, setShowReference] = useState(true);
   // Which past-week rec is showing per field (0 = most recent prior week)
@@ -424,16 +473,21 @@ export default function WaterRecsClient({
         const suggestion = suggestionByFs.get(field.fieldSeasonId);
         if (mode === 'update') {
           const fullRec = fullReportRecs.find(r => r.fieldSeasonId === field.fieldSeasonId);
-          const day = fullRec?.suggestedWaterDay || suggestion?.suggestedWaterDay || '';
+          const earlyDay = fullRec?.suggestedWaterDay || suggestion?.suggestedWaterDay || '';
+          // A late-week 'update' row already saved for this date wins — those are
+          // the days Ryan clicked. Otherwise start unselected (early-week day just
+          // shows as a shaded reference until he clicks to create the record).
+          const savedUpdate = existingRecsForDate.find(
+            r => r.fieldSeasonId === field.fieldSeasonId && r.reportType === 'update'
+          );
+          const clickedDay = savedUpdate?.suggestedWaterDay || '';
           forms[field.fieldSeasonId] = {
-            // Start with nothing selected so the early-week day shows only as a
-            // shaded reference. Ryan confirms (taps) to commit it for the late week.
-            waterDay: '',
+            waterDay: clickedDay,
             priority: false,
             recommendation: '',
             expanded: true,
-            updateStatus: 'continue',
-            originalDay: day,
+            updateStatus: clickedDay ? 'updated' : 'continue',
+            originalDay: earlyDay,
           };
         } else {
           const existing = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId);
@@ -465,6 +519,15 @@ export default function WaterRecsClient({
       });
       setDayPersisted(dayBaseline);
       setDaySaveStatus({});
+      // Seed the update-row id map so an un-click can delete the right row
+      const rowIds: Record<number, number | null> = {};
+      currentOperation.fields.forEach(field => {
+        const savedUpdate = existingRecsForDate.find(
+          r => r.fieldSeasonId === field.fieldSeasonId && r.reportType === 'update'
+        );
+        rowIds[field.fieldSeasonId] = savedUpdate ? savedUpdate.id : null;
+      });
+      setUpdateRowId(rowIds);
       // Load saved overview for this operation+date (report_type "overview",
       // anchored to the first field_season of the operation)
       const anchorFs = currentOperation.fields[0]?.fieldSeasonId;
@@ -1364,22 +1427,8 @@ export default function WaterRecsClient({
                   )}
                 </div>
 
-                <div className="wr-toggle-group">
-                  <button
-                    className={`wr-update-toggle-btn${!isUpdated ? ' active-continue' : ''}`}
-                    onClick={() => updateField(field.fieldSeasonId, { updateStatus: 'continue', waterDay: form.originalDay })}
-                  >
-                    Continue
-                  </button>
-                  <button
-                    className={`wr-update-toggle-btn${isUpdated ? ' active-updated' : ''}`}
-                    onClick={() => updateField(field.fieldSeasonId, { updateStatus: 'updated' })}
-                  >
-                    Update
-                  </button>
-                </div>
-
-                {/* Day picker pills — shown for both Continue and Update */}
+                {/* Click a day to create the late-week record; the early-week
+                    day shows shaded as a reference until you do. */}
                 <div className="wr-water-day-wrap">
                   <div className="wr-day-pills">
                     {(() => {
@@ -1408,20 +1457,25 @@ export default function WaterRecsClient({
                       const days = [...allDays.slice(todayIdx), ...allDays.slice(0, todayIdx)];
                       const mods = ['Morn', 'Eve', 'Next', 'ASAP'];
 
+                      // Clicking a day creates the late-week record right away
+                      // (or removes it when the day is cleared).
                       const setDay = (label: string) => {
                         const newDay = day === label ? '' : label;
                         const combined = mod && newDay ? `${mod} ${newDay}` : newDay;
-                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: newDay !== form.originalDay ? 'updated' : 'continue' });
+                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: combined ? 'updated' : 'continue' });
+                        saveUpdateDay(field.fieldSeasonId, combined);
                       };
                       const setMod = (m: string) => {
                         if (m === 'ASAP') {
                           const newVal = val === 'ASAP' ? '' : 'ASAP';
-                          updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: 'updated' });
+                          updateField(field.fieldSeasonId, { waterDay: newVal, updateStatus: newVal ? 'updated' : 'continue' });
+                          saveUpdateDay(field.fieldSeasonId, newVal);
                           return;
                         }
                         const newMod = mod === m ? '' : m;
                         const combined = newMod && day ? `${newMod} ${day}` : day;
-                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: 'updated' });
+                        updateField(field.fieldSeasonId, { waterDay: combined, updateStatus: combined ? 'updated' : 'continue' });
+                        saveUpdateDay(field.fieldSeasonId, combined);
                       };
 
                       // Early-week day from full report (auto-shaded)
@@ -1481,13 +1535,17 @@ export default function WaterRecsClient({
       {/* Action buttons */}
       {currentOperation && (
         <div className="wr-actions">
-          <button
-            className="wr-save-btn"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : (mode === 'full' ? 'Save Report' : 'Save Update')}
-          </button>
+          {/* In update mode each day click saves its own record, so no batch
+              Save button — only the full report needs one. */}
+          {mode === 'full' && (
+            <button
+              className="wr-save-btn"
+              onClick={handleSave}
+              disabled={saving}
+            >
+              {saving ? 'Saving...' : 'Save Report'}
+            </button>
+          )}
           <button
             className="wr-copy-btn"
             onClick={handleCopyAll}
