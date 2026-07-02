@@ -9218,6 +9218,11 @@ tr.expanded-row:hover {
   font-size: 10px;
   color: var(--text-secondary);
   white-space: nowrap;
+  /* Always reserve the same slot so pills never shift when the label appears */
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 40px;
+  text-align: left;
 }
 .wr-day-saved { color: var(--accent, #2f6f4f); }
 .wr-day-error { color: #c0392b; }
@@ -9520,12 +9525,13 @@ tr.expanded-row:hover {
   margin-bottom: 6px;
   border-radius: var(--radius);
   flex-wrap: wrap;
-  border: 1px solid var(--border);
+  /* 2px so selecting a day (which turns the border accent) doesn't shift layout */
+  border: 2px solid var(--border);
   background: var(--bg-card);
 }
 
 .wr-update-card.updated {
-  border: 2px solid var(--accent-primary);
+  border-color: var(--accent-primary);
   background: var(--accent-primary-dim);
 }
 

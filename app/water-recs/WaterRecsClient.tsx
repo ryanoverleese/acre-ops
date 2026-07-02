@@ -1214,9 +1214,12 @@ export default function WaterRecsClient({
                         );
                       })()}
                     </div>
-                    {daySaveStatus[field.fieldSeasonId] === 'saving' && <span className="wr-day-status">saving…</span>}
-                    {daySaveStatus[field.fieldSeasonId] === 'saved' && <span className="wr-day-status wr-day-saved">saved</span>}
-                    {daySaveStatus[field.fieldSeasonId] === 'error' && <span className="wr-day-status wr-day-error">error</span>}
+                    {/* Fixed-width slot so the pills don't shift when status appears */}
+                    <span className={`wr-day-status${daySaveStatus[field.fieldSeasonId] === 'saved' ? ' wr-day-saved' : ''}${daySaveStatus[field.fieldSeasonId] === 'error' ? ' wr-day-error' : ''}`}>
+                      {daySaveStatus[field.fieldSeasonId] === 'saving' ? 'saving…'
+                        : daySaveStatus[field.fieldSeasonId] === 'saved' ? 'saved'
+                        : daySaveStatus[field.fieldSeasonId] === 'error' ? 'error' : ''}
+                    </span>
                   </div>
                 </div>
 
@@ -1522,9 +1525,12 @@ export default function WaterRecsClient({
                       );
                     })()}
                   </div>
-                  {daySaveStatus[field.fieldSeasonId] === 'saving' && <span className="wr-day-status">saving…</span>}
-                  {daySaveStatus[field.fieldSeasonId] === 'saved' && <span className="wr-day-status wr-day-saved">saved</span>}
-                  {daySaveStatus[field.fieldSeasonId] === 'error' && <span className="wr-day-status wr-day-error">error</span>}
+                  {/* Fixed-width slot so the pills don't shift when status appears */}
+                  <span className={`wr-day-status${daySaveStatus[field.fieldSeasonId] === 'saved' ? ' wr-day-saved' : ''}${daySaveStatus[field.fieldSeasonId] === 'error' ? ' wr-day-error' : ''}`}>
+                    {daySaveStatus[field.fieldSeasonId] === 'saving' ? 'saving…'
+                      : daySaveStatus[field.fieldSeasonId] === 'saved' ? 'saved'
+                      : daySaveStatus[field.fieldSeasonId] === 'error' ? 'error' : ''}
+                  </span>
                 </div>
               </div>
             );
