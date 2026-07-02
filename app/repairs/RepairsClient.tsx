@@ -25,6 +25,7 @@ export interface ProcessedRepair {
   probeSerial?: string | null;
   probeReplaced?: boolean;
   newProbeSerial?: string;
+  watchList?: boolean;
   lat?: number;
   lng?: number;
 }
@@ -536,10 +537,17 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                 filteredRepairs.map((repair) => (
                   <tr key={repair.id}>
                     <td>
-                      <span className={`status-badge ${repair.status === 'open' ? 'repair' : 'installed'}`}>
-                        <span className="status-dot"></span>
-                        {repair.status === 'open' ? 'Open' : 'Resolved'}
-                      </span>
+                      {repair.status === 'open' && repair.watchList ? (
+                        <span className="status-badge watch">
+                          <span className="status-dot"></span>
+                          Watch
+                        </span>
+                      ) : (
+                        <span className={`status-badge ${repair.status === 'open' ? 'repair' : 'installed'}`}>
+                          <span className="status-dot"></span>
+                          {repair.status === 'open' ? 'Open' : 'Resolved'}
+                        </span>
+                      )}
                     </td>
                     <td className="operation-name">
                       {repair.fieldName}
@@ -624,10 +632,17 @@ export default function RepairsClient({ repairs: initialRepairs, fieldSeasons, p
                         </span>
                       )}
                     </span>
-                    <span className={`status-badge ${repair.status === 'open' ? 'repair' : 'installed'}`}>
-                      <span className="status-dot"></span>
-                      {repair.status === 'open' ? 'Open' : 'Resolved'}
-                    </span>
+                    {repair.status === 'open' && repair.watchList ? (
+                      <span className="status-badge watch">
+                        <span className="status-dot"></span>
+                        Watch
+                      </span>
+                    ) : (
+                      <span className={`status-badge ${repair.status === 'open' ? 'repair' : 'installed'}`}>
+                        <span className="status-dot"></span>
+                        {repair.status === 'open' ? 'Open' : 'Resolved'}
+                      </span>
+                    )}
                   </div>
                   <div className="mobile-card-body">
                     <div className="mobile-card-row"><span>Operation:</span> {repair.operation}</div>

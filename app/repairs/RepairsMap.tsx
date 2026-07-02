@@ -5,9 +5,10 @@ import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-l
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { ProcessedRepair } from './RepairsClient';
+import { repairColor } from '@/lib/repair-status';
 
-function makePin(status: 'open' | 'resolved') {
-  const color = status === 'open' ? '#ef4444' : '#22c55e';
+function makePin(status: 'open' | 'resolved', watchList?: boolean) {
+  const color = repairColor(status === 'open', watchList);
   return L.divIcon({
     className: '',
     iconSize: [16, 16],
@@ -61,7 +62,7 @@ export default function RepairsMap({ repairs, onSelect }: Props) {
         <Marker
           key={r.id}
           position={[r.lat!, r.lng!]}
-          icon={makePin(r.status)}
+          icon={makePin(r.status, r.watchList)}
           eventHandlers={{ click: () => onSelect?.(r.id) }}
         >
           <Tooltip direction="top" offset={[0, -10]}>
@@ -74,7 +75,7 @@ export default function RepairsMap({ repairs, onSelect }: Props) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%',
-                  background: r.status === 'open' ? '#ef4444' : '#22c55e',
+                  background: repairColor(r.status === 'open', r.watchList),
                   flexShrink: 0,
                 }} />
                 <strong style={{ fontSize: 14 }}>{r.fieldName}</strong>

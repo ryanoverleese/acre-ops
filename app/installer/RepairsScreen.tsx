@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { REPAIR_COLORS, repairColor } from '@/lib/repair-status';
 
 interface InstallerRepair {
   id: number;
@@ -751,20 +752,20 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
               style={{
                 display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
                 padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
-                background: watch ? '#F0F9FF' : '#fff',
-                border: `1.5px solid ${watch ? '#7DD3FC' : 'var(--border-1)'}`,
+                background: watch ? REPAIR_COLORS.watchBgSoft : '#fff',
+                border: `1.5px solid ${watch ? REPAIR_COLORS.watchBorder : 'var(--border-1)'}`,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : watch ? '#0EA5E9' : '#ef4444', flexShrink: 0 }} />
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : repairColor(true, watch), flexShrink: 0 }} />
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
                   {r.fieldName}
                 </div>
                 {watch && (
                   <div style={{
-                    fontSize: 10, fontWeight: 700, color: '#0369A1', letterSpacing: '0.08em',
-                    textTransform: 'uppercase', background: '#E0F2FE', border: '1px solid #7DD3FC',
+                    fontSize: 10, fontWeight: 700, color: REPAIR_COLORS.watchText, letterSpacing: '0.08em',
+                    textTransform: 'uppercase', background: REPAIR_COLORS.watchBg, border: `1px solid ${REPAIR_COLORS.watchBorder}`,
                     borderRadius: 999, padding: '2px 8px', flexShrink: 0,
                   }}>
                     Watch

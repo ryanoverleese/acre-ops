@@ -1160,6 +1160,12 @@ tr.clickable-row {
   color: var(--accent-red);
 }
 
+/* Watch-list repairs — light blue, matches the installer app + map pins */
+.status-badge.watch {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+
 .status-badge.unassigned,
 .status-badge.needs-probe {
   background: var(--bg-hover);

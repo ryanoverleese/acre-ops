@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
+import { repairColor } from '@/lib/repair-status';
 import 'leaflet/dist/leaflet.css';
 
 export interface MapPoint {
@@ -248,8 +249,8 @@ function RecenterListener({ getUserPos }: { getUserPos: () => { lat: number; lng
 
 function makeRepairPin(watch = false) {
   // Watch-list repairs are a softer "keep an eye on it" state → light blue.
-  const bg = watch ? '#38BDF8' : '#ef4444';
-  const glow = watch ? 'rgba(56,189,248,0.5)' : 'rgba(239,68,68,0.5)';
+  const bg = repairColor(true, watch);
+  const glow = watch ? 'rgba(14,165,233,0.5)' : 'rgba(239,68,68,0.5)';
   const html = `
     <div style="
       width:36px;height:36px;border-radius:50%;
@@ -361,7 +362,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
 
       {/* Repair pins */}
       {(repairPoints ?? []).filter(r => r.lat && r.lng).map(r => {
-       const repairColor = r.watchList ? '#0EA5E9' : '#ef4444';
+       const pinColor = repairColor(true, r.watchList);
        return (
         <Marker
           key={`repair-${r.id}`}
@@ -375,13 +376,13 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
             offset={[0, -2]}
             className="af-map-label af-map-label--repair"
           >
-            <strong style={{ display: 'block', color: repairColor }}>{r.fieldName}</strong>
+            <strong style={{ display: 'block', color: pinColor }}>{r.fieldName}</strong>
             {r.operation && <span style={{ display: 'block', opacity: 0.75 }}>{r.operation}</span>}
           </Tooltip>
           <Popup closeButton={false} offset={[0, -10]}>
             <div style={{ fontSize: 13, minWidth: 160 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: repairColor, flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: pinColor, flexShrink: 0 }} />
                 <strong style={{ fontSize: 14 }}>{r.fieldName}</strong>
               </div>
               {r.watchList && <div style={{ fontSize: 10, fontWeight: 700, color: '#0EA5E9', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Watch List</div>}
@@ -392,7 +393,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
                   onClick={() => onSelectRepair(r.id)}
                   style={{
                     width: '100%', padding: '7px 0', borderRadius: 6, border: 'none',
-                    background: repairColor, color: '#fff', fontWeight: 700,
+                    background: pinColor, color: '#fff', fontWeight: 700,
                     fontSize: 12, cursor: 'pointer', letterSpacing: '0.04em',
                   }}
                 >

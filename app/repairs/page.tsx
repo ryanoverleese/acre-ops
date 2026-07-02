@@ -63,6 +63,7 @@ async function getRepairsData(): Promise<{
         probeSerial,
         probeReplaced: repair.probe_replaced || false,
         newProbeSerial: repair.new_probe_serial,
+        watchList: !!repair.watch_list,
         lat: field?.lat,
         lng: field?.lng,
       };
