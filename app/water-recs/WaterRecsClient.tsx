@@ -780,22 +780,43 @@ export default function WaterRecsClient({
       const form = fieldForms[field.fieldSeasonId];
       if (!form) return;
 
-      if (form.updateStatus === 'updated' && form.waterDay) {
-        updatedFields.push({ name: field.fieldName, day: form.waterDay });
-      } else if (form.originalDay) {
-        continueFields.push({ name: field.fieldName, day: form.originalDay });
+      const day = form.waterDay || form.originalDay;
+      if (!day) return;
+
+      if (form.updateStatus === 'updated') {
+        updatedFields.push({ name: field.fieldName, day });
+      } else {
+        continueFields.push({ name: field.fieldName, day });
       }
     });
 
-    if (continueFields.length > 0) {
-      lines.push('Continue as scheduled:');
-      continueFields.forEach(f => lines.push(`${f.name} - ${todayLabel(f.day)}`));
-      lines.push('');
-    }
+    // Group by water day for a clean schedule view
+    const buildSchedule = (fields: { name: string; day: string }[]): string[] => {
+      const byDay: Record<string, string[]> = {};
+      fields.forEach(f => {
+        if (!byDay[f.day]) byDay[f.day] = [];
+        byDay[f.day].push(f.name);
+      });
+      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const getBase = (s: string) => dayOrder.find(d => s.includes(d)) || s;
+      const sorted = Object.keys(byDay).sort((a, b) => dayOrder.indexOf(getBase(a)) - dayOrder.indexOf(getBase(b)));
+      const out: string[] = [];
+      sorted.forEach(day => {
+        out.push(`${todayLabel(day)}:`);
+        byDay[day].sort((a, b) => a.localeCompare(b)).forEach(name => out.push(name));
+        out.push('');
+      });
+      return out;
+    };
 
     if (updatedFields.length > 0) {
-      lines.push('Updated water days:');
-      updatedFields.forEach(f => lines.push(`${f.name} - moved to ${todayLabel(f.day)}`));
+      lines.push('Updated water days:', '');
+      lines.push(...buildSchedule(updatedFields));
+    }
+
+    if (continueFields.length > 0) {
+      lines.push('Continue as scheduled:', '');
+      lines.push(...buildSchedule(continueFields));
     }
 
     return lines.join('\n').trim();
