@@ -9535,6 +9535,22 @@ tr.expanded-row:hover {
   background: var(--accent-primary-dim);
 }
 
+/* Inline early-week full-report rec inside the update tile — small, full width */
+.wr-update-ref {
+  flex-basis: 100%;
+  width: 100%;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.wr-update-ref-label {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .wr-update-field-info {
   flex: 1;
   min-width: 120px;

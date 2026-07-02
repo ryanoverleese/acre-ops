@@ -1448,6 +1448,8 @@ export default function WaterRecsClient({
             if (!form) return null;
             const isUpdated = form.updateStatus === 'updated';
             const suggestion = suggestionByFs.get(field.fieldSeasonId);
+            // This field's early-week full-report rec, shown inline for quick reference.
+            const fullRec = fullReportRecs.find(r => r.fieldSeasonId === field.fieldSeasonId);
 
             return (
               <div
@@ -1569,6 +1571,15 @@ export default function WaterRecsClient({
                       : daySaveStatus[field.fieldSeasonId] === 'error' ? 'error' : ''}
                   </span>
                 </div>
+                {/* Early-week full-report rec, inline for quick reference */}
+                {fullRec && fullRec.recommendation && (
+                  <div className="wr-update-ref">
+                    <span className="wr-update-ref-label">
+                      Full report{fullRec.suggestedWaterDay ? ` · ${fullRec.suggestedWaterDay}` : ''}:
+                    </span>{' '}
+                    {fullRec.recommendation}
+                  </div>
+                )}
               </div>
             );
           })}
