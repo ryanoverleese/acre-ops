@@ -855,22 +855,16 @@ export default function WaterRecsClient({
       }
     });
 
-    // Group by water day for a clean schedule view
+    // One line per field with its water day right next to the name, sorted by day.
     const buildSchedule = (fields: { name: string; day: string }[]): string[] => {
-      const byDay: Record<string, string[]> = {};
-      fields.forEach(f => {
-        if (!byDay[f.day]) byDay[f.day] = [];
-        byDay[f.day].push(f.name);
-      });
       const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const getBase = (s: string) => dayOrder.find(d => s.includes(d)) || s;
-      const sorted = Object.keys(byDay).sort((a, b) => dayOrder.indexOf(getBase(a)) - dayOrder.indexOf(getBase(b)));
-      const out: string[] = [];
-      sorted.forEach(day => {
-        out.push(`${todayLabel(day)}:`);
-        byDay[day].sort((a, b) => a.localeCompare(b)).forEach(name => out.push(name));
-        out.push('');
+      const sorted = [...fields].sort((a, b) => {
+        const byDayDiff = dayOrder.indexOf(getBase(a.day)) - dayOrder.indexOf(getBase(b.day));
+        return byDayDiff !== 0 ? byDayDiff : a.name.localeCompare(b.name);
       });
+      const out = sorted.map(f => `${f.name} - ${todayLabel(f.day)}`);
+      out.push('');
       return out;
     };
 
