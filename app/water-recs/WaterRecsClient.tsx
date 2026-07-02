@@ -402,6 +402,20 @@ export default function WaterRecsClient({
     return m;
   }, [savedRecs, weekRange]);
 
+  // Most recent PRIOR-week water day per field (full or update rec) — shown as
+  // the shaded "last time" pill in the early-week picker.
+  const prevDayByFs = useMemo(() => {
+    const m = new Map<number, string>();
+    [...savedRecs]
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .forEach(wr => {
+        if (wr.date < weekRange.start && wr.suggestedWaterDay) {
+          m.set(wr.fieldSeasonId, wr.suggestedWaterDay); // later dates overwrite
+        }
+      });
+    return m;
+  }, [savedRecs, weekRange]);
+
   const thisWeekRecs = useMemo(() => {
     return savedRecs.filter(wr =>
       currentFieldSeasonIds.has(wr.fieldSeasonId) &&
@@ -424,63 +438,6 @@ export default function WaterRecsClient({
     });
     return m;
   }, [waterRecs, reportDate, currentFieldSeasonIds]);
-
-  // Farm-level read: sort this operation's fields into reference buckets from
-  // today's per-field suggestions — high priority, pulling a lot (due soon),
-  // not taking much water (no near-term day), and the steady rest. Just a
-  // grouped at-a-glance reference for Ryan, NOT a customer message.
-  const farmInsight = useMemo(() => {
-    if (!currentOperation) return null;
-
-    const date = new Date(reportDate + 'T12:00:00');
-    const jsDay = date.getDay();
-    const startIndex = jsDay === 0 ? 6 : jsDay - 1; // Mon=0 index of report date
-    const daysOut = (weekday: string): number | null => {
-      const t = DAY_NAMES.indexOf(weekday);
-      if (t < 0) return null;
-      return (t - startIndex + 7) % 7; // 0 = report date's day
-    };
-
-    const highPriority: string[] = [];
-    const pullingALot: string[] = [];
-    const notTakingWater: string[] = [];
-    const steady: string[] = [];
-
-    currentOperation.fields.forEach(f => {
-      const form = fieldForms[f.fieldSeasonId];
-      const name = f.fieldName;
-      if (form?.priority) { highPriority.push(name); return; }
-      const dayName = form?.waterDay ? DAY_NAMES.find(dn => form.waterDay.includes(dn)) : undefined;
-      const d = dayName ? daysOut(dayName) : null;
-      if (d !== null && d <= 2) pullingALot.push(name);
-      else if (!form?.waterDay) notTakingWater.push(name);
-      else steady.push(name);
-    });
-
-    const groups = [
-      { key: 'priority', label: 'High priority', names: highPriority, cls: 'priority' },
-      { key: 'pulling', label: 'Pulling a lot — due soon', names: pullingALot, cls: 'pulling' },
-      { key: 'slow', label: 'Not taking much water', names: notTakingWater, cls: 'slow' },
-      { key: 'steady', label: 'Steady / on schedule', names: steady, cls: 'steady' },
-    ].filter(g => g.names.length > 0);
-
-    if (!groups.length) return null;
-
-    // "Acting unlike its neighbors": the lone outlier(s) within this farm —
-    // pulling hard while the rest is calm, or sitting flat while the rest pulls.
-    // Only flag when there's a clear majority and a small minority going against it.
-    const active = [...highPriority, ...pullingALot]; // wants water now-ish
-    const calm = [...notTakingWater, ...steady];      // riding along
-    const total = active.length + calm.length;
-    let standsApart: string[] = [];
-    if (total >= 3 && active.length && calm.length) {
-      const minor = Math.max(1, Math.floor(total * 0.34));
-      if (active.length <= calm.length && active.length <= minor) standsApart = active;
-      else if (calm.length < active.length && calm.length <= minor) standsApart = calm;
-    }
-
-    return { groups, standsApart, standoutNames: new Set(standsApart) };
-  }, [currentOperation, suggestionByFs, reportDate]);
 
   // Find the full report (earliest date this week with recs)
   const fullReportRecs = useMemo(() => {
@@ -1150,24 +1107,6 @@ export default function WaterRecsClient({
             );
           })()}
 
-          {/* Farm-level reference: fields sorted into buckets (for Ryan, not the customer) */}
-          {farmInsight && (
-            <div className="wr-farm-groups">
-              <div className="wr-farm-groups-title">Field groups &middot; for your reference</div>
-              {farmInsight.standsApart.length > 0 && (
-                <div className="wr-farm-note">
-                  Acting unlike the rest of this farm: <strong>{farmInsight.standsApart.join(', ')}</strong> — worth a closer look.
-                </div>
-              )}
-              {farmInsight.groups.map(g => (
-                <div key={g.key} className={`wr-farm-group ${g.cls}`}>
-                  <span className="wr-farm-group-label">{g.label} ({g.names.length})</span>
-                  <span className="wr-farm-group-names">{g.names.join(', ')}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Overview */}
           <div className="wr-overview-wrap">
             <textarea
@@ -1189,12 +1128,11 @@ export default function WaterRecsClient({
             if (!form) return null;
             const isPriority = form.priority;
             const suggestion = suggestionByFs.get(field.fieldSeasonId);
-            const isStandout = !!farmInsight?.standoutNames.has(field.fieldName);
 
             return (
               <div
                 key={field.fieldSeasonId}
-                className={`wr-field-card${isPriority ? ' priority' : ''}${isStandout ? ' standout' : ''}`}
+                className={`wr-field-card${isPriority ? ' priority' : ''}`}
               >
                 {/* Field header row */}
                 <div className="wr-field-header">
@@ -1220,18 +1158,10 @@ export default function WaterRecsClient({
                       {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
                         <span className="wr-suggestion-dot" title="Suggestion available">&bull;</span>
                       )}
-                      {isStandout && (
-                        <span className="wr-standout-chip" title="Acting unlike the rest of this farm">stands out</span>
-                      )}
                     </span>
                     <span className="wr-field-meta">
                       {field.crop} &middot; {field.acres} ac
                     </span>
-                    {isStandout && (
-                      <span className="wr-just-for-you">
-                        Just for you — acting different from the rest of this farm, worth a look.
-                      </span>
-                    )}
                   </div>
 
                   {/* Water day pills */}
@@ -1285,8 +1215,12 @@ export default function WaterRecsClient({
                           saveWaterDay(field.fieldSeasonId, combined);
                         };
 
+                        // Engine's suggested day (dotted outline)
                         const sugDay = suggestion?.suggestedWaterDay || '';
                         const sugDayName = DAY_NAMES.find(dn => sugDay.includes(dn)) || '';
+                        // Last week's recommended day (shaded)
+                        const prevDay = prevDayByFs.get(field.fieldSeasonId) || '';
+                        const prevDayName = DAY_NAMES.find(dn => prevDay.includes(dn)) || '';
 
                         return (
                           <>
@@ -1296,13 +1230,18 @@ export default function WaterRecsClient({
                               // DAY_NAMES is Mon=0, but JS getDay is Mon=1, Sun=0
                               const jsIdx = dayIdx === 6 ? 0 : dayIdx + 1;
                               const away = (jsIdx - todayIdx + 7) % 7;
+                              const isSug = sugDayName === d.label && day !== d.label;
+                              const isPrev = prevDayName === d.label && day !== d.label;
+                              const titleParts = [];
+                              if (isSug) titleParts.push(`Suggested: ${sugDay}`);
+                              if (isPrev) titleParts.push(`Last week: ${prevDay}`);
                               return (
                                 <button
                                   key={d.key}
                                   type="button"
-                                  className={`wr-pill${day === d.label ? ' active' : ''}${sugDayName === d.label && day !== d.label ? ' suggested' : ''}`}
+                                  className={`wr-pill${day === d.label ? ' active' : ''}${isPrev ? ' early-week' : ''}${isSug ? ' suggested' : ''}`}
                                   onClick={() => setDay(d.label)}
-                                  title={sugDayName === d.label ? `Suggested: ${sugDay}` : d.label}
+                                  title={titleParts.length ? titleParts.join(' · ') : d.label}
                                 >
                                   {d.key}
                                   <span className="wr-pill-days">{away + 1}</span>
@@ -1398,35 +1337,22 @@ export default function WaterRecsClient({
                         </div>
                       );
                     })()}
-                    {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
+                    {/* Suggested water DAY lives on the pills now (dotted outline),
+                        same as late week. Only rec TEXT still gets a box. */}
+                    {suggestion && suggestion.recommendation && (
                       <div className="wr-suggestion">
                         <div className="wr-suggestion-label">Suggested</div>
-                        {suggestion.recommendation && (
-                          <div className="wr-suggestion-row">
-                            <div className="wr-suggestion-text">{suggestion.recommendation}</div>
-                            <button
-                              type="button"
-                              className="wr-suggestion-use"
-                              disabled={form.recommendation === suggestion.recommendation}
-                              onClick={() => updateField(field.fieldSeasonId, { recommendation: suggestion.recommendation })}
-                            >
-                              {form.recommendation === suggestion.recommendation ? 'Used' : 'Use this rec'}
-                            </button>
-                          </div>
-                        )}
-                        {suggestion.suggestedWaterDay && (
-                          <div className="wr-suggestion-row">
-                            <div className="wr-suggestion-day">Water day: {suggestion.suggestedWaterDay}</div>
-                            <button
-                              type="button"
-                              className="wr-suggestion-use"
-                              disabled={form.waterDay === suggestion.suggestedWaterDay}
-                              onClick={() => updateField(field.fieldSeasonId, { waterDay: suggestion.suggestedWaterDay })}
-                            >
-                              {form.waterDay === suggestion.suggestedWaterDay ? 'Used' : 'Use this day'}
-                            </button>
-                          </div>
-                        )}
+                        <div className="wr-suggestion-row">
+                          <div className="wr-suggestion-text">{suggestion.recommendation}</div>
+                          <button
+                            type="button"
+                            className="wr-suggestion-use"
+                            disabled={form.recommendation === suggestion.recommendation}
+                            onClick={() => updateField(field.fieldSeasonId, { recommendation: suggestion.recommendation })}
+                          >
+                            {form.recommendation === suggestion.recommendation ? 'Used' : 'Use this rec'}
+                          </button>
+                        </div>
                       </div>
                     )}
                     <textarea
