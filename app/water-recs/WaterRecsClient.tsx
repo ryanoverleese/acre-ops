@@ -758,6 +758,20 @@ export default function WaterRecsClient({
     return dayStr;
   };
 
+  // Sort key: soonest first. ASAP on top, then today, then forward through the
+  // week; "Next <day>" is a week out; Hold (and anything unscheduled) sinks last.
+  const daySortKey = (dayStr: string): number => {
+    if (dayStr === 'ASAP') return -1;
+    if (dayStr === 'Hold') return 999;
+    const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const base = dayOrder.find(d => dayStr.includes(d));
+    if (!base) return 998;
+    const todayIdx = (new Date().getDay() + 6) % 7; // Mon=0
+    let away = (dayOrder.indexOf(base) - todayIdx + 7) % 7; // 0=today … 6
+    if (dayStr.startsWith('Next')) away += 7;
+    return away;
+  };
+
   const buildFullReportText = (): string => {
     if (!currentOperation) return '';
     const lines: string[] = [];
@@ -809,12 +823,8 @@ export default function WaterRecsClient({
       });
     }
 
-    const scheduleDays = Object.keys(waterSchedule).sort((a, b) => {
-      // Sort by day of week order, with modifiers secondary
-      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      const getBase = (s: string) => dayOrder.find(d => s.includes(d)) || s;
-      return dayOrder.indexOf(getBase(a)) - dayOrder.indexOf(getBase(b));
-    });
+    // Soonest first: ASAP/today on top → forward through the week → Hold last.
+    const scheduleDays = Object.keys(waterSchedule).sort((a, b) => daySortKey(a) - daySortKey(b));
     if (scheduleDays.length > 0) {
       lines.push('Water Schedule:', '');
       scheduleDays.forEach(day => {
@@ -855,12 +865,11 @@ export default function WaterRecsClient({
       }
     });
 
-    // One line per field with its water day right next to the name, sorted by day.
+    // One line per field with its water day next to the name, soonest first
+    // (ASAP/today on top → forward through the week → Hold last).
     const buildSchedule = (fields: { name: string; day: string }[]): string[] => {
-      const dayOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      const getBase = (s: string) => dayOrder.find(d => s.includes(d)) || s;
       const sorted = [...fields].sort((a, b) => {
-        const byDayDiff = dayOrder.indexOf(getBase(a.day)) - dayOrder.indexOf(getBase(b.day));
+        const byDayDiff = daySortKey(a.day) - daySortKey(b.day);
         return byDayDiff !== 0 ? byDayDiff : a.name.localeCompare(b.name);
       });
       const out = sorted.map(f => `${f.name} - ${todayLabel(f.day)}`);
