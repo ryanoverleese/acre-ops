@@ -247,11 +247,12 @@ function CreateRepairForm({ season, onBack, onSaved }: {
 
 // ── CloseOutForm ──────────────────────────────────────────────────────────────
 
-function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
+function CloseOutForm({ repair, onBack, onSaved, fromMap, onWatchChanged }: {
   repair: InstallerRepair;
   onBack: () => void;
   onSaved: () => void;
   fromMap?: boolean;
+  onWatchChanged?: (id: number, watch: boolean) => void;
 }) {
   const [fix, setFix] = useState('');
   const [probeReplaced, setProbeReplaced] = useState(false);
@@ -275,7 +276,10 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap }: {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ watch_list: next }),
       });
-      if (!res.ok) setWatchOn(!next); // revert on failure
+      if (!res.ok) { setWatchOn(!next); return; } // revert on failure
+      // Keep the parent list in sync so backing out and reopening shows the
+      // saved state (the list itself doesn't refetch, and the server caches).
+      onWatchChanged?.(repair.id, next);
     } catch {
       setWatchOn(!next);
     } finally {
@@ -660,6 +664,10 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
           else { setSubscreen('list'); setSelected(null); }
         }}
         onSaved={handleSaved}
+        onWatchChanged={(id, watch) => {
+          setRepairs(rs => rs.map(r => (r.id === id ? { ...r, watchList: watch } : r)));
+          setSelected(s => (s && s.id === id ? { ...s, watchList: watch } : s));
+        }}
       />
     );
   }
@@ -733,6 +741,7 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
         ) : (
           repairs.map(r => {
             const done = tab === 'done';
+            const watch = !done && !!r.watchList;
             return (
             <button
               key={r.id}
@@ -744,15 +753,25 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
               style={{
                 display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
                 padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
-                background: '#fff', border: '1.5px solid var(--border-1)',
+                background: watch ? '#F0F9FF' : '#fff',
+                border: `1.5px solid ${watch ? '#7DD3FC' : 'var(--border-1)'}`,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : '#ef4444', flexShrink: 0 }} />
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : watch ? '#0EA5E9' : '#ef4444', flexShrink: 0 }} />
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
                   {r.fieldName}
                 </div>
+                {watch && (
+                  <div style={{
+                    fontSize: 10, fontWeight: 700, color: '#0369A1', letterSpacing: '0.08em',
+                    textTransform: 'uppercase', background: '#E0F2FE', border: '1px solid #7DD3FC',
+                    borderRadius: 999, padding: '2px 8px', flexShrink: 0,
+                  }}>
+                    Watch
+                  </div>
+                )}
                 <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{fmtDate(done ? r.repairedAt ?? '' : r.reportedAt)}</div>
               </div>
               {r.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18 }}>{r.operation}</div>}
