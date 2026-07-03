@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRows, Probe, ProbeRackSlot, TABLE_IDS } from '@/lib/baserow';
+import { getRows, Probe, ProbeRackSlot, TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -77,10 +77,12 @@ export async function POST() {
 
       if (!batchRes.ok) {
         const detail = await batchRes.text();
+        if (i > 0) bustTableCache('probe_rack'); // earlier chunks already wrote
         return NextResponse.json({ error: 'Batch update failed', detail }, { status: 500 });
       }
     }
 
+    bustTableCache('probe_rack');
     return NextResponse.json({ assigned: updates.length, skipped, notFound, errors });
   } catch (error) {
     console.error('Sync error:', error);

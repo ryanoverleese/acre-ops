@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newRec = await response.json();
+    bustTableCache('water_recs');
     return NextResponse.json(newRec, { status: 201 });
   } catch (error) {
     console.error('Error creating water recommendation:', error);

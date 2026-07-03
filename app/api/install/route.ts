@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_FILE_UPLOAD_URL = 'https://api.baserow.io/api/user-files/upload-file/';
@@ -196,6 +196,7 @@ export async function POST(request: NextRequest) {
 
     const updatedProbeAssignment = await probeAssignmentResponse.json();
     console.log('Baserow response for probe_assignment update:', JSON.stringify(updatedProbeAssignment, null, 2));
+    bustTableCache('probe_assignments');
 
     // Also update field_season with crop (shared between all probes in field)
     if (fieldSeasonId && !isNaN(fieldSeasonId) && crop) {
@@ -216,6 +217,8 @@ export async function POST(request: NextRequest) {
 
       if (!fieldSeasonResponse.ok) {
         console.error('Warning: Failed to update field_season crop, but install was recorded');
+      } else {
+        bustTableCache('field_seasons');
       }
     }
 

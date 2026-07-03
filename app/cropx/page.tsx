@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
-import { getOperations, getFields, getFieldSeasons, getProbeAssignments, getProbes, getContacts } from '@/lib/baserow';
+import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/baserow';
 import CropXClient from './CropXClient';
 
 export const metadata: Metadata = { title: 'CropX Order Summary' };
+
+// Data comes from cached Baserow reads; render per-request (don't prerender at build).
+export const dynamic = 'force-dynamic';
 
 export interface CropXFieldRow {
   fieldId: number;
@@ -32,12 +35,12 @@ export interface CropXOperationRow {
 
 export default async function CropXOrderPage() {
   const [operations, rawFields, fieldSeasons, probeAssignments, probes, contacts] = await Promise.all([
-    getOperations(),
-    getFields(),
-    getFieldSeasons(),
-    getProbeAssignments(),
-    getProbes(),
-    getContacts(),
+    getCachedOperations(),
+    getCachedFields(),
+    getCachedFieldSeasons(),
+    getCachedProbeAssignments(),
+    getCachedProbes(),
+    getCachedContacts(),
   ]);
 
   // Maps for quick lookup

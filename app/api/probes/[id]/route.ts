@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -99,6 +99,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updatedProbe = await response.json();
+    bustTableCache('probes');
     return NextResponse.json(updatedProbe);
   } catch (error) {
     console.error('Error updating probe:', error);
@@ -138,6 +139,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    bustTableCache('probes');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting probe:', error);

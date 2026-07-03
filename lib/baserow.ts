@@ -1,4 +1,4 @@
-import { unstable_cache } from 'next/cache';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -232,10 +232,16 @@ export async function getRows<T>(tableName: TableName, options?: FetchOptions): 
     return allResults;
   }
 
-  // Fetch remaining pages sequentially to avoid hammering Baserow rate limits
+  // Fetch remaining pages in parallel — the MAX_CONCURRENT semaphore in
+  // fetchWithRetry already throttles simultaneous requests, so this can't
+  // hammer Baserow rate limits.
   const totalPages = Math.ceil(firstPage.count / size);
-  for (let page = 2; page <= totalPages; page++) {
-    const result = await baserowFetch<T>(tableId, { ...options, page, size });
+  const restPages: number[] = [];
+  for (let page = 2; page <= totalPages; page++) restPages.push(page);
+  const rest = await Promise.all(
+    restPages.map((page) => baserowFetch<T>(tableId, { ...options, page, size }))
+  );
+  for (const result of rest) {
     allResults.push(...result.results);
   }
 
@@ -250,6 +256,18 @@ export function getCachedRows<T>(tableName: TableName, options?: FetchOptions, r
     [`baserow-${tableName}-${JSON.stringify(options || {})}`],
     { revalidate: revalidateSeconds, tags: [`baserow-${tableName}`] }
   )();
+}
+
+/** Bust the getCachedRows cache for a table after a write, so app edits show
+ *  up immediately even on cached pages. Safe to call from route handlers and
+ *  server actions; no-ops (with a warning) anywhere revalidation isn't allowed. */
+export function bustTableCache(tableName: TableName) {
+  try {
+    // Next 16 requires a cache-life profile; 'max' = purge immediately.
+    revalidateTag(`baserow-${tableName}`, 'max');
+  } catch (e) {
+    console.warn(`bustTableCache(${tableName}) skipped:`, e);
+  }
 }
 
 // Update a row by ID (PATCH)
@@ -272,6 +290,7 @@ export async function updateRow<T>(tableName: TableName, rowId: number, data: Re
   }
 
   const result = await response.json();
+  bustTableCache(tableName);
   return normalizeKeys(result) as T;
 }
 
@@ -295,6 +314,7 @@ export async function createRow<T>(tableName: TableName, data: Record<string, un
   }
 
   const result = await response.json();
+  bustTableCache(tableName);
   return normalizeKeys(result) as T;
 }
 
@@ -554,6 +574,20 @@ export const getInvoiceLines = (options?: FetchOptions) => getRows<InvoiceLine>(
 export const getProbeAssignments = (options?: FetchOptions) => getRows<ProbeAssignment>('probe_assignments', options);
 export const getProductsServices = (options?: FetchOptions) => getRows<ProductService>('products_services', options);
 
+// Cached convenience getters — use these in server components/pages.
+// Writes through updateRow/createRow/bustTableCache invalidate the table's
+// tag immediately, so the TTLs below only bound staleness for edits made
+// directly in the Baserow UI. Volatile tables get short TTLs; slow-changing
+// reference tables (contacts, operations, billing) get longer ones.
+export const getCachedContacts = () => getCachedRows<Contact>('contacts', undefined, 600);
+export const getCachedOperations = () => getCachedRows<Operation>('operations', undefined, 600);
+export const getCachedBillingEntities = () => getCachedRows<BillingEntity>('billing_entities', undefined, 600);
+export const getCachedFields = () => getCachedRows<Field>('fields', undefined, 120);
+export const getCachedProbes = () => getCachedRows<Probe>('probes', undefined, 120);
+export const getCachedFieldSeasons = () => getCachedRows<FieldSeason>('field_seasons', undefined, 120);
+export const getCachedRepairs = () => getCachedRows<Repair>('repairs', undefined, 120);
+export const getCachedProbeAssignments = () => getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120);
+
 export interface InventoryItem {
   id: number;
   item_name?: string;
@@ -753,6 +787,20 @@ export async function getAllSelectOptions(tableNames: TableName[]): Promise<Reco
     })
   );
   return Object.fromEntries(results);
+}
+
+/**
+ * Cached version of getAllSelectOptions — table schema changes rarely, so
+ * pages should use this instead of hitting the field-metadata API every load.
+ * The select-options mutation route busts the 'baserow-select-options' tag
+ * so newly added options appear immediately.
+ */
+export function getCachedAllSelectOptions(tableNames: TableName[], revalidateSeconds = 3600): Promise<Record<string, TableSelectOptions>> {
+  return unstable_cache(
+    () => getAllSelectOptions(tableNames),
+    [`baserow-select-options-${tableNames.join(',')}`],
+    { revalidate: revalidateSeconds, tags: ['baserow-select-options'] }
+  )();
 }
 
 /**

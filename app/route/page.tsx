@@ -1,4 +1,4 @@
-import { getFields, getBillingEntities, getOperations, getFieldSeasons, getProbeAssignments, getContacts } from '@/lib/baserow';
+import { getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedFieldSeasons, getCachedProbeAssignments, getCachedContacts } from '@/lib/baserow';
 import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
 export const dynamic = 'force-dynamic';
@@ -6,12 +6,12 @@ export const dynamic = 'force-dynamic';
 async function getFieldLocations(): Promise<FieldLocation[]> {
   try {
     const [fields, billingEntities, operations, fieldSeasons, probeAssignments, contacts] = await Promise.all([
-      getFields(),
-      getBillingEntities(),
-      getOperations(),
-      getFieldSeasons(),
-      getProbeAssignments(),
-      getContacts(),
+      getCachedFields(),
+      getCachedBillingEntities(),
+      getCachedOperations(),
+      getCachedFieldSeasons(),
+      getCachedProbeAssignments(),
+      getCachedContacts(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));

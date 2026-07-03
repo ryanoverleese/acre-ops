@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -42,6 +42,7 @@ export async function PATCH(
     }
 
     const updatedItem = await response.json();
+    bustTableCache('products_services');
     return NextResponse.json(updatedItem);
   } catch (error) {
     console.error('Error updating product/service:', error);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, getRow, Field, FieldSeason, addSpaceVariants } from '@/lib/baserow';
+import { TABLE_IDS, getRow, Field, FieldSeason, addSpaceVariants, bustTableCache } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -119,11 +119,13 @@ export async function POST(request: NextRequest) {
               body: JSON.stringify(addSpaceVariants(patchData)),
             });
             console.log('Backfilled geo data for probe assignment:', created.id, patchData);
+            bustTableCache('probe_assignments');
           }
         }).catch(err => console.error('Geo backfill error:', err));
       }
     }
 
+    bustTableCache('probe_assignments');
     revalidatePath('/fields');
     return NextResponse.json(created, { status: 201 });
   } catch (error) {

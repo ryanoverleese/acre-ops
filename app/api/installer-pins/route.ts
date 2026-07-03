@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getRows, TABLE_IDS, type Installer } from '@/lib/baserow';
+import { getRows, TABLE_IDS, bustTableCache, type Installer } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -44,6 +44,7 @@ export async function PATCH(request: Request) {
       }
     );
     if (!res.ok) return NextResponse.json({ error: 'Failed to update' }, { status: 500 });
+    bustTableCache('installers');
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('installer-pins PATCH error:', error);
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
     );
     if (!res.ok) return NextResponse.json({ error: 'Failed to create' }, { status: 500 });
     const row = await res.json();
+    bustTableCache('installers');
     return NextResponse.json({ id: row.id, name: row.name, pinSet: !!row.pin });
   } catch (error) {
     console.error('installer-pins POST error:', error);
@@ -91,6 +93,7 @@ export async function DELETE(request: Request) {
       }
     );
     if (!res.ok && res.status !== 204) return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
+    bustTableCache('installers');
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('installer-pins DELETE error:', error);

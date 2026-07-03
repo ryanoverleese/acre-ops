@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -98,6 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newField = await fieldResponse.json();
+    bustTableCache('fields');
 
     // Create the field_seasons record
     // Note: probe_status, antenna_type, battery_type live on probe_assignments, not field_seasons
@@ -136,6 +137,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newFieldSeason = await fieldSeasonResponse.json();
+    bustTableCache('field_seasons');
 
     // Create probe_assignment (probe 1) if antenna/battery type provided
     if (body.antenna_type || body.battery_type) {
@@ -155,7 +157,7 @@ export async function POST(request: NextRequest) {
           paData['battery type'] = body.battery_type;
         }
         const paUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/?user_field_names=true`;
-        await fetch(paUrl, {
+        const paResponse = await fetch(paUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Token ${BASEROW_TOKEN}`,
@@ -163,6 +165,9 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify(paData),
         });
+        if (paResponse.ok) {
+          bustTableCache('probe_assignments');
+        }
       } catch (paError) {
         console.error('Failed to create probe_assignment (non-fatal):', paError);
       }

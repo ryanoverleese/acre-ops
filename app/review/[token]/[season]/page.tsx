@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes, getContacts, getAllSelectOptions } from '@/lib/baserow';
+import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts, getCachedAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ReviewClient from './ReviewClient';
@@ -14,7 +14,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { token, season } = await params;
-  const operations = await getOperations();
+  const operations = await getCachedOperations();
   const operation = operations.find((op) => op.approval_token === token);
   const title = operation
     ? `Field Info & Approvals — ${operation.name}`
@@ -88,13 +88,13 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
 
   // Fetch all data in parallel
   const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes, contacts] = await Promise.all([
-    getOperations(),
-    getFields(),
-    getFieldSeasons(),
-    getBillingEntities(),
-    getProbeAssignments(),
-    getProbes(),
-    getContacts(),
+    getCachedOperations(),
+    getCachedFields(),
+    getCachedFieldSeasons(),
+    getCachedBillingEntities(),
+    getCachedProbeAssignments(),
+    getCachedProbes(),
+    getCachedContacts(),
   ]);
 
   const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
@@ -147,7 +147,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
   // Get select options for dropdowns
   let allSelectOptions: Record<string, TableSelectOptions> = {};
   try {
-    allSelectOptions = await getAllSelectOptions(['fields', 'field_seasons']);
+    allSelectOptions = await getCachedAllSelectOptions(['fields', 'field_seasons']);
   } catch (e) {
     console.error('Failed to fetch select options:', e);
   }

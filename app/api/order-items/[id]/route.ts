@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -37,6 +37,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Failed to update order item', details: errorText }, { status: response.status });
     }
 
+    bustTableCache('order_items');
     revalidatePath('/orders');
     const updated = await response.json();
     return NextResponse.json(updated);
@@ -65,6 +66,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Failed to delete order item' }, { status: response.status });
     }
 
+    bustTableCache('order_items');
     revalidatePath('/orders');
     return NextResponse.json({ success: true });
   } catch (error) {

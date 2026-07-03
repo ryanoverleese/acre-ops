@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -27,6 +28,7 @@ export async function PATCH(
     }
 
     const data = await response.json();
+    bustTableCache('contacts');
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating contact:', error);
@@ -53,6 +55,7 @@ export async function DELETE(
       return NextResponse.json({ error }, { status: response.status });
     }
 
+    bustTableCache('contacts');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting contact:', error);

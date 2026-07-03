@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -69,6 +69,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const updated = await patchResponse.json();
+    bustTableCache('contacts');
     return NextResponse.json(updated);
   } catch (error) {
     console.error('Error linking contact to operation:', error);
@@ -125,6 +126,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Failed to unlink contact from operation' }, { status: patchResponse.status });
     }
 
+    bustTableCache('contacts');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error unlinking contact from operation:', error);

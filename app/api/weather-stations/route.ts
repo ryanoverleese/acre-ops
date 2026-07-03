@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create weather station' }, { status: response.status });
     }
 
+    bustTableCache('weather_stations');
     revalidatePath('/weather-stations');
     const newStation = await response.json();
     return NextResponse.json(newStation, { status: 201 });

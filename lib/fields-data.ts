@@ -1,5 +1,5 @@
-import { getFields, getOperations, getFieldSeasons, getProbes, getBillingEntities, getProbeAssignments, getContacts, getProductsServices, getAllSelectOptions } from '@/lib/baserow';
-import type { TableSelectOptions, BaserowFilter } from '@/lib/baserow';
+import { getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
+import type { TableSelectOptions, BaserowFilter, Field, Operation, FieldSeason, Probe, BillingEntity, ProbeAssignment, Contact, ProductService } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
 export interface ProcessedProbeAssignment {
@@ -169,22 +169,25 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
       ? [{ field: 'season', type: 'equal', value: String(season) }]
       : undefined;
 
-    // Fetch core data and select options separately so select options failure doesn't kill everything
+    // Fetch core data and select options separately so select options failure doesn't kill everything.
+    // All reads are cached (unstable_cache) — writes through the API bust the
+    // table's cache tag, so app edits still show up immediately. TTLs are just
+    // a fallback for edits made directly in the Baserow UI.
     const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawProductsServices] = await Promise.all([
-      getFields(),
-      getOperations(),
-      getFieldSeasons(seasonFilters ? { baserowFilters: seasonFilters } : undefined),
-      getProbes(),
-      getBillingEntities(),
-      getProbeAssignments(),
-      getContacts(),
-      getProductsServices(),
+      getCachedRows<Field>('fields', undefined, 120),
+      getCachedRows<Operation>('operations', undefined, 600),
+      getCachedRows<FieldSeason>('field_seasons', seasonFilters ? { baserowFilters: seasonFilters } : undefined, 120),
+      getCachedRows<Probe>('probes', undefined, 300),
+      getCachedRows<BillingEntity>('billing_entities', undefined, 600),
+      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
+      getCachedRows<Contact>('contacts', undefined, 600),
+      getCachedRows<ProductService>('products_services', undefined, 600),
     ]);
 
     // Select options are nice-to-have; don't let failure wipe the page
     let allSelectOptions: Record<string, TableSelectOptions> = {};
     try {
-      allSelectOptions = await getAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']);
+      allSelectOptions = await getCachedAllSelectOptions(['fields', 'field_seasons', 'probe_assignments']);
     } catch (e) {
       console.error('Failed to fetch select options (non-fatal):', e);
     }

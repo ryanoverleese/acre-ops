@@ -1,4 +1,5 @@
-import { getWaterRecs, getFieldSeasons, getFields, getOperations, getContacts, getProbeAssignments, getTableFieldOptions } from '@/lib/baserow';
+import { getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
+import type { WaterRec, FieldSeason, Field, Operation, Contact, ProbeAssignment } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WaterRecsClient from './WaterRecsClient';
 
@@ -33,18 +34,20 @@ export default async function WaterRecsPage() {
   const currentYear = new Date().getFullYear();
 
   try {
-    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, waterRecOptions] = await Promise.all([
-      getOperations(),
-      getFields(),
-      getFieldSeasons(),
-      getContacts(),
-      getWaterRecs(),
-      getProbeAssignments(),
-      getTableFieldOptions('water_recs'),
+    // Cached reads — API writes bust each table's cache tag, so saves show up
+    // immediately; TTLs only matter for edits made directly in the Baserow UI.
+    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, selectOptions] = await Promise.all([
+      getCachedRows<Operation>('operations', undefined, 600),
+      getCachedRows<Field>('fields', undefined, 120),
+      getCachedRows<FieldSeason>('field_seasons', undefined, 120),
+      getCachedRows<Contact>('contacts', undefined, 600),
+      getCachedRows<WaterRec>('water_recs', undefined, 60),
+      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
+      getCachedAllSelectOptions(['water_recs']),
     ]);
 
     // Get water day options from Baserow single_select field
-    const waterDayOptions = (waterRecOptions.suggested_water_day || []).map(o => o.value);
+    const waterDayOptions = (selectOptions.water_recs?.suggested_water_day || []).map(o => o.value);
 
     const operationMap = buildOperationMap(operations);
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);

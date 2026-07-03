@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -46,6 +46,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const updatedOperation = await response.json();
+    bustTableCache('operations');
     return NextResponse.json(updatedOperation);
   } catch (error) {
     console.error('Error updating operation:', error);
@@ -85,6 +86,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    bustTableCache('operations');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting operation:', error);

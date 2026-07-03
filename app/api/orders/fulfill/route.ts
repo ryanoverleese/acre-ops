@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Update order status to "Fulfilled"
     const orderUrl = `${BASEROW_API_URL}/${TABLE_IDS.orders}/${orderId}/?user_field_names=true`;
-    await fetch(orderUrl, {
+    const orderResp = await fetch(orderUrl, {
       method: 'PATCH',
       headers: {
         Authorization: `Token ${BASEROW_TOKEN}`,
@@ -88,6 +88,8 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ status: 'Fulfilled' }),
     });
 
+    if (updated > 0) bustTableCache('probe_assignments');
+    if (orderResp.ok) bustTableCache('orders');
     revalidatePath('/orders');
     revalidatePath('/fields');
 

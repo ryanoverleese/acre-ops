@@ -1,4 +1,4 @@
-import { getInventory, getFieldSeasons, getProbeAssignments } from '@/lib/baserow';
+import { getInventory, getCachedFieldSeasons, getCachedProbeAssignments } from '@/lib/baserow';
 
 // Force dynamic rendering to always get fresh data
 export const dynamic = 'force-dynamic';
@@ -27,8 +27,8 @@ export default async function InventoryPage() {
   try {
     const [inventory, fieldSeasons, probeAssignments] = await Promise.all([
       getInventory(),
-      getFieldSeasons(),
-      getProbeAssignments(),
+      getCachedFieldSeasons(),
+      getCachedProbeAssignments(),
     ]);
 
     // Collect unique categories

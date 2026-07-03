@@ -1,4 +1,4 @@
-import { getCachedRows, getRows, ProbeRackSlot, Probe, BillingEntity, Contact, Operation, Field, FieldSeason, getProbeAssignments } from '@/lib/baserow';
+import { getCachedRows, getRows, ProbeRackSlot, Probe, BillingEntity, Contact, Operation, Field, FieldSeason, getCachedProbeAssignments } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import RacksClient from './RacksClient';
 
@@ -11,7 +11,7 @@ export default async function RacksPage() {
     getCachedRows<BillingEntity>('billing_entities', undefined, 600),
     getCachedRows<Contact>('contacts', undefined, 600),
     getCachedRows<Operation>('operations', undefined, 600),
-    getProbeAssignments(),
+    getCachedProbeAssignments(),
     getCachedRows<FieldSeason>('field_seasons', undefined, 300),
     getCachedRows<Field>('fields', undefined, 600),
   ]);

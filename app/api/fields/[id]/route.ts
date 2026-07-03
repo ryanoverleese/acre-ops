@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, addSpaceVariants } from '@/lib/baserow';
+import { TABLE_IDS, addSpaceVariants, bustTableCache } from '@/lib/baserow';
 import { fetchSoilType, fetchElevation } from '@/lib/geo';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -98,6 +98,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const updatedField = await response.json();
 
     // Bust the Next.js cache so a page refresh picks up the change immediately
+    bustTableCache('fields');
     revalidatePath('/fields');
 
     return NextResponse.json(updatedField);
@@ -179,6 +180,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
+    bustTableCache('fields');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting field:', error);

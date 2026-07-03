@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to create order item', details: errorText }, { status: response.status });
     }
 
+    bustTableCache('order_items');
     revalidatePath('/orders');
     const newItem = await response.json();
     return NextResponse.json(newItem, { status: 201 });

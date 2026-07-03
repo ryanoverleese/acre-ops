@@ -1,4 +1,4 @@
-import { getProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact } from '@/lib/baserow';
+import { getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WorkflowsClient, { UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
 
@@ -12,7 +12,7 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
       getCachedRows<Probe>('probes', undefined, 120),
       getCachedRows<BillingEntity>('billing_entities', undefined, 300),
       getCachedRows<Operation>('operations', undefined, 300),
-      getProbeAssignments(),
+      getCachedProbeAssignments(),
       getCachedRows<Contact>('contacts', undefined, 300),
     ]);
 

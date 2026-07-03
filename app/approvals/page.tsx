@@ -1,10 +1,10 @@
 import {
-  getOperations,
-  getFields,
-  getFieldSeasons,
-  getProbeAssignments,
-  getProbes,
-  getContacts,
+  getCachedOperations,
+  getCachedFields,
+  getCachedFieldSeasons,
+  getCachedProbeAssignments,
+  getCachedProbes,
+  getCachedContacts,
 } from '@/lib/baserow';
 import ApprovalsClient from './ApprovalsClient';
 
@@ -58,12 +58,12 @@ interface ApprovalsData {
 async function getApprovalsData(): Promise<ApprovalsData> {
   try {
     const [operations, fields, fieldSeasons, probeAssignments, probes, contacts] = await Promise.all([
-      getOperations(),
-      getFields(),
-      getFieldSeasons(),
-      getProbeAssignments(),
-      getProbes(),
-      getContacts(),
+      getCachedOperations(),
+      getCachedFields(),
+      getCachedFieldSeasons(),
+      getCachedProbeAssignments(),
+      getCachedProbes(),
+      getCachedContacts(),
     ]);
 
     const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));

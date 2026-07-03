@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newLine = await response.json();
+    bustTableCache('invoice_lines');
     return NextResponse.json(newLine, { status: 201 });
   } catch (error) {
     console.error('Error creating invoice line:', error);

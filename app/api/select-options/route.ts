@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getAllSelectOptions, getBaserowJwt } from '@/lib/baserow';
 import type { TableName } from '@/lib/baserow';
 
@@ -67,6 +68,8 @@ export async function PATCH(request: NextRequest) {
 
     const data = await response.json();
     console.log(`select-options PATCH: success for field ${fieldId}`);
+    // Bust the cached select-option schema so the new option appears immediately
+    revalidateTag('baserow-select-options', 'max');
     return NextResponse.json(data);
   } catch (error) {
     console.error('select-options PATCH: unexpected error:', error);

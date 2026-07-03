@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_FILE_UPLOAD_URL = 'https://api.baserow.io/api/user-files/upload-file/';
@@ -87,6 +87,7 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
+    bustTableCache('documents');
     return NextResponse.json(data);
   } catch (error) {
     console.error('Upload document error:', error);

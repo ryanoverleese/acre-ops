@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProbeAssignments, getFieldSeasons, getFields, TABLE_IDS } from '@/lib/baserow';
+import { getProbeAssignments, getFieldSeasons, getFields, TABLE_IDS, bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -83,6 +83,9 @@ export async function POST() {
       }
     }
 
+    if (updated > 0) {
+      bustTableCache('probe_assignments');
+    }
     revalidatePath('/fields');
     return NextResponse.json({
       total: probeAssignments.length,

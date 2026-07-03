@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASE = 'https://api.baserow.io/api/database/rows/table';
 const TOKEN = process.env.BASEROW_API_TOKEN;
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save' }, { status: res.status });
     }
 
+    bustTableCache('mileage_logs');
     return NextResponse.json(await res.json(), { status: 201 });
   } catch (e) {
     console.error('mileage POST error', e);
@@ -96,6 +97,7 @@ export async function DELETE(request: NextRequest) {
   if (!res.ok && res.status !== 204) {
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
   }
+  bustTableCache('mileage_logs');
   return NextResponse.json({ ok: true });
 }
 
@@ -124,6 +126,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update' }, { status: res.status });
     }
 
+    bustTableCache('mileage_logs');
     return NextResponse.json(await res.json());
   } catch (e) {
     console.error('mileage PATCH error', e);

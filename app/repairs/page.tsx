@@ -1,6 +1,9 @@
-import { getRepairs, getFieldSeasons, getFields, getBillingEntities, getOperations, getProbes, getProbeAssignments, getContacts } from '@/lib/baserow';
+import { getCachedRepairs, getCachedFieldSeasons, getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedProbes, getCachedProbeAssignments, getCachedContacts } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps, getOperationNameForBillingEntity } from '@/lib/data-mappings';
 import RepairsClient, { ProcessedRepair, FieldSeasonOption, ProbeAssignmentOption } from './RepairsClient';
+
+// Data comes from cached Baserow reads; render per-request (don't prerender at build).
+export const dynamic = 'force-dynamic';
 
 async function getRepairsData(): Promise<{
   repairs: ProcessedRepair[];
@@ -9,14 +12,14 @@ async function getRepairsData(): Promise<{
 }> {
   try {
     const [repairs, fieldSeasons, fields, billingEntities, operations, probes, probeAssignments, contacts] = await Promise.all([
-      getRepairs(),
-      getFieldSeasons(),
-      getFields(),
-      getBillingEntities(),
-      getOperations(),
-      getProbes(),
-      getProbeAssignments(),
-      getContacts(),
+      getCachedRepairs(),
+      getCachedFieldSeasons(),
+      getCachedFields(),
+      getCachedBillingEntities(),
+      getCachedOperations(),
+      getCachedProbes(),
+      getCachedProbeAssignments(),
+      getCachedContacts(),
     ]);
 
     const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));

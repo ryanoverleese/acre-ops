@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -86,6 +86,7 @@ export async function POST(request: NextRequest) {
       }
 
       invoice = await createInvoiceResponse.json();
+      bustTableCache('invoices');
     }
 
     if (!invoice) {
@@ -132,6 +133,7 @@ export async function POST(request: NextRequest) {
         }
 
         const updatedLine = await updateLineResponse.json();
+        bustTableCache('invoice_lines');
 
         // Recalculate invoice total
         await updateInvoiceTotal(invoice.id);
@@ -169,6 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     const invoiceLine = await createLineResponse.json();
+    bustTableCache('invoice_lines');
 
     // Step 5: Update invoice total
     await updateInvoiceTotal(invoice.id);
@@ -212,7 +215,7 @@ async function updateInvoiceTotal(invoiceId: number) {
 
     // Update invoice amount
     const updateUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoices}/${invoiceId}/?user_field_names=true`;
-    await fetch(updateUrl, {
+    const updateResponse = await fetch(updateUrl, {
       method: 'PATCH',
       headers: {
         'Authorization': `Token ${BASEROW_TOKEN}`,
@@ -220,6 +223,9 @@ async function updateInvoiceTotal(invoiceId: number) {
       },
       body: JSON.stringify({ amount: total }),
     });
+    if (updateResponse.ok) {
+      bustTableCache('invoices');
+    }
   } catch (error) {
     console.error('Error updating invoice total:', error);
   }

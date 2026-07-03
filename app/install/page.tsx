@@ -1,4 +1,4 @@
-import { getProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type BillingEntity, type Operation, type Contact } from '@/lib/baserow';
+import { getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type BillingEntity, type Operation, type Contact } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
 
@@ -22,7 +22,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       getCachedRows<Probe>('probes', undefined, 120),
       getCachedRows<BillingEntity>('billing_entities', undefined, 300),
       getCachedRows<Operation>('operations', undefined, 300),
-      getProbeAssignments(),
+      getCachedProbeAssignments(),
       getCachedRows<Contact>('contacts', undefined, 300),
     ]);
 

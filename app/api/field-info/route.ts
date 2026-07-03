@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, createRow, addSpaceVariants } from '@/lib/baserow';
+import { TABLE_IDS, createRow, addSpaceVariants, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -100,6 +100,8 @@ export async function POST(request: NextRequest) {
       console.error('Baserow update error:', response.status, errorText);
       return NextResponse.json({ error: 'Failed to update' }, { status: response.status });
     }
+
+    bustTableCache(isFieldLevel ? 'fields' : 'field_seasons');
 
     // Fire-and-forget: log notification for customer change
     const operation = opsData.results[0];

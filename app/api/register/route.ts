@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 import { auth } from '@/auth';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newUser = await response.json();
+    bustTableCache('users');
     return NextResponse.json({
       id: newUser.id,
       email: newUser.email,

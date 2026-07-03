@@ -1,4 +1,5 @@
-import { getProbes, getBillingEntities, getFieldSeasons, getFields, getContacts, getOperations, getProbeAssignments, getRows, ProbeRackSlot } from '@/lib/baserow';
+import { getCachedRows, ProbeRackSlot } from '@/lib/baserow';
+import type { Probe, BillingEntity, FieldSeason, Field, Contact, Operation, ProbeAssignment } from '@/lib/baserow';
 import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
@@ -14,15 +15,17 @@ async function getProbesData(): Promise<{
   probeFieldAssignments: ProbeFieldAssignment[];
 }> {
   try {
+    // Cached reads — API writes bust each table's cache tag, so edits show up
+    // immediately; TTLs only matter for edits made directly in the Baserow UI.
     const [probes, billingEntities, fieldSeasons, fields, contacts, operations, probeAssignments, rackSlots] = await Promise.all([
-      getProbes(),
-      getBillingEntities(),
-      getFieldSeasons(),
-      getFields(),
-      getContacts(),
-      getOperations(),
-      getProbeAssignments(),
-      getRows<ProbeRackSlot>('probe_rack'),
+      getCachedRows<Probe>('probes', undefined, 120),
+      getCachedRows<BillingEntity>('billing_entities', undefined, 600),
+      getCachedRows<FieldSeason>('field_seasons', undefined, 120),
+      getCachedRows<Field>('fields', undefined, 120),
+      getCachedRows<Contact>('contacts', undefined, 600),
+      getCachedRows<Operation>('operations', undefined, 600),
+      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
+      getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
     ]);
 
     // Build probeId → {rack, slot, rowId} from probe_rack table

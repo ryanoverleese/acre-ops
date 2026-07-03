@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getOperations, getFields, getFieldSeasons, getBillingEntities, getProbeAssignments, getProbes, getContacts } from '@/lib/baserow';
+import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ApprovalClient from './ApprovalClient';
 
@@ -13,7 +13,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { token } = await params;
-  const operations = await getOperations();
+  const operations = await getCachedOperations();
   const operation = operations.find((op) => op.approval_token === token);
   const title = operation
     ? `Probe Approvals — ${operation.name}`
@@ -48,13 +48,13 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
 
   // Fetch all data in parallel
   const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes, contacts] = await Promise.all([
-    getOperations(),
-    getFields(),
-    getFieldSeasons(),
-    getBillingEntities(),
-    getProbeAssignments(),
-    getProbes(),
-    getContacts(),
+    getCachedOperations(),
+    getCachedFields(),
+    getCachedFieldSeasons(),
+    getCachedBillingEntities(),
+    getCachedProbeAssignments(),
+    getCachedProbes(),
+    getCachedContacts(),
   ]);
 
   const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || undefined]));

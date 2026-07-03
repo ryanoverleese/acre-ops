@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -24,6 +24,7 @@ export async function DELETE(
       return NextResponse.json({ error: `Baserow error: ${error}` }, { status: response.status });
     }
 
+    bustTableCache('documents');
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete document error:', error);

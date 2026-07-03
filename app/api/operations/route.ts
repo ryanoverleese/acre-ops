@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS } from '@/lib/baserow';
+import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
 const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newOperation = await response.json();
+    bustTableCache('operations');
     return NextResponse.json(newOperation, { status: 201 });
   } catch (error) {
     console.error('Error creating operation:', error);
