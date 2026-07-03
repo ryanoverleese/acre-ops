@@ -262,6 +262,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
         {screen === 'map' && session && (
           <MapScreen
             assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
+            loading={loadingAssignments}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
             onBack={() => setScreen('route')}
             season={session.season}
@@ -2508,6 +2509,7 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
 
 function MapScreen({
   assignments,
+  loading,
   onOpenField,
   onBack,
   season,
@@ -2515,6 +2517,7 @@ function MapScreen({
   onSelectRepair,
 }: {
   assignments: InstallerAssignment[];
+  loading?: boolean;
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
   season: number;
@@ -2579,7 +2582,9 @@ function MapScreen({
             <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
             </svg>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>No coordinates available</div>
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {loading ? 'Loading map…' : 'No coordinates available'}
+            </div>
           </div>
         ) : (
           <InstallerMapView
