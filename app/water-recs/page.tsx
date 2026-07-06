@@ -1,4 +1,4 @@
-import { getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
+import { getRows, getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
 import type { WaterRec, FieldSeason, Field, Operation, Contact, ProbeAssignment } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WaterRecsClient from './WaterRecsClient';
@@ -34,14 +34,16 @@ export default async function WaterRecsPage() {
   const currentYear = new Date().getFullYear();
 
   try {
-    // Cached reads — API writes bust each table's cache tag, so saves show up
-    // immediately; TTLs only matter for edits made directly in the Baserow UI.
+    // water_recs and field_seasons are edited FROM this page (recs + season
+    // notes), so they read uncached — tag revalidation doesn't reliably purge
+    // Netlify's cache, and Ryan must see his own saves on return. The other
+    // tables aren't edited here and stay cached for speed.
     const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, selectOptions] = await Promise.all([
       getCachedRows<Operation>('operations', undefined, 600),
       getCachedRows<Field>('fields', undefined, 120),
-      getCachedRows<FieldSeason>('field_seasons', undefined, 120),
+      getRows<FieldSeason>('field_seasons'),
       getCachedRows<Contact>('contacts', undefined, 600),
-      getCachedRows<WaterRec>('water_recs', undefined, 60),
+      getRows<WaterRec>('water_recs'),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
       getCachedAllSelectOptions(['water_recs']),
     ]);
