@@ -263,8 +263,11 @@ export function getCachedRows<T>(tableName: TableName, options?: FetchOptions, r
  *  server actions; no-ops (with a warning) anywhere revalidation isn't allowed. */
 export function bustTableCache(tableName: TableName) {
   try {
-    // Next 16 requires a cache-life profile; 'max' = purge immediately.
-    revalidateTag(`baserow-${tableName}`, 'max');
+    // { expire: 0 } = expire immediately; the next read blocks and fetches
+    // fresh. Do NOT use 'max' here — that is stale-while-revalidate, which
+    // serves the OLD data one more time after a save (user saw their edit
+    // vanish when navigating back; bit us on water recs 2026-07-06).
+    revalidateTag(`baserow-${tableName}`, { expire: 0 });
   } catch (e) {
     console.warn(`bustTableCache(${tableName}) skipped:`, e);
   }

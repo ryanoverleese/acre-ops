@@ -21,6 +21,15 @@ Leaflet touches `window` at import time and crashes server rendering; a plain
 Map tiles: use the Google tile URLs already in the codebase
 (`mt1.google.com/vt/lyrs=m` streets, `lyrs=y` hybrid). No API key needed.
 
+## Caching (lib/baserow.ts)
+Server reads go through `getCachedRows` (unstable_cache, tag `baserow-<table>`);
+every Baserow write must call `bustTableCache(table)` so edits show immediately.
+**The bust must use `revalidateTag(tag, { expire: 0 })` — never `'max'`.**
+`'max'` is stale-while-revalidate: it serves the OLD data one more time after a
+save, so users see their edit vanish when they navigate back (bit us on water
+recs 2026-07-06). Pages where Ryan actively edits-and-returns fast (water-recs)
+read their editable tables uncached on top of that.
+
 ## Deploys
 The live site is the Netlify build of `main` (ryanoverleese/acre-ops).
 UI changes require a push to appear; Baserow data changes show instantly.

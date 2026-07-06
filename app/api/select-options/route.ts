@@ -69,7 +69,7 @@ export async function PATCH(request: NextRequest) {
     const data = await response.json();
     console.log(`select-options PATCH: success for field ${fieldId}`);
     // Bust the cached select-option schema so the new option appears immediately
-    revalidateTag('baserow-select-options', 'max');
+    revalidateTag('baserow-select-options', { expire: 0 });
     return NextResponse.json(data);
   } catch (error) {
     console.error('select-options PATCH: unexpected error:', error);
