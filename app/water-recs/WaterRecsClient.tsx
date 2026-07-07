@@ -149,6 +149,9 @@ export default function WaterRecsClient({
   const [toast, setToast] = useState<string | null>(null);
   // Small status pill next to the Save button (saving / saved / error).
   const [savedStatus, setSavedStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // Fields flagged as missing a rec/water day when Copy All was clicked;
+  // non-null means the warning is showing and the next click copies anyway.
+  const [copyWarning, setCopyWarning] = useState<string[] | null>(null);
 
   // Per-recommendation save tracking. `recPersisted` holds the rec text currently
   // in Baserow for each field; `recSaveStatus` drives the little pill. When you
@@ -787,6 +790,7 @@ export default function WaterRecsClient({
   // status pill so it doesn't show a stale "saved".
   useEffect(() => {
     setSavedStatus('idle');
+    setCopyWarning(null);
   }, [selectedOperationId, mode, reportDate]);
 
   // Build copy text for Full Report
@@ -933,7 +937,31 @@ export default function WaterRecsClient({
     return lines.join('\n').trim();
   };
 
+  // Fields that would be silently missing from the copied report: in full
+  // mode a field with neither a recommendation nor a water day; in update
+  // mode a field with no day at all.
+  const getMissedFields = (): string[] => {
+    if (!currentOperation) return [];
+    return currentOperation.fields
+      .filter(field => {
+        const form = fieldForms[field.fieldSeasonId];
+        if (!form) return true;
+        if (mode === 'full') return !form.recommendation.trim() && !form.waterDay;
+        return !(form.waterDay || form.originalDay);
+      })
+      .map(field => field.fieldName);
+  };
+
   const handleCopyAll = async () => {
+    // Safety check: warn once about fields the report would silently skip;
+    // a second click copies anyway.
+    const missed = getMissedFields();
+    if (missed.length > 0 && copyWarning === null) {
+      setCopyWarning(missed);
+      showToast(`${missed.length} field${missed.length !== 1 ? 's' : ''} missing — check warning`);
+      return;
+    }
+    setCopyWarning(null);
     const text = mode === 'full' ? buildFullReportText() : buildUpdateText();
     if (!text) {
       showToast('Nothing to copy');
@@ -1542,6 +1570,20 @@ export default function WaterRecsClient({
         </div>
       )}
 
+      {/* Safety warning: fields the copied report would silently skip */}
+      {currentOperation && copyWarning && copyWarning.length > 0 && (
+        <div style={{
+          background: '#fdeeee', borderLeft: '3px solid #d03b3b', borderRadius: 6,
+          padding: '10px 14px', margin: '10px 0', fontSize: 14, color: '#7a1f1f',
+        }}>
+          <b>⚠ Missing {mode === 'full' ? 'recommendation and water day' : 'water day'} for:</b>{' '}
+          {copyWarning.join(' · ')}
+          <div style={{ marginTop: 4, fontSize: 13, color: '#a05252' }}>
+            These fields will NOT appear in the copied report. Fill them in, or click Copy Anyway.
+          </div>
+        </div>
+      )}
+
       {/* Action buttons */}
       {currentOperation && (
         <div className="wr-actions">
@@ -1559,8 +1601,9 @@ export default function WaterRecsClient({
           <button
             className="wr-copy-btn"
             onClick={handleCopyAll}
+            style={copyWarning ? { background: '#d03b3b', color: '#fff' } : undefined}
           >
-            Copy All
+            {copyWarning ? 'Copy Anyway' : 'Copy All'}
           </button>
           {savedStatus !== 'idle' && (
             <span className={`wr-autosave wr-autosave-${savedStatus}`}>
