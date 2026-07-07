@@ -21,6 +21,9 @@ interface FieldForm {
   // Update mode
   updateStatus: 'continue' | 'updated';
   originalDay: string;
+  // Front-end-only probe label for 2-probe fields ("NE", "SW") — rides along
+  // in the copied report next to the field name; not saved to Baserow.
+  probeLabel: string;
 }
 
 function getWeekRange(dateStr: string): { start: string; end: string } {
@@ -496,6 +499,7 @@ export default function WaterRecsClient({
             expanded: true,
             updateStatus: clickedDay && clickedDay !== earlyDay ? 'updated' : 'continue',
             originalDay: earlyDay,
+            probeLabel: '',
           };
         } else {
           const existing = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId);
@@ -506,6 +510,7 @@ export default function WaterRecsClient({
             expanded: true,
             updateStatus: 'continue',
             originalDay: '',
+            probeLabel: '',
           };
         }
       });
@@ -840,16 +845,21 @@ export default function WaterRecsClient({
       const form = fieldForms[field.fieldSeasonId];
       if (!form) return;
 
+      // "Cosmo East (NE)" when a probe label is set on a 2-probe field
+      const name = form.probeLabel.trim()
+        ? `${field.fieldName} (${form.probeLabel.trim()})`
+        : field.fieldName;
+
       if (form.waterDay) {
         if (!waterSchedule[form.waterDay]) waterSchedule[form.waterDay] = [];
-        waterSchedule[form.waterDay].push(field.fieldName);
+        waterSchedule[form.waterDay].push(name);
       }
 
       if (form.recommendation.trim()) {
         if (form.priority) {
-          priorityFields.push({ name: field.fieldName, rec: form.recommendation.trim() });
+          priorityFields.push({ name, rec: form.recommendation.trim() });
         } else {
-          normalFields.push({ name: field.fieldName, rec: form.recommendation.trim() });
+          normalFields.push({ name, rec: form.recommendation.trim() });
         }
       }
     });
@@ -905,10 +915,14 @@ export default function WaterRecsClient({
       const day = form.waterDay || form.originalDay;
       if (!day) return;
 
+      const name = form.probeLabel.trim()
+        ? `${field.fieldName} (${form.probeLabel.trim()})`
+        : field.fieldName;
+
       if (form.updateStatus === 'updated') {
-        updatedFields.push({ name: field.fieldName, day });
+        updatedFields.push({ name, day });
       } else {
-        continueFields.push({ name: field.fieldName, day });
+        continueFields.push({ name, day });
       }
     });
 
@@ -1191,6 +1205,20 @@ export default function WaterRecsClient({
                       {field.crop} &middot; {field.acres} ac
                     </span>
                   </div>
+
+                  {/* Probe label for 2-probe fields — front-end only, shows in copied report */}
+                  <input
+                    type="text"
+                    value={form.probeLabel}
+                    onChange={(e) => updateField(field.fieldSeasonId, { probeLabel: e.target.value })}
+                    placeholder="probe…"
+                    title='Which probe this rec/day is for on 2-probe fields (e.g. "NE", "SW") — appears next to the field name in the copied report'
+                    style={{
+                      width: 64, fontSize: 12, padding: '4px 6px', marginRight: 8,
+                      border: '1px solid #ddd', borderRadius: 6, textAlign: 'center',
+                      background: form.probeLabel ? '#f0f6ee' : 'transparent',
+                    }}
+                  />
 
                   {/* Water day pills */}
                   <div className="wr-water-day-wrap">
