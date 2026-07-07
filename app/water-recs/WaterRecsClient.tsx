@@ -125,9 +125,13 @@ function SpellHelper({ text, onFix, ignore }: {
       if (!typo) return;
       const seen = new Set<string>();
       const found: { typed: string; fix: string }[] = [];
-      for (const m of text.matchAll(/[A-Za-z]+/g)) {
+      // Apostrophe words tokenize whole ("didn't", "Seril's") and are skipped:
+      // contractions belong to the curated layer, and splitting them here made
+      // the dictionary flag fragments like "didn" (→ "Din").
+      for (const m of text.matchAll(/[A-Za-z']+/g)) {
         if (found.length >= 4) break; // don't flood the box
         const word = m[0];
+        if (word.includes("'")) continue;
         const key = word.toLowerCase();
         if (word.length < 4 || seen.has(key)) continue;
         seen.add(key);
