@@ -69,15 +69,88 @@ function findSpellIssues(text: string): { typed: string; fix: string }[] {
   return out;
 }
 
-function applySpellFix(text: string, typed: string): string {
-  const fix = SPELL_FIXES[typed.toLowerCase()];
-  if (!fix) return text;
+function applyWordFix(text: string, typed: string, fix: string): string {
   return text.replace(new RegExp(`\\b${typed}\\b`, 'gi'), (m) => matchCase(m, fix));
 }
 
+// Hunspell dictionary layer (typo-js) — lazy-loaded once from /public/dict on
+// first use, so the ~550KB dictionary never touches other pages.
+let _typoPromise: Promise<import('typo-js').default | null> | null = null;
+function loadTypo() {
+  if (!_typoPromise) {
+    _typoPromise = (async () => {
+      try {
+        const [{ default: Typo }, aff, dic] = await Promise.all([
+          import('typo-js'),
+          fetch('/dict/en_US.aff').then(r => r.text()),
+          fetch('/dict/en_US.dic').then(r => r.text()),
+        ]);
+        return new Typo('en_US', aff, dic);
+      } catch (e) {
+        console.error('Spell dictionary failed to load (non-fatal):', e);
+        return null;
+      }
+    })();
+  }
+  return _typoPromise;
+}
+const _suggestCache = new Map<string, string | null>();
+
+// Small edit-distance check so we only suggest genuinely close corrections
+function editDistance(a: string, b: string): number {
+  const m = a.length, n = b.length;
+  if (Math.abs(m - n) > 2) return 3;
+  const dp = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1]
+        ? dp[i - 1][j - 1]
+        : 1 + Math.min(dp[i - 1][j - 1], dp[i - 1][j], dp[i][j - 1]);
+  return dp[m][n];
+}
+
 /** Clickable fix chips under a text box: "cant → can't". Click subs all occurrences. */
-function SpellHelper({ text, onFix }: { text: string; onFix: (newText: string) => void }) {
-  const issues = findSpellIssues(text);
+function SpellHelper({ text, onFix, ignore }: {
+  text: string;
+  onFix: (newText: string) => void;
+  ignore?: Set<string>;
+}) {
+  const [dictIssues, setDictIssues] = useState<{ typed: string; fix: string }[]>([]);
+
+  useEffect(() => {
+    if (!text.trim()) { setDictIssues([]); return; }
+    const timer = setTimeout(async () => {
+      const typo = await loadTypo();
+      if (!typo) return;
+      const seen = new Set<string>();
+      const found: { typed: string; fix: string }[] = [];
+      for (const m of text.matchAll(/[A-Za-z]+/g)) {
+        if (found.length >= 4) break; // don't flood the box
+        const word = m[0];
+        const key = word.toLowerCase();
+        if (word.length < 4 || seen.has(key)) continue;
+        seen.add(key);
+        if (SPELL_FIXES[key]) continue;            // curated layer already covers it
+        if (ignore?.has(key)) continue;            // field/operation names, ag terms
+        if (word === word.toUpperCase()) continue; // acronyms (VWC, ASAP)
+        if (typo.check(word) || typo.check(key) || typo.check(key[0].toUpperCase() + key.slice(1))) continue;
+        let fix = _suggestCache.get(key);
+        if (fix === undefined) {
+          const suggestions = typo.suggest(word, 3) || [];
+          fix = suggestions.find(s => editDistance(key, s.toLowerCase()) <= 2) ?? null;
+          _suggestCache.set(key, fix);
+        }
+        if (fix) found.push({ typed: word, fix: matchCase(word, fix) });
+      }
+      setDictIssues(found);
+    }, 600); // debounce so it never checks mid-word
+    return () => clearTimeout(timer);
+  }, [text, ignore]);
+
+  const curated = findSpellIssues(text);
+  const curatedKeys = new Set(curated.map(i => i.typed.toLowerCase()));
+  const issues = [...curated, ...dictIssues.filter(i => !curatedKeys.has(i.typed.toLowerCase()))];
   if (issues.length === 0) return null;
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
@@ -85,7 +158,7 @@ function SpellHelper({ text, onFix }: { text: string; onFix: (newText: string) =
         <button
           key={typed.toLowerCase()}
           type="button"
-          onClick={() => onFix(applySpellFix(text, typed))}
+          onClick={() => onFix(applyWordFix(text, typed, fix))}
           title={`Replace "${typed}" with "${fix}"`}
           style={{
             fontSize: 12, padding: '2px 8px', borderRadius: 10, cursor: 'pointer',
@@ -412,6 +485,19 @@ export default function WaterRecsClient({
     () => operations.find(o => o.id === selectedOperationId) || null,
     [operations, selectedOperationId]
   );
+
+  // Words the spell checker should never flag: every operation and field name
+  // plus ag terms that aren't in a standard dictionary.
+  const spellIgnore = useMemo(() => {
+    const s = new Set<string>(['fertigation', 'fertigate', 'fertigating', 'cropx',
+      'pivots', 'subsoiling', 'sidedress', 'sidedressing', 'dryland', 'acre']);
+    operations.forEach(op => {
+      `${op.name} ${op.fields.map(f => f.fieldName).join(' ')}`
+        .split(/[^A-Za-z]+/)
+        .forEach(w => { if (w) s.add(w.toLowerCase()); });
+    });
+    return s;
+  }, [operations]);
 
   // Save the overview note as a special "overview" row in water_recs.
   // Uses the first field_season of the operation as an anchor so the
@@ -1232,7 +1318,7 @@ export default function WaterRecsClient({
               placeholder="General overview message for this operation (optional)..."
               rows={3}
             />
-            <SpellHelper text={overview} onFix={setOverview} />
+            <SpellHelper text={overview} onFix={setOverview} ignore={spellIgnore} />
             {overviewStatus === 'saving' && <span className="wr-overview-status">saving…</span>}
             {overviewStatus === 'saved' && <span className="wr-overview-status wr-overview-saved">saved</span>}
             {overviewStatus === 'error' && <span className="wr-overview-status wr-overview-error">not saved</span>}
@@ -1416,6 +1502,7 @@ export default function WaterRecsClient({
                       setFieldNotes(n => ({ ...n, [field.fieldSeasonId]: t }));
                       saveFieldNote(field.fieldSeasonId, t);
                     }}
+                    ignore={spellIgnore}
                   />
                   {noteStatus[field.fieldSeasonId] && (
                     <span className={`wr-fieldnote-status wr-fieldnote-${noteStatus[field.fieldSeasonId]}`}>
@@ -1503,6 +1590,7 @@ export default function WaterRecsClient({
                     <SpellHelper
                       text={form.recommendation}
                       onFix={(t) => updateField(field.fieldSeasonId, { recommendation: t })}
+                      ignore={spellIgnore}
                     />
                     {(() => {
                       const st = recSaveStatus[field.fieldSeasonId];
