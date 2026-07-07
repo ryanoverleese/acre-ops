@@ -26,6 +26,79 @@ interface FieldForm {
   probeLabel: string;
 }
 
+// ── Spell helper ─────────────────────────────────────────────────────────────
+// Common missing-apostrophe contractions and typos. Deliberately excludes
+// ambiguous words that are also valid ("its", "were", "well", "id", "shed").
+const SPELL_FIXES: Record<string, string> = {
+  cant: "can't", dont: "don't", wont: "won't", isnt: "isn't", arent: "aren't",
+  wasnt: "wasn't", werent: "weren't", hasnt: "hasn't", havent: "haven't",
+  hadnt: "hadn't", doesnt: "doesn't", didnt: "didn't", couldnt: "couldn't",
+  wouldnt: "wouldn't", shouldnt: "shouldn't", thats: "that's", whats: "what's",
+  heres: "here's", theres: "there's", lets: "let's", youre: "you're",
+  theyre: "they're", weve: "we've", youve: "you've", theyve: "they've",
+  ive: "I've", im: "I'm", whos: "who's", wheres: "where's",
+  teh: "the", adn: "and", taht: "that", wich: "which", recieve: "receive",
+  seperate: "separate", definately: "definitely", alot: "a lot",
+  untill: "until", occured: "occurred", thier: "their", beleive: "believe",
+  becuase: "because", tommorow: "tomorrow", wierd: "weird",
+  irrigaiton: "irrigation", irrigaton: "irrigation", moisure: "moisture",
+  fertlizer: "fertilizer", fertilzer: "fertilizer", feild: "field",
+  probaly: "probably", probally: "probably",
+};
+
+// Match the suggestion's capitalization to the typed word ("Cant" → "Can't")
+function matchCase(typed: string, suggestion: string): string {
+  if (typed[0] === typed[0].toUpperCase()) {
+    return suggestion[0].toUpperCase() + suggestion.slice(1);
+  }
+  return suggestion;
+}
+
+function findSpellIssues(text: string): { typed: string; fix: string }[] {
+  const seen = new Set<string>();
+  const out: { typed: string; fix: string }[] = [];
+  for (const m of text.matchAll(/[A-Za-z]+/g)) {
+    const word = m[0];
+    const key = word.toLowerCase();
+    const fix = SPELL_FIXES[key];
+    if (fix && !seen.has(key)) {
+      seen.add(key);
+      out.push({ typed: word, fix: matchCase(word, fix) });
+    }
+  }
+  return out;
+}
+
+function applySpellFix(text: string, typed: string): string {
+  const fix = SPELL_FIXES[typed.toLowerCase()];
+  if (!fix) return text;
+  return text.replace(new RegExp(`\\b${typed}\\b`, 'gi'), (m) => matchCase(m, fix));
+}
+
+/** Clickable fix chips under a text box: "cant → can't". Click subs all occurrences. */
+function SpellHelper({ text, onFix }: { text: string; onFix: (newText: string) => void }) {
+  const issues = findSpellIssues(text);
+  if (issues.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+      {issues.map(({ typed, fix }) => (
+        <button
+          key={typed.toLowerCase()}
+          type="button"
+          onClick={() => onFix(applySpellFix(text, typed))}
+          title={`Replace "${typed}" with "${fix}"`}
+          style={{
+            fontSize: 12, padding: '2px 8px', borderRadius: 10, cursor: 'pointer',
+            border: '1px solid #e0ba63', background: '#fdf6e3', color: '#7a5c0f',
+          }}
+        >
+          {typed} → <b>{fix}</b>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function getWeekRange(dateStr: string): { start: string; end: string } {
   const date = new Date(dateStr + 'T12:00:00');
   const day = date.getDay();
@@ -1159,6 +1232,7 @@ export default function WaterRecsClient({
               placeholder="General overview message for this operation (optional)..."
               rows={3}
             />
+            <SpellHelper text={overview} onFix={setOverview} />
             {overviewStatus === 'saving' && <span className="wr-overview-status">saving…</span>}
             {overviewStatus === 'saved' && <span className="wr-overview-status wr-overview-saved">saved</span>}
             {overviewStatus === 'error' && <span className="wr-overview-status wr-overview-error">not saved</span>}
@@ -1336,6 +1410,13 @@ export default function WaterRecsClient({
                     placeholder="Season note for this field (saved all year)…"
                     rows={1}
                   />
+                  <SpellHelper
+                    text={fieldNotes[field.fieldSeasonId] ?? ''}
+                    onFix={(t) => {
+                      setFieldNotes(n => ({ ...n, [field.fieldSeasonId]: t }));
+                      saveFieldNote(field.fieldSeasonId, t);
+                    }}
+                  />
                   {noteStatus[field.fieldSeasonId] && (
                     <span className={`wr-fieldnote-status wr-fieldnote-${noteStatus[field.fieldSeasonId]}`}>
                       {noteStatus[field.fieldSeasonId] === 'saving' && 'saving…'}
@@ -1418,6 +1499,10 @@ export default function WaterRecsClient({
                       onBlur={() => saveOneRec(field.fieldSeasonId)}
                       placeholder={isPriority ? 'Priority field - recommendation required...' : 'Write a recommendation (or leave blank for status quo)...'}
                       rows={3}
+                    />
+                    <SpellHelper
+                      text={form.recommendation}
+                      onFix={(t) => updateField(field.fieldSeasonId, { recommendation: t })}
                     />
                     {(() => {
                       const st = recSaveStatus[field.fieldSeasonId];
