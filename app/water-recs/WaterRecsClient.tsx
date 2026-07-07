@@ -969,6 +969,16 @@ export default function WaterRecsClient({
     return dayStr;
   };
 
+  // Copy formatting: "Morn Thursday" → "Thursday Morning", "Eve Thursday" →
+  // "Thursday Evening" (time of day reads AFTER the day); "Next Thursday"
+  // keeps Next in front. Works for two-day picks ("Wednesday or Thursday").
+  const formatDayForCopy = (dayStr: string): string => {
+    const parts = dayStr.split(' ');
+    if (parts[0] === 'Morn' && parts.length > 1) return `${todayLabel(parts.slice(1).join(' '))} Morning`;
+    if (parts[0] === 'Eve' && parts.length > 1) return `${todayLabel(parts.slice(1).join(' '))} Evening`;
+    return todayLabel(dayStr);
+  };
+
   // Sort key: soonest first. ASAP on top, then today, then forward through the
   // week; "Next <day>" is a week out; Hold (and anything unscheduled) sinks last.
   const daySortKey = (dayStr: string): number => {
@@ -1045,7 +1055,7 @@ export default function WaterRecsClient({
       lines.push('Water Schedule:', '');
       scheduleDays.forEach(day => {
         const sorted = [...waterSchedule[day]].sort((a, b) => a.localeCompare(b));
-        lines.push(`${todayLabel(day)}:`);
+        lines.push(`${formatDayForCopy(day)}:`);
         sorted.forEach(name => lines.push(name));
         lines.push('');
       });
@@ -1092,7 +1102,7 @@ export default function WaterRecsClient({
         const byDayDiff = daySortKey(a.day) - daySortKey(b.day);
         return byDayDiff !== 0 ? byDayDiff : a.name.localeCompare(b.name);
       });
-      const out = sorted.map(f => `${f.name} - ${todayLabel(f.day)}`);
+      const out = sorted.map(f => `${f.name} - ${formatDayForCopy(f.day)}`);
       out.push('');
       return out;
     };
@@ -1411,8 +1421,15 @@ export default function WaterRecsClient({
                         const days = [...allDays.slice(todayIdx), ...allDays.slice(0, todayIdx)];
                         const mods = ['Morn', 'Eve', 'Next', 'ASAP', 'Hold'];
 
+                        // Up to two days can be selected → "Wednesday or Thursday".
+                        // Click a selected day to drop it; a third day starts over.
                         const setDay = (label: string) => {
-                          const newDay = day === label ? '' : label;
+                          let sel = day ? day.split(' or ') : [];
+                          if (sel.includes(label)) sel = sel.filter(d => d !== label);
+                          else if (sel.length >= 2) sel = [label];
+                          else sel = [...sel, label];
+                          sel.sort((a, b) => daySortKey(a) - daySortKey(b)); // soonest first
+                          const newDay = sel.join(' or ');
                           const combined = mod && newDay ? `${mod} ${newDay}` : newDay;
                           updateField(field.fieldSeasonId, { waterDay: combined });
                           saveWaterDay(field.fieldSeasonId, combined);
@@ -1446,8 +1463,10 @@ export default function WaterRecsClient({
                               // DAY_NAMES is Mon=0, but JS getDay is Mon=1, Sun=0
                               const jsIdx = dayIdx === 6 ? 0 : dayIdx + 1;
                               const away = (jsIdx - todayIdx + 7) % 7;
-                              const isSug = sugDayName === d.label && day !== d.label;
-                              const isPrev = prevDayName === d.label && day !== d.label;
+                              const selDays = day ? day.split(' or ') : [];
+                              const isActive = selDays.includes(d.label);
+                              const isSug = sugDayName === d.label && !isActive;
+                              const isPrev = prevDayName === d.label && !isActive;
                               const titleParts = [];
                               if (isSug) titleParts.push(`Suggested: ${sugDay}`);
                               if (isPrev) titleParts.push(`Last week: ${prevDay}`);
@@ -1455,7 +1474,7 @@ export default function WaterRecsClient({
                                 <button
                                   key={d.key}
                                   type="button"
-                                  className={`wr-pill${day === d.label ? ' active' : ''}${isPrev ? ' early-week' : ''}${isSug ? ' suggested' : ''}`}
+                                  className={`wr-pill${isActive ? ' active' : ''}${isPrev ? ' early-week' : ''}${isSug ? ' suggested' : ''}`}
                                   onClick={() => setDay(d.label)}
                                   title={titleParts.length ? titleParts.join(' · ') : d.label}
                                 >
