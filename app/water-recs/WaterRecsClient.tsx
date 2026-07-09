@@ -1673,6 +1673,21 @@ export default function WaterRecsClient({
                   )}
                 </div>
 
+                {/* Probe label for 2-probe fields — front-end only, rides into the
+                    copied update text as "Field Name (NE)" */}
+                <input
+                  type="text"
+                  value={form.probeLabel}
+                  onChange={(e) => updateField(field.fieldSeasonId, { probeLabel: e.target.value })}
+                  placeholder="probe…"
+                  title='Which probe this day is for on 2-probe fields (e.g. "NE", "SW") — appears next to the field name in the copied report'
+                  style={{
+                    width: 64, fontSize: 12, padding: '4px 6px', marginRight: 8,
+                    border: '1px solid #ddd', borderRadius: 6, textAlign: 'center',
+                    background: form.probeLabel ? '#f0f6ee' : 'transparent',
+                  }}
+                />
+
                 {/* Click a day to create the late-week record; the early-week
                     day shows shaded as a reference until you do. */}
                 <div className="wr-water-day-wrap">
