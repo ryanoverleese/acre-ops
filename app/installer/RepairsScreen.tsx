@@ -72,6 +72,49 @@ async function shareRepairReport(repair: InstallerRepair, msg: string, onCopied:
   }
 }
 
+// ── Repair tile reordering (installer's route order, saved per device) ─────────
+
+function orderStorageKey(season: number): string {
+  return `af-repair-order-${season}`;
+}
+
+function loadSavedOrder(season: number): number[] {
+  if (typeof window === 'undefined') return [];
+  try { return JSON.parse(localStorage.getItem(orderStorageKey(season)) || '[]'); }
+  catch { return []; }
+}
+
+function saveOrder(season: number, ids: number[]): void {
+  try { localStorage.setItem(orderStorageKey(season), JSON.stringify(ids)); } catch { /* private mode / quota */ }
+}
+
+// Sort the fetched open repairs by the installer's saved order. Anything not in
+// the saved order (a newly-reported repair) keeps server order and falls to the
+// bottom, so an already-arranged route stays put.
+function applySavedOrder(list: InstallerRepair[], season: number): InstallerRepair[] {
+  const saved = loadSavedOrder(season);
+  if (!saved.length) return list;
+  const rank = new Map(saved.map((id, i) => [id, i]));
+  return [...list].sort((a, b) =>
+    (rank.has(a.id) ? rank.get(a.id)! : Number.MAX_SAFE_INTEGER) -
+    (rank.has(b.id) ? rank.get(b.id)! : Number.MAX_SAFE_INTEGER)
+  );
+}
+
+function GripIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <circle cx="5" cy="3.5" r="1.4" /><circle cx="11" cy="3.5" r="1.4" />
+      <circle cx="5" cy="8" r="1.4" /><circle cx="11" cy="8" r="1.4" />
+      <circle cx="5" cy="12.5" r="1.4" /><circle cx="11" cy="12.5" r="1.4" />
+    </svg>
+  );
+}
+
+function InsertionLine() {
+  return <div style={{ height: 3, borderRadius: 2, background: 'var(--field-green)', margin: '3px 0' }} />;
+}
+
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', fontSize: 16,
   border: '1.5px solid var(--border-1)', borderRadius: 10,
@@ -626,6 +669,60 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
   // its Back button then returns straight to the map instead of the list.
   const openedFromMapRef = useRef(false);
 
+  // Drag-to-reorder state (Open tab only). Positions are captured once at drag
+  // start; only the dragged tile moves, so those rects stay valid mid-drag.
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dragDy, setDragDy] = useState(0);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dragStartY = useRef(0);
+  const dragFrom = useRef(-1);
+  const dragRects = useRef<{ top: number; height: number }[]>([]);
+  const didDrag = useRef(false);
+
+  const startDrag = (e: React.PointerEvent, index: number) => {
+    e.preventDefault(); e.stopPropagation();
+    dragFrom.current = index;
+    dragStartY.current = e.clientY;
+    didDrag.current = false;
+    dragRects.current = itemRefs.current.map(el => {
+      const rect = el?.getBoundingClientRect();
+      return rect ? { top: rect.top, height: rect.height } : { top: 0, height: 0 };
+    });
+    setDragId(repairs[index].id);
+    setDropIndex(index);
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* older browser */ }
+  };
+
+  const moveDrag = (e: React.PointerEvent) => {
+    if (dragFrom.current < 0) return;
+    const dy = e.clientY - dragStartY.current;
+    if (Math.abs(dy) > 4) didDrag.current = true;
+    setDragDy(dy);
+    const rects = dragRects.current;
+    let ti = rects.length;
+    for (let i = 0; i < rects.length; i++) {
+      if (e.clientY < rects[i].top + rects[i].height / 2) { ti = i; break; }
+    }
+    setDropIndex(ti);
+  };
+
+  const endDrag = () => {
+    const from = dragFrom.current;
+    const to = dropIndex;
+    const moved = didDrag.current;
+    dragFrom.current = -1;
+    setDragId(null); setDragDy(0); setDropIndex(null);
+    if (from < 0 || to === null || !moved) return;
+    const next = [...repairs];
+    const [item] = next.splice(from, 1);
+    let insert = to > from ? to - 1 : to;
+    insert = Math.max(0, Math.min(next.length, insert));
+    next.splice(insert, 0, item);
+    setRepairs(next);
+    saveOrder(season, next.map(r => r.id));
+  };
+
   const fetchRepairs = async (fresh = false, t: 'open' | 'done' = tab) => {
     setLoading(true);
     try {
@@ -633,7 +730,7 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
       const res = await fetch(`/api/installer/repairs?season=${season}${status}${fresh ? '&fresh=1' : ''}`, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       const loaded: InstallerRepair[] = data.repairs ?? [];
-      setRepairs(loaded);
+      setRepairs(t === 'open' ? applySavedOrder(loaded, season) : loaded);
       // If navigated here from map, auto-open that repair's closeout (open tab only)
       if (t === 'open' && initialRepairId) {
         const target = loaded.find(r => r.id === initialRepairId);
@@ -673,6 +770,9 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
   if (subscreen === 'report' && selected) {
     return <ReportView repair={selected} onBack={() => { setSubscreen('list'); setSelected(null); }} />;
   }
+
+  const reorderable = tab === 'open' && !loading && repairs.length > 1;
+  itemRefs.current.length = repairs.length;
 
   return (
     <div className="af-screen">
@@ -738,61 +838,97 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
             <div style={{ fontSize: 13 }}>{tab === 'done' ? 'Closed-out repairs show up here' : 'Tap + to log a new ticket'}</div>
           </div>
         ) : (
-          repairs.map(r => {
+          repairs.map((r, i) => {
             const done = tab === 'done';
             const watch = !done && !!r.watchList;
+            const dragging = dragId === r.id;
+            const showLineBefore = reorderable && dragId !== null && dropIndex === i;
+            const showLineAtEnd = reorderable && dragId !== null && dropIndex === repairs.length && i === repairs.length - 1;
             return (
-            <button
+            <div
               key={r.id}
-              onClick={() => {
-                openedFromMapRef.current = false;
-                setSelected(r);
-                setSubscreen(done ? 'report' : 'closeout');
-              }}
+              ref={el => { itemRefs.current[i] = el; }}
               style={{
-                display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
-                padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
-                background: watch ? REPAIR_COLORS.watchBgSoft : '#fff',
-                border: `1.5px solid ${watch ? REPAIR_COLORS.watchBorder : 'var(--border-1)'}`,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.06)', cursor: 'pointer',
+                position: 'relative',
+                transform: dragging ? `translateY(${dragDy}px)` : undefined,
+                zIndex: dragging ? 20 : undefined,
+                transition: dragId === null ? 'transform 0.16s ease' : undefined,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : repairColor(true, watch), flexShrink: 0 }} />
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
-                  {r.fieldName}
+              {showLineBefore && <InsertionLine />}
+              <button
+                onClick={() => {
+                  if (didDrag.current) { didDrag.current = false; return; }
+                  openedFromMapRef.current = false;
+                  setSelected(r);
+                  setSubscreen(done ? 'report' : 'closeout');
+                }}
+                style={{
+                  display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
+                  padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
+                  background: watch ? REPAIR_COLORS.watchBgSoft : '#fff',
+                  border: `1.5px solid ${watch ? REPAIR_COLORS.watchBorder : 'var(--border-1)'}`,
+                  boxShadow: dragging ? '0 8px 20px rgba(0,0,0,0.18)' : '0 2px 8px rgba(0,0,0,0.06)',
+                  cursor: 'pointer',
+                  opacity: dragId !== null && !dragging ? 0.85 : 1,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : repairColor(true, watch), flexShrink: 0 }} />
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
+                    {r.fieldName}
+                  </div>
+                  {watch && (
+                    <div style={{
+                      fontSize: 10, fontWeight: 700, color: REPAIR_COLORS.watchText, letterSpacing: '0.08em',
+                      textTransform: 'uppercase', background: REPAIR_COLORS.watchBg, border: `1px solid ${REPAIR_COLORS.watchBorder}`,
+                      borderRadius: 999, padding: '2px 8px', flexShrink: 0,
+                    }}>
+                      Watch
+                    </div>
+                  )}
+                  <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{fmtDate(done ? r.repairedAt ?? '' : r.reportedAt)}</div>
+                  {reorderable && (
+                    <div
+                      onPointerDown={e => startDrag(e, i)}
+                      onPointerMove={moveDrag}
+                      onPointerUp={endDrag}
+                      onPointerCancel={endDrag}
+                      onClick={e => { e.stopPropagation(); }}
+                      aria-label="Drag to reorder"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        marginLeft: 2, marginRight: -4, padding: '4px 4px',
+                        cursor: 'grab', touchAction: 'none', flexShrink: 0,
+                        color: 'var(--stone-500)',
+                      }}
+                    >
+                      <GripIcon />
+                    </div>
+                  )}
                 </div>
-                {watch && (
-                  <div style={{
-                    fontSize: 10, fontWeight: 700, color: REPAIR_COLORS.watchText, letterSpacing: '0.08em',
-                    textTransform: 'uppercase', background: REPAIR_COLORS.watchBg, border: `1px solid ${REPAIR_COLORS.watchBorder}`,
-                    borderRadius: 999, padding: '2px 8px', flexShrink: 0,
-                  }}>
-                    Watch
+                {r.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18 }}>{r.operation}</div>}
+                {done ? (
+                  r.fix && (
+                    <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
+                      {r.fix.length > 80 ? r.fix.slice(0, 80) + '…' : r.fix}
+                    </div>
+                  )
+                ) : (
+                  r.problem && (
+                    <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
+                      {r.problem.length > 80 ? r.problem.slice(0, 80) + '…' : r.problem}
+                    </div>
+                  )
+                )}
+                {r.probeSerial && (
+                  <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18, fontFamily: 'var(--font-mono)' }}>
+                    #{r.probeSerial}{r.label ? ` · ${r.label}` : ''}
                   </div>
                 )}
-                <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{fmtDate(done ? r.repairedAt ?? '' : r.reportedAt)}</div>
-              </div>
-              {r.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18 }}>{r.operation}</div>}
-              {done ? (
-                r.fix && (
-                  <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
-                    {r.fix.length > 80 ? r.fix.slice(0, 80) + '…' : r.fix}
-                  </div>
-                )
-              ) : (
-                r.problem && (
-                  <div style={{ fontSize: 14, color: 'var(--ink)', marginLeft: 18, lineHeight: 1.4 }}>
-                    {r.problem.length > 80 ? r.problem.slice(0, 80) + '…' : r.problem}
-                  </div>
-                )
-              )}
-              {r.probeSerial && (
-                <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18, fontFamily: 'var(--font-mono)' }}>
-                  #{r.probeSerial}{r.label ? ` · ${r.label}` : ''}
-                </div>
-              )}
-            </button>
+              </button>
+              {showLineAtEnd && <InsertionLine />}
+            </div>
             );
           })
         )}
