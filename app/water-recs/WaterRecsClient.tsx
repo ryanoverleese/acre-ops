@@ -262,12 +262,20 @@ export default function WaterRecsClient({
     const m = params.get('mode');
     const d = params.get('date');
     if (m === 'full' || m === 'update') setMode(m);
-    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) setReportDate(d);
+    // Honor a date from the URL only if it's today or later. A PAST date is a
+    // stale leftover from a tab left open on an earlier day — trusting it
+    // silently writes today's reports onto that old date (caused duplicate sets
+    // on the wrong day). Same-day refresh (date === today) still persists, and
+    // intentionally forward-dated reports (writing tomorrow's tonight) still work.
+    const today = new Date().toISOString().split('T')[0];
+    const urlDateValid = !!d && /^\d{4}-\d{2}-\d{2}$/.test(d);
+    const effectiveDate = urlDateValid && d! >= today ? d! : today;
+    setReportDate(effectiveDate);
     // Which customer to land on. Keep the saved op only if it's part of TODAY's
     // route (a genuine mid-route refresh). If it's from the other day's route
     // (or there's no saved op), start at the top of today's route instead.
     const opNum = op && operations.some(o => String(o.id) === op) ? Number(op) : null;
-    const dstr = d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : reportDate;
+    const dstr = effectiveDate;
     const isTueFri = [2, 5].includes(new Date(dstr + 'T12:00:00').getDay());
     const otherRouteIds = isTueFri ? ROUTE_MON_THU : ROUTE_TUE_FRI;
     if (opNum != null && !otherRouteIds.includes(opNum)) {
