@@ -115,26 +115,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, created: 0, createdIds: [], total: 0 });
     }
 
-    // 1) CREATE FIRST, in a single batch request. If this fails we have NOT
-    //    touched the existing rows, so the user's saved recs can never be lost
-    //    to a throttle/partial failure (the old delete-then-recreate bug).
+    // 1) CREATE FIRST. If this fails we have NOT touched the existing rows, so
+    //    the user's saved recs can never be lost to a throttle/partial failure
+    //    (the old delete-then-recreate bug).
+    //    Try the batch endpoint, but fall back to one-row-at-a-time creates:
+    //    on 2026-07-17 Baserow's /batch/ endpoint started rejecting EVERY item
+    //    with ERROR_REQUEST_BODY_VALIDATION ("This field is required") — by
+    //    field name AND field id, any payload — while the single-row endpoint
+    //    kept working. The fallback keeps saves alive through that kind of
+    //    upstream breakage either way.
+    let createdIds: number[] = [];
+    const createdBySeason = new Set<number>();
+    const failedSeasons: number[] = [];
+
     const createRes = await fetchWithRetry(
       `${BASEROW_API_URL}/${TABLE_IDS.water_recs}/batch/?user_field_names=true`,
       { method: 'POST', headers: authHeaders, body: JSON.stringify({ items: records.map(buildPayload) }) }
     );
 
-    if (!createRes.ok) {
-      const error = await createRes.text();
-      console.error('Batch create failed (kept existing rows):', error);
-      return NextResponse.json(
-        { success: false, created: 0, createdIds: [], total: records.length, error },
-        { status: 502 }
-      );
+    if (createRes.ok) {
+      const createData = await createRes.json();
+      const createdRows: { id: number }[] = createData.items || [];
+      createdIds = createdRows.map(r => r.id);
+      records.forEach(r => createdBySeason.add(r.field_season));
+    } else {
+      console.error('Batch create failed, falling back to single-row creates:', await createRes.text());
+      for (const rec of records) {
+        const res = await fetchWithRetry(
+          `${BASEROW_API_URL}/${TABLE_IDS.water_recs}/?user_field_names=true`,
+          { method: 'POST', headers: authHeaders, body: JSON.stringify(buildPayload(rec)) }
+        );
+        if (res.ok) {
+          const row = await res.json();
+          createdIds.push(row.id);
+          createdBySeason.add(rec.field_season);
+        } else {
+          failedSeasons.push(rec.field_season);
+          console.error(`Single-row create failed for field_season ${rec.field_season}:`, await res.text());
+        }
+      }
+      if (createdIds.length === 0) {
+        return NextResponse.json(
+          { success: false, created: 0, createdIds: [], total: records.length, error: 'all creates failed' },
+          { status: 502 }
+        );
+      }
     }
-
-    const createData = await createRes.json();
-    const createdRows: { id: number }[] = createData.items || [];
-    const createdIds = createdRows.map(r => r.id);
 
     // 2) Only AFTER the new rows exist, clean up the OLD ones — chosen by
     //    server-side query, not by client-supplied ids. Scope: the operation's
@@ -146,6 +172,9 @@ export async function POST(request: NextRequest) {
         ? scopeFieldSeasons
         : records.map(r => r.field_season)
     );
+    // If any single-row create failed, that field's OLD row is all it has left —
+    // take it out of the cleanup scope so we never delete it.
+    failedSeasons.forEach(fs => scope.delete(fs));
     const reportTypes = new Set<string>(
       reportType ? [reportType] : records.map(r => r.report_type).filter(Boolean) as string[]
     );
@@ -168,10 +197,11 @@ export async function POST(request: NextRequest) {
 
     bustTableCache('water_recs');
     return NextResponse.json({
-      success: true,
+      success: failedSeasons.length === 0,
       created: createdIds.length,
       createdIds,
       deleted: toDelete.length,
+      failed: failedSeasons.length,
       total: records.length,
     });
   } catch (error) {
