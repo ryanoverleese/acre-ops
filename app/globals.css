@@ -8936,6 +8936,16 @@ tr.expanded-row:hover {
   flex-wrap: wrap;
 }
 
+/* Scratch pick-list checkbox on early-week cards — front-end only, never saved */
+.wr-pick {
+  width: 19px;
+  height: 19px;
+  flex-shrink: 0;
+  margin: 0 2px 0 0;
+  cursor: pointer;
+  accent-color: var(--accent-primary);
+}
+
 .wr-priority-btn {
   width: 28px;
   height: 28px;

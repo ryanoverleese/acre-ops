@@ -321,6 +321,16 @@ export default function WaterRecsClient({
   const [recPersisted, setRecPersisted] = useState<Record<number, string>>({});
   const [recSaveStatus, setRecSaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
 
+  // Scratch checkboxes for picking which probes to write recs on this week.
+  // Deliberately NOT saved to Baserow and NOT persisted between weeks — it's a
+  // working list for the current sitting only.
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  const togglePicked = (id: number) => setPicked(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   // Per-field water-day save tracking
   const [dayPersisted, setDayPersisted] = useState<Record<number, string>>({});
   const [daySaveStatus, setDaySaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
@@ -1374,6 +1384,19 @@ export default function WaterRecsClient({
                   >
                     !
                   </button>
+
+                  {/* Scratch pick-list checkbox (full/early-week mode only).
+                      Front-end only — never saved, cleared on reload. */}
+                  {mode === 'full' && (
+                    <input
+                      type="checkbox"
+                      className="wr-pick"
+                      checked={picked.has(field.fieldSeasonId)}
+                      onChange={() => togglePicked(field.fieldSeasonId)}
+                      title="Mark this probe to write a rec on (not saved)"
+                      aria-label={`Pick ${field.fieldName} to write a rec`}
+                    />
+                  )}
 
                   {/* Field name + crop */}
                   <div className="wr-field-info">
