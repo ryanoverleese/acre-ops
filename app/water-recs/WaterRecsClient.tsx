@@ -1203,6 +1203,20 @@ export default function WaterRecsClient({
         </div>
       </header>
       <div className="content">
+      {/* Who you are writing for, said plainly and once. The dropdown alone was
+          not enough: it looks like a filter, not an answer, so the eye skipped
+          it and landed on the Next button's name instead. */}
+      {currentOperation && (
+        <div className="wr-current-op">
+          <span className="wr-current-op-eyebrow">Writing reports for</span>
+          <strong className="wr-current-op-name">{currentOperation.name}</strong>
+          <span className="wr-current-op-meta">
+            {currentOperation.fields.length} field{currentOperation.fields.length === 1 ? '' : 's'}
+            {currentOpIndex >= 0 ? ` · ${currentOpIndex + 1} of ${orderedOps.length} on today's route` : ''}
+          </span>
+        </div>
+      )}
+
       {/* Controls */}
       <div className="wr-controls">
         <SearchableSelect
@@ -1271,7 +1285,13 @@ export default function WaterRecsClient({
             disabled={!nextOp}
             title={nextOp ? `Next: ${nextOp.name}` : ''}
           >
-            {nextOp ? <>Next: <b>{nextOp.name}</b> &rarr;</> : <>Next &rarr;</>}
+            {/* The destination's name used to be the boldest thing on this row,
+                while the grower actually open sat in a muted dropdown — so it
+                read as "you are on Dwight" and cost a set of reports opened
+                against the wrong grower's probes. The label leads with the
+                action now; the name rides along quietly underneath. */}
+            <span className="wr-page-next-label">Next &rarr;</span>
+            {nextOp && <small className="wr-page-next-name">{nextOp.name}</small>}
           </button>
         </div>
       </div>
