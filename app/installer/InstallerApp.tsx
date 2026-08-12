@@ -53,6 +53,20 @@ function mapsUrlFor(lat: number, lng: number, provider: MapProvider): string {
   if (provider === 'apple') return `https://maps.apple.com/?q=${lat},${lng}&ll=${lat},${lng}`;
   return `https://maps.google.com/?q=${lat},${lng}`;
 }
+
+// Bottom-bar tabs the user has hidden in Settings (per device, like map provider).
+type HideableTab = 'loadout' | 'repairs';
+const HIDDEN_TABS_KEY = 'af-hidden-tabs';
+function loadHiddenTabs(): Set<HideableTab> {
+  if (typeof window === 'undefined') return new Set();
+  try {
+    const arr = JSON.parse(localStorage.getItem(HIDDEN_TABS_KEY) || '[]');
+    return new Set(Array.isArray(arr) ? arr.filter((t): t is HideableTab => t === 'loadout' || t === 'repairs') : []);
+  } catch { return new Set(); }
+}
+function saveHiddenTabs(tabs: Set<HideableTab>) {
+  try { localStorage.setItem(HIDDEN_TABS_KEY, JSON.stringify([...tabs])); } catch { /* private mode / quota */ }
+}
 type Filter = 'todo' | 'done' | 'all';
 
 interface Session {
@@ -206,12 +220,19 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   // Last map center/zoom, so returning to the map lands you right where you were
   // instead of re-fitting to all stops.
   const mapViewRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
+  const [hiddenTabs, setHiddenTabs] = useState<Set<HideableTab>>(new Set());
 
   useEffect(() => {
     const s = loadSession();
     if (s) { setSession(s); fetchAssignments(s); setScreen('route'); }
+    setHiddenTabs(loadHiddenTabs());
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleHiddenTabsChange = (tabs: Set<HideableTab>) => {
+    setHiddenTabs(tabs);
+    saveHiddenTabs(tabs);
+  };
 
   const fetchAssignments = useCallback(async (s: Session, fresh = false) => {
     setLoadingAssignments(true);
@@ -307,6 +328,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             session={session}
             onBack={() => setScreen('me')}
             onAdHocInstall={(a) => { setSelected(a); setScreen('field'); }}
+            hiddenTabs={hiddenTabs}
+            onHiddenTabsChange={handleHiddenTabsChange}
           />
         )}
         {screen === 'summary' && session && (
@@ -356,13 +379,14 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
           current={screen}
           onNav={setScreen}
           installer={session?.installer ?? ''}
+          hiddenTabs={hiddenTabs}
         />
       )}
     </div>
   );
 }
 
-function BottomBar({ current, onNav, installer }: { current: Screen; onNav: (s: Screen) => void; installer: string }) {
+function BottomBar({ current, onNav, installer, hiddenTabs }: { current: Screen; onNav: (s: Screen) => void; installer: string; hiddenTabs: Set<HideableTab> }) {
   const isRoute = current === 'route' || current === 'field' || current === 'install' || current === 'success';
   const isRyan = installer.toLowerCase() === 'ryan';
   return (
@@ -381,12 +405,14 @@ function BottomBar({ current, onNav, installer }: { current: Screen; onNav: (s: 
         </svg>
         Map
       </button>
-      <button className="af-tab" aria-current={current === 'loadout' ? 'true' : undefined} onClick={() => onNav('loadout')}>
-        <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-          <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-        </svg>
-        Loadout
-      </button>
+      {!hiddenTabs.has('loadout') && (
+        <button className="af-tab" aria-current={current === 'loadout' ? 'true' : undefined} onClick={() => onNav('loadout')}>
+          <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+          </svg>
+          Loadout
+        </button>
+      )}
       <button className="af-tab" aria-current={current === 'removals' ? 'true' : undefined} onClick={() => onNav('removals')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <line x1="12" y1="16" x2="12" y2="4" /><polyline points="6 10 12 4 18 10" />
@@ -394,7 +420,7 @@ function BottomBar({ current, onNav, installer }: { current: Screen; onNav: (s: 
         </svg>
         Pull
       </button>
-      {isRyan && (
+      {isRyan && !hiddenTabs.has('repairs') && (
         <button className="af-tab" aria-current={current === 'repairs' ? 'true' : undefined} onClick={() => onNav('repairs')}>
           <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
             <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/>
@@ -4046,12 +4072,20 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
-function SettingsScreen({ session, onBack, onAdHocInstall }: {
+function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenTabsChange }: {
   session: Session;
   onBack: () => void;
   onAdHocInstall: (a: InstallerAssignment) => void;
+  hiddenTabs: Set<HideableTab>;
+  onHiddenTabsChange: (tabs: Set<HideableTab>) => void;
 }) {
   const [mapProvider, setMapProvider] = useState<MapProvider>('google');
+
+  const toggleTab = (tab: HideableTab) => {
+    const next = new Set(hiddenTabs);
+    if (next.has(tab)) next.delete(tab); else next.add(tab);
+    onHiddenTabsChange(next);
+  };
   const [showAdHoc, setShowAdHoc] = useState(false);
   const [adHocLoading, setAdHocLoading] = useState(false);
   const [adHocAll, setAdHocAll] = useState<InstallerAssignment[]>([]);
@@ -4140,6 +4174,63 @@ function SettingsScreen({ session, onBack, onAdHocInstall }: {
           </div>
           <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 8, padding: '0 4px', lineHeight: 1.4 }}>
             Used when you tap &ldquo;Get directions&rdquo; from a field.
+          </div>
+        </div>
+
+        {/* Bottom bar tabs */}
+        <div style={{ marginBottom: 22 }}>
+          <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Bottom bar</div>
+          <div style={{
+            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+            borderRadius: 'var(--r-lg)', overflow: 'hidden',
+          }}>
+            {([
+              { id: 'loadout' as const, label: 'Loadout', sub: 'Flag & supply counts for the day' },
+              ...(session.installer.toLowerCase() === 'ryan'
+                ? [{ id: 'repairs' as const, label: 'Repairs', sub: 'Repair tickets & close-outs' }]
+                : []),
+            ]).map((tab, i, arr) => {
+              const shown = !hiddenTabs.has(tab.id);
+              return (
+                <div
+                  key={tab.id}
+                  style={{
+                    padding: '14px 14px',
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
+                      {tab.label}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                      {tab.sub}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => toggleTab(tab.id)}
+                    aria-pressed={shown}
+                    aria-label={`${shown ? 'Hide' : 'Show'} ${tab.label} tab`}
+                    style={{
+                      width: 52, height: 30, borderRadius: 15, border: 'none', cursor: 'pointer',
+                      background: shown ? 'var(--field-green)' : '#d1d5db',
+                      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                    }}
+                  >
+                    <div style={{
+                      position: 'absolute', top: 4, left: shown ? 26 : 4,
+                      width: 22, height: 22, borderRadius: 11,
+                      background: '#fff', transition: 'left 0.2s',
+                      boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+                    }} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 8, padding: '0 4px', lineHeight: 1.4 }}>
+            Turn a tab off to hide it from the bottom bar on this device.
           </div>
         </div>
 
