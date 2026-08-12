@@ -226,6 +226,11 @@ export interface InstalledProbeData {
   photoFieldEndUrl: string;
   photoExtraUrl: string;
   antennaType: string;
+  removed: boolean;
+  removalDate: string;
+  removedBy: string;
+  removalNotes: string;
+  removalPhotoUrl: string;
 }
 
 interface EditInstallForm {
@@ -522,17 +527,25 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
     return installedProbes.filter(p => p.operation === operationFilter);
   }, [installedProbes, operationFilter]);
 
+  // Probes actually in the ground — the map and antenna audit only care about
+  // these; removed probes stay in the table with their removal record.
+  const activeInstalled = useMemo(
+    () => filteredInstalled.filter(p => !p.removed),
+    [filteredInstalled]
+  );
+  const removedCount = filteredInstalled.length - activeInstalled.length;
+
   // Antenna audit list: optionally narrow to installs with missing/unconfirmed antenna
   const auditProbes = useMemo(() => {
     if (antennaFilter === 'missing') {
-      return filteredInstalled.filter(p => !p.antennaType || p.antennaType === 'ASK');
+      return activeInstalled.filter(p => !p.antennaType || p.antennaType === 'ASK');
     }
-    return filteredInstalled;
-  }, [filteredInstalled, antennaFilter]);
+    return activeInstalled;
+  }, [activeInstalled, antennaFilter]);
 
   const missingAntennaCount = useMemo(
-    () => filteredInstalled.filter(p => !p.antennaType || p.antennaType === 'ASK').length,
-    [filteredInstalled]
+    () => activeInstalled.filter(p => !p.antennaType || p.antennaType === 'ASK').length,
+    [activeInstalled]
   );
 
   const toggleProbeSelection = (id: number) => {
@@ -779,7 +792,10 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             <div className="table-header">
               <h3 className="table-title">
                 Installed
-                <span className="season-badge" style={{ marginLeft: 8 }}>{filteredInstalled.length}</span>
+                <span className="season-badge" style={{ marginLeft: 8 }}>{activeInstalled.length}</span>
+                {removedCount > 0 && (
+                  <span className="status-badge removed" style={{ marginLeft: 8, fontSize: 11 }}>{removedCount} removed</span>
+                )}
               </h3>
               <div className="table-actions" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <SearchableSelect
@@ -836,7 +852,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
             {showMap && (
               <div style={{ padding: '12px 16px' }}>
                 <InstallsMap
-                  probes={filteredInstalled}
+                  probes={activeInstalled}
                   visible={showMap}
                   onClose={() => setShowMap(false)}
                 />
@@ -850,7 +866,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     style={{ fontSize: 13 }}
                     onClick={() => setAntennaFilter('all')}
                   >
-                    All ({filteredInstalled.length})
+                    All ({activeInstalled.length})
                   </button>
                   <button
                     className={`btn ${antennaFilter === 'missing' ? 'btn-primary' : 'btn-secondary'}`}
@@ -946,7 +962,14 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       </td>
                     )}
                     <td>
-                      <div>{probe.fieldName}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {probe.fieldName}
+                        {probe.removed && (
+                          <span className="status-badge removed" style={{ fontSize: 11 }}>
+                            Removed{probe.removalDate ? ` ${new Date(probe.removalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-muted" style={{ fontSize: 12 }}>{probe.operation}</div>
                     </td>
                     <td>
@@ -989,9 +1012,11 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => handleEditInstall(probe)}>
                             Edit
                           </button>
-                          <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setSharingInstall(probe)}>
-                            Notify
-                          </button>
+                          {!probe.removed && (
+                            <button className="btn btn-primary" style={{ padding: '4px 8px', fontSize: 12 }} onClick={() => setSharingInstall(probe)}>
+                              Notify
+                            </button>
+                          )}
                         </div>
                       )}
                     </td>
@@ -1020,7 +1045,10 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         />
                       )}
                       <div>
-                        <div style={{ fontWeight: 600 }}>{probe.fieldName}</div>
+                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          {probe.fieldName}
+                          {probe.removed && <span className="status-badge removed" style={{ fontSize: 11 }}>Removed</span>}
+                        </div>
                         <div className="text-muted" style={{ fontSize: 12 }}>
                           #{probe.probeSerial}
                           {(probe.probeNumber > 1 || probe.label) && ` (P${probe.probeNumber}${probe.label ? ` — ${probe.label}` : ''})`}
@@ -1040,9 +1068,11 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                       <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); handleEditInstall(probe); }}>
                         Edit
                       </button>
-                      <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setSharingInstall(probe); }}>
-                        Notify
-                      </button>
+                      {!probe.removed && (
+                        <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: 12, flex: 1 }} onClick={(e) => { e.stopPropagation(); setSharingInstall(probe); }}>
+                          Notify
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1114,6 +1144,19 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     <span className="detail-label">Photo - Extra</span>
                     <span className="detail-value"><a href={viewingInstall.photoExtraUrl} target="_blank" rel="noopener noreferrer">View Photo</a></span>
                   </div>
+                )}
+                {viewingInstall.removed && (
+                  <>
+                    <div className="detail-row"><span className="detail-label">Removed</span><span className="detail-value">{viewingInstall.removalDate ? new Date(viewingInstall.removalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span></div>
+                    <div className="detail-row"><span className="detail-label">Removed By</span><span className="detail-value">{viewingInstall.removedBy || '—'}</span></div>
+                    {viewingInstall.removalNotes && <div className="detail-row"><span className="detail-label">Removal Notes</span><span className="detail-value">{viewingInstall.removalNotes}</span></div>}
+                    {viewingInstall.removalPhotoUrl && (
+                      <div className="detail-row">
+                        <span className="detail-label">Photo - Removal</span>
+                        <span className="detail-value"><a href={viewingInstall.removalPhotoUrl} target="_blank" rel="noopener noreferrer">View Photo</a></span>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>

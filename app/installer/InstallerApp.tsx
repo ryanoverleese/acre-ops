@@ -8,6 +8,7 @@ const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: fals
 const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 import RepairsScreen from './RepairsScreen';
+import RemovalsScreen from './RemovalsScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ export interface InstallerAssignment {
   installGroup: number | null;
 }
 
-type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings' | 'summary' | 'repairs' | 'locations' | 'probes';
+type Screen = 'login' | 'route' | 'field' | 'install' | 'success' | 'map' | 'loadout' | 'me' | 'history' | 'mileage' | 'settings' | 'summary' | 'repairs' | 'locations' | 'probes' | 'removals';
 
 type MapProvider = 'google' | 'apple';
 const MAP_PROVIDER_KEY = 'af-map-provider';
@@ -68,7 +69,7 @@ interface SuccessData {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function playSuccessSound() {
+export function playSuccessSound() {
   try {
     const AudioCtx = window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!AudioCtx) return;
@@ -125,7 +126,7 @@ function calcFlags(antennaType: string, sideDress: string) {
 
 const TARGET_SIZE = 800 * 1024; // 800 KB target
 
-async function compressImage(file: File): Promise<File> {
+export async function compressImage(file: File): Promise<File> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onerror = () => resolve(file);
@@ -319,6 +320,9 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onClearInitial={() => setInitialRepairId(null)}
           />
         )}
+        {screen === 'removals' && session && (
+          <RemovalsScreen season={session.season} installer={session.installer} />
+        )}
         {screen === 'locations' && session && (
           <LocationsScreen onBack={() => setScreen('me')} />
         )}
@@ -382,6 +386,13 @@ function BottomBar({ current, onNav, installer }: { current: Screen; onNav: (s: 
           <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
         </svg>
         Loadout
+      </button>
+      <button className="af-tab" aria-current={current === 'removals' ? 'true' : undefined} onClick={() => onNav('removals')}>
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <line x1="12" y1="16" x2="12" y2="4" /><polyline points="6 10 12 4 18 10" />
+          <line x1="4" y1="20" x2="20" y2="20" />
+        </svg>
+        Pull
       </button>
       {isRyan && (
         <button className="af-tab" aria-current={current === 'repairs' ? 'true' : undefined} onClick={() => onNav('repairs')}>

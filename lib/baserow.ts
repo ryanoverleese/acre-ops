@@ -489,6 +489,8 @@ export interface ProbeAssignment {
   install_date?: string;
   removal_date?: string;
   removal_notes?: string;
+  removed_by?: string;
+  removal_photo?: { url: string; name: string }[];
   install_lat?: number;
   install_lng?: number;
   install_photo_field_end?: { url: string; name: string }[];

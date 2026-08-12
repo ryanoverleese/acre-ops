@@ -1173,6 +1173,13 @@ tr.clickable-row {
   border: 1px solid var(--border);
 }
 
+/* Pulled at season end — a settled state, not an alarm */
+.status-badge.removed {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
 .status-badge.in-stock,
 .status-badge.available {
   background: var(--accent-blue-dim);

@@ -169,14 +169,17 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName) || a.probeNumber - b.probeNumber);
 
-    // Installed probes for the current season with full install data
+    // Installed probes for the current season with full install data.
+    // Removed probes stay in this list (marked removed) — a pull recorded in
+    // the field app has to be visible here too, not vanish from the desktop.
     const installedProbes: InstalledProbeData[] = probeAssignments
       .filter((pa) => {
         const fsId = pa.field_season?.[0]?.id;
         if (!fsId) return false;
         const fs = fieldSeasonMap.get(fsId);
         if (!fs || fs.season != 2026) return false;
-        return pa.probe_status?.value?.toLowerCase() === 'installed';
+        const status = pa.probe_status?.value?.toLowerCase();
+        return status === 'installed' || status === 'removed';
       })
       .map((pa) => {
         const fieldSeasonId = pa.field_season?.[0]?.id || 0;
@@ -211,6 +214,11 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           photoFieldEndUrl: pa.install_photo_field_end?.[0]?.url || '',
           photoExtraUrl: pa.install_photo_extra?.[0]?.url || '',
           antennaType: pa.antenna_type?.value || '',
+          removed: pa.probe_status?.value?.toLowerCase() === 'removed',
+          removalDate: pa.removal_date || '',
+          removedBy: pa.removed_by || '',
+          removalNotes: pa.removal_notes || '',
+          removalPhotoUrl: pa.removal_photo?.[0]?.url || '',
         };
       })
       .sort((a, b) => (b.installDate || '').localeCompare(a.installDate || ''));
