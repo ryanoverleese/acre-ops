@@ -11,10 +11,16 @@ const INSTALLER_ROUTES = [
 ];
 
 // Routes that don't require authentication at all
-const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/mileage', '/api/probes', '/api/fields', '/api/elevation', '/api/geocode', '/api/repairs', '/mobile'];
+const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/mileage', '/api/probes', '/api/fields', '/api/elevation', '/api/geocode', '/api/repairs'];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
+
+  // The retired general mobile app was replaced by the installer app. Keep
+  // old bookmarks and installed home-screen shortcuts working.
+  if (pathname === '/mobile' || pathname.startsWith('/mobile/')) {
+    return NextResponse.redirect(new URL('/installer', req.url));
+  }
 
   // Allow public routes
   if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {

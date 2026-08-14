@@ -207,7 +207,7 @@ export default function AppShell({ children }: AppShellProps) {
   };
 
   // Don't show navigation on public approval pages, login page, or installer app
-  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer') || pathname?.startsWith('/mobile');
+  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer');
 
   if (isPublicPage) {
     return <>{children}</>;
