@@ -1064,7 +1064,10 @@ export default function WaterRecsClient({
     }
 
     if (normalFields.length > 0) {
-      lines.push('NORMAL PRIORITY:', '');
+      // Only label this block when there is a HIGH PRIORITY block above it to
+      // tell it apart from. When nothing is flagged, every field is normal and
+      // the header says nothing — so the copy just lists the fields.
+      if (priorityFields.length > 0) lines.push('NORMAL PRIORITY:', '');
       normalFields.forEach(f => {
         lines.push(f.name);
         lines.push(f.rec, '');
