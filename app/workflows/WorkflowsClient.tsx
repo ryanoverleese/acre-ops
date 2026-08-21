@@ -628,6 +628,27 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   }
 
   if (activeWorkflow === 'early-removals') {
+    const earlyRemovalInputStyle: React.CSSProperties = {
+      width: '100%',
+      height: 42,
+      boxSizing: 'border-box',
+      padding: '0 12px',
+      border: '1px solid var(--border)',
+      borderRadius: 8,
+      background: 'var(--bg-primary)',
+      color: 'var(--text-primary)',
+      fontSize: 14,
+    };
+    const earlyRemovalLabelStyle: React.CSSProperties = {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 7,
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      color: 'var(--text-secondary)',
+    };
     return (
       <>
         <header className="header">
@@ -651,15 +672,21 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
               <button className="btn btn-primary" onClick={openEarlyRemovalForm}>+ Add Early Removal</button>
             </div>
             {showEarlyRemovalForm && (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 18, marginBottom: 16, background: 'var(--bg-secondary)' }}>
-                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 14 }}>Add Early Removal</div>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 22, marginBottom: 16, background: 'var(--bg-secondary)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+                  <div>
+                    <div style={{ fontWeight: 650, fontSize: 17 }}>Add Early Removal</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>Choose a field, then record why it is coming out early.</div>
+                  </div>
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <label style={earlyRemovalLabelStyle}>
                     Field
                     <input
                       list="early-removal-field-options"
                       value={earlyRemovalFieldSearch}
                       placeholder="Search fields…"
+                      style={earlyRemovalInputStyle}
                       onChange={(e) => {
                       const row = seasonFields.find((candidate) => earlyRemovalFieldLabel(candidate) === e.target.value);
                       setEarlyRemovalFieldSearch(e.target.value);
@@ -672,16 +699,16 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                       {seasonFields.map((row) => <option key={row.fieldSeasonId} value={earlyRemovalFieldLabel(row)} />)}
                     </datalist>
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <label style={earlyRemovalLabelStyle}>
                     Early Removal
-                    <select value={earlyRemovalReason} onChange={(e) => setEarlyRemovalReason(e.target.value)} disabled={!earlyRemovalOptions.length}>
+                    <select value={earlyRemovalReason} onChange={(e) => setEarlyRemovalReason(e.target.value)} disabled={!earlyRemovalOptions.length} style={earlyRemovalInputStyle}>
                       <option value="">Select reason…</option>
                       {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                     </select>
                   </label>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                  <label style={earlyRemovalLabelStyle}>
                     Planned Remover
-                    <select value={earlyRemovalPlannedRemover} onChange={(e) => setEarlyRemovalPlannedRemover(e.target.value)}>
+                    <select value={earlyRemovalPlannedRemover} onChange={(e) => setEarlyRemovalPlannedRemover(e.target.value)} style={earlyRemovalInputStyle}>
                       <option value="">Select remover…</option>
                       {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                     </select>
@@ -693,7 +720,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   </div>
                 )}
                 {earlyRemovalError && <div style={{ color: 'var(--accent-red)', fontSize: 13, marginTop: 10 }}>{earlyRemovalError}</div>}
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
                   <button className="btn btn-primary" onClick={saveEarlyRemoval} disabled={!selectedEarlyRemovalField || !earlyRemovalReason || earlyRemovalSaving}>
                     {earlyRemovalSaving ? 'Saving…' : 'Save Early Removal'}
                   </button>
