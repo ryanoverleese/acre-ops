@@ -39,8 +39,17 @@ export interface EarlyRemovalData {
   plannedRemover: string;
 }
 
+export interface EarlyRemovalOption {
+  id: number;
+  value: string;
+  color: string;
+}
+
 interface WorkflowsClientProps {
   earlyRemovals: EarlyRemovalData[];
+  seasonFields: EarlyRemovalData[];
+  earlyRemovalOptions: EarlyRemovalOption[];
+  plannedRemoverOptions: EarlyRemovalOption[];
   installedProbes: UninstallProbeData[];
   rmaProbes: RmaProbeData[];
   brandOptions: string[];
@@ -49,7 +58,7 @@ interface WorkflowsClientProps {
 
 type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
-export default function WorkflowsClient({ earlyRemovals, installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
+export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemovalOptions, plannedRemoverOptions, installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
   const [activeWorkflow, setActiveWorkflow] = useState<'early-removals' | 'uninstall' | 'register' | 'rma' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
@@ -58,6 +67,82 @@ export default function WorkflowsClient({ earlyRemovals, installedProbes, rmaPro
   const [removalNotes, setRemovalNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [earlyRemovalRows, setEarlyRemovalRows] = useState(seasonFields);
+  const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
+  const [showEarlyRemovalForm, setShowEarlyRemovalForm] = useState(false);
+  const [earlyRemovalFieldId, setEarlyRemovalFieldId] = useState('');
+  const [earlyRemovalReason, setEarlyRemovalReason] = useState('');
+  const [earlyRemovalPlannedRemover, setEarlyRemovalPlannedRemover] = useState('');
+  const [earlyRemovalSaving, setEarlyRemovalSaving] = useState(false);
+  const [earlyRemovalError, setEarlyRemovalError] = useState('');
+
+  const selectedEarlyRemovalField = seasonFields.find((row) => String(row.fieldSeasonId) === earlyRemovalFieldId);
+
+  const openEarlyRemovalForm = () => {
+    setEarlyRemovalError('');
+    setEarlyRemovalFieldId('');
+    setEarlyRemovalReason(earlyRemovalOptions[0]?.value || '');
+    setEarlyRemovalPlannedRemover('');
+    setShowEarlyRemovalForm(true);
+  };
+
+  const saveEarlyRemoval = async () => {
+    if (!selectedEarlyRemovalField || !earlyRemovalReason) return;
+    setEarlyRemovalSaving(true);
+    setEarlyRemovalError('');
+    try {
+      const response = await fetch(`/api/field-seasons/${selectedEarlyRemovalField.fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          early_removal: earlyRemovalReason,
+          planned_remover: earlyRemovalPlannedRemover || null,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not save early removal');
+      }
+      const updated = {
+        ...selectedEarlyRemovalField,
+        earlyRemoval: earlyRemovalReason,
+        plannedRemover: earlyRemovalPlannedRemover,
+      };
+      setEarlyRemovalRows((rows) => [
+        ...rows.filter((row) => row.fieldSeasonId !== updated.fieldSeasonId),
+        updated,
+      ].sort((a, b) => a.fieldName.localeCompare(b.fieldName)));
+      setShowEarlyRemovalForm(false);
+    } catch (err) {
+      setEarlyRemovalError(err instanceof Error ? err.message : 'Could not save early removal');
+    } finally {
+      setEarlyRemovalSaving(false);
+    }
+  };
+
+  const saveEarlyRemovalRow = async (row: EarlyRemovalData) => {
+    setEarlyRemovalSaving(true);
+    setEarlyRemovalError('');
+    try {
+      const response = await fetch(`/api/field-seasons/${row.fieldSeasonId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          early_removal: row.earlyRemoval,
+          planned_remover: row.plannedRemover || null,
+        }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not save early removal');
+      }
+      setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? row : candidate));
+    } catch (err) {
+      setEarlyRemovalError(err instanceof Error ? err.message : 'Could not save early removal');
+    } finally {
+      setEarlyRemovalSaving(false);
+    }
+  };
 
   // Register probe state
   const [regSerial, setRegSerial] = useState('');
@@ -552,9 +637,60 @@ export default function WorkflowsClient({ earlyRemovals, installedProbes, rmaPro
         </header>
         <div className="content">
           <div style={{ maxWidth: 1100 }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '0 0 16px' }}>
-              Current-season fields with an Early Removal reason. Set the reason from Fields → Season Setup.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
+                Current-season fields. Edit the two workflow columns directly, then save the row.
+              </p>
+              <button className="btn btn-secondary" onClick={() => setShowOnlyEarlyRemovals((value) => !value)}>
+                {showOnlyEarlyRemovals ? 'Show All Fields' : 'Show Marked Only'}
+              </button>
+              <button className="btn btn-primary" onClick={openEarlyRemovalForm}>+ Add Early Removal</button>
+            </div>
+            {showEarlyRemovalForm && (
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 18, marginBottom: 16, background: 'var(--bg-secondary)' }}>
+                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 14 }}>Add Early Removal</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Field
+                    <select value={earlyRemovalFieldId} onChange={(e) => {
+                      const row = seasonFields.find((candidate) => String(candidate.fieldSeasonId) === e.target.value);
+                      setEarlyRemovalFieldId(e.target.value);
+                      setEarlyRemovalReason(row?.earlyRemoval || earlyRemovalOptions[0]?.value || '');
+                      setEarlyRemovalPlannedRemover(row?.plannedRemover || '');
+                    }}>
+                      <option value="">Select field…</option>
+                      {seasonFields.map((row) => <option key={row.fieldSeasonId} value={row.fieldSeasonId}>{row.fieldName}{row.operation ? ` — ${row.operation}` : ''}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Early Removal
+                    <select value={earlyRemovalReason} onChange={(e) => setEarlyRemovalReason(e.target.value)} disabled={!earlyRemovalOptions.length}>
+                      <option value="">Select reason…</option>
+                      {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
+                    Planned Remover
+                    <select value={earlyRemovalPlannedRemover} onChange={(e) => setEarlyRemovalPlannedRemover(e.target.value)}>
+                      <option value="">Select remover…</option>
+                      {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {selectedEarlyRemovalField && (
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 10 }}>
+                    {selectedEarlyRemovalField.crop || 'Crop not set'} · {selectedEarlyRemovalField.operation || 'Operation not set'}
+                  </div>
+                )}
+                {earlyRemovalError && <div style={{ color: 'var(--accent-red)', fontSize: 13, marginTop: 10 }}>{earlyRemovalError}</div>}
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <button className="btn btn-primary" onClick={saveEarlyRemoval} disabled={!selectedEarlyRemovalField || !earlyRemovalReason || earlyRemovalSaving}>
+                    {earlyRemovalSaving ? 'Saving…' : 'Save Early Removal'}
+                  </button>
+                  <button className="btn btn-secondary" onClick={() => setShowEarlyRemovalForm(false)} disabled={earlyRemovalSaving}>Cancel</button>
+                </div>
+              </div>
+            )}
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--bg-secondary)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
                 <thead>
@@ -565,16 +701,39 @@ export default function WorkflowsClient({ earlyRemovals, installedProbes, rmaPro
                   </tr>
                 </thead>
                 <tbody>
-                  {earlyRemovals.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>No early removals are marked for the current season.</td></tr>
-                  ) : earlyRemovals.map((row) => (
+                  {earlyRemovalRows.filter((row) => !showOnlyEarlyRemovals || !!row.earlyRemoval).length === 0 ? (
+                    <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{showOnlyEarlyRemovals ? 'No early removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                  ) : earlyRemovalRows.filter((row) => !showOnlyEarlyRemovals || !!row.earlyRemoval).map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px 14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.fieldName}</td>
                       <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.operation || '—'}</td>
                       <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.crop || '—'}</td>
-                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.earlyRemoval}</td>
+                      <td style={{ padding: '8px 14px', minWidth: 170 }}>
+                        <select
+                          value={row.earlyRemoval}
+                          onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, earlyRemoval: event.target.value } : candidate))}
+                          style={{ width: '100%' }}
+                        >
+                          <option value="">— Not marked —</option>
+                          {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
+                        </select>
+                      </td>
                       <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
-                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.plannedRemover || '—'}</td>
+                      <td style={{ padding: '8px 14px', minWidth: 190 }}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <select
+                            value={row.plannedRemover}
+                            onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, plannedRemover: event.target.value } : candidate))}
+                            style={{ width: '100%' }}
+                          >
+                            <option value="">— Not assigned —</option>
+                            {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
+                          </select>
+                          <button className="btn btn-secondary" onClick={() => saveEarlyRemovalRow(row)} disabled={earlyRemovalSaving}>
+                            Save
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

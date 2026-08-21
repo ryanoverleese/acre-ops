@@ -1,12 +1,12 @@
-import { getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact } from '@/lib/baserow';
+import { getCachedAllSelectOptions, getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact, type SelectOption } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WorkflowsClient, { EarlyRemovalData, UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
 
 export const dynamic = 'force-dynamic';
 
-async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; installedProbes: UninstallProbeData[]; rmaProbes: RmaProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
+async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; seasonFields: EarlyRemovalData[]; earlyRemovalOptions: SelectOption[]; plannedRemoverOptions: SelectOption[]; installedProbes: UninstallProbeData[]; rmaProbes: RmaProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
   try {
-    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
+    const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts, selectOptions] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 300),
       getCachedRows<FieldSeason>('field_seasons', undefined, 120),
       getCachedRows<Probe>('probes', undefined, 120),
@@ -14,6 +14,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; i
       getCachedRows<Operation>('operations', undefined, 300),
       getCachedProbeAssignments(),
       getCachedRows<Contact>('contacts', undefined, 300),
+      getCachedAllSelectOptions(['field_seasons']),
     ]);
 
     const operationMap = buildOperationMap(operations);
@@ -32,8 +33,8 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; i
     }
 
     const currentSeason = new Date().getFullYear();
-    const earlyRemovals: EarlyRemovalData[] = fieldSeasons
-      .filter((fs) => Number(fs.season) === currentSeason && !!fs.early_removal?.value)
+    const seasonFields: EarlyRemovalData[] = fieldSeasons
+      .filter((fs) => Number(fs.season) === currentSeason)
       .map((fs) => {
         const fieldId = fs.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
@@ -57,6 +58,8 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; i
         };
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));
+    const earlyRemovals = seasonFields.filter((row) => !!row.earlyRemoval);
+    const fieldSeasonOptions = selectOptions.field_seasons || {};
 
     const installedProbes: UninstallProbeData[] = probeAssignments
       .filter((pa) => !!pa.field_season?.[0]?.id)
@@ -123,14 +126,23 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; i
         yearNew: p.year_new ?? null,
       }));
 
-    return { earlyRemovals, installedProbes, rmaProbes, brandOptions, onOrderProbes };
+    return {
+      earlyRemovals,
+      seasonFields,
+      earlyRemovalOptions: fieldSeasonOptions.early_removal || [],
+      plannedRemoverOptions: fieldSeasonOptions.planned_remover || [],
+      installedProbes,
+      rmaProbes,
+      brandOptions,
+      onOrderProbes,
+    };
   } catch (error) {
     console.error('Error fetching workflow data:', error);
-    return { earlyRemovals: [], installedProbes: [], rmaProbes: [], brandOptions: [], onOrderProbes: [] };
+    return { earlyRemovals: [], seasonFields: [], earlyRemovalOptions: [], plannedRemoverOptions: [], installedProbes: [], rmaProbes: [], brandOptions: [], onOrderProbes: [] };
   }
 }
 
 export default async function WorkflowsPage() {
-  const { earlyRemovals, installedProbes, rmaProbes, brandOptions, onOrderProbes } = await getWorkflowData();
-  return <WorkflowsClient earlyRemovals={earlyRemovals} installedProbes={installedProbes} rmaProbes={rmaProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
+  const { earlyRemovals, seasonFields, earlyRemovalOptions, plannedRemoverOptions, installedProbes, rmaProbes, brandOptions, onOrderProbes } = await getWorkflowData();
+  return <WorkflowsClient earlyRemovals={earlyRemovals} seasonFields={seasonFields} earlyRemovalOptions={earlyRemovalOptions} plannedRemoverOptions={plannedRemoverOptions} installedProbes={installedProbes} rmaProbes={rmaProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
 }
