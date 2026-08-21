@@ -437,6 +437,7 @@ export interface FieldSeason {
   // Install planning
   route_order?: string;
   planned_installer?: { id: number; value: string };
+  planned_remover?: { id: number; value: string };
   ready_to_install?: boolean;
   install_group?: number | null;
   notes?: string;

@@ -1,10 +1,10 @@
 import { getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
-import WorkflowsClient, { UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
+import WorkflowsClient, { EarlyRemovalData, UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
 
 export const dynamic = 'force-dynamic';
 
-async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[]; rmaProbes: RmaProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
+async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; installedProbes: UninstallProbeData[]; rmaProbes: RmaProbeData[]; brandOptions: string[]; onOrderProbes: OnOrderProbe[] }> {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 300),
@@ -21,6 +21,42 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
     const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+
+    const assignmentsByFieldSeason = new Map<number, typeof probeAssignments>();
+    for (const pa of probeAssignments) {
+      const fieldSeasonId = pa.field_season?.[0]?.id;
+      if (!fieldSeasonId) continue;
+      const current = assignmentsByFieldSeason.get(fieldSeasonId) ?? [];
+      current.push(pa);
+      assignmentsByFieldSeason.set(fieldSeasonId, current);
+    }
+
+    const currentSeason = new Date().getFullYear();
+    const earlyRemovals: EarlyRemovalData[] = fieldSeasons
+      .filter((fs) => Number(fs.season) === currentSeason && !!fs.early_removal?.value)
+      .map((fs) => {
+        const fieldId = fs.field?.[0]?.id;
+        const field = fieldId ? fieldMap.get(fieldId) : null;
+        let operationName = '';
+        if (field?.billing_entity?.[0]) {
+          const opId = billingToOperationMap.get(field.billing_entity[0].id);
+          if (opId) operationName = operationMap.get(opId) || '';
+        }
+        const assignmentDates = (assignmentsByFieldSeason.get(fs.id) ?? [])
+          .map((pa) => pa.removal_date)
+          .filter(Boolean)
+          .sort();
+        return {
+          fieldSeasonId: fs.id,
+          fieldName: field?.name || 'Unknown Field',
+          operation: operationName,
+          crop: fs.crop?.value || '',
+          earlyRemoval: fs.early_removal?.value || '',
+          removalDate: fs.removal_date || assignmentDates[0] || '',
+          plannedRemover: fs.planned_remover?.value || '',
+        };
+      })
+      .sort((a, b) => a.fieldName.localeCompare(b.fieldName));
 
     const installedProbes: UninstallProbeData[] = probeAssignments
       .filter((pa) => !!pa.field_season?.[0]?.id)
@@ -87,14 +123,14 @@ async function getWorkflowData(): Promise<{ installedProbes: UninstallProbeData[
         yearNew: p.year_new ?? null,
       }));
 
-    return { installedProbes, rmaProbes, brandOptions, onOrderProbes };
+    return { earlyRemovals, installedProbes, rmaProbes, brandOptions, onOrderProbes };
   } catch (error) {
     console.error('Error fetching workflow data:', error);
-    return { installedProbes: [], rmaProbes: [], brandOptions: [], onOrderProbes: [] };
+    return { earlyRemovals: [], installedProbes: [], rmaProbes: [], brandOptions: [], onOrderProbes: [] };
   }
 }
 
 export default async function WorkflowsPage() {
-  const { installedProbes, rmaProbes, brandOptions, onOrderProbes } = await getWorkflowData();
-  return <WorkflowsClient installedProbes={installedProbes} rmaProbes={rmaProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
+  const { earlyRemovals, installedProbes, rmaProbes, brandOptions, onOrderProbes } = await getWorkflowData();
+  return <WorkflowsClient earlyRemovals={earlyRemovals} installedProbes={installedProbes} rmaProbes={rmaProbes} brandOptions={brandOptions} onOrderProbes={onOrderProbes} />;
 }

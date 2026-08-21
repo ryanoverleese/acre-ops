@@ -29,7 +29,18 @@ export interface OnOrderProbe {
   yearNew: number | null;
 }
 
+export interface EarlyRemovalData {
+  fieldSeasonId: number;
+  fieldName: string;
+  operation: string;
+  crop: string;
+  earlyRemoval: string;
+  removalDate: string;
+  plannedRemover: string;
+}
+
 interface WorkflowsClientProps {
+  earlyRemovals: EarlyRemovalData[];
   installedProbes: UninstallProbeData[];
   rmaProbes: RmaProbeData[];
   brandOptions: string[];
@@ -38,8 +49,8 @@ interface WorkflowsClientProps {
 
 type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
-export default function WorkflowsClient({ installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
-  const [activeWorkflow, setActiveWorkflow] = useState<'uninstall' | 'register' | 'rma' | null>(null);
+export default function WorkflowsClient({ earlyRemovals, installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
+  const [activeWorkflow, setActiveWorkflow] = useState<'early-removals' | 'uninstall' | 'register' | 'rma' | null>(null);
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
@@ -390,6 +401,39 @@ export default function WorkflowsClient({ installedProbes, rmaProbes, brandOptio
               Step-by-step guides for common field operations.
             </p>
             <div
+              onClick={() => setActiveWorkflow('early-removals')}
+              style={{
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '20px 24px',
+                cursor: 'pointer',
+                background: 'var(--bg-secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 16,
+              }}
+              className="workflow-card"
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 8,
+                background: 'rgba(59, 130, 246, 0.1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <svg fill="none" stroke="#3b82f6" viewBox="0 0 24 24" width="22" height="22">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 3v18m0-14h10a2 2 0 012 2v1a2 2 0 01-2 2H6m0 0h8a2 2 0 012 2v1a2 2 0 01-2 2H6" />
+                </svg>
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Early Removals</div>
+                <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
+                  Review fields planned for early pull and track what has been removed.
+                </div>
+              </div>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </div>
+            <div
               onClick={() => { setActiveWorkflow('register'); resetRegister(); }}
               style={{
                 border: '1px solid var(--border)',
@@ -487,6 +531,54 @@ export default function WorkflowsClient({ installedProbes, rmaProbes, brandOptio
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="18" height="18" style={{ marginLeft: 'auto', color: 'var(--text-muted)', flexShrink: 0 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  if (activeWorkflow === 'early-removals') {
+    return (
+      <>
+        <header className="header">
+          <div className="header-left">
+            <h2>Workflows</h2>
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ Early Removals</span>
+          </div>
+          <div className="header-right">
+            <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)}>Back</button>
+          </div>
+        </header>
+        <div className="content">
+          <div style={{ maxWidth: 1100 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: '0 0 16px' }}>
+              Current-season fields with an Early Removal reason. Set the reason from Fields → Season Setup.
+            </p>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--bg-secondary)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)' }}>
+                    {['Field', 'Operation', 'Crop', 'Early Removal', 'Date Removed', 'Planned Remover'].map((label) => (
+                      <th key={label} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {earlyRemovals.length === 0 ? (
+                    <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>No early removals are marked for the current season.</td></tr>
+                  ) : earlyRemovals.map((row) => (
+                    <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
+                      <td style={{ padding: '12px 14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.fieldName}</td>
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.operation || '—'}</td>
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.crop || '—'}</td>
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.earlyRemoval}</td>
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
+                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.plannedRemover || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
