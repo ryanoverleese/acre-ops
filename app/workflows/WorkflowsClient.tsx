@@ -71,6 +71,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
   const [showEarlyRemovalForm, setShowEarlyRemovalForm] = useState(false);
   const [earlyRemovalFieldId, setEarlyRemovalFieldId] = useState('');
+  const [earlyRemovalFieldSearch, setEarlyRemovalFieldSearch] = useState('');
   const [earlyRemovalReason, setEarlyRemovalReason] = useState('');
   const [earlyRemovalPlannedRemover, setEarlyRemovalPlannedRemover] = useState('');
   const [earlyRemovalSaving, setEarlyRemovalSaving] = useState(false);
@@ -81,10 +82,13 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const openEarlyRemovalForm = () => {
     setEarlyRemovalError('');
     setEarlyRemovalFieldId('');
+    setEarlyRemovalFieldSearch('');
     setEarlyRemovalReason(earlyRemovalOptions[0]?.value || '');
     setEarlyRemovalPlannedRemover('');
     setShowEarlyRemovalForm(true);
   };
+
+  const earlyRemovalFieldLabel = (row: EarlyRemovalData) => `${row.fieldName}${row.operation ? ` — ${row.operation}` : ''}`;
 
   const saveEarlyRemoval = async () => {
     if (!selectedEarlyRemovalField || !earlyRemovalReason) return;
@@ -652,15 +656,21 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
                     Field
-                    <select value={earlyRemovalFieldId} onChange={(e) => {
-                      const row = seasonFields.find((candidate) => String(candidate.fieldSeasonId) === e.target.value);
-                      setEarlyRemovalFieldId(e.target.value);
+                    <input
+                      list="early-removal-field-options"
+                      value={earlyRemovalFieldSearch}
+                      placeholder="Search fields…"
+                      onChange={(e) => {
+                      const row = seasonFields.find((candidate) => earlyRemovalFieldLabel(candidate) === e.target.value);
+                      setEarlyRemovalFieldSearch(e.target.value);
+                      setEarlyRemovalFieldId(row ? String(row.fieldSeasonId) : '');
                       setEarlyRemovalReason(row?.earlyRemoval || earlyRemovalOptions[0]?.value || '');
                       setEarlyRemovalPlannedRemover(row?.plannedRemover || '');
-                    }}>
-                      <option value="">Select field…</option>
-                      {seasonFields.map((row) => <option key={row.fieldSeasonId} value={row.fieldSeasonId}>{row.fieldName}{row.operation ? ` — ${row.operation}` : ''}</option>)}
-                    </select>
+                      }}
+                    />
+                    <datalist id="early-removal-field-options">
+                      {seasonFields.map((row) => <option key={row.fieldSeasonId} value={earlyRemovalFieldLabel(row)} />)}
+                    </datalist>
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
                     Early Removal
