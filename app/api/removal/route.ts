@@ -96,7 +96,8 @@ export async function POST(request: NextRequest) {
 
     const update: Record<string, unknown> = {
       probe_status: 'Removed',
-      removal_date: new Date().toISOString(),
+      // Baserow's removal_date column is date-only and rejects ISO timestamps.
+      removal_date: new Date().toISOString().slice(0, 10),
       removed_by: removedBy,
     };
     if (removalNotes) update.removal_notes = removalNotes;
