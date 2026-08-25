@@ -793,17 +793,13 @@ export default function WaterRecsClient({
   }, [reportDate]);
   const activeRoute = routeChoice === 'auto' ? autoRoute : routeChoice;
 
-  // Operations in route order: route customers first (in route order, only those
-  // present this week), then anyone not in the route, alphabetically.
+  // Operations assigned to the selected day's route, in route order. Keep
+  // unassigned operations available in the customer dropdown, but do not append
+  // them here: the route progress should answer how many reports are due today.
   const orderedOps = useMemo(() => {
     const routeIds = activeRoute === 'tue_fri' ? ROUTE_TUE_FRI : ROUTE_MON_THU;
     const byId = new Map(operations.map(o => [o.id, o]));
-    const inRoute = routeIds.map(id => byId.get(id)).filter(Boolean) as typeof operations;
-    const routeSet = new Set(routeIds);
-    const rest = operations
-      .filter(o => !routeSet.has(o.id))
-      .sort((a, b) => a.name.localeCompare(b.name));
-    return [...inRoute, ...rest];
+    return routeIds.map(id => byId.get(id)).filter(Boolean) as typeof operations;
   }, [operations, activeRoute]);
 
   // Navigate between operations, following the route order
