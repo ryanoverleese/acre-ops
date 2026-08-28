@@ -1086,7 +1086,7 @@ export default function WaterRecsClient({
   };
 
   // Build copy text for Update
-  const buildUpdateText = (): string => {
+  const buildUpdateText = (plain = false): string => {
     if (!currentOperation) return '';
     const lines: string[] = [];
 
@@ -1134,7 +1134,7 @@ export default function WaterRecsClient({
     }
 
     if (continueFields.length > 0) {
-      lines.push('Continue as scheduled:', '');
+      if (!plain) lines.push('Continue as scheduled:', '');
       lines.push(...buildSchedule(continueFields));
     }
 
@@ -1156,7 +1156,7 @@ export default function WaterRecsClient({
       .map(field => field.fieldName);
   };
 
-  const handleCopyAll = async () => {
+  const handleCopyAll = async (plainUpdate = false) => {
     // Safety check: warn once about fields the report would silently skip;
     // a second click copies anyway.
     const missed = getMissedFields();
@@ -1166,7 +1166,7 @@ export default function WaterRecsClient({
       return;
     }
     setCopyWarning(null);
-    const text = mode === 'full' ? buildFullReportText() : buildUpdateText();
+    const text = mode === 'full' ? buildFullReportText() : buildUpdateText(plainUpdate);
     if (!text) {
       showToast('Nothing to copy');
       return;
@@ -1889,11 +1889,20 @@ export default function WaterRecsClient({
           )}
           <button
             className="wr-copy-btn"
-            onClick={handleCopyAll}
+            onClick={() => handleCopyAll()}
             style={copyWarning ? { background: '#d03b3b', color: '#fff' } : undefined}
           >
             {copyWarning ? 'Copy Anyway' : 'Copy All'}
           </button>
+          {mode === 'update' && (
+            <button
+              className="wr-copy-btn"
+              onClick={() => handleCopyAll(true)}
+              title='Copy the same update without the "Continue as scheduled" heading'
+            >
+              Copy (plain)
+            </button>
+          )}
           {savedStatus !== 'idle' && (
             <span className={`wr-autosave wr-autosave-${savedStatus}`}>
               {savedStatus === 'saving' && 'Saving…'}
