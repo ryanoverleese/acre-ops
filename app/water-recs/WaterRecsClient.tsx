@@ -189,18 +189,22 @@ function getWeekRange(dateStr: string): { start: string; end: string } {
   };
 }
 
-type CropProgress = {
-  maturityLabel: string;
-  timingLabel: string;
-  title: string;
+type CropWeather = {
+  status: 'loading' | 'ready' | 'error';
+  gdu?: number;
+  recentGdu?: number;
+  recentEt0Inches?: number;
+  throughDate?: string;
 };
 
-function daysBetween(start: string, end: string): number | null {
-  if (!start || !end) return null;
-  const startDate = new Date(`${start}T12:00:00`);
-  const endDate = new Date(`${end}T12:00:00`);
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
-  return Math.floor((endDate.getTime() - startDate.getTime()) / 86_400_000);
+type MaturityInfo = {
+  label: string;
+  title: string;
+  relativeMaturity?: number;
+};
+
+function cropWeatherKey(plantingDate: string, asOfDate: string): string {
+  return `${plantingDate}:${asOfDate}`;
 }
 
 /** Pioneer P1457 -> 114 RM; other brands may include a literal 80-125 rating. */
@@ -221,52 +225,104 @@ function parseSoybeanMaturityGroup(hybrid: string): number | null {
   return match ? Number(`${match[1]}.${match[2]}`) : null;
 }
 
-function getCropProgress(crop: string, hybrid: string, plantingDate: string, asOfDate: string): CropProgress | null {
-  const daysAfterPlanting = daysBetween(plantingDate, asOfDate);
-  if (!hybrid && !plantingDate) return null;
+function getMaturityLabel(crop: string, hybrid: string): MaturityInfo | null {
+  if (!hybrid) return null;
   const cropName = crop.toLowerCase();
 
-  if (cropName.includes('corn') && hybrid && daysAfterPlanting !== null) {
+  if (cropName.includes('corn')) {
     const relativeMaturity = parseCornRelativeMaturity(hybrid);
     if (relativeMaturity) {
-      const remaining = relativeMaturity - daysAfterPlanting;
       return {
-        maturityLabel: `${relativeMaturity} RM`,
-        timingLabel: remaining > 0 ? `~${remaining}d to RM` : `~${Math.abs(remaining)}d past RM`,
-        title: `Simple estimate: planting date plus ${relativeMaturity}-day comparative relative maturity. Weather and GDUs can move actual physiological maturity.`,
+        label: `${relativeMaturity} RM`,
+        title: 'Comparative relative maturity. RM is not a literal number of calendar days after planting.',
+        relativeMaturity,
       };
     }
   }
 
-  if ((cropName.includes('soy') || cropName.includes('bean')) && hybrid) {
+  if (cropName.includes('soy') || cropName.includes('bean')) {
     const maturityGroup = parseSoybeanMaturityGroup(hybrid);
     if (maturityGroup !== null) {
       return {
-        maturityLabel: `MG ${maturityGroup.toFixed(1)}`,
-        timingLabel: daysAfterPlanting !== null ? `${daysAfterPlanting} DAP` : 'planting date missing',
-        title: 'Soybean maturity group is not a calendar-day rating, so Acre Ops shows days after planting instead of a misleading days-to-maturity estimate.',
+        label: `MG ${maturityGroup.toFixed(1)}`,
+        title: 'Soybean maturity group; this is not a calendar-day rating.',
       };
     }
   }
 
-  return {
-    maturityLabel: hybrid || 'hybrid missing',
-    timingLabel: daysAfterPlanting !== null ? `${daysAfterPlanting} DAP` : 'planting date missing',
-    title: 'Days after planting. No dependable calendar-day maturity rating could be read from this hybrid/variety.',
-  };
+  return null;
 }
 
-function FieldCropDetails({ field, asOfDate }: { field: OperationGroup['fields'][number]; asOfDate: string }) {
-  const progress = getCropProgress(field.crop, field.hybridVariety, field.plantingDate, asOfDate);
+function FieldCropDetails({
+  field,
+  weather,
+}: {
+  field: OperationGroup['fields'][number];
+  weather?: CropWeather;
+}) {
+  const maturity = getMaturityLabel(field.crop, field.hybridVariety);
+  const isCorn = field.crop.toLowerCase().includes('corn');
   const planted = field.plantingDate
     ? new Date(`${field.plantingDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : 'date missing';
+  const through = weather?.throughDate
+    ? new Date(`${weather.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : null;
+  // U2U Corn GDD model: black-layer GDD = 129.1 + 22.8 × CRM. This is an
+  // across-hybrid estimate; a seed-company physiological-maturity GDU should
+  // replace it if we add exact product specs later.
+  const estimatedBlackLayerGdu = maturity?.relativeMaturity
+    ? Math.round(129.1 + 22.8 * maturity.relativeMaturity)
+    : null;
+  const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
+    ? weather.gdu
+    : null;
+  const remainingGdu = accumulatedGdu !== null && estimatedBlackLayerGdu !== null
+    ? estimatedBlackLayerGdu - accumulatedGdu
+    : null;
+  const maturityPercent = accumulatedGdu !== null && estimatedBlackLayerGdu
+    ? Math.min(100, Math.round(accumulatedGdu / estimatedBlackLayerGdu * 100))
+    : null;
+  const recentDailyGdu = weather?.recentGdu && weather.recentGdu > 0 ? weather.recentGdu / 7 : null;
+  const estimatedDays = remainingGdu !== null && recentDailyGdu
+    ? Math.max(1, Math.ceil(Math.abs(remainingGdu) / recentDailyGdu))
+    : null;
 
   return (
-    <span className="wr-crop-details" title={progress?.title}>
+    <span className="wr-crop-details">
       <span>{field.hybridVariety || 'hybrid missing'}</span>
       <span>Planted {planted}</span>
-      {progress && <span className="wr-maturity-factor">{progress.maturityLabel} · {progress.timingLabel}</span>}
+      {maturity && <span className="wr-maturity-factor" title={maturity.title}>{maturity.label}</span>}
+      {field.plantingDate && isCorn && (
+        <span
+          className="wr-gdu-factor"
+          title={through ? `Corn GDU (base 50, 86°/50° method) accumulated at Holdrege through ${through}.` : undefined}
+        >
+          {accumulatedGdu !== null && estimatedBlackLayerGdu !== null
+            ? `${accumulatedGdu.toLocaleString()} / ~${estimatedBlackLayerGdu.toLocaleString()} GDU (${maturityPercent}%)`
+            : weather?.status === 'ready' && accumulatedGdu !== null
+              ? `${accumulatedGdu.toLocaleString()} GDU`
+            : weather?.status === 'error' ? 'GDU unavailable' : 'GDU…'}
+        </span>
+      )}
+      {remainingGdu !== null && (
+        <span
+          className={`wr-black-layer-factor${remainingGdu <= 0 ? ' reached' : ''}`}
+          title="Estimated from planting-date GDU accumulation and the U2U corn model. Confirm actual maturity by checking milk line and black layer in the field."
+        >
+          {remainingGdu > 0
+            ? `~${remainingGdu.toLocaleString()} GDU${estimatedDays ? ` / ${estimatedDays}d` : ''} to BL`
+            : `est. BL${estimatedDays ? ` ~${estimatedDays}d ago` : ''}`}
+        </span>
+      )}
+      {weather?.status === 'ready' && typeof weather.recentEt0Inches === 'number' && (
+        <span
+          className="wr-et-factor"
+          title={`Seven completed days of reference evapotranspiration (ET₀) at Holdrege${through ? ` through ${through}` : ''}. This is weather demand, before applying a crop coefficient.`}
+        >
+          7d ET₀ {weather.recentEt0Inches.toFixed(2)} in
+        </span>
+      )}
     </span>
   );
 }
@@ -589,6 +645,48 @@ export default function WaterRecsClient({
     () => operations.find(o => o.id === selectedOperationId) || null,
     [operations, selectedOperationId]
   );
+
+  // Weather is shared by fields with the same planting date. Fetch once per
+  // unique date for the selected operation instead of once per field card.
+  const [cropWeather, setCropWeather] = useState<Record<string, CropWeather>>({});
+  useEffect(() => {
+    if (!currentOperation) return;
+    const plantingDates = [...new Set(
+      currentOperation.fields.map(field => field.plantingDate).filter(date => Boolean(date))
+    )];
+    if (plantingDates.length === 0) return;
+
+    setCropWeather(current => {
+      const next = { ...current };
+      plantingDates.forEach(date => { next[cropWeatherKey(date, reportDate)] = { status: 'loading' }; });
+      return next;
+    });
+
+    let cancelled = false;
+    Promise.all(plantingDates.map(async plantingDate => {
+      const key = cropWeatherKey(plantingDate, reportDate);
+      try {
+        const params = new URLSearchParams({ start: plantingDate, end: reportDate });
+        const response = await fetch(`/api/gdu?${params.toString()}`);
+        if (!response.ok) throw new Error('Weather unavailable');
+        const data = await response.json();
+        return [key, {
+          status: 'ready',
+          gdu: data.gdu,
+          recentGdu: data.recentGdu,
+          recentEt0Inches: data.recentEt0Inches,
+          throughDate: data.throughDate,
+        } satisfies CropWeather] as const;
+      } catch {
+        return [key, { status: 'error' } satisfies CropWeather] as const;
+      }
+    })).then(results => {
+      if (cancelled) return;
+      setCropWeather(current => ({ ...current, ...Object.fromEntries(results) }));
+    });
+
+    return () => { cancelled = true; };
+  }, [currentOperation, reportDate]);
 
   // Words the spell checker should never flag: every operation and field name
   // plus ag terms that aren't in a standard dictionary.
@@ -1510,7 +1608,10 @@ export default function WaterRecsClient({
                     <span className="wr-field-meta">
                       {field.crop} &middot; {field.acres} ac
                     </span>
-                    <FieldCropDetails field={field} asOfDate={reportDate} />
+                    <FieldCropDetails
+                      field={field}
+                      weather={field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined}
+                    />
                   </div>
 
                   {/* Probe label for 2-probe fields — front-end only, shows in copied report */}
@@ -1804,7 +1905,10 @@ export default function WaterRecsClient({
                       was {form.originalDay}
                     </span>
                   )}
-                  <FieldCropDetails field={field} asOfDate={reportDate} />
+                  <FieldCropDetails
+                    field={field}
+                    weather={field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined}
+                  />
                 </div>
 
                 {/* Probe label for 2-probe fields — front-end only, rides into the

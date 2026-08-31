@@ -9054,6 +9054,25 @@ tr.expanded-row:hover {
   font-weight: 600;
 }
 
+.wr-gdu-factor {
+  color: #9a6700;
+  font-weight: 600;
+}
+
+.wr-black-layer-factor {
+  color: #9a6700;
+  font-weight: 700;
+}
+
+.wr-black-layer-factor.reached {
+  color: var(--accent-primary);
+}
+
+.wr-et-factor {
+  color: #176b87;
+  font-weight: 600;
+}
+
 .wr-update-field-info .wr-crop-details {
   flex-basis: 100%;
 }
