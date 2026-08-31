@@ -204,6 +204,11 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
+// Aug. 25, 2026 local 37 Ag milk-line checks (20 clean comparisons) implied a
+// median black-layer target of about 2,746 GDU. Round conservatively to 2,750
+// while preserving higher U2U targets for longer-season hybrids.
+const LOCAL_BLACK_LAYER_GDU_FLOOR = 2750;
+
 function cropWeatherKey(plantingDate: string, asOfDate: string): string {
   return `${plantingDate}:${asOfDate}`;
 }
@@ -286,11 +291,14 @@ function FieldCropDetails({
   const through = weather?.throughDate
     ? new Date(`${weather.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
-  // U2U Corn GDD model: black-layer GDD = 129.1 + 22.8 × CRM. This is an
-  // across-hybrid estimate; a seed-company physiological-maturity GDU should
-  // replace it if we add exact product specs later.
-  const estimatedBlackLayerGdu = maturity?.relativeMaturity
+  // U2U Corn GDD model: black-layer GDD = 129.1 + 22.8 × CRM. Keep the local
+  // calibration floor until exact product physiological-maturity GDUs are
+  // available.
+  const u2uBlackLayerGdu = maturity?.relativeMaturity
     ? Math.round(129.1 + 22.8 * maturity.relativeMaturity)
+    : null;
+  const estimatedBlackLayerGdu = u2uBlackLayerGdu !== null
+    ? Math.max(u2uBlackLayerGdu, LOCAL_BLACK_LAYER_GDU_FLOOR)
     : null;
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
@@ -331,7 +339,7 @@ function FieldCropDetails({
       {remainingGdu !== null && (
         <span
           className={`wr-black-layer-factor ${blackLayerColorClass}`}
-          title="Estimated from planting-date GDU accumulation, forecast daily heat, and the U2U corn model. This estimates physiological maturity—not milk line or harvest readiness. Confirm black layer in the field."
+          title="Estimated from planting-date GDU accumulation, forecast daily heat, the U2U corn model, and the August 25 local field calibration. This estimates physiological maturity—not milk line or harvest readiness. Confirm black layer in the field."
         >
           {remainingGdu > 0
             ? `~${remainingGdu.toLocaleString()} GDU${estimatedDays ? ` / ${estimatedDays}d` : beyondForecast ? ` / >${forecastDailyGdu.length}d` : ''} to BL`
