@@ -204,11 +204,6 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
-// Aug. 25, 2026 local 37 Ag milk-line checks (20 clean comparisons) implied a
-// median black-layer target of about 2,746 GDU. Round conservatively to 2,750
-// while preserving higher U2U targets for longer-season hybrids.
-const LOCAL_BLACK_LAYER_GDU_FLOOR = 2750;
-
 function cropWeatherKey(plantingDate: string, asOfDate: string): string {
   return `${plantingDate}:${asOfDate}`;
 }
@@ -276,6 +271,24 @@ function getMaturityLabel(crop: string, hybrid: string): MaturityInfo | null {
   return null;
 }
 
+function getMaturityCopyLabel(
+  field: OperationGroup['fields'][number],
+  weather?: CropWeather,
+): string | null {
+  if (!field.crop.toLowerCase().includes('corn') || weather?.status !== 'ready') return null;
+  const maturity = getMaturityLabel(field.crop, field.hybridVariety);
+  if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
+
+  const targetGdu = Math.round(129.1 + 22.8 * maturity.relativeMaturity);
+  const remainingGdu = targetGdu - weather.gdu;
+  if (remainingGdu <= 0) return 'estimated at maturity';
+
+  const forecastDailyGdu = weather.forecastDailyGdu ?? [];
+  const days = getForecastDaysToBlackLayer(remainingGdu, forecastDailyGdu);
+  if (days !== null) return `about ${days} day${days === 1 ? '' : 's'} to maturity`;
+  return forecastDailyGdu.length ? `more than ${forecastDailyGdu.length} days to maturity` : null;
+}
+
 function FieldCropDetails({
   field,
   weather,
@@ -291,14 +304,11 @@ function FieldCropDetails({
   const through = weather?.throughDate
     ? new Date(`${weather.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
-  // U2U Corn GDD model: black-layer GDD = 129.1 + 22.8 × CRM. Keep the local
-  // calibration floor until exact product physiological-maturity GDUs are
-  // available.
-  const u2uBlackLayerGdu = maturity?.relativeMaturity
+  // U2U Corn GDD model: black-layer GDD = 129.1 + 22.8 × CRM. This is an
+  // across-hybrid estimate; exact product physiological-maturity GDU should
+  // replace it when those specifications are available.
+  const estimatedBlackLayerGdu = maturity?.relativeMaturity
     ? Math.round(129.1 + 22.8 * maturity.relativeMaturity)
-    : null;
-  const estimatedBlackLayerGdu = u2uBlackLayerGdu !== null
-    ? Math.max(u2uBlackLayerGdu, LOCAL_BLACK_LAYER_GDU_FLOOR)
     : null;
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
@@ -339,7 +349,7 @@ function FieldCropDetails({
       {remainingGdu !== null && (
         <span
           className={`wr-black-layer-factor ${blackLayerColorClass}`}
-          title="Estimated from planting-date GDU accumulation, forecast daily heat, the U2U corn model, and the August 25 local field calibration. This estimates physiological maturity—not milk line or harvest readiness. Confirm black layer in the field."
+          title="Estimated from planting-date GDU accumulation, forecast daily heat, and the U2U corn model. This estimates physiological maturity—not milk line or harvest readiness. Confirm black layer in the field."
         >
           {remainingGdu > 0
             ? `~${remainingGdu.toLocaleString()} GDU${estimatedDays ? ` / ${estimatedDays}d` : beyondForecast ? ` / >${forecastDailyGdu.length}d` : ''} to BL`
@@ -1248,17 +1258,22 @@ export default function WaterRecsClient({
       const name = form.probeLabel.trim()
         ? `${field.fieldName} (${form.probeLabel.trim()})`
         : field.fieldName;
+      const maturityLabel = getMaturityCopyLabel(
+        field,
+        field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined,
+      );
+      const reportName = maturityLabel ? `${name} — ${maturityLabel}` : name;
 
       if (form.waterDay) {
         if (!waterSchedule[form.waterDay]) waterSchedule[form.waterDay] = [];
-        waterSchedule[form.waterDay].push(name);
+        waterSchedule[form.waterDay].push(reportName);
       }
 
       if (form.recommendation.trim()) {
         if (form.priority) {
-          priorityFields.push({ name, rec: form.recommendation.trim() });
+          priorityFields.push({ name: reportName, rec: form.recommendation.trim() });
         } else {
-          normalFields.push({ name, rec: form.recommendation.trim() });
+          normalFields.push({ name: reportName, rec: form.recommendation.trim() });
         }
       }
     });
@@ -1320,11 +1335,16 @@ export default function WaterRecsClient({
       const name = form.probeLabel.trim()
         ? `${field.fieldName} (${form.probeLabel.trim()})`
         : field.fieldName;
+      const maturityLabel = getMaturityCopyLabel(
+        field,
+        field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined,
+      );
+      const reportName = maturityLabel ? `${name} — ${maturityLabel}` : name;
 
       if (form.updateStatus === 'updated') {
-        updatedFields.push({ name, day });
+        updatedFields.push({ name: reportName, day });
       } else {
-        continueFields.push({ name, day });
+        continueFields.push({ name: reportName, day });
       }
     });
 
