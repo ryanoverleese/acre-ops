@@ -202,35 +202,37 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
-/** Local GDU-to-black-layer when Pioneer has not published a hybrid number. */
-const HYBRID_BLACK_LAYER_GDU: Record<string, number> = {
-  // 2026-08-31 Connie's Holdrege kernel pic: 50% milk line on P12517V (~200 GDU still to go).
-  P12517: 2930,
+function getBlackLayerTargetGdu(relativeMaturity: number | undefined): number | null {
+  if (!relativeMaturity) return null;
+  return Math.round(129.1 + 22.8 * relativeMaturity);
+}
+
+/** Pioneer remaining GDU at late R5. Overlay only. Not a new black-layer total. */
+const SCOUT_KERNEL_REMAINING_GDU: Record<number, number> = {
+  // Connie's Holdrege — 1/2 milk line, grower pic 2026-08-31.
+  1893: 200,
 };
 
-function normalizeHybridKey(hybrid: string): string {
-  return hybrid.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+function getScoutRemainingGdu(fieldSeasonId: number | undefined): number | null {
+  if (!fieldSeasonId && fieldSeasonId !== 0) return null;
+  const remaining = SCOUT_KERNEL_REMAINING_GDU[fieldSeasonId];
+  return remaining == null ? null : remaining;
 }
 
-function getHybridBlackLayerGdu(hybrid: string | undefined): number | null {
-  if (!hybrid) return null;
-  const key = normalizeHybridKey(hybrid);
-  for (const [name, gdu] of Object.entries(HYBRID_BLACK_LAYER_GDU)) {
-    if (key === name || key.startsWith(name)) return gdu;
-  }
-  return null;
-}
-
-function getBlackLayerTargetGdu(
-  relativeMaturity: number | undefined,
-  hybrid?: string,
+function getBlackLayerPercent(
+  field: OperationGroup['fields'][number],
+  weather?: CropWeather,
 ): number | null {
-  const fromHybrid = getHybridBlackLayerGdu(hybrid);
-  if (fromHybrid !== null) return fromHybrid;
-  if (!relativeMaturity) return null;
-  const u2u = Math.round(129.1 + 22.8 * relativeMaturity);
-  const localFloor = relativeMaturity <= 112 ? 2860 : 2750;
-  return Math.max(u2u, localFloor);
+  if (!field.crop.toLowerCase().includes('corn') || weather?.status !== 'ready') return null;
+  if (typeof weather.gdu !== 'number') return null;
+  const scoutRemaining = getScoutRemainingGdu(field.fieldSeasonId);
+  if (scoutRemaining != null) {
+    return Math.min(100, Math.round(weather.gdu / (weather.gdu + scoutRemaining) * 100));
+  }
+  const maturity = getMaturityLabel(field.crop, field.hybridVariety);
+  const targetGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity);
+  if (targetGdu === null) return null;
+  return Math.min(100, Math.round(weather.gdu / targetGdu * 100));
 }
 
 function cropWeatherKey(plantingDate: string, asOfDate: string): string {
@@ -287,13 +289,8 @@ function getBlackLayerPercentCopyLabel(
   field: OperationGroup['fields'][number],
   weather?: CropWeather,
 ): string | null {
-  if (!field.crop.toLowerCase().includes('corn') || weather?.status !== 'ready') return null;
-  const maturity = getMaturityLabel(field.crop, field.hybridVariety);
-  if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
-
-  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity, field.hybridVariety);
-  if (targetGdu === null) return null;
-  const percent = Math.min(100, Math.round(weather.gdu / targetGdu * 100));
+  const percent = getBlackLayerPercent(field, weather);
+  if (percent === null) return null;
   return `estimated ${percent}% to black layer`;
 }
 
@@ -312,15 +309,13 @@ function FieldCropDetails({
   const through = weather?.throughDate
     ? new Date(`${weather.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
-  // U2U Corn GDD model with a 2,750-GDU local minimum. Exact product
-  // physiological-maturity GDU should replace it when available.
-  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity, field.hybridVariety);
+  // U2U planting-to-black-layer GDU, overlaid by Pioneer remaining GDU when we have a kernel stage.
+  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity);
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
     : null;
-  const maturityPercent = accumulatedGdu !== null && estimatedBlackLayerGdu
-    ? Math.min(100, Math.round(accumulatedGdu / estimatedBlackLayerGdu * 100))
-    : null;
+  const scoutRemaining = getScoutRemainingGdu(field.fieldSeasonId);
+  const maturityPercent = getBlackLayerPercent(field, weather);
 
   return (
     <span className="wr-crop-details">
@@ -332,7 +327,9 @@ function FieldCropDetails({
           className="wr-gdu-factor"
           title={through ? `Corn GDU (base 50, 86°/50° method) accumulated at Holdrege through ${through}.` : undefined}
         >
-          {accumulatedGdu !== null && estimatedBlackLayerGdu !== null
+          {accumulatedGdu !== null && scoutRemaining != null
+            ? `${accumulatedGdu.toLocaleString()} GDU, ~${scoutRemaining} to BL`
+            : accumulatedGdu !== null && estimatedBlackLayerGdu !== null
             ? `${accumulatedGdu.toLocaleString()} / ~${estimatedBlackLayerGdu.toLocaleString()} GDU`
             : weather?.status === 'ready' && accumulatedGdu !== null
               ? `${accumulatedGdu.toLocaleString()} GDU`
@@ -342,7 +339,7 @@ function FieldCropDetails({
       {maturityPercent !== null && (
         <span
           className="wr-black-layer-factor"
-          title="Estimated from planting-date GDU accumulation and hybrid maturity. This is an estimated share of the GDU required for physiological maturity—not milk line or harvest readiness."
+          title="When a kernel stage is on file, percent follows Pioneer remaining GDU from that stage (1/2 milk = 200 GDU left). Otherwise this is U2U planting-to-black-layer GDU, not harvest readiness."
         >
           Est. {maturityPercent}% to BL
         </span>
