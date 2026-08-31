@@ -202,7 +202,31 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
-function getBlackLayerTargetGdu(relativeMaturity: number | undefined): number | null {
+/** Local GDU-to-black-layer when Pioneer has not published a hybrid number. */
+const HYBRID_BLACK_LAYER_GDU: Record<string, number> = {
+  // 2026-08-31 Connie's Holdrege kernel pic: 50% milk line on P12517V (~200 GDU still to go).
+  P12517: 2930,
+};
+
+function normalizeHybridKey(hybrid: string): string {
+  return hybrid.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function getHybridBlackLayerGdu(hybrid: string | undefined): number | null {
+  if (!hybrid) return null;
+  const key = normalizeHybridKey(hybrid);
+  for (const [name, gdu] of Object.entries(HYBRID_BLACK_LAYER_GDU)) {
+    if (key === name || key.startsWith(name)) return gdu;
+  }
+  return null;
+}
+
+function getBlackLayerTargetGdu(
+  relativeMaturity: number | undefined,
+  hybrid?: string,
+): number | null {
+  const fromHybrid = getHybridBlackLayerGdu(hybrid);
+  if (fromHybrid !== null) return fromHybrid;
   if (!relativeMaturity) return null;
   const u2u = Math.round(129.1 + 22.8 * relativeMaturity);
   const localFloor = relativeMaturity <= 112 ? 2860 : 2750;
@@ -267,7 +291,7 @@ function getBlackLayerPercentCopyLabel(
   const maturity = getMaturityLabel(field.crop, field.hybridVariety);
   if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
 
-  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity);
+  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity, field.hybridVariety);
   if (targetGdu === null) return null;
   const percent = Math.min(100, Math.round(weather.gdu / targetGdu * 100));
   return `estimated ${percent}% to black layer`;
@@ -290,7 +314,7 @@ function FieldCropDetails({
     : null;
   // U2U Corn GDD model with a 2,750-GDU local minimum. Exact product
   // physiological-maturity GDU should replace it when available.
-  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity);
+  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity, field.hybridVariety);
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
     : null;
