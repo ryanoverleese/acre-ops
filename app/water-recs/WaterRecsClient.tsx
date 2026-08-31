@@ -192,7 +192,8 @@ function getWeekRange(dateStr: string): { start: string; end: string } {
 type CropWeather = {
   status: 'loading' | 'ready' | 'error';
   gdu?: number;
-  recentGdu?: number;
+  forecastDailyGdu?: number[];
+  forecastThroughDate?: string;
   recentEt0Inches?: number;
   throughDate?: string;
 };
@@ -212,6 +213,16 @@ function getBlackLayerColorClass(remainingGdu: number, estimatedDays: number | n
   if (estimatedDays === null || estimatedDays > 7) return 'watering';
   if (estimatedDays > 4) return 'approaching';
   return 'near';
+}
+
+function getForecastDaysToBlackLayer(remainingGdu: number, forecastDailyGdu: number[]): number | null {
+  if (remainingGdu <= 0) return 0;
+  let forecastAccumulation = 0;
+  for (let day = 0; day < forecastDailyGdu.length; day++) {
+    forecastAccumulation += Math.max(0, forecastDailyGdu[day]);
+    if (forecastAccumulation >= remainingGdu) return day + 1;
+  }
+  return null;
 }
 
 /** Pioneer P1457 -> 114 RM; other brands may include a literal 80-125 rating. */
@@ -290,10 +301,12 @@ function FieldCropDetails({
   const maturityPercent = accumulatedGdu !== null && estimatedBlackLayerGdu
     ? Math.min(100, Math.round(accumulatedGdu / estimatedBlackLayerGdu * 100))
     : null;
-  const recentDailyGdu = weather?.recentGdu && weather.recentGdu > 0 ? weather.recentGdu / 7 : null;
-  const estimatedDays = remainingGdu !== null && recentDailyGdu
-    ? Math.max(1, Math.ceil(Math.abs(remainingGdu) / recentDailyGdu))
+  const forecastDailyGdu = weather?.forecastDailyGdu ?? [];
+  const estimatedDays = remainingGdu !== null && remainingGdu > 0 && forecastDailyGdu.length > 0
+    ? getForecastDaysToBlackLayer(remainingGdu, forecastDailyGdu)
     : null;
+  const beyondForecast = remainingGdu !== null && remainingGdu > 0
+    && forecastDailyGdu.length > 0 && estimatedDays === null;
   const blackLayerColorClass = remainingGdu !== null
     ? getBlackLayerColorClass(remainingGdu, estimatedDays)
     : '';
@@ -309,7 +322,7 @@ function FieldCropDetails({
           title={through ? `Corn GDU (base 50, 86°/50° method) accumulated at Holdrege through ${through}.` : undefined}
         >
           {accumulatedGdu !== null && estimatedBlackLayerGdu !== null
-            ? `${accumulatedGdu.toLocaleString()} / ~${estimatedBlackLayerGdu.toLocaleString()} GDU (${maturityPercent}%)`
+            ? `${accumulatedGdu.toLocaleString()} / ~${estimatedBlackLayerGdu.toLocaleString()} GDU (${maturityPercent}% of BL GDU)`
             : weather?.status === 'ready' && accumulatedGdu !== null
               ? `${accumulatedGdu.toLocaleString()} GDU`
             : weather?.status === 'error' ? 'GDU unavailable' : 'GDU…'}
@@ -318,19 +331,19 @@ function FieldCropDetails({
       {remainingGdu !== null && (
         <span
           className={`wr-black-layer-factor ${blackLayerColorClass}`}
-          title="Estimated from planting-date GDU accumulation and the U2U corn model. Confirm actual maturity by checking milk line and black layer in the field."
+          title="Estimated from planting-date GDU accumulation, forecast daily heat, and the U2U corn model. This estimates physiological maturity—not milk line or harvest readiness. Confirm black layer in the field."
         >
           {remainingGdu > 0
-            ? `~${remainingGdu.toLocaleString()} GDU${estimatedDays ? ` / ${estimatedDays}d` : ''} to BL`
-            : `est. BL${estimatedDays ? ` ~${estimatedDays}d ago` : ''}`}
+            ? `~${remainingGdu.toLocaleString()} GDU${estimatedDays ? ` / ${estimatedDays}d` : beyondForecast ? ` / >${forecastDailyGdu.length}d` : ''} to BL`
+            : 'est. BL reached'}
         </span>
       )}
       {weather?.status === 'ready' && typeof weather.recentEt0Inches === 'number' && (
         <span
           className="wr-et-factor"
-          title={`Seven completed days of reference evapotranspiration (ET₀) at Holdrege${through ? ` through ${through}` : ''}. This is weather demand, before applying a crop coefficient.`}
+          title={`Seven completed days of FAO grass reference evapotranspiration (ET₀) at Holdrege${through ? ` through ${through}` : ''}. Weather context only—not an irrigation recommendation or Axtell alfalfa ET.`}
         >
-          7d ET₀ {weather.recentEt0Inches.toFixed(2)} in
+          7d grass ET₀ {weather.recentEt0Inches.toFixed(2)} in
         </span>
       )}
     </span>
@@ -683,7 +696,8 @@ export default function WaterRecsClient({
         return [key, {
           status: 'ready',
           gdu: data.gdu,
-          recentGdu: data.recentGdu,
+          forecastDailyGdu: data.forecastDailyGdu,
+          forecastThroughDate: data.forecastThroughDate,
           recentEt0Inches: data.recentEt0Inches,
           throughDate: data.throughDate,
         } satisfies CropWeather] as const;
