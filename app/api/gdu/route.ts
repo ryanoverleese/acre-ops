@@ -81,27 +81,8 @@ export async function GET(request: NextRequest) {
     timezone: 'America/Chicago',
   });
   const url = `https://archive-api.open-meteo.com/v1/archive?${params.toString()}`;
-  const today = dateInCentralTime();
-  const forecastParams = new URLSearchParams({
-    latitude: lat.toFixed(4),
-    longitude: lng.toFixed(4),
-    daily: 'temperature_2m_max,temperature_2m_min',
-    temperature_unit: 'fahrenheit',
-    timezone: 'America/Chicago',
-    forecast_days: '16',
-  });
-  const forecastUrl = `https://api.open-meteo.com/v1/forecast?${forecastParams.toString()}`;
-
   try {
-    const [response, forecastResponse] = await Promise.all([
-      fetch(url, { next: { revalidate: 21_600 } }),
-      // A current/future report gets forecast heat beginning today. Historical
-      // reports intentionally omit it rather than applying today's forecast to
-      // an old recommendation date.
-      asOfDate >= today
-        ? fetch(forecastUrl, { next: { revalidate: 10_800 } })
-        : Promise.resolve(null),
-    ]);
+    const response = await fetch(url, { next: { revalidate: 21_600 } });
     if (!response.ok) {
       return NextResponse.json({ error: `Weather service returned ${response.status}` }, { status: 502 });
     }
@@ -132,25 +113,9 @@ export async function GET(request: NextRequest) {
 
     const recentEt0Mm = dailyEt0Mm.slice(-7).reduce((sum, value) => sum + value, 0);
     const recentGdu = dailyGdu.slice(-7).reduce((sum, value) => sum + value, 0);
-    let forecastDailyGdu: number[] = [];
-    let forecastThroughDate: string | null = null;
-    if (forecastResponse?.ok) {
-      const forecastData = await forecastResponse.json() as { daily?: OpenMeteoDaily };
-      const forecastDaily = forecastData.daily;
-      if (forecastDaily?.time && forecastDaily.temperature_2m_max && forecastDaily.temperature_2m_min) {
-        forecastDailyGdu = forecastDaily.time.map((_, index) => Number(cornGdu(
-          forecastDaily.temperature_2m_max?.[index],
-          forecastDaily.temperature_2m_min?.[index],
-        ).toFixed(1)));
-        forecastThroughDate = forecastDaily.time.at(-1) ?? null;
-      }
-    }
-
     return NextResponse.json({
       gdu: Math.round(gdu),
       recentGdu: Math.round(recentGdu),
-      forecastDailyGdu,
-      forecastThroughDate,
       et0Inches: Number((et0Mm / 25.4).toFixed(2)),
       recentEt0Inches: Number((recentEt0Mm / 25.4).toFixed(2)),
       days: daily.time.length,

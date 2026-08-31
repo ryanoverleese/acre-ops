@@ -192,8 +192,6 @@ function getWeekRange(dateStr: string): { start: string; end: string } {
 type CropWeather = {
   status: 'loading' | 'ready' | 'error';
   gdu?: number;
-  forecastDailyGdu?: number[];
-  forecastThroughDate?: string;
   recentEt0Inches?: number;
   throughDate?: string;
 };
@@ -204,60 +202,13 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
-// Verified Aug. 25, 2026 crop-scout checks. Each target is the field's GDU
-// accumulated through Aug. 24 plus the GDU remaining indicated by its observed
-// milk line. Only a later scout target can extend the normal U2U/2,750 clock.
-const SCOUT_BLACK_LAYER_TARGETS: Record<number, number> = {
-  1882: 2758, // Cosmo East — 30–40% milk line
-  1883: 2758, // Cosmo West — 30–40% milk line
-  1884: 2749, // Stark Pivot — 1/3 milk line
-  1886: 2806, // Hays Quarter — 30–40% milk line
-  1887: 2778, // Minden Pivot — 30% milk line
-  1888: 2822, // McClymont North — 10–20% milk line
-  1889: 2822, // McClymont South — 10–20% milk line
-  1890: 2782, // Swanson Pivot — 25% milk line
-  1892: 2746, // Westerlin 80 — 1/2 milk line
-  1893: 2859, // Connie's Holdrege — 30% milk line
-  1897: 2779, // Paul's Pivot — 1/2 milk line
-  1904: 2666, // C and J West — 1/3 milk line
-  1905: 2666, // C and J East — 1/3 milk line
-  1906: 2690, // Connie's Atlanta — 25% milk line
-  1909: 2731, // Connie's Sac Pivot — 1/3 milk line
-  1912: 2664, // Winchester Pivot — 1/2 milk line
-  1913: 2670, // Westerlin Home — 1/3 milk line
-  1918: 2708, // Sundquist — 25% milk line
-  1920: 2703, // Raymond Pivot — 25% milk line
-  2311: 2703, // Wells (East) Pivot — 25% milk line
-};
-
-function getBlackLayerTargetGdu(
-  field: OperationGroup['fields'][number],
-  relativeMaturity: number | undefined,
-): number | null {
+function getBlackLayerTargetGdu(relativeMaturity: number | undefined): number | null {
   if (!relativeMaturity) return null;
-  const standardTarget = Math.max(Math.round(129.1 + 22.8 * relativeMaturity), 2750);
-  return Math.max(standardTarget, SCOUT_BLACK_LAYER_TARGETS[field.fieldSeasonId] || 0);
+  return Math.max(Math.round(129.1 + 22.8 * relativeMaturity), 2750);
 }
 
 function cropWeatherKey(plantingDate: string, asOfDate: string): string {
   return `${plantingDate}:${asOfDate}`;
-}
-
-function getBlackLayerColorClass(remainingGdu: number, estimatedDays: number | null): string {
-  if (remainingGdu <= 0) return 'reached';
-  if (estimatedDays === null || estimatedDays > 7) return 'watering';
-  if (estimatedDays > 4) return 'approaching';
-  return 'near';
-}
-
-function getForecastDaysToBlackLayer(remainingGdu: number, forecastDailyGdu: number[]): number | null {
-  if (remainingGdu <= 0) return 0;
-  let forecastAccumulation = 0;
-  for (let day = 0; day < forecastDailyGdu.length; day++) {
-    forecastAccumulation += Math.max(0, forecastDailyGdu[day]);
-    if (forecastAccumulation >= remainingGdu) return day + 1;
-  }
-  return null;
 }
 
 /** Pioneer P1457 -> 114 RM; other brands may include a literal 80-125 rating. */
@@ -306,7 +257,7 @@ function getMaturityLabel(crop: string, hybrid: string): MaturityInfo | null {
   return null;
 }
 
-function getMaturityCopyLabel(
+function getBlackLayerPercentCopyLabel(
   field: OperationGroup['fields'][number],
   weather?: CropWeather,
 ): string | null {
@@ -314,15 +265,10 @@ function getMaturityCopyLabel(
   const maturity = getMaturityLabel(field.crop, field.hybridVariety);
   if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
 
-  const targetGdu = getBlackLayerTargetGdu(field, maturity.relativeMaturity);
+  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity);
   if (targetGdu === null) return null;
-  const remainingGdu = targetGdu - weather.gdu;
-  if (remainingGdu <= 0) return 'estimated at black layer';
-
-  const forecastDailyGdu = weather.forecastDailyGdu ?? [];
-  const days = getForecastDaysToBlackLayer(remainingGdu, forecastDailyGdu);
-  if (days !== null) return `about ${days} day${days === 1 ? '' : 's'} to black layer`;
-  return forecastDailyGdu.length ? `more than ${forecastDailyGdu.length} days to black layer` : null;
+  const percent = Math.min(100, Math.round(weather.gdu / targetGdu * 100));
+  return `estimated ${percent}% to black layer`;
 }
 
 function FieldCropDetails({
@@ -342,25 +288,13 @@ function FieldCropDetails({
     : null;
   // U2U Corn GDD model with a 2,750-GDU local minimum. Exact product
   // physiological-maturity GDU should replace it when available.
-  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(field, maturity?.relativeMaturity);
+  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity);
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
-    : null;
-  const remainingGdu = accumulatedGdu !== null && estimatedBlackLayerGdu !== null
-    ? estimatedBlackLayerGdu - accumulatedGdu
     : null;
   const maturityPercent = accumulatedGdu !== null && estimatedBlackLayerGdu
     ? Math.min(100, Math.round(accumulatedGdu / estimatedBlackLayerGdu * 100))
     : null;
-  const forecastDailyGdu = weather?.forecastDailyGdu ?? [];
-  const estimatedDays = remainingGdu !== null && remainingGdu > 0 && forecastDailyGdu.length > 0
-    ? getForecastDaysToBlackLayer(remainingGdu, forecastDailyGdu)
-    : null;
-  const beyondForecast = remainingGdu !== null && remainingGdu > 0
-    && forecastDailyGdu.length > 0 && estimatedDays === null;
-  const blackLayerColorClass = remainingGdu !== null
-    ? getBlackLayerColorClass(remainingGdu, estimatedDays)
-    : '';
 
   return (
     <span className="wr-crop-details">
@@ -373,20 +307,18 @@ function FieldCropDetails({
           title={through ? `Corn GDU (base 50, 86°/50° method) accumulated at Holdrege through ${through}.` : undefined}
         >
           {accumulatedGdu !== null && estimatedBlackLayerGdu !== null
-            ? `${accumulatedGdu.toLocaleString()} / ~${estimatedBlackLayerGdu.toLocaleString()} GDU (${maturityPercent}% of BL GDU)`
+            ? `${accumulatedGdu.toLocaleString()} / ~${estimatedBlackLayerGdu.toLocaleString()} GDU`
             : weather?.status === 'ready' && accumulatedGdu !== null
               ? `${accumulatedGdu.toLocaleString()} GDU`
             : weather?.status === 'error' ? 'GDU unavailable' : 'GDU…'}
         </span>
       )}
-      {remainingGdu !== null && (
+      {maturityPercent !== null && (
         <span
-          className={`wr-black-layer-factor ${blackLayerColorClass}`}
-          title="Estimated from planting-date GDU accumulation, forecast daily heat, and the U2U corn model. This estimates physiological maturity—not milk line or harvest readiness. Confirm black layer in the field."
+          className="wr-black-layer-factor"
+          title="Estimated from planting-date GDU accumulation and hybrid maturity. This is an estimated share of the GDU required for physiological maturity—not milk line or harvest readiness."
         >
-          {remainingGdu > 0
-            ? `~${remainingGdu.toLocaleString()} GDU${estimatedDays ? ` / ${estimatedDays}d` : beyondForecast ? ` / >${forecastDailyGdu.length}d` : ''} to BL`
-            : 'est. BL reached'}
+          Est. {maturityPercent}% to BL
         </span>
       )}
       {weather?.status === 'ready' && typeof weather.recentEt0Inches === 'number' && (
@@ -747,8 +679,6 @@ export default function WaterRecsClient({
         return [key, {
           status: 'ready',
           gdu: data.gdu,
-          forecastDailyGdu: data.forecastDailyGdu,
-          forecastThroughDate: data.forecastThroughDate,
           recentEt0Inches: data.recentEt0Inches,
           throughDate: data.throughDate,
         } satisfies CropWeather] as const;
@@ -1291,7 +1221,7 @@ export default function WaterRecsClient({
       const name = form.probeLabel.trim()
         ? `${field.fieldName} (${form.probeLabel.trim()})`
         : field.fieldName;
-      const maturityLabel = getMaturityCopyLabel(
+      const maturityLabel = getBlackLayerPercentCopyLabel(
         field,
         field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined,
       );
@@ -1368,7 +1298,7 @@ export default function WaterRecsClient({
       const name = form.probeLabel.trim()
         ? `${field.fieldName} (${form.probeLabel.trim()})`
         : field.fieldName;
-      const maturityLabel = getMaturityCopyLabel(
+      const maturityLabel = getBlackLayerPercentCopyLabel(
         field,
         field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined,
       );
