@@ -204,6 +204,41 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
+// Verified Aug. 25, 2026 crop-scout checks. Each target is the field's GDU
+// accumulated through Aug. 24 plus the GDU remaining indicated by its observed
+// milk line. Only a later scout target can extend the normal U2U/2,750 clock.
+const SCOUT_BLACK_LAYER_TARGETS: Record<number, number> = {
+  1882: 2758, // Cosmo East — 30–40% milk line
+  1883: 2758, // Cosmo West — 30–40% milk line
+  1884: 2749, // Stark Pivot — 1/3 milk line
+  1886: 2806, // Hays Quarter — 30–40% milk line
+  1887: 2778, // Minden Pivot — 30% milk line
+  1888: 2822, // McClymont North — 10–20% milk line
+  1889: 2822, // McClymont South — 10–20% milk line
+  1890: 2782, // Swanson Pivot — 25% milk line
+  1892: 2746, // Westerlin 80 — 1/2 milk line
+  1893: 2859, // Connie's Holdrege — 30% milk line
+  1897: 2779, // Paul's Pivot — 1/2 milk line
+  1904: 2666, // C and J West — 1/3 milk line
+  1905: 2666, // C and J East — 1/3 milk line
+  1906: 2690, // Connie's Atlanta — 25% milk line
+  1909: 2731, // Connie's Sac Pivot — 1/3 milk line
+  1912: 2664, // Winchester Pivot — 1/2 milk line
+  1913: 2670, // Westerlin Home — 1/3 milk line
+  1918: 2708, // Sundquist — 25% milk line
+  1920: 2703, // Raymond Pivot — 25% milk line
+  2311: 2703, // Wells (East) Pivot — 25% milk line
+};
+
+function getBlackLayerTargetGdu(
+  field: OperationGroup['fields'][number],
+  relativeMaturity: number | undefined,
+): number | null {
+  if (!relativeMaturity) return null;
+  const standardTarget = Math.max(Math.round(129.1 + 22.8 * relativeMaturity), 2750);
+  return Math.max(standardTarget, SCOUT_BLACK_LAYER_TARGETS[field.fieldSeasonId] || 0);
+}
+
 function cropWeatherKey(plantingDate: string, asOfDate: string): string {
   return `${plantingDate}:${asOfDate}`;
 }
@@ -279,10 +314,8 @@ function getMaturityCopyLabel(
   const maturity = getMaturityLabel(field.crop, field.hybridVariety);
   if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
 
-  const targetGdu = Math.max(
-    Math.round(129.1 + 22.8 * maturity.relativeMaturity),
-    2750,
-  );
+  const targetGdu = getBlackLayerTargetGdu(field, maturity.relativeMaturity);
+  if (targetGdu === null) return null;
   const remainingGdu = targetGdu - weather.gdu;
   if (remainingGdu <= 0) return 'estimated at black layer';
 
@@ -309,9 +342,7 @@ function FieldCropDetails({
     : null;
   // U2U Corn GDD model with a 2,750-GDU local minimum. Exact product
   // physiological-maturity GDU should replace it when available.
-  const estimatedBlackLayerGdu = maturity?.relativeMaturity
-    ? Math.max(Math.round(129.1 + 22.8 * maturity.relativeMaturity), 2750)
-    : null;
+  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(field, maturity?.relativeMaturity);
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
     : null;
