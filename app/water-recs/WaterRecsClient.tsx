@@ -207,6 +207,13 @@ function cropWeatherKey(plantingDate: string, asOfDate: string): string {
   return `${plantingDate}:${asOfDate}`;
 }
 
+function getBlackLayerColorClass(remainingGdu: number, estimatedDays: number | null): string {
+  if (remainingGdu <= 0) return 'reached';
+  if (estimatedDays === null || estimatedDays > 7) return 'watering';
+  if (estimatedDays > 4) return 'approaching';
+  return 'near';
+}
+
 /** Pioneer P1457 -> 114 RM; other brands may include a literal 80-125 rating. */
 function parseCornRelativeMaturity(hybrid: string): number | null {
   const normalized = hybrid.trim().toUpperCase();
@@ -287,6 +294,9 @@ function FieldCropDetails({
   const estimatedDays = remainingGdu !== null && recentDailyGdu
     ? Math.max(1, Math.ceil(Math.abs(remainingGdu) / recentDailyGdu))
     : null;
+  const blackLayerColorClass = remainingGdu !== null
+    ? getBlackLayerColorClass(remainingGdu, estimatedDays)
+    : '';
 
   return (
     <span className="wr-crop-details">
@@ -307,7 +317,7 @@ function FieldCropDetails({
       )}
       {remainingGdu !== null && (
         <span
-          className={`wr-black-layer-factor${remainingGdu <= 0 ? ' reached' : ''}`}
+          className={`wr-black-layer-factor ${blackLayerColorClass}`}
           title="Estimated from planting-date GDU accumulation and the U2U corn model. Confirm actual maturity by checking milk line and black layer in the field."
         >
           {remainingGdu > 0

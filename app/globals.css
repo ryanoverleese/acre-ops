@@ -9060,12 +9060,23 @@ tr.expanded-row:hover {
 }
 
 .wr-black-layer-factor {
-  color: #9a6700;
   font-weight: 700;
 }
 
+.wr-black-layer-factor.watering {
+  color: #1d4ed8;
+}
+
+.wr-black-layer-factor.approaching {
+  color: #15803d;
+}
+
+.wr-black-layer-factor.near {
+  color: #a16207;
+}
+
 .wr-black-layer-factor.reached {
-  color: var(--accent-primary);
+  color: #dc2626;
 }
 
 .wr-et-factor {
