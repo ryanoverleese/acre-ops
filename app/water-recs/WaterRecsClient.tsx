@@ -279,14 +279,17 @@ function getMaturityCopyLabel(
   const maturity = getMaturityLabel(field.crop, field.hybridVariety);
   if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
 
-  const targetGdu = Math.round(129.1 + 22.8 * maturity.relativeMaturity);
+  const targetGdu = Math.max(
+    Math.round(129.1 + 22.8 * maturity.relativeMaturity),
+    2750,
+  );
   const remainingGdu = targetGdu - weather.gdu;
-  if (remainingGdu <= 0) return 'estimated at maturity';
+  if (remainingGdu <= 0) return 'estimated at black layer';
 
   const forecastDailyGdu = weather.forecastDailyGdu ?? [];
   const days = getForecastDaysToBlackLayer(remainingGdu, forecastDailyGdu);
-  if (days !== null) return `about ${days} day${days === 1 ? '' : 's'} to maturity`;
-  return forecastDailyGdu.length ? `more than ${forecastDailyGdu.length} days to maturity` : null;
+  if (days !== null) return `about ${days} day${days === 1 ? '' : 's'} to black layer`;
+  return forecastDailyGdu.length ? `more than ${forecastDailyGdu.length} days to black layer` : null;
 }
 
 function FieldCropDetails({
@@ -304,11 +307,10 @@ function FieldCropDetails({
   const through = weather?.throughDate
     ? new Date(`${weather.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
-  // U2U Corn GDD model: black-layer GDD = 129.1 + 22.8 × CRM. This is an
-  // across-hybrid estimate; exact product physiological-maturity GDU should
-  // replace it when those specifications are available.
+  // U2U Corn GDD model with a 2,750-GDU local minimum. Exact product
+  // physiological-maturity GDU should replace it when available.
   const estimatedBlackLayerGdu = maturity?.relativeMaturity
-    ? Math.round(129.1 + 22.8 * maturity.relativeMaturity)
+    ? Math.max(Math.round(129.1 + 22.8 * maturity.relativeMaturity), 2750)
     : null;
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
