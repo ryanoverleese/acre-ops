@@ -12,6 +12,8 @@ export interface ReportField {
   crop: string;
   acres: number;
   fieldNote: string;
+  hybridVariety: string;
+  plantingDate: string;
 }
 
 export interface OperationGroup {
@@ -97,6 +99,8 @@ export default async function WaterRecsPage() {
         crop: fs.crop?.value || '',
         acres: field.acres || 0,
         fieldNote: fs.field_note || '',
+        hybridVariety: fs.hybrid_variety || '',
+        plantingDate: fs.planting_date || '',
       });
     });
 

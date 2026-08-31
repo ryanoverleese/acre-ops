@@ -189,6 +189,88 @@ function getWeekRange(dateStr: string): { start: string; end: string } {
   };
 }
 
+type CropProgress = {
+  maturityLabel: string;
+  timingLabel: string;
+  title: string;
+};
+
+function daysBetween(start: string, end: string): number | null {
+  if (!start || !end) return null;
+  const startDate = new Date(`${start}T12:00:00`);
+  const endDate = new Date(`${end}T12:00:00`);
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return null;
+  return Math.floor((endDate.getTime() - startDate.getTime()) / 86_400_000);
+}
+
+/** Pioneer P1457 -> 114 RM; other brands may include a literal 80-125 rating. */
+function parseCornRelativeMaturity(hybrid: string): number | null {
+  const normalized = hybrid.trim().toUpperCase();
+  const pioneer = normalized.match(/^P?(\d{2})\d{2}/);
+  if (pioneer) {
+    const prefix = Number(pioneer[1]);
+    if (prefix >= 0 && prefix <= 25) return 100 + prefix;
+  }
+  const literal = normalized.match(/(?:^|\D)(8\d|9\d|1[01]\d|12[0-5])(?:\D|$)/);
+  return literal ? Number(literal[1]) : null;
+}
+
+/** Pioneer soybean products such as P23Z58 encode maturity group 2.3. */
+function parseSoybeanMaturityGroup(hybrid: string): number | null {
+  const match = hybrid.trim().toUpperCase().match(/^P?(\d)(\d)[A-Z]/);
+  return match ? Number(`${match[1]}.${match[2]}`) : null;
+}
+
+function getCropProgress(crop: string, hybrid: string, plantingDate: string, asOfDate: string): CropProgress | null {
+  const daysAfterPlanting = daysBetween(plantingDate, asOfDate);
+  if (!hybrid && !plantingDate) return null;
+  const cropName = crop.toLowerCase();
+
+  if (cropName.includes('corn') && hybrid && daysAfterPlanting !== null) {
+    const relativeMaturity = parseCornRelativeMaturity(hybrid);
+    if (relativeMaturity) {
+      const remaining = relativeMaturity - daysAfterPlanting;
+      return {
+        maturityLabel: `${relativeMaturity} RM`,
+        timingLabel: remaining > 0 ? `~${remaining}d to RM` : `~${Math.abs(remaining)}d past RM`,
+        title: `Simple estimate: planting date plus ${relativeMaturity}-day comparative relative maturity. Weather and GDUs can move actual physiological maturity.`,
+      };
+    }
+  }
+
+  if ((cropName.includes('soy') || cropName.includes('bean')) && hybrid) {
+    const maturityGroup = parseSoybeanMaturityGroup(hybrid);
+    if (maturityGroup !== null) {
+      return {
+        maturityLabel: `MG ${maturityGroup.toFixed(1)}`,
+        timingLabel: daysAfterPlanting !== null ? `${daysAfterPlanting} DAP` : 'planting date missing',
+        title: 'Soybean maturity group is not a calendar-day rating, so Acre Ops shows days after planting instead of a misleading days-to-maturity estimate.',
+      };
+    }
+  }
+
+  return {
+    maturityLabel: hybrid || 'hybrid missing',
+    timingLabel: daysAfterPlanting !== null ? `${daysAfterPlanting} DAP` : 'planting date missing',
+    title: 'Days after planting. No dependable calendar-day maturity rating could be read from this hybrid/variety.',
+  };
+}
+
+function FieldCropDetails({ field, asOfDate }: { field: OperationGroup['fields'][number]; asOfDate: string }) {
+  const progress = getCropProgress(field.crop, field.hybridVariety, field.plantingDate, asOfDate);
+  const planted = field.plantingDate
+    ? new Date(`${field.plantingDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    : 'date missing';
+
+  return (
+    <span className="wr-crop-details" title={progress?.title}>
+      <span>{field.hybridVariety || 'hybrid missing'}</span>
+      <span>Planted {planted}</span>
+      {progress && <span className="wr-maturity-factor">{progress.maturityLabel} · {progress.timingLabel}</span>}
+    </span>
+  );
+}
+
 // Ryan's report routes, in the exact order he writes them. Mon & Thu use one
 // order, Tue & Fri the other (full report early week, update late week).
 // Values are operation ids (from Baserow operations table 817295).
@@ -1428,6 +1510,7 @@ export default function WaterRecsClient({
                     <span className="wr-field-meta">
                       {field.crop} &middot; {field.acres} ac
                     </span>
+                    <FieldCropDetails field={field} asOfDate={reportDate} />
                   </div>
 
                   {/* Probe label for 2-probe fields — front-end only, shows in copied report */}
@@ -1721,6 +1804,7 @@ export default function WaterRecsClient({
                       was {form.originalDay}
                     </span>
                   )}
+                  <FieldCropDetails field={field} asOfDate={reportDate} />
                 </div>
 
                 {/* Probe label for 2-probe fields — front-end only, rides into the
