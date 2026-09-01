@@ -202,20 +202,11 @@ type MaturityInfo = {
   relativeMaturity?: number;
 };
 
-function plantedInApril(plantingDate: string | undefined): boolean {
-  if (!plantingDate) return false;
-  const month = plantingDate.slice(5, 7);
-  return month === '04';
-}
-
-function getBlackLayerTargetGdu(
-  relativeMaturity: number | undefined,
-  plantingDate?: string,
-): number | null {
+function getBlackLayerTargetGdu(relativeMaturity: number | undefined): number | null {
   if (!relativeMaturity) return null;
   const u2u = Math.round(129.1 + 22.8 * relativeMaturity);
-  // Tuesday kernel set: U2U ran ~150 GDU early on April 108–109s. Later 113+ stays on U2U.
-  if (relativeMaturity >= 108 && relativeMaturity <= 109 && plantedInApril(plantingDate)) {
+  // Tuesday kernel set: U2U ran ~150 GDU early on 108–109s. 113+ stays on U2U.
+  if (relativeMaturity >= 108 && relativeMaturity <= 109) {
     return u2u + 150;
   }
   return u2u;
@@ -279,7 +270,7 @@ function getBlackLayerPercentCopyLabel(
   const maturity = getMaturityLabel(field.crop, field.hybridVariety);
   if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
 
-  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity, field.plantingDate);
+  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity);
   if (targetGdu === null) return null;
   const percent = Math.min(100, Math.round(weather.gdu / targetGdu * 100));
   return `estimated ${percent}% to black layer`;
@@ -300,8 +291,8 @@ function FieldCropDetails({
   const through = weather?.throughDate
     ? new Date(`${weather.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     : null;
-  // U2U planting-to-black-layer GDU. April 108–109s get +150 from the Tuesday kernel set.
-  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity, field.plantingDate);
+  // U2U planting-to-black-layer GDU. 108–109s get +150 from the Tuesday kernel set.
+  const estimatedBlackLayerGdu = getBlackLayerTargetGdu(maturity?.relativeMaturity);
   const accumulatedGdu = weather?.status === 'ready' && typeof weather.gdu === 'number'
     ? weather.gdu
     : null;
