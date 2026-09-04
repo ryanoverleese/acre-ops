@@ -262,20 +262,6 @@ function getMaturityLabel(crop: string, hybrid: string): MaturityInfo | null {
   return null;
 }
 
-function getBlackLayerPercentCopyLabel(
-  field: OperationGroup['fields'][number],
-  weather?: CropWeather,
-): string | null {
-  if (!field.crop.toLowerCase().includes('corn') || weather?.status !== 'ready') return null;
-  const maturity = getMaturityLabel(field.crop, field.hybridVariety);
-  if (!maturity?.relativeMaturity || typeof weather.gdu !== 'number') return null;
-
-  const targetGdu = getBlackLayerTargetGdu(maturity.relativeMaturity);
-  if (targetGdu === null) return null;
-  const percent = Math.min(100, Math.round(weather.gdu / targetGdu * 100));
-  return `estimated ${percent}% to black layer`;
-}
-
 function FieldCropDetails({
   field,
   weather,
@@ -1225,22 +1211,16 @@ export default function WaterRecsClient({
       const name = form.probeLabel.trim()
         ? `${field.fieldName} (${form.probeLabel.trim()})`
         : field.fieldName;
-      const maturityLabel = getBlackLayerPercentCopyLabel(
-        field,
-        field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined,
-      );
-      const reportName = maturityLabel ? `${name} — ${maturityLabel}` : name;
-
       if (form.waterDay) {
         if (!waterSchedule[form.waterDay]) waterSchedule[form.waterDay] = [];
-        waterSchedule[form.waterDay].push(reportName);
+        waterSchedule[form.waterDay].push(name);
       }
 
       if (form.recommendation.trim()) {
         if (form.priority) {
-          priorityFields.push({ name: reportName, rec: form.recommendation.trim() });
+          priorityFields.push({ name, rec: form.recommendation.trim() });
         } else {
-          normalFields.push({ name: reportName, rec: form.recommendation.trim() });
+          normalFields.push({ name, rec: form.recommendation.trim() });
         }
       }
     });
@@ -1302,16 +1282,10 @@ export default function WaterRecsClient({
       const name = form.probeLabel.trim()
         ? `${field.fieldName} (${form.probeLabel.trim()})`
         : field.fieldName;
-      const maturityLabel = getBlackLayerPercentCopyLabel(
-        field,
-        field.plantingDate ? cropWeather[cropWeatherKey(field.plantingDate, reportDate)] : undefined,
-      );
-      const reportName = maturityLabel ? `${name} — ${maturityLabel}` : name;
-
       if (form.updateStatus === 'updated') {
-        updatedFields.push({ name: reportName, day });
+        updatedFields.push({ name, day });
       } else {
-        continueFields.push({ name: reportName, day });
+        continueFields.push({ name, day });
       }
     });
 
