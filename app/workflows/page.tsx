@@ -36,6 +36,8 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
     const currentSeason = new Date().getFullYear();
     const seasonFields: EarlyRemovalData[] = fieldSeasons
       .filter((fs) => Number(fs.season) === currentSeason)
+      // Removals is Acre Insights pull work — Complete DIY growers handle their own
+      .filter((fs) => fs.service_type?.[0]?.value !== 'CropX Complete DIY')
       .map((fs) => {
         const fieldId = fs.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
