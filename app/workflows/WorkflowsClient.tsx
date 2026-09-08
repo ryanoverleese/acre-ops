@@ -75,6 +75,8 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [error, setError] = useState('');
   const [earlyRemovalRows, setEarlyRemovalRows] = useState(seasonFields);
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
+  const [removalTableSearch, setRemovalTableSearch] = useState('');
+  const [showRemovedRows, setShowRemovedRows] = useState(false);
   type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
@@ -702,8 +704,27 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       if (key === 'plantingDate') return row.plantingDate || '';
       return (row[key] || '').toString().toLowerCase();
     };
+    const removalSearchNeedle = removalTableSearch.trim().toLowerCase();
     const visibleRows = earlyRemovalRows
       .filter((row) => !showOnlyEarlyRemovals || !!row.earlyRemoval)
+      .filter((row) => showRemovedRows || !row.removalDate)
+      .filter((row) => {
+        if (!removalSearchNeedle) return true;
+        const haystack = [
+          row.fieldName,
+          row.operation,
+          row.crop,
+          row.hybrid,
+          row.maturity,
+          row.earlyRemoval,
+          row.plannedRemover,
+          row.plantingDate,
+          row.removalDate,
+          row.needsAtv === true ? 'needs atv' : row.needsAtv === false ? 'pickup' : '',
+          row.readyToRemove ? 'ready' : '',
+        ].join(' ').toLowerCase();
+        return haystack.includes(removalSearchNeedle);
+      })
       .slice()
       .sort((a, b) => {
         const av = sortValue(a, removalSortKey);
@@ -744,10 +765,32 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           <div style={{ maxWidth: 1400 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
-                Current-season fields. Click a header to sort. Reason, planned remover, and Ready save when you change them.
+                Current-season fields still in the ground by default. Click a header to sort. Reason, planned remover, and Ready save when you change them.
                 {earlyRemovalSaving ? ' Saving…' : ''}
               </p>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  type="search"
+                  value={removalTableSearch}
+                  onChange={(e) => setRemovalTableSearch(e.target.value)}
+                  placeholder="Search fields…"
+                  aria-label="Search removals table"
+                  style={{
+                    width: 220,
+                    boxSizing: 'border-box',
+                    padding: '6px 10px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 6,
+                    background: 'var(--bg-primary)',
+                    color: 'var(--text-primary)',
+                    fontSize: 13,
+                    lineHeight: 1.25,
+                    minHeight: 32,
+                  }}
+                />
+                <button className="btn btn-secondary" onClick={() => setShowRemovedRows((value) => !value)}>
+                  {showRemovedRows ? 'Hide Removed' : 'Show Removed'}
+                </button>
                 <button className="btn btn-secondary" onClick={() => setShowOnlyEarlyRemovals((value) => !value)}>
                   {showOnlyEarlyRemovals ? 'Show All Fields' : 'Show Marked Only'}
                 </button>
@@ -828,7 +871,15 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={11} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                    <tr><td colSpan={11} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{
+                      removalSearchNeedle
+                        ? 'No fields match that search.'
+                        : !showRemovedRows
+                          ? 'No still-in-ground fields match. Try Show Removed.'
+                          : showOnlyEarlyRemovals
+                            ? 'No removals are marked for the current season.'
+                            : 'No current-season fields found.'
+                    }</td></tr>
                   ) : visibleRows.map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
