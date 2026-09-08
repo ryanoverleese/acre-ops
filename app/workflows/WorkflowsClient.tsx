@@ -140,22 +140,22 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const saveEarlyRemovalRow = async (row: EarlyRemovalData) => {
     setEarlyRemovalSaving(true);
     setEarlyRemovalError('');
+    setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? row : candidate));
     try {
       const response = await fetch(`/api/field-seasons/${row.fieldSeasonId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          early_removal: row.earlyRemoval,
+          early_removal: row.earlyRemoval || null,
           planned_remover: row.plannedRemover || null,
         }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Could not save early removal');
+        throw new Error(data.error || 'Could not save removal');
       }
-      setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? row : candidate));
     } catch (err) {
-      setEarlyRemovalError(err instanceof Error ? err.message : 'Could not save early removal');
+      setEarlyRemovalError(err instanceof Error ? err.message : 'Could not save removal');
     } finally {
       setEarlyRemovalSaving(false);
     }
@@ -726,7 +726,8 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           <div style={{ maxWidth: 1180 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
-                Current-season fields. Click a column header to sort. Edit reason and remover, then save.
+                Current-season fields. Click a header to sort. Reason and planned remover save when you pick them.
+                {earlyRemovalSaving ? ' Saving…' : ''}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary" onClick={() => setShowOnlyEarlyRemovals((value) => !value)}>
@@ -735,6 +736,9 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 <button className="btn btn-primary" onClick={openEarlyRemovalForm}>+ Add Removal</button>
               </div>
             </div>
+            {earlyRemovalError && !showEarlyRemovalForm && (
+              <div style={{ color: 'var(--accent-red)', fontSize: 13, marginBottom: 8 }}>{earlyRemovalError}</div>
+            )}
             {showEarlyRemovalForm && (
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10, background: 'var(--bg-secondary)' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
@@ -802,12 +806,11 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                         {col.label}{sortMark(col.key)}
                       </th>
                     ))}
-                    <th style={{ ...thPad, cursor: 'default' }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={8} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                    <tr><td colSpan={7} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
                   ) : visibleRows.map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
@@ -816,7 +819,11 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
                           value={row.earlyRemoval}
-                          onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, earlyRemoval: event.target.value } : candidate))}
+                          disabled={earlyRemovalSaving}
+                          onChange={(event) => {
+                            const updated = { ...row, earlyRemoval: event.target.value };
+                            void saveEarlyRemovalRow(updated);
+                          }}
                           style={{ width: '100%', height: 30, fontSize: 13 }}
                         >
                           <option value="">— Not marked —</option>
@@ -832,17 +839,16 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
                           value={row.plannedRemover}
-                          onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, plannedRemover: event.target.value } : candidate))}
+                          disabled={earlyRemovalSaving}
+                          onChange={(event) => {
+                            const updated = { ...row, plannedRemover: event.target.value };
+                            void saveEarlyRemovalRow(updated);
+                          }}
                           style={{ width: '100%', height: 30, fontSize: 13 }}
                         >
                           <option value="">— Not assigned —</option>
                           {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                         </select>
-                      </td>
-                      <td style={{ ...cellPad, width: 64 }}>
-                        <button className="btn btn-secondary" onClick={() => saveEarlyRemovalRow(row)} disabled={earlyRemovalSaving} style={{ padding: '4px 10px', fontSize: 12 }}>
-                          Save
-                        </button>
                       </td>
                     </tr>
                   ))}
