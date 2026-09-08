@@ -1,6 +1,7 @@
 import { getCachedAllSelectOptions, getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact, type SelectOption } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WorkflowsClient, { EarlyRemovalData, UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
+import { getHybridMaturityLabel } from '@/lib/hybrid-maturity';
 
 export const dynamic = 'force-dynamic';
 
@@ -73,6 +74,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           hybrid: fs.hybrid_variety || '',
           plantingDate: fs.planting_date || '',
           readyToRemove: fs.ready_to_remove?.value === 'Yes',
+          maturity: getHybridMaturityLabel(fs.crop?.value || '', fs.hybrid_variety || '')?.label || '',
         };
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));

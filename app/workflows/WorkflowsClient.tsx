@@ -36,6 +36,7 @@ export interface EarlyRemovalData {
   crop: string;
   hybrid: string;
   plantingDate: string;
+  maturity: string;
   earlyRemoval: string;
   removalDate: string;
   plannedRemover: string;
@@ -74,7 +75,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [error, setError] = useState('');
   const [earlyRemovalRows, setEarlyRemovalRows] = useState(seasonFields);
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
-  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
+  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
   const toggleRemovalSort = (key: RemovalSortKey) => {
@@ -720,6 +721,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       { key: 'operation', label: 'Operation' },
       { key: 'crop', label: 'Crop' },
       { key: 'hybrid', label: 'Hybrid' },
+      { key: 'maturity', label: 'Maturity' },
       { key: 'plantingDate', label: 'Planted' },
       { key: 'earlyRemoval', label: 'Reason' },
       { key: 'needsAtv', label: 'ATV' },
@@ -826,13 +828,14 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={10} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                    <tr><td colSpan={11} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
                   ) : visibleRows.map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
                       <td style={cellPad}>{row.operation || '—'}</td>
                       <td style={cellPad}>{row.crop || '—'}</td>
                       <td style={cellPad}>{row.hybrid || '—'}</td>
+                      <td style={cellPad} title={row.maturity ? 'From hybrid code (Pioneer / Channel).' : 'Could not read maturity from this hybrid code.'}>{row.maturity || '—'}</td>
                       <td style={cellPad}>{row.plantingDate ? row.plantingDate.slice(0, 10) : '—'}</td>
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
