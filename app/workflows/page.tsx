@@ -43,10 +43,24 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           const opId = billingToOperationMap.get(field.billing_entity[0].id);
           if (opId) operationName = operationMap.get(opId) || '';
         }
-        const assignmentDates = (assignmentsByFieldSeason.get(fs.id) ?? [])
+        const seasonAssignments = assignmentsByFieldSeason.get(fs.id) ?? [];
+        const assignmentDates = seasonAssignments
           .map((pa) => pa.removal_date)
           .filter(Boolean)
           .sort();
+        const accessFlags = seasonAssignments
+          .map((pa) => {
+            const raw = (pa as { pickup_access?: boolean | string | null }).pickup_access;
+            if (raw === true || raw === 'true' || raw === 'True' || raw === 'yes' || raw === 'Yes') return true;
+            if (raw === false || raw === 'false' || raw === 'False' || raw === 'no' || raw === 'No') return false;
+            return null;
+          })
+          .filter((flag): flag is boolean => flag !== null);
+        // Needs ATV when pickup access is false. Mixed probes: any ATV-needed wins.
+        let needsAtv: boolean | null = null;
+        if (accessFlags.length) {
+          needsAtv = accessFlags.some((flag) => flag === false);
+        }
         return {
           fieldSeasonId: fs.id,
           fieldName: field?.name || 'Unknown Field',
@@ -55,6 +69,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           earlyRemoval: fs.early_removal?.value || '',
           removalDate: fs.removal_date || assignmentDates[0] || '',
           plannedRemover: fs.planned_remover?.value || '',
+          needsAtv,
         };
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));

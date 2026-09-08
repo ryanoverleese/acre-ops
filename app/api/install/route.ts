@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     } catch { /* idempotency check timed out — proceed with install */ }
 
     if (pickupAccess !== null) {
-      probeAssignmentUpdate.pick_up_access = pickupAccess;
+      probeAssignmentUpdate.pickup_access = pickupAccess;
     }
     if (photoFieldEndFile) {
       probeAssignmentUpdate.install_photo_field_end = [{ name: photoFieldEndFile.name }];

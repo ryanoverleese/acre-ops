@@ -498,6 +498,7 @@ export interface ProbeAssignment {
   install_photo_extra?: { url: string; name: string }[];
   install_notes?: string;
   grower_notified?: string;
+  pickup_access?: boolean | string | null;
   cropx_telemetry_id?: string;
   signal_strength?: string;
   // Approval data

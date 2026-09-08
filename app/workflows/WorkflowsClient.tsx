@@ -37,6 +37,8 @@ export interface EarlyRemovalData {
   earlyRemoval: string;
   removalDate: string;
   plannedRemover: string;
+  /** true = needs ATV; false = pickup OK; null = unknown */
+  needsAtv: boolean | null;
 }
 
 export interface EarlyRemovalOption {
@@ -69,6 +71,17 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [error, setError] = useState('');
   const [earlyRemovalRows, setEarlyRemovalRows] = useState(seasonFields);
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
+  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv';
+  const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
+  const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
+  const toggleRemovalSort = (key: RemovalSortKey) => {
+    if (removalSortKey === key) {
+      setRemovalSortDir((dir) => (dir === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setRemovalSortKey(key);
+      setRemovalSortDir('asc');
+    }
+  };
   const [showEarlyRemovalForm, setShowEarlyRemovalForm] = useState(false);
   const [earlyRemovalFieldId, setEarlyRemovalFieldId] = useState('');
   const [earlyRemovalFieldSearch, setEarlyRemovalFieldSearch] = useState('');
@@ -513,7 +526,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </svg>
               </div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 15 }}>Early Removals</div>
+                <div style={{ fontWeight: 600, fontSize: 15 }}>Removals</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 13, marginTop: 2 }}>
                   Review fields planned for early pull and track what has been removed.
                 </div>
@@ -630,63 +643,113 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   if (activeWorkflow === 'early-removals') {
     const earlyRemovalInputStyle: React.CSSProperties = {
       width: '100%',
-      height: 42,
+      height: 34,
       boxSizing: 'border-box',
-      padding: '0 12px',
+      padding: '0 10px',
       border: '1px solid var(--border)',
-      borderRadius: 8,
+      borderRadius: 6,
       background: 'var(--bg-primary)',
       color: 'var(--text-primary)',
-      fontSize: 14,
+      fontSize: 13,
     };
     const earlyRemovalLabelStyle: React.CSSProperties = {
       display: 'flex',
       flexDirection: 'column',
-      gap: 7,
-      fontSize: 11,
+      gap: 4,
+      fontSize: 10,
       fontWeight: 600,
       letterSpacing: '0.06em',
       textTransform: 'uppercase',
       color: 'var(--text-secondary)',
     };
+    const cellPad: React.CSSProperties = { padding: '6px 10px', whiteSpace: 'nowrap', fontSize: 13 };
+    const thPad: React.CSSProperties = {
+      padding: '6px 10px',
+      textAlign: 'left',
+      fontSize: 10,
+      color: 'var(--text-muted)',
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+      whiteSpace: 'nowrap',
+      cursor: 'pointer',
+      userSelect: 'none',
+    };
+    const atvLabel = (value: boolean | null) => {
+      if (value === true) return 'Needs ATV';
+      if (value === false) return 'Pickup';
+      return '—';
+    };
+    const sortValue = (row: EarlyRemovalData, key: RemovalSortKey): string | number => {
+      if (key === 'needsAtv') {
+        if (row.needsAtv === true) return 0;
+        if (row.needsAtv === false) return 1;
+        return 2;
+      }
+      if (key === 'removalDate') return row.removalDate || '';
+      return (row[key] || '').toString().toLowerCase();
+    };
+    const visibleRows = earlyRemovalRows
+      .filter((row) => !showOnlyEarlyRemovals || !!row.earlyRemoval)
+      .slice()
+      .sort((a, b) => {
+        const av = sortValue(a, removalSortKey);
+        const bv = sortValue(b, removalSortKey);
+        let cmp = 0;
+        if (typeof av === 'number' && typeof bv === 'number') cmp = av - bv;
+        else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
+        return removalSortDir === 'asc' ? cmp : -cmp;
+      });
+    const sortMark = (key: RemovalSortKey) => (
+      removalSortKey === key ? (removalSortDir === 'asc' ? ' ▲' : ' ▼') : ''
+    );
+    const columns: { key: RemovalSortKey; label: string }[] = [
+      { key: 'fieldName', label: 'Field' },
+      { key: 'operation', label: 'Operation' },
+      { key: 'crop', label: 'Crop' },
+      { key: 'earlyRemoval', label: 'Reason' },
+      { key: 'needsAtv', label: 'ATV' },
+      { key: 'removalDate', label: 'Date Removed' },
+      { key: 'plannedRemover', label: 'Planned Remover' },
+    ];
     return (
       <>
         <header className="header">
           <div className="header-left">
             <h2>Workflows</h2>
-            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ Early Removals</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>/ Removals</span>
           </div>
           <div className="header-right">
             <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)}>Back</button>
           </div>
         </header>
         <div className="content">
-          <div style={{ maxWidth: 1100 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
-                Current-season fields. Edit the two workflow columns directly, then save the row.
+          <div style={{ maxWidth: 1180 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+              <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
+                Current-season fields. Click a column header to sort. Edit reason and remover, then save.
               </p>
-              <button className="btn btn-secondary" onClick={() => setShowOnlyEarlyRemovals((value) => !value)}>
-                {showOnlyEarlyRemovals ? 'Show All Fields' : 'Show Marked Only'}
-              </button>
-              <button className="btn btn-primary" onClick={openEarlyRemovalForm}>+ Add Early Removal</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-secondary" onClick={() => setShowOnlyEarlyRemovals((value) => !value)}>
+                  {showOnlyEarlyRemovals ? 'Show All Fields' : 'Show Marked Only'}
+                </button>
+                <button className="btn btn-primary" onClick={openEarlyRemovalForm}>+ Add Removal</button>
+              </div>
             </div>
             {showEarlyRemovalForm && (
-              <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 22, marginBottom: 16, background: 'var(--bg-secondary)', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 10, background: 'var(--bg-secondary)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
                   <div>
-                    <div style={{ fontWeight: 650, fontSize: 17 }}>Add Early Removal</div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>Choose a field, then record why it is coming out early.</div>
+                    <div style={{ fontWeight: 650, fontSize: 15 }}>Add Removal</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>Choose a field, then record why it is coming out.</div>
                   </div>
+                  <button className="btn btn-secondary" onClick={() => setShowEarlyRemovalForm(false)} disabled={earlyRemovalSaving}>Close</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 1.4fr) minmax(140px, 1fr) minmax(140px, 1fr)', gap: 10 }}>
                   <label style={earlyRemovalLabelStyle}>
                     Field
                     <input
                       list="early-removal-field-options"
                       value={earlyRemovalFieldSearch}
-                      placeholder="Search fields…"
-                      style={earlyRemovalInputStyle}
                       onChange={(e) => {
                       const row = seasonFields.find((candidate) => earlyRemovalFieldLabel(candidate) === e.target.value);
                       setEarlyRemovalFieldSearch(e.target.value);
@@ -694,15 +757,16 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                       setEarlyRemovalReason(row?.earlyRemoval || earlyRemovalOptions[0]?.value || '');
                       setEarlyRemovalPlannedRemover(row?.plannedRemover || '');
                       }}
+                      style={earlyRemovalInputStyle}
                     />
                     <datalist id="early-removal-field-options">
                       {seasonFields.map((row) => <option key={row.fieldSeasonId} value={earlyRemovalFieldLabel(row)} />)}
                     </datalist>
                   </label>
                   <label style={earlyRemovalLabelStyle}>
-                    Early Removal
+                    Reason
                     <select value={earlyRemovalReason} onChange={(e) => setEarlyRemovalReason(e.target.value)} disabled={!earlyRemovalOptions.length} style={earlyRemovalInputStyle}>
-                      <option value="">Select reason…</option>
+                      <option value="">Select…</option>
                       {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                     </select>
                   </label>
@@ -715,61 +779,70 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   </label>
                 </div>
                 {selectedEarlyRemovalField && (
-                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 10 }}>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 8 }}>
                     {selectedEarlyRemovalField.crop || 'Crop not set'} · {selectedEarlyRemovalField.operation || 'Operation not set'}
+                    {selectedEarlyRemovalField.needsAtv != null ? ` · ${atvLabel(selectedEarlyRemovalField.needsAtv)}` : ''}
                   </div>
                 )}
-                {earlyRemovalError && <div style={{ color: 'var(--accent-red)', fontSize: 13, marginTop: 10 }}>{earlyRemovalError}</div>}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+                {earlyRemovalError && <div style={{ color: 'var(--accent-red)', fontSize: 13, marginTop: 8 }}>{earlyRemovalError}</div>}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
                   <button className="btn btn-primary" onClick={saveEarlyRemoval} disabled={!selectedEarlyRemovalField || !earlyRemovalReason || earlyRemovalSaving}>
-                    {earlyRemovalSaving ? 'Saving…' : 'Save Early Removal'}
+                    {earlyRemovalSaving ? 'Saving…' : 'Save Removal'}
                   </button>
                   <button className="btn btn-secondary" onClick={() => setShowEarlyRemovalForm(false)} disabled={earlyRemovalSaving}>Cancel</button>
                 </div>
               </div>
             )}
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--bg-secondary)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 760 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)' }}>
-                    {['Field', 'Operation', 'Crop', 'Early Removal', 'Date Removed', 'Planned Remover'].map((label) => (
-                      <th key={label} style={{ padding: '11px 14px', textAlign: 'left', fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{label}</th>
+                    {columns.map((col) => (
+                      <th key={col.key} style={thPad} onClick={() => toggleRemovalSort(col.key)}>
+                        {col.label}{sortMark(col.key)}
+                      </th>
                     ))}
+                    <th style={{ ...thPad, cursor: 'default' }}></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {earlyRemovalRows.filter((row) => !showOnlyEarlyRemovals || !!row.earlyRemoval).length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: 28, textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>{showOnlyEarlyRemovals ? 'No early removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
-                  ) : earlyRemovalRows.filter((row) => !showOnlyEarlyRemovals || !!row.earlyRemoval).map((row) => (
+                  {visibleRows.length === 0 ? (
+                    <tr><td colSpan={8} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                  ) : visibleRows.map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 14px', fontWeight: 600, whiteSpace: 'nowrap' }}>{row.fieldName}</td>
-                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.operation || '—'}</td>
-                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.crop || '—'}</td>
-                      <td style={{ padding: '8px 14px', minWidth: 170 }}>
+                      <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
+                      <td style={cellPad}>{row.operation || '—'}</td>
+                      <td style={cellPad}>{row.crop || '—'}</td>
+                      <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
                           value={row.earlyRemoval}
                           onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, earlyRemoval: event.target.value } : candidate))}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', height: 30, fontSize: 13 }}
                         >
                           <option value="">— Not marked —</option>
                           {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                         </select>
                       </td>
-                      <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
-                      <td style={{ padding: '8px 14px', minWidth: 190 }}>
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                          <select
-                            value={row.plannedRemover}
-                            onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, plannedRemover: event.target.value } : candidate))}
-                            style={{ width: '100%' }}
-                          >
-                            <option value="">— Not assigned —</option>
-                            {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
-                          </select>
-                          <button className="btn btn-secondary" onClick={() => saveEarlyRemovalRow(row)} disabled={earlyRemovalSaving}>
-                            Save
-                          </button>
-                        </div>
+                      <td style={{
+                        ...cellPad,
+                        fontWeight: row.needsAtv ? 650 : 400,
+                        color: row.needsAtv ? 'var(--accent-red, #b91c1c)' : 'var(--text-primary)',
+                      }}>{atvLabel(row.needsAtv)}</td>
+                      <td style={cellPad}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
+                      <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
+                        <select
+                          value={row.plannedRemover}
+                          onChange={(event) => setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? { ...candidate, plannedRemover: event.target.value } : candidate))}
+                          style={{ width: '100%', height: 30, fontSize: 13 }}
+                        >
+                          <option value="">— Not assigned —</option>
+                          {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
+                        </select>
+                      </td>
+                      <td style={{ ...cellPad, width: 64 }}>
+                        <button className="btn btn-secondary" onClick={() => saveEarlyRemovalRow(row)} disabled={earlyRemovalSaving} style={{ padding: '4px 10px', fontSize: 12 }}>
+                          Save
+                        </button>
                       </td>
                     </tr>
                   ))}
