@@ -734,6 +734,15 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         else cmp = String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: 'base' });
         return removalSortDir === 'asc' ? cmp : -cmp;
       });
+    const removalProgress = (() => {
+      const total = earlyRemovalRows.length;
+      const removed = earlyRemovalRows.filter((row) => !!row.removalDate).length;
+      const stillInGround = total - removed;
+      const ready = earlyRemovalRows.filter((row) => row.readyToRemove && !row.removalDate).length;
+      const marked = earlyRemovalRows.filter((row) => !!row.earlyRemoval).length;
+      const markedRemoved = earlyRemovalRows.filter((row) => !!row.earlyRemoval && !!row.removalDate).length;
+      return { total, removed, stillInGround, ready, marked, markedRemoved };
+    })();
     const sortMark = (key: RemovalSortKey) => (
       removalSortKey === key ? (removalSortDir === 'asc' ? ' ▲' : ' ▼') : ''
     );
@@ -764,10 +773,53 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         <div className="content">
           <div style={{ maxWidth: 1400 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-              <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
-                Current-season fields still in the ground by default. Click a header to sort. Reason, planned remover, and Ready save when you change them.
-                {earlyRemovalSaving ? ' Saving…' : ''}
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
+                  Current-season fields still in the ground by default. Click a header to sort. Reason, planned remover, and Ready save when you change them.
+                  {earlyRemovalSaving ? ' Saving…' : ''}
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', fontSize: 13 }}>
+                  <span style={{ fontWeight: 650, color: 'var(--text-primary)' }}>
+                    Removed {removalProgress.removed} of {removalProgress.total}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>·</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    Still in ground {removalProgress.stillInGround}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>·</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    Ready {removalProgress.ready}
+                  </span>
+                  <span style={{ color: 'var(--text-muted)' }}>·</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    Marked {removalProgress.markedRemoved}/{removalProgress.marked}
+                  </span>
+                  {removalProgress.total > 0 && (
+                    <span
+                      title={`${removalProgress.removed} removed of ${removalProgress.total} current-season fields`}
+                      style={{
+                        marginLeft: 4,
+                        width: 120,
+                        height: 8,
+                        borderRadius: 999,
+                        background: 'var(--border)',
+                        overflow: 'hidden',
+                        display: 'inline-block',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: 'block',
+                          height: '100%',
+                          width: `${Math.round((removalProgress.removed / removalProgress.total) * 100)}%`,
+                          background: 'var(--field-green, #16a34a)',
+                        }}
+                      />
+                    </span>
+                  )}
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <input
                   type="search"
