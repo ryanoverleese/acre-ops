@@ -854,17 +854,34 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                         color: row.needsAtv ? 'var(--accent-red, #b91c1c)' : 'var(--text-primary)',
                       }}>{atvLabel(row.needsAtv)}</td>
                       <td style={{ ...cellPad, textAlign: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={row.readyToRemove}
+                        <button
+                          type="button"
                           disabled={earlyRemovalSaving}
-                          onChange={(event) => {
-                            const updated = { ...row, readyToRemove: event.target.checked };
+                          onClick={() => {
+                            const updated = { ...row, readyToRemove: !row.readyToRemove };
                             void saveEarlyRemovalRow(updated);
                           }}
-                          aria-label={`Ready to remove ${row.fieldName}`}
-                          style={{ width: 16, height: 16, cursor: 'pointer' }}
-                        />
+                          aria-label={row.readyToRemove ? `Mark ${row.fieldName} not ready` : `Mark ${row.fieldName} ready to remove`}
+                          title={row.readyToRemove ? 'Ready' : 'Not ready'}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            border: row.readyToRemove ? '1.5px solid var(--field-green, #16a34a)' : '1.5px solid var(--border)',
+                            background: row.readyToRemove ? 'rgba(22, 163, 74, 0.12)' : 'var(--bg-primary)',
+                            color: row.readyToRemove ? 'var(--field-green, #16a34a)' : 'var(--text-muted)',
+                            fontSize: 16,
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            cursor: earlyRemovalSaving ? 'wait' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                          }}
+                        >
+                          {row.readyToRemove ? '✓' : ''}
+                        </button>
                       </td>
                       <td style={cellPad}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
