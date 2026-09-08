@@ -72,6 +72,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           needsAtv,
           hybrid: fs.hybrid_variety || '',
           plantingDate: fs.planting_date || '',
+          readyToRemove: fs.ready_to_remove?.value === 'Yes',
         };
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));

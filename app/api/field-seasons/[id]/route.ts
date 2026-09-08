@@ -45,6 +45,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Install planning fields
     if (body.route_order !== undefined) updateData.route_order = body.route_order;
     if (body.planned_installer !== undefined) updateData.planned_installer = body.planned_installer || null;
+    if (body.planned_remover !== undefined) updateData.planned_remover = body.planned_remover || null;
     if (body.ready_to_install !== undefined) updateData.ready_to_install = body.ready_to_install;
     if (body.install_group !== undefined) updateData.install_group = body.install_group ?? null;
 

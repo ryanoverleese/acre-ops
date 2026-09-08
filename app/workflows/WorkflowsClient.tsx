@@ -41,6 +41,7 @@ export interface EarlyRemovalData {
   plannedRemover: string;
   /** true = needs ATV; false = pickup OK; null = unknown */
   needsAtv: boolean | null;
+  readyToRemove: boolean;
 }
 
 export interface EarlyRemovalOption {
@@ -73,7 +74,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [error, setError] = useState('');
   const [earlyRemovalRows, setEarlyRemovalRows] = useState(seasonFields);
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
-  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv';
+  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
   const toggleRemovalSort = (key: RemovalSortKey) => {
@@ -150,6 +151,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         body: JSON.stringify({
           early_removal: row.earlyRemoval || null,
           planned_remover: row.plannedRemover || null,
+          ready_to_remove: row.readyToRemove ? 'Yes' : null,
         }),
       });
       if (!response.ok) {
@@ -694,6 +696,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         if (row.needsAtv === false) return 1;
         return 2;
       }
+      if (key === 'readyToRemove') return row.readyToRemove ? 0 : 1;
       if (key === 'removalDate') return row.removalDate || '';
       if (key === 'plantingDate') return row.plantingDate || '';
       return (row[key] || '').toString().toLowerCase();
@@ -720,6 +723,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       { key: 'plantingDate', label: 'Planted' },
       { key: 'earlyRemoval', label: 'Reason' },
       { key: 'needsAtv', label: 'ATV' },
+      { key: 'readyToRemove', label: 'Ready' },
       { key: 'removalDate', label: 'Date Removed' },
       { key: 'plannedRemover', label: 'Planned Remover' },
     ];
@@ -738,7 +742,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           <div style={{ maxWidth: 1400 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
-                Current-season fields. Click a header to sort. Reason and planned remover save when you pick them.
+                Current-season fields. Click a header to sort. Reason, planned remover, and Ready save when you change them.
                 {earlyRemovalSaving ? ' Saving…' : ''}
               </p>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -822,7 +826,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={9} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                    <tr><td colSpan={10} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
                   ) : visibleRows.map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
@@ -849,6 +853,19 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                         fontWeight: row.needsAtv ? 650 : 400,
                         color: row.needsAtv ? 'var(--accent-red, #b91c1c)' : 'var(--text-primary)',
                       }}>{atvLabel(row.needsAtv)}</td>
+                      <td style={{ ...cellPad, textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={row.readyToRemove}
+                          disabled={earlyRemovalSaving}
+                          onChange={(event) => {
+                            const updated = { ...row, readyToRemove: event.target.checked };
+                            void saveEarlyRemovalRow(updated);
+                          }}
+                          aria-label={`Ready to remove ${row.fieldName}`}
+                          style={{ width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                      </td>
                       <td style={cellPad}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
