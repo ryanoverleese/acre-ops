@@ -34,6 +34,8 @@ export interface EarlyRemovalData {
   fieldName: string;
   operation: string;
   crop: string;
+  hybrid: string;
+  plantingDate: string;
   earlyRemoval: string;
   removalDate: string;
   plannedRemover: string;
@@ -71,7 +73,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [error, setError] = useState('');
   const [earlyRemovalRows, setEarlyRemovalRows] = useState(seasonFields);
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
-  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv';
+  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
   const toggleRemovalSort = (key: RemovalSortKey) => {
@@ -643,14 +645,21 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   if (activeWorkflow === 'early-removals') {
     const earlyRemovalInputStyle: React.CSSProperties = {
       width: '100%',
-      height: 34,
       boxSizing: 'border-box',
-      padding: '0 10px',
+      padding: '6px 10px',
       border: '1px solid var(--border)',
       borderRadius: 6,
       background: 'var(--bg-primary)',
       color: 'var(--text-primary)',
       fontSize: 13,
+      lineHeight: 1.25,
+    };
+    const earlyRemovalSelectStyle: React.CSSProperties = {
+      ...earlyRemovalInputStyle,
+      // Override global select padding so text is not clipped
+      padding: '6px 10px',
+      height: 'auto',
+      minHeight: 32,
     };
     const earlyRemovalLabelStyle: React.CSSProperties = {
       display: 'flex',
@@ -686,6 +695,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         return 2;
       }
       if (key === 'removalDate') return row.removalDate || '';
+      if (key === 'plantingDate') return row.plantingDate || '';
       return (row[key] || '').toString().toLowerCase();
     };
     const visibleRows = earlyRemovalRows
@@ -706,6 +716,8 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       { key: 'fieldName', label: 'Field' },
       { key: 'operation', label: 'Operation' },
       { key: 'crop', label: 'Crop' },
+      { key: 'hybrid', label: 'Hybrid' },
+      { key: 'plantingDate', label: 'Planted' },
       { key: 'earlyRemoval', label: 'Reason' },
       { key: 'needsAtv', label: 'ATV' },
       { key: 'removalDate', label: 'Date Removed' },
@@ -723,7 +735,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           </div>
         </header>
         <div className="content">
-          <div style={{ maxWidth: 1180 }}>
+          <div style={{ maxWidth: 1400 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
                 Current-season fields. Click a header to sort. Reason and planned remover save when you pick them.
@@ -769,14 +781,14 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   </label>
                   <label style={earlyRemovalLabelStyle}>
                     Reason
-                    <select value={earlyRemovalReason} onChange={(e) => setEarlyRemovalReason(e.target.value)} disabled={!earlyRemovalOptions.length} style={earlyRemovalInputStyle}>
+                    <select value={earlyRemovalReason} onChange={(e) => setEarlyRemovalReason(e.target.value)} disabled={!earlyRemovalOptions.length} style={earlyRemovalSelectStyle}>
                       <option value="">Select…</option>
                       {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                     </select>
                   </label>
                   <label style={earlyRemovalLabelStyle}>
                     Planned Remover
-                    <select value={earlyRemovalPlannedRemover} onChange={(e) => setEarlyRemovalPlannedRemover(e.target.value)} style={earlyRemovalInputStyle}>
+                    <select value={earlyRemovalPlannedRemover} onChange={(e) => setEarlyRemovalPlannedRemover(e.target.value)} style={earlyRemovalSelectStyle}>
                       <option value="">Select remover…</option>
                       {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                     </select>
@@ -798,7 +810,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
               </div>
             )}
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--bg-secondary)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 860 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border)' }}>
                     {columns.map((col) => (
@@ -810,12 +822,14 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={7} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
+                    <tr><td colSpan={9} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{showOnlyEarlyRemovals ? 'No removals are marked for the current season.' : 'No current-season fields found.'}</td></tr>
                   ) : visibleRows.map((row) => (
                     <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
                       <td style={cellPad}>{row.operation || '—'}</td>
                       <td style={cellPad}>{row.crop || '—'}</td>
+                      <td style={cellPad}>{row.hybrid || '—'}</td>
+                      <td style={cellPad}>{row.plantingDate ? row.plantingDate.slice(0, 10) : '—'}</td>
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
                           value={row.earlyRemoval}
@@ -824,7 +838,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                             const updated = { ...row, earlyRemoval: event.target.value };
                             void saveEarlyRemovalRow(updated);
                           }}
-                          style={{ width: '100%', height: 30, fontSize: 13 }}
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', fontSize: 13, lineHeight: 1.25, height: 'auto', minHeight: 32 }}
                         >
                           <option value="">— Not marked —</option>
                           {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
@@ -844,7 +858,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                             const updated = { ...row, plannedRemover: event.target.value };
                             void saveEarlyRemovalRow(updated);
                           }}
-                          style={{ width: '100%', height: 30, fontSize: 13 }}
+                          style={{ width: '100%', boxSizing: 'border-box', padding: '6px 10px', fontSize: 13, lineHeight: 1.25, height: 'auto', minHeight: 32 }}
                         >
                           <option value="">— Not assigned —</option>
                           {plannedRemoverOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}

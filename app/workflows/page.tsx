@@ -70,6 +70,8 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           removalDate: fs.removal_date || assignmentDates[0] || '',
           plannedRemover: fs.planned_remover?.value || '',
           needsAtv,
+          hybrid: fs.hybrid_variety || '',
+          plantingDate: fs.planting_date || '',
         };
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));
