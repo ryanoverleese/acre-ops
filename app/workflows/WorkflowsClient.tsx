@@ -40,8 +40,9 @@ export interface EarlyRemovalData {
   earlyRemoval: string;
   removalDate: string;
   plannedRemover: string;
-  /** true = needs ATV; false = pickup OK; null = unknown */
-  needsAtv: boolean | null;
+  /** true = needs ATV (pickup_access false on assignments) */
+  needsAtv: boolean;
+  assignmentIds: number[];
   readyToRemove: boolean;
 }
 
@@ -163,6 +164,35 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       }
     } catch (err) {
       setEarlyRemovalError(err instanceof Error ? err.message : 'Could not save removal');
+    } finally {
+      setEarlyRemovalSaving(false);
+    }
+  };
+
+  const saveAtvRow = async (row: EarlyRemovalData) => {
+    setEarlyRemovalSaving(true);
+    setEarlyRemovalError('');
+    setEarlyRemovalRows((rows) => rows.map((candidate) => candidate.fieldSeasonId === row.fieldSeasonId ? row : candidate));
+    try {
+      if (!row.assignmentIds.length) {
+        throw new Error('No probe assignments on this field to save ATV access');
+      }
+      // Installer meaning: pickup_access true = pickup OK, false = Needs ATV
+      const pickupAccess = !row.needsAtv;
+      const results = await Promise.all(row.assignmentIds.map(async (assignmentId) => {
+        const response = await fetch(`/api/probe-assignments/${assignmentId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pickup_access: pickupAccess }),
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || `Could not save ATV on assignment ${assignmentId}`);
+        }
+      }));
+      void results;
+    } catch (err) {
+      setEarlyRemovalError(err instanceof Error ? err.message : 'Could not save ATV');
     } finally {
       setEarlyRemovalSaving(false);
     }
@@ -688,17 +718,9 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       cursor: 'pointer',
       userSelect: 'none',
     };
-    const atvLabel = (value: boolean | null) => {
-      if (value === true) return 'Needs ATV';
-      if (value === false) return 'Pickup';
-      return '—';
-    };
+    const atvLabel = (value: boolean) => (value ? 'Needs ATV' : 'Pickup');
     const sortValue = (row: EarlyRemovalData, key: RemovalSortKey): string | number => {
-      if (key === 'needsAtv') {
-        if (row.needsAtv === true) return 0;
-        if (row.needsAtv === false) return 1;
-        return 2;
-      }
+      if (key === 'needsAtv') return row.needsAtv ? 0 : 1;
       if (key === 'readyToRemove') return row.readyToRemove ? 0 : 1;
       if (key === 'removalDate') return row.removalDate || '';
       if (key === 'plantingDate') return row.plantingDate || '';
@@ -720,7 +742,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           row.plannedRemover,
           row.plantingDate,
           row.removalDate,
-          row.needsAtv === true ? 'needs atv' : row.needsAtv === false ? 'pickup' : '',
+          row.needsAtv ? 'needs atv' : 'pickup',
           row.readyToRemove ? 'ready' : '',
         ].join(' ').toLowerCase();
         return haystack.includes(removalSearchNeedle);
@@ -739,9 +761,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       const removed = earlyRemovalRows.filter((row) => !!row.removalDate).length;
       const stillInGround = total - removed;
       const ready = earlyRemovalRows.filter((row) => row.readyToRemove && !row.removalDate).length;
-      const marked = earlyRemovalRows.filter((row) => !!row.earlyRemoval).length;
-      const markedRemoved = earlyRemovalRows.filter((row) => !!row.earlyRemoval && !!row.removalDate).length;
-      return { total, removed, stillInGround, ready, marked, markedRemoved };
+      return { total, removed, stillInGround, ready };
     })();
     const sortMark = (key: RemovalSortKey) => (
       removalSortKey === key ? (removalSortDir === 'asc' ? ' ▲' : ' ▼') : ''
@@ -775,7 +795,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                 <p style={{ color: 'var(--text-secondary)', fontSize: 13, margin: 0 }}>
-                  Current-season fields still in the ground by default. Click a header to sort. Reason, planned remover, and Ready save when you change them.
+                  Current-season fields still in the ground by default. Click a header to sort. Reason, planned remover, Ready, and ATV save when you change them.
                   {earlyRemovalSaving ? ' Saving…' : ''}
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', fontSize: 13 }}>
@@ -788,11 +808,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>·</span>
                   <span style={{ color: 'var(--text-primary)' }}>
-                    Ready {removalProgress.ready}
-                  </span>
-                  <span style={{ color: 'var(--text-muted)' }}>·</span>
-                  <span style={{ color: 'var(--text-primary)' }}>
-                    Marked {removalProgress.markedRemoved}/{removalProgress.marked}
+                    Ready {removalProgress.ready}/{removalProgress.stillInGround}
                   </span>
                   {removalProgress.total > 0 && (
                     <span
@@ -898,7 +914,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 {selectedEarlyRemovalField && (
                   <div style={{ color: 'var(--text-secondary)', fontSize: 12, marginTop: 8 }}>
                     {selectedEarlyRemovalField.crop || 'Crop not set'} · {selectedEarlyRemovalField.operation || 'Operation not set'}
-                    {selectedEarlyRemovalField.needsAtv != null ? ` · ${atvLabel(selectedEarlyRemovalField.needsAtv)}` : ''}
+                    {selectedEarlyRemovalField.needsAtv ? ` · ${atvLabel(selectedEarlyRemovalField.needsAtv)}` : ''}
                   </div>
                 )}
                 {earlyRemovalError && <div style={{ color: 'var(--accent-red)', fontSize: 13, marginTop: 8 }}>{earlyRemovalError}</div>}
@@ -954,11 +970,36 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                           {earlyRemovalOptions.map((option) => <option key={option.id} value={option.value}>{option.value}</option>)}
                         </select>
                       </td>
-                      <td style={{
-                        ...cellPad,
-                        fontWeight: row.needsAtv ? 650 : 400,
-                        color: row.needsAtv ? 'var(--accent-red, #b91c1c)' : 'var(--text-primary)',
-                      }}>{atvLabel(row.needsAtv)}</td>
+                      <td style={{ ...cellPad, textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          disabled={earlyRemovalSaving || row.assignmentIds.length === 0}
+                          onClick={() => {
+                            const updated = { ...row, needsAtv: !row.needsAtv };
+                            void saveAtvRow(updated);
+                          }}
+                          aria-label={row.needsAtv ? `Clear ATV for ${row.fieldName}` : `Mark ${row.fieldName} needs ATV`}
+                          title={row.assignmentIds.length === 0 ? 'No probe assignments to save' : (row.needsAtv ? 'Needs ATV' : 'Pickup OK — tap if ATV needed')}
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            border: row.needsAtv ? '1.5px solid var(--accent-red, #b91c1c)' : '1.5px solid var(--border)',
+                            background: row.needsAtv ? 'rgba(185, 28, 28, 0.1)' : 'var(--bg-primary)',
+                            color: row.needsAtv ? 'var(--accent-red, #b91c1c)' : 'var(--text-muted)',
+                            fontSize: 16,
+                            fontWeight: 700,
+                            lineHeight: 1,
+                            cursor: earlyRemovalSaving || row.assignmentIds.length === 0 ? 'not-allowed' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                          }}
+                        >
+                          {row.needsAtv ? '✓' : ''}
+                        </button>
+                      </td>
                       <td style={{ ...cellPad, textAlign: 'center' }}>
                         <button
                           type="button"

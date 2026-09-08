@@ -51,6 +51,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.install_notes !== undefined) updateData.install_notes = body.install_notes;
     if (body.cropx_telemetry_id !== undefined) updateData.cropx_telemetry_id = body.cropx_telemetry_id;
     if (body.signal_strength !== undefined) updateData.signal_strength = body.signal_strength;
+    if (body.pickup_access !== undefined) updateData.pickup_access = body.pickup_access;
 
     // Approval data
     if (body.approval_status !== undefined) updateData.approval_status = body.approval_status;

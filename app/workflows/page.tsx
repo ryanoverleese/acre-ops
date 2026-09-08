@@ -58,7 +58,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           })
           .filter((flag): flag is boolean => flag !== null);
         // Needs ATV when pickup access is false. Mixed probes: any ATV-needed wins.
-        let needsAtv: boolean | null = null;
+        let needsAtv = false;
         if (accessFlags.length) {
           needsAtv = accessFlags.some((flag) => flag === false);
         }
@@ -71,6 +71,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           removalDate: fs.removal_date || assignmentDates[0] || '',
           plannedRemover: fs.planned_remover?.value || '',
           needsAtv,
+          assignmentIds: seasonAssignments.map((pa) => pa.id),
           hybrid: fs.hybrid_variety || '',
           plantingDate: fs.planting_date || '',
           readyToRemove: fs.ready_to_remove?.value === 'Yes',
