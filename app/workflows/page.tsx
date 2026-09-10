@@ -64,11 +64,21 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
         if (accessFlags.length) {
           needsAtv = accessFlags.some((flag) => flag === false);
         }
+        const brands = Array.from(new Set(
+          seasonAssignments
+            .map((pa) => {
+              const probeId = pa.probe?.[0]?.id;
+              const probe = probeId ? probeMap.get(probeId) : null;
+              return probe?.brand?.value || '';
+            })
+            .filter(Boolean)
+        ));
         return {
           fieldSeasonId: fs.id,
           fieldName: field?.name || 'Unknown Field',
           operation: operationName,
           crop: fs.crop?.value || '',
+          brand: brands.join(' · '),
           earlyRemoval: fs.early_removal?.value || '',
           removalDate: fs.removal_date || assignmentDates[0] || '',
           plannedRemover: fs.planned_remover?.value || '',

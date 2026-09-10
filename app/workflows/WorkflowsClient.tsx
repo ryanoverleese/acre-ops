@@ -34,6 +34,7 @@ export interface EarlyRemovalData {
   fieldName: string;
   operation: string;
   crop: string;
+  brand: string;
   hybrid: string;
   plantingDate: string;
   maturity: string;
@@ -78,7 +79,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
   const [removalTableSearch, setRemovalTableSearch] = useState('');
   const [showRemovedRows, setShowRemovedRows] = useState(false);
-  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
+  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'brand' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
   const toggleRemovalSort = (key: RemovalSortKey) => {
@@ -736,6 +737,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           row.fieldName,
           row.operation,
           row.crop,
+          row.brand,
           row.hybrid,
           row.maturity,
           row.earlyRemoval,
@@ -770,6 +772,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       { key: 'fieldName', label: 'Field' },
       { key: 'operation', label: 'Operation' },
       { key: 'crop', label: 'Crop' },
+      { key: 'brand', label: 'Brand' },
       { key: 'hybrid', label: 'Hybrid' },
       { key: 'maturity', label: 'Maturity' },
       { key: 'plantingDate', label: 'Planted' },
@@ -939,7 +942,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={11} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{
+                    <tr><td colSpan={12} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{
                       removalSearchNeedle
                         ? 'No fields match that search.'
                         : !showRemovedRows
@@ -953,6 +956,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                       <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
                       <td style={cellPad}>{row.operation || '—'}</td>
                       <td style={cellPad}>{row.crop || '—'}</td>
+                      <td style={cellPad}>{row.brand || '—'}</td>
                       <td style={cellPad}>{row.hybrid || '—'}</td>
                       <td style={cellPad} title={row.maturity ? 'From hybrid code (Pioneer / Channel).' : 'Could not read maturity from this hybrid code.'}>{row.maturity || '—'}</td>
                       <td style={cellPad}>{row.plantingDate ? row.plantingDate.slice(0, 10) : '—'}</td>
