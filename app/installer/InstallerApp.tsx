@@ -247,8 +247,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
     if (s) {
       setSession(s);
       fetchAssignments(s);
-      // Remove mode: land on Removals so pull work is front-and-center.
-      setScreen(mode === 'remove' ? 'removals' : 'route');
+      // Remove mode: land on Route (shows RemovalsScreen / planned_remover list).
+      setScreen('route');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -277,7 +277,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
 
   const handleLogin = (s: Session) => {
     setSession(s); saveSession(s); fetchAssignments(s);
-    setScreen(workflowMode === 'remove' ? 'removals' : 'route');
+    setScreen('route');
   };
   const handleLogout = () => { clearSession(); setSession(null); setAssignments([]); setScreen('login'); };
   const handleSelectAssignment = (a: InstallerAssignment) => { setSelected(a); setScreen('field'); };
@@ -299,26 +299,30 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
           <LoginScreen installerNames={installerNames} onLogin={handleLogin} />
         )}
         {screen === 'route' && session && (
-          <RouteScreen
-            session={session}
-            assignments={assignments}
-            loading={loadingAssignments}
-            filter={filter}
-            onFilterChange={setFilter}
-            onSelect={handleSelectAssignment}
-            onLogout={handleLogout}
-            onRefresh={() => fetchAssignments(session, true)}
-            sessionInstalledIds={sessionInstalledIds}
-            activeGroups={activeGroups}
-            onActiveGroupsChange={setActiveGroups}
-          />
+          workflowMode === 'remove' ? (
+            <RemovalsScreen season={session.season} installer={session.installer} />
+          ) : (
+            <RouteScreen
+              session={session}
+              assignments={assignments}
+              loading={loadingAssignments}
+              filter={filter}
+              onFilterChange={setFilter}
+              onSelect={handleSelectAssignment}
+              onLogout={handleLogout}
+              onRefresh={() => fetchAssignments(session, true)}
+              sessionInstalledIds={sessionInstalledIds}
+              activeGroups={activeGroups}
+              onActiveGroupsChange={setActiveGroups}
+            />
+          )
         )}
         {screen === 'map' && session && (
           <MapScreen
             assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
             loading={loadingAssignments}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
-            onBack={() => setScreen(workflowMode === 'remove' ? 'removals' : 'route')}
+            onBack={() => setScreen('route')}
             season={session.season}
             installer={session.installer}
             workflowMode={workflowMode}
