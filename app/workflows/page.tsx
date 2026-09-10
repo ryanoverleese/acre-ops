@@ -1,4 +1,4 @@
-import { getCachedAllSelectOptions, getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact, type SelectOption } from '@/lib/baserow';
+import { getAllSelectOptions, getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact, type SelectOption } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WorkflowsClient, { EarlyRemovalData, UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
 import { getHybridMaturityLabel } from '@/lib/hybrid-maturity';
@@ -15,7 +15,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
       getCachedRows<Operation>('operations', undefined, 300),
       getCachedProbeAssignments(),
       getCachedRows<Contact>('contacts', undefined, 300),
-      getCachedAllSelectOptions(['field_seasons']),
+      getAllSelectOptions(['field_seasons']),
     ]);
 
     const operationMap = buildOperationMap(operations);
