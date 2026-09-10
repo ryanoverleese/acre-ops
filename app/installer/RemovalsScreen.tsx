@@ -4,9 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { compressImage, playSuccessSound } from './InstallerApp';
 
 /**
- * The pull half of the season. Lists every probe still in the ground —
- * fleet-wide, not per-installer, because whoever is out that day pulls what
- * they reach — and records each one coming out with who, notes, and photos.
+ * The pull half of the season. Defaults to probes assigned to the logged-in
+ * installer as planned_remover. Toggle Show all for the whole fleet.
  */
 
 interface RemovalRow {
@@ -22,11 +21,22 @@ interface RemovalRow {
   lng: number;
   installedOn: string;
   installedBy: string;
+  plannedRemover?: string;
   fieldNotes: string;
   removed: boolean;
   removedOn: string;
   removedBy: string;
   removalNotes: string;
+}
+
+const SHOW_ALL_KEY = 'af-removals-show-all';
+
+function loadShowAll(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(SHOW_ALL_KEY) === '1';
+}
+function saveShowAll(v: boolean) {
+  try { localStorage.setItem(SHOW_ALL_KEY, v ? '1' : '0'); } catch { /* private mode */ }
 }
 
 function navigateUrl(lat: number, lng: number): string {
@@ -142,6 +152,11 @@ function PullForm({ row, installer, onBack, onSaved }: {
             Installed {fmtDate(row.installedOn)}{row.installedBy ? ` by ${row.installedBy}` : ''}
             {row.antennaType ? ` · ${row.antennaType}` : ''}
           </div>
+          {row.plannedRemover && (
+            <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
+              Planned remover: {row.plannedRemover}
+            </div>
+          )}
         </div>
 
         {/* Gate codes, where it sits — what the crew needs on the way out */}
@@ -282,19 +297,36 @@ export default function RemovalsScreen({ season, installer }: {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<RemovalRow | null>(null);
   const [banner, setBanner] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
-  const fetchRows = async (fresh = false) => {
+  const fetchRows = async (fresh = false, allOverride?: boolean) => {
     setLoading(true);
+    const all = allOverride ?? showAll;
     try {
-      const res = await fetch(`/api/installer/removals?season=${season}${fresh ? '&fresh=1' : ''}`, fresh ? { cache: 'no-store' } : undefined);
+      const qs = new URLSearchParams({
+        season: String(season),
+        installer,
+      });
+      if (all) qs.set('all', '1');
+      if (fresh) qs.set('fresh', '1');
+      const res = await fetch(`/api/installer/removals?${qs}`, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
       setRows(data.rows ?? []);
     } catch { setRows([]); }
     finally { setLoading(false); }
   };
 
+  useEffect(() => {
+    setShowAll(loadShowAll());
+  }, []);
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchRows(); }, [season]);
+  useEffect(() => { fetchRows(); }, [season, installer, showAll]);
+
+  const handleShowAll = (next: boolean) => {
+    setShowAll(next);
+    saveShowAll(next);
+  };
 
   const handleSaved = (id: number, removedBy: string, note: string) => {
     const today = new Date().toISOString().slice(0, 10);
@@ -325,7 +357,8 @@ export default function RemovalsScreen({ season, installer }: {
     ? base.filter(r =>
         r.fieldName.toLowerCase().includes(q) ||
         r.grower.toLowerCase().includes(q) ||
-        r.probeSerial.toLowerCase().includes(q))
+        r.probeSerial.toLowerCase().includes(q) ||
+        (r.plannedRemover || '').toLowerCase().includes(q))
     : base;
 
   return (
@@ -335,7 +368,11 @@ export default function RemovalsScreen({ season, installer }: {
         <div style={{ textAlign: 'center' }}>
           <div className="af-topbar-title">Removals</div>
           <div className="af-topbar-sub">
-            {loading ? '…' : `${stillOut.length} still out · ${pulled.length} pulled`}
+            {loading
+              ? '…'
+              : showAll
+                ? `${stillOut.length} still out · ${pulled.length} pulled · all`
+                : `${stillOut.length} still out · ${pulled.length} pulled · mine`}
           </div>
         </div>
         <button
@@ -364,6 +401,29 @@ export default function RemovalsScreen({ season, installer }: {
           </div>
         )}
 
+        {/* Mine / Show all */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {([
+            { id: false, label: 'Mine' },
+            { id: true, label: 'Show all' },
+          ] as const).map(opt => (
+            <button
+              key={String(opt.id)}
+              onClick={() => handleShowAll(opt.id)}
+              style={{
+                flex: 1, padding: '9px 0', borderRadius: 10, cursor: 'pointer',
+                border: `1.5px solid ${showAll === opt.id ? 'var(--field-green)' : 'var(--border-1)'}`,
+                background: showAll === opt.id ? 'var(--field-green)' : '#fff',
+                color: showAll === opt.id ? 'var(--bone)' : 'var(--stone-500)',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
         {/* Still out / Pulled tabs */}
         <div style={{ display: 'flex', gap: 8, padding: '2px 0 2px' }}>
           {(['out', 'pulled'] as const).map(t => (
@@ -384,7 +444,6 @@ export default function RemovalsScreen({ season, installer }: {
           ))}
         </div>
 
-        {/* Search — the pull list is the whole fleet */}
         <input
           type="text"
           value={query}
@@ -401,10 +460,22 @@ export default function RemovalsScreen({ season, installer }: {
         ) : visible.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 20px', color: 'var(--stone-500)' }}>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-              {q.length >= 2 ? 'No matches' : tab === 'pulled' ? 'Nothing pulled yet' : 'All probes are out of the ground'}
+              {q.length >= 2
+                ? 'No matches'
+                : tab === 'pulled'
+                  ? 'Nothing pulled yet'
+                  : showAll
+                    ? 'All probes are out of the ground'
+                    : 'No removals assigned to you'}
             </div>
             <div style={{ fontSize: 13 }}>
-              {q.length >= 2 ? 'Try a different search' : tab === 'pulled' ? 'Pulled probes show up here' : 'Season complete 🎉'}
+              {q.length >= 2
+                ? 'Try a different search'
+                : tab === 'pulled'
+                  ? 'Pulled probes show up here'
+                  : showAll
+                    ? 'Season complete 🎉'
+                    : 'Tap Show all to see every stop'}
             </div>
           </div>
         ) : (
@@ -455,6 +526,11 @@ export default function RemovalsScreen({ season, installer }: {
                   ? `Pulled ${fmtDate(r.removedOn)}${r.removedBy ? ` by ${r.removedBy}` : ''}`
                   : `Installed ${fmtDate(r.installedOn)}${r.installedBy ? ` by ${r.installedBy}` : ''}`}
               </div>
+              {showAll && r.plannedRemover && !r.removed && (
+                <div style={{ fontSize: 11, color: 'var(--stone-500)' }}>
+                  Remover: {r.plannedRemover}
+                </div>
+              )}
             </button>
           ))
         )}

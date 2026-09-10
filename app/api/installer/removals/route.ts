@@ -2,17 +2,11 @@ import { NextResponse } from 'next/server';
 import { getCachedRows, getRows } from '@/lib/baserow';
 
 /**
- * The pull route: every probe currently in the ground, ordered the way the
- * crew drives it.
+ * The pull route: probes currently in the ground (and already pulled this
+ * season), ordered the way the crew drives it.
  *
- * The install route asks "what is ready to go in". This asks the opposite —
- * probe_status is Installed and nothing has recorded it coming out. Already
- * removed rows come back too, marked done, so a half-finished day still shows
- * what has been covered.
- *
- * Not filtered by installer. Whoever is out that day pulls what they reach;
- * tying a removal to the person who put it in would leave probes stranded when
- * that installer is not working.
+ * Defaults to the logged-in installer's planned_remover assignments. Pass
+ * all=1 to see the whole fleet (unassigned + everyone else's stops).
  */
 
 interface Row { [key: string]: unknown }
@@ -31,12 +25,27 @@ const num = (v: unknown): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/** Match planned_remover to the logged-in installer name. */
+function matchesRemover(plannedRemover: string, installer: string): boolean {
+  if (!plannedRemover) return false;
+  if (plannedRemover === installer) return true;
+  // "Ryan and Kasen" login also covers stops planned for Ryan alone.
+  if (installer === 'Ryan and Kasen' && plannedRemover === 'Ryan') return true;
+  return false;
+}
+
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
   const fresh = searchParams.get('fresh') === '1';
+  const installer = searchParams.get('installer');
+  const all = searchParams.get('all') === '1';
+
+  if (!installer) {
+    return NextResponse.json({ error: 'installer param required' }, { status: 400 });
+  }
 
   try {
     const [assignments, fieldSeasons, fields, probes, billingEntities] = await Promise.all([
@@ -60,7 +69,12 @@ export async function GET(request: Request) {
         if (!fs || Number(fs.season) !== season) return false;
         const status = val(pa.probe_status).toLowerCase();
         // In the ground, or already pulled this season — nothing else.
-        return status === 'installed' || status === 'removed';
+        if (status !== 'installed' && status !== 'removed') return false;
+        if (!all) {
+          const plannedRemover = val(fs.planned_remover);
+          if (!matchesRemover(plannedRemover, installer)) return false;
+        }
+        return true;
       })
       .map((pa) => {
         const fs = fsMap.get(linkId(pa.field_season)!)!;
@@ -81,6 +95,7 @@ export async function GET(request: Request) {
           lng: num(pa.install_lng ?? pa.placement_lng ?? field?.lng),
           installedOn: val(pa.install_date).slice(0, 10),
           installedBy: val(pa.installer),
+          plannedRemover: val(fs.planned_remover),
           // Notes the crew needs on the way out: gate codes, where it sits.
           fieldNotes: [val(fs.notes), val(pa.placement_notes)].filter(Boolean).join('\n\n'),
           removed,
@@ -99,6 +114,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       season,
+      installer,
+      all,
       remaining: rows.filter((r) => !r.removed).length,
       pulled: rows.filter((r) => r.removed).length,
       rows,

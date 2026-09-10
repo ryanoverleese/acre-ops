@@ -54,6 +54,22 @@ function mapsUrlFor(lat: number, lng: number, provider: MapProvider): string {
   return `https://maps.google.com/?q=${lat},${lng}`;
 }
 
+// Install vs Remove workflow — per device, like map provider.
+type WorkflowMode = 'install' | 'remove';
+const WORKFLOW_MODE_KEY = 'af-workflow-mode';
+const REMOVALS_SHOW_ALL_KEY = 'af-removals-show-all';
+function getWorkflowMode(): WorkflowMode {
+  if (typeof window === 'undefined') return 'install';
+  return localStorage.getItem(WORKFLOW_MODE_KEY) === 'remove' ? 'remove' : 'install';
+}
+function saveWorkflowMode(mode: WorkflowMode) {
+  try { localStorage.setItem(WORKFLOW_MODE_KEY, mode); } catch { /* private mode / quota */ }
+}
+function getRemovalsShowAll(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem(REMOVALS_SHOW_ALL_KEY) === '1';
+}
+
 // Bottom-bar tabs the user has hidden in Settings (per device, like map provider).
 type HideableTab = 'loadout' | 'repairs';
 const HIDDEN_TABS_KEY = 'af-hidden-tabs';
@@ -221,17 +237,30 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   // instead of re-fitting to all stops.
   const mapViewRef = useRef<{ center: [number, number]; zoom: number } | null>(null);
   const [hiddenTabs, setHiddenTabs] = useState<Set<HideableTab>>(new Set());
+  const [workflowMode, setWorkflowMode] = useState<WorkflowMode>('install');
 
   useEffect(() => {
     const s = loadSession();
-    if (s) { setSession(s); fetchAssignments(s); setScreen('route'); }
+    const mode = getWorkflowMode();
+    setWorkflowMode(mode);
     setHiddenTabs(loadHiddenTabs());
+    if (s) {
+      setSession(s);
+      fetchAssignments(s);
+      // Remove mode: land on Removals so pull work is front-and-center.
+      setScreen(mode === 'remove' ? 'removals' : 'route');
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleHiddenTabsChange = (tabs: Set<HideableTab>) => {
     setHiddenTabs(tabs);
     saveHiddenTabs(tabs);
+  };
+
+  const handleWorkflowModeChange = (mode: WorkflowMode) => {
+    setWorkflowMode(mode);
+    saveWorkflowMode(mode);
   };
 
   const fetchAssignments = useCallback(async (s: Session, fresh = false) => {
@@ -246,7 +275,10 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
     finally { setLoadingAssignments(false); }
   }, []);
 
-  const handleLogin = (s: Session) => { setSession(s); saveSession(s); fetchAssignments(s); setScreen('route'); };
+  const handleLogin = (s: Session) => {
+    setSession(s); saveSession(s); fetchAssignments(s);
+    setScreen(workflowMode === 'remove' ? 'removals' : 'route');
+  };
   const handleLogout = () => { clearSession(); setSession(null); setAssignments([]); setScreen('login'); };
   const handleSelectAssignment = (a: InstallerAssignment) => { setSelected(a); setScreen('field'); };
   const handleInstallSuccess = (data: SuccessData, assignmentId: number) => {
@@ -286,8 +318,10 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
             loading={loadingAssignments}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
-            onBack={() => setScreen('route')}
+            onBack={() => setScreen(workflowMode === 'remove' ? 'removals' : 'route')}
             season={session.season}
+            installer={session.installer}
+            workflowMode={workflowMode}
             savedViewRef={mapViewRef}
             onSelectRepair={(id) => { setInitialRepairId(id); setRepairReturn('map'); setScreen('repairs'); }}
           />
@@ -330,6 +364,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
             onAdHocInstall={(a) => { setSelected(a); setScreen('field'); }}
             hiddenTabs={hiddenTabs}
             onHiddenTabsChange={handleHiddenTabsChange}
+            workflowMode={workflowMode}
+            onWorkflowModeChange={handleWorkflowModeChange}
           />
         )}
         {screen === 'summary' && session && (
@@ -2544,12 +2580,27 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
 
 // ─── Map Screen ───────────────────────────────────────────────────────────────
 
+interface RemovalMapRow {
+  id: number;
+  fieldName: string;
+  grower: string;
+  routeOrder: string;
+  probeSerial: string;
+  antennaType: string;
+  lat: number;
+  lng: number;
+  removed: boolean;
+  plannedRemover?: string;
+}
+
 function MapScreen({
   assignments,
   loading,
   onOpenField,
   onBack,
   season,
+  installer,
+  workflowMode = 'install',
   savedViewRef,
   onSelectRepair,
 }: {
@@ -2558,23 +2609,242 @@ function MapScreen({
   onOpenField: (a: InstallerAssignment) => void;
   onBack: () => void;
   season: number;
+  installer?: string;
+  workflowMode?: WorkflowMode;
   savedViewRef?: React.MutableRefObject<{ center: [number, number]; zoom: number } | null>;
   onSelectRepair?: (id: number) => void;
 }) {
-  // Preselect the next stop still to do; when the day is done, select nothing
-  // (no bottom card) — tapping a pin still selects it.
+  const isRemove = workflowMode === 'remove';
+
+  // Install: preselect next stop. Remove: no preselect (tap navigates).
   const [selectedId, setSelectedId] = useState<number | null>(
-    assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null
+    isRemove ? null : (assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null)
   );
   const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
   const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; operation: string; problem: string; watchList?: boolean }[]>([]);
+  const [removalRows, setRemovalRows] = useState<RemovalMapRow[]>([]);
+  const [removalsLoading, setRemovalsLoading] = useState(false);
+  const [showAllRemovals, setShowAllRemovals] = useState(false);
+
   useEffect(() => {
+    if (isRemove) return; // repairs clutter the pull map
     fetch(`/api/installer/repairs?season=${season}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setRepairPoints((d.repairs ?? []).filter((r: { lat: number; lng: number }) => r.lat && r.lng)));
-  }, [season]);
+  }, [season, isRemove]);
 
+  useEffect(() => {
+    if (!isRemove || !installer) return;
+    setShowAllRemovals(getRemovalsShowAll());
+  }, [isRemove, installer]);
+
+  useEffect(() => {
+    if (!isRemove || !installer) return;
+    let cancelled = false;
+    (async () => {
+      setRemovalsLoading(true);
+      try {
+        const qs = new URLSearchParams({ season: String(season), installer });
+        if (showAllRemovals) qs.set('all', '1');
+        const res = await fetch(`/api/installer/removals?${qs}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!cancelled) setRemovalRows(data.rows ?? []);
+      } catch {
+        if (!cancelled) setRemovalRows([]);
+      } finally {
+        if (!cancelled) setRemovalsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isRemove, installer, season, showAllRemovals]);
+
+  const toggleShowAllRemovals = () => {
+    const next = !showAllRemovals;
+    setShowAllRemovals(next);
+    try { localStorage.setItem(REMOVALS_SHOW_ALL_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+  };
+
+  // ── Remove-mode map ────────────────────────────────────────────────────────
+  if (isRemove) {
+    const stillOut = removalRows.filter(r => !r.removed && r.lat && r.lng);
+    const selectedRemoval = removalRows.find(r => r.id === selectedId) ?? null;
+    const mapPoints = stillOut.map(r => ({
+      id: r.id,
+      lat: r.lat,
+      lng: r.lng,
+      routeOrder: r.routeOrder,
+      status: 'Assigned', // still out — not installed checkmark styling
+      fieldName: r.fieldName,
+      operation: r.grower || r.plannedRemover || '',
+      probeSerial: r.probeSerial,
+      antennaType: r.antennaType,
+    }));
+
+    const openNavigate = (lat: number, lng: number) => {
+      window.open(mapsUrlFor(lat, lng, getMapProvider()), '_blank', 'noopener,noreferrer');
+    };
+
+    const handleSelectRemoval = (id: number) => {
+      setSelectedId(id);
+      const row = removalRows.find(r => r.id === id);
+      if (row?.lat && row?.lng) openNavigate(row.lat, row.lng);
+    };
+
+    return (
+      <div className="af-screen">
+        <div className="af-topbar">
+          <button
+            onClick={onBack}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--field-green)', fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)', letterSpacing: '0.08em', textTransform: 'uppercase', background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
+            Removals
+          </button>
+          <div style={{ textAlign: 'center' }}>
+            <div className="af-topbar-title">Pull map</div>
+            <div className="af-topbar-sub">
+              {removalsLoading
+                ? '…'
+                : `${stillOut.length} still out · ${showAllRemovals ? 'all' : 'mine'}`}
+            </div>
+          </div>
+          <div style={{ width: 60 }} />
+        </div>
+
+        <div style={{ flex: 1, position: 'relative', background: '#dde5d0' }}>
+          {stillOut.length === 0 ? (
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
+              <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
+              </svg>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {removalsLoading ? 'Loading map…' : 'No pull stops with coords'}
+              </div>
+              {!removalsLoading && !showAllRemovals && (
+                <div style={{ fontSize: 13, marginTop: 6 }}>Tap Show all, or check Removals list</div>
+              )}
+            </div>
+          ) : (
+            <InstallerMapView
+              points={mapPoints}
+              selectedId={selectedId}
+              onSelect={handleSelectRemoval}
+              layer={layer}
+              initialView={savedViewRef?.current ?? null}
+              onViewChange={(v) => { if (savedViewRef) savedViewRef.current = v; }}
+            />
+          )}
+
+          {(stillOut.length > 0 || removalsLoading) && (
+            <>
+              <div style={{
+                position: 'absolute', top: 14, right: 14, zIndex: 400,
+                background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
+                border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
+                padding: 3, display: 'flex', gap: 2,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+              }}>
+                {(['street', 'satellite'] as const).map(lyr => (
+                  <button
+                    key={lyr}
+                    onClick={() => setLayer(lyr)}
+                    aria-pressed={layer === lyr ? 'true' : 'false'}
+                    style={{
+                      minHeight: 32, padding: '0 12px', borderRadius: 999,
+                      fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                      background: layer === lyr ? 'var(--field-green)' : 'transparent',
+                      color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
+                      border: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    {lyr === 'street' ? 'Map' : 'Satellite'}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={toggleShowAllRemovals}
+                style={{
+                  position: 'absolute', top: 58, right: 14, zIndex: 400,
+                  background: showAllRemovals ? 'var(--field-green)' : 'rgba(246,242,234,0.94)',
+                  backdropFilter: 'blur(10px)',
+                  border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
+                  padding: '0 12px', minHeight: 32,
+                  fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  color: showAllRemovals ? 'var(--bone)' : 'var(--stone-700)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                  cursor: 'pointer',
+                }}
+              >
+                {showAllRemovals ? 'Show all: On' : 'Show all: Off'}
+              </button>
+            </>
+          )}
+
+          {stillOut.length > 0 && (
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-me'))}
+              aria-label="Recenter on my location"
+              style={{
+                position: 'absolute', bottom: 14, right: 14, zIndex: 400,
+                width: 48, height: 48, borderRadius: '50%',
+                background: 'var(--bone-raised)', color: 'var(--field-green)',
+                border: '1px solid var(--border-1)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.18)', cursor: 'pointer',
+              }}
+            >
+              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
+                <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {selectedRemoval && !selectedRemoval.removed && (
+          <div style={{ padding: '14px 14px 16px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+                background: 'var(--field-green)', color: 'var(--bone)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
+              }}>
+                {selectedRemoval.routeOrder || (
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'currentColor' }} />
+                )}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {selectedRemoval.fieldName}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
+                  {selectedRemoval.probeSerial ? `#${selectedRemoval.probeSerial}` : 'Still out'}
+                  {selectedRemoval.plannedRemover ? ` · ${selectedRemoval.plannedRemover}` : ''}
+                </div>
+              </div>
+              {!!(selectedRemoval.lat && selectedRemoval.lng) && (
+                <button
+                  className="af-btn af-btn--primary"
+                  style={{ minHeight: 40, padding: '0 14px', fontSize: 12 }}
+                  onClick={() => openNavigate(selectedRemoval.lat, selectedRemoval.lng)}
+                >
+                  Navigate
+                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Install-mode map (unchanged) ───────────────────────────────────────────
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const mapAssignments = showInstalled ? assignments : assignments.filter(a => a.status.toLowerCase() !== 'installed');
   const withCoords = mapAssignments.filter(a => a.lat && a.lng);
@@ -4072,12 +4342,14 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
 
 // ─── Settings Screen ──────────────────────────────────────────────────────────
 
-function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenTabsChange }: {
+function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenTabsChange, workflowMode, onWorkflowModeChange }: {
   session: Session;
   onBack: () => void;
   onAdHocInstall: (a: InstallerAssignment) => void;
   hiddenTabs: Set<HideableTab>;
   onHiddenTabsChange: (tabs: Set<HideableTab>) => void;
+  workflowMode: WorkflowMode;
+  onWorkflowModeChange: (mode: WorkflowMode) => void;
 }) {
   const [mapProvider, setMapProvider] = useState<MapProvider>('google');
 
@@ -4134,6 +4406,49 @@ function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenT
       </div>
 
       <div className="af-body" style={{ padding: '14px 14px 40px', background: '#FFFFFF' }}>
+        {/* Workflow */}
+        <div style={{ marginBottom: 22 }}>
+          <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Workflow</div>
+          <div style={{
+            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
+            borderRadius: 'var(--r-lg)', overflow: 'hidden',
+          }}>
+            {[
+              { id: 'install' as const, label: 'Install', sub: 'Put probes in the ground' },
+              { id: 'remove' as const, label: 'Remove', sub: 'Pull assigned probes' },
+            ].map((opt, i, arr) => (
+              <button
+                key={opt.id}
+                onClick={() => onWorkflowModeChange(opt.id)}
+                style={{
+                  width: '100%', padding: '14px 14px',
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  background: 'transparent', border: 'none',
+                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  border: workflowMode === opt.id ? '7px solid var(--field-green)' : '2px solid var(--stone-300)',
+                  flexShrink: 0, transition: 'border-width 0.1s',
+                }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
+                    {opt.label}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+                    {opt.sub}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 8, padding: '0 4px', lineHeight: 1.4 }}>
+            Remove mode shows your pull stops on the map.
+          </div>
+        </div>
+
         {/* Map provider */}
         <div style={{ marginBottom: 22 }}>
           <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Map provider</div>
