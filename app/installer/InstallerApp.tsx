@@ -458,7 +458,7 @@ function BottomBar({ current, onNav, installer, hiddenTabs }: { current: Screen;
           <line x1="12" y1="16" x2="12" y2="4" /><polyline points="6 10 12 4 18 10" />
           <line x1="4" y1="20" x2="20" y2="20" />
         </svg>
-        Pull
+        Removals
       </button>
       {isRyan && !hiddenTabs.has('repairs') && (
         <button className="af-tab" aria-current={current === 'repairs' ? 'true' : undefined} onClick={() => onNav('repairs')}>
