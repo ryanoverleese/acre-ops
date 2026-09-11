@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     select_options?: Array<{ id: number; value: string; color: string }>;
   }> = await fieldsResp.json();
 
-  let field = fields.find((f) => f.name === FIELD_NAME);
+  let field = fields.find((f) => f.name === FIELD_NAME) ?? null;
   let created = false;
 
   if (!field) {
@@ -74,14 +74,24 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    field = await createResp.json();
+    field = (await createResp.json()) as {
+      id: number;
+      name: string;
+      type: string;
+      select_options?: Array<{ id: number; value: string; color: string }>;
+    };
     created = true;
   }
 
-  const priorityOpt = (field.select_options || []).find((o) => o.value === 'Priority');
+  if (!field) {
+    return NextResponse.json({ error: 'removal_priority field missing after create' }, { status: 500 });
+  }
+
+  const ensured = field;
+  const priorityOpt = (ensured.select_options || []).find((o) => o.value === 'Priority');
   if (!priorityOpt) {
     return NextResponse.json(
-      { error: 'Priority option missing on removal_priority field', field },
+      { error: 'Priority option missing on removal_priority field', field: ensured },
       { status: 500 }
     );
   }
@@ -100,7 +110,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: `Field ok but failed to mark Shane: ${patchResp.status} ${text}`,
-        fieldId: field.id,
+        fieldId: ensured.id,
         created,
       },
       { status: 500 }
@@ -113,9 +123,9 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     created,
-    fieldId: field.id,
+    fieldId: ensured.id,
     fieldName: FIELD_NAME,
-    options: field.select_options,
+    options: ensured.select_options,
     shaneMarked: row?.[FIELD_NAME]?.value === 'Priority' || row?.[FIELD_NAME] === priorityOpt.id,
     shaneValue: row?.[FIELD_NAME],
   });
