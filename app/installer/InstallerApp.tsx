@@ -247,8 +247,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
     if (s) {
       setSession(s);
       fetchAssignments(s);
-      // Remove mode: land on Route (shows RemovalsScreen / planned_remover list).
-      setScreen('route');
+      // Remove mode: land on Removals (Route tab is hidden).
+      setScreen(mode === 'remove' ? 'removals' : 'route');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -261,6 +261,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   const handleWorkflowModeChange = (mode: WorkflowMode) => {
     setWorkflowMode(mode);
     saveWorkflowMode(mode);
+    // Drop the install/remove home tab so Route vs Removals never both mean the same list.
+    setScreen(mode === 'remove' ? 'removals' : 'route');
   };
 
   const fetchAssignments = useCallback(async (s: Session, fresh = false) => {
@@ -277,7 +279,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
 
   const handleLogin = (s: Session) => {
     setSession(s); saveSession(s); fetchAssignments(s);
-    setScreen('route');
+    setScreen(getWorkflowMode() === 'remove' ? 'removals' : 'route');
   };
   const handleLogout = () => { clearSession(); setSession(null); setAssignments([]); setScreen('login'); };
   const handleSelectAssignment = (a: InstallerAssignment) => { setSelected(a); setScreen('field'); };
@@ -299,30 +301,26 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
           <LoginScreen installerNames={installerNames} onLogin={handleLogin} />
         )}
         {screen === 'route' && session && (
-          workflowMode === 'remove' ? (
-            <RemovalsScreen season={session.season} installer={session.installer} />
-          ) : (
-            <RouteScreen
-              session={session}
-              assignments={assignments}
-              loading={loadingAssignments}
-              filter={filter}
-              onFilterChange={setFilter}
-              onSelect={handleSelectAssignment}
-              onLogout={handleLogout}
-              onRefresh={() => fetchAssignments(session, true)}
-              sessionInstalledIds={sessionInstalledIds}
-              activeGroups={activeGroups}
-              onActiveGroupsChange={setActiveGroups}
-            />
-          )
+          <RouteScreen
+            session={session}
+            assignments={assignments}
+            loading={loadingAssignments}
+            filter={filter}
+            onFilterChange={setFilter}
+            onSelect={handleSelectAssignment}
+            onLogout={handleLogout}
+            onRefresh={() => fetchAssignments(session, true)}
+            sessionInstalledIds={sessionInstalledIds}
+            activeGroups={activeGroups}
+            onActiveGroupsChange={setActiveGroups}
+          />
         )}
         {screen === 'map' && session && (
           <MapScreen
             assignments={activeGroups.size > 0 ? assignments.filter(a => a.installGroup != null && activeGroups.has(a.installGroup)) : assignments}
             loading={loadingAssignments}
             onOpenField={(a) => { setSelected(a); setScreen('field'); }}
-            onBack={() => setScreen('route')}
+            onBack={() => setScreen(workflowMode === 'remove' ? 'removals' : 'route')}
             season={session.season}
             installer={session.installer}
             workflowMode={workflowMode}
@@ -420,17 +418,20 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
           onNav={setScreen}
           installer={session?.installer ?? ''}
           hiddenTabs={hiddenTabs}
+          workflowMode={workflowMode}
         />
       )}
     </div>
   );
 }
 
-function BottomBar({ current, onNav, installer, hiddenTabs }: { current: Screen; onNav: (s: Screen) => void; installer: string; hiddenTabs: Set<HideableTab> }) {
+function BottomBar({ current, onNav, installer, hiddenTabs, workflowMode }: { current: Screen; onNav: (s: Screen) => void; installer: string; hiddenTabs: Set<HideableTab>; workflowMode: WorkflowMode }) {
   const isRoute = current === 'route' || current === 'field' || current === 'install' || current === 'success';
   const isRyan = installer.toLowerCase() === 'ryan';
+  const showRoute = workflowMode !== 'remove';
   return (
     <div className="af-bottombar">
+      {showRoute && (
       <button className="af-tab" aria-current={isRoute ? 'true' : undefined} onClick={() => onNav('route')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" />
@@ -438,6 +439,7 @@ function BottomBar({ current, onNav, installer, hiddenTabs }: { current: Screen;
         </svg>
         Route
       </button>
+      )}
       <button className="af-tab" aria-current={current === 'map' ? 'true' : undefined} onClick={() => onNav('map')}>
         <svg width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
           <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
