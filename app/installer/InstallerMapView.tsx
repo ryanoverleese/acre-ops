@@ -19,6 +19,7 @@ export interface MapPoint {
   placementNotes?: string;
   probeRack?: string;
   probeRackSlot?: number | null;
+  priority?: boolean;
 }
 
 export interface RepairMapPoint {
@@ -53,11 +54,11 @@ interface Props {
 
 // Build a numbered "pin" as an inline SVG divIcon.
 // When routeOrder is unknown, fall back to a smaller plain dot pin (no '?').
-function makePin(label: string, installed: boolean, selected: boolean, hasNote = false) {
+function makePin(label: string, installed: boolean, selected: boolean, hasNote = false, priority = false) {
   const hasOrder = label && label !== '?';
-  const bg = installed ? '#C8CDD5' : selected ? '#1F402A' : '#FFFFFF';
-  const fg = installed ? '#6B7280' : selected ? '#F6F2EA' : '#0A0A0A';
-  const stroke = installed ? '#9CA3AF' : selected ? '#1F402A' : '#0A0A0A';
+  const bg = installed ? '#C8CDD5' : priority ? '#EF4444' : selected ? '#1F402A' : '#FFFFFF';
+  const fg = installed ? '#6B7280' : priority || selected ? '#F6F2EA' : '#0A0A0A';
+  const stroke = installed ? '#9CA3AF' : priority ? '#B91C1C' : selected ? '#1F402A' : '#0A0A0A';
 
   // Plain dot pin (for stops without a route order)
   if (!hasOrder && !installed) {
@@ -315,7 +316,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
           <Marker
             key={p.id}
             position={[p.lat, p.lng]}
-            icon={makePin(label, installed, selected, !!p.placementNotes)}
+            icon={makePin(label, installed, selected, !!p.placementNotes || !!p.priority, !!p.priority)}
             eventHandlers={{ click: () => onSelect(p.id) }}
           >
             <Tooltip
@@ -339,7 +340,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
                   {p.routeOrder}
                 </span>
               )}
-              {p.fieldName}
+              {p.priority ? '🚨 ' : ''}{p.fieldName}
               {p.probeSerial && (
                 <span style={{ display: 'block', opacity: 0.7, fontSize: '1em', marginTop: 1 }}>
                   #{p.probeSerial}

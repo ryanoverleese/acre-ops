@@ -2595,6 +2595,7 @@ interface RemovalMapRow {
   lng: number;
   removed: boolean;
   plannedRemover?: string;
+  removalPriority?: string;
 }
 
 function MapScreen({
@@ -2683,6 +2684,7 @@ function MapScreen({
       operation: r.grower || r.plannedRemover || '',
       probeSerial: r.probeSerial,
       antennaType: r.antennaType,
+      priority: r.removalPriority === 'Priority',
     }));
 
     const openNavigate = (lat: number, lng: number) => {
@@ -2824,8 +2826,18 @@ function MapScreen({
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedRemoval.fieldName}
+                  {selectedRemoval.removalPriority === 'Priority' ? '🚨 ' : ''}{selectedRemoval.fieldName}
                 </div>
+                {selectedRemoval.removalPriority === 'Priority' && (
+                  <div style={{
+                    marginTop: 4, display: 'inline-block', fontSize: 11, fontWeight: 800,
+                    color: '#fff', background: '#EF4444', borderRadius: 8,
+                    padding: '2px 8px', letterSpacing: '0.04em', textTransform: 'uppercase',
+                    fontFamily: 'var(--font-display)',
+                  }}>
+                    Priority — pull ASAP
+                  </div>
+                )}
                 <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
                   {selectedRemoval.probeSerial ? `#${selectedRemoval.probeSerial}` : 'Still out'}
                   {selectedRemoval.plannedRemover ? ` · ${selectedRemoval.plannedRemover}` : ''}

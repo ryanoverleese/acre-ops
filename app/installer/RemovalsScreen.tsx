@@ -22,6 +22,7 @@ interface RemovalRow {
   installedOn: string;
   installedBy: string;
   plannedRemover?: string;
+  removalPriority?: string;
   fieldNotes: string;
   removed: boolean;
   removedOn: string;
@@ -143,6 +144,17 @@ function PullForm({ row, installer, onBack, onSaved }: {
             {row.fieldName}
           </div>
           {row.grower && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>{row.grower}</div>}
+          {row.removalPriority === 'Priority' && (
+            <div style={{
+              marginTop: 10, padding: '8px 10px', borderRadius: 10,
+              background: '#FEE2E2', border: '2px solid #EF4444',
+              color: '#991B1B', fontWeight: 800, fontSize: 14,
+              letterSpacing: '0.04em', textTransform: 'uppercase',
+              fontFamily: 'var(--font-display)',
+            }}>
+              🚨 Priority — pull ASAP
+            </div>
+          )}
           {row.probeSerial && (
             <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
               #{row.probeSerial}{row.label ? ` · ${row.label}` : ''}
@@ -401,6 +413,16 @@ export default function RemovalsScreen({ season, installer }: {
           </div>
         )}
 
+        {!loading && stillOut.some(r => r.removalPriority === 'Priority') && tab === 'out' && (
+          <div style={{
+            padding: '10px 14px', borderRadius: 10, fontSize: 14, fontWeight: 800,
+            background: '#FEE2E2', border: '2px solid #EF4444', color: '#991B1B',
+            fontFamily: 'var(--font-display)', letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}>
+            🚨 {stillOut.filter(r => r.removalPriority === 'Priority').length} Priority pull{stillOut.filter(r => r.removalPriority === 'Priority').length === 1 ? '' : 's'} — do these first
+          </div>
+        )}
+
         {/* Mine / Show all */}
         <div style={{ display: 'flex', gap: 8 }}>
           {([
@@ -486,9 +508,19 @@ export default function RemovalsScreen({ season, installer }: {
               style={{
                 display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
                 padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
-                background: r.removed ? 'var(--bone-raised,#f0ede8)' : '#fff',
-                border: '1.5px solid var(--border-1)',
-                boxShadow: r.removed ? 'none' : '0 2px 8px rgba(0,0,0,0.06)',
+                background: r.removed
+                  ? 'var(--bone-raised,#f0ede8)'
+                  : r.removalPriority === 'Priority'
+                    ? '#FEF2F2'
+                    : '#fff',
+                border: r.removalPriority === 'Priority' && !r.removed
+                  ? '2px solid #EF4444'
+                  : '1.5px solid var(--border-1)',
+                boxShadow: r.removed
+                  ? 'none'
+                  : r.removalPriority === 'Priority'
+                    ? '0 2px 10px rgba(239,68,68,0.25)'
+                    : '0 2px 8px rgba(0,0,0,0.06)',
                 cursor: r.removed ? 'default' : 'pointer',
                 opacity: r.removed ? 0.75 : 1,
               }}
@@ -507,6 +539,16 @@ export default function RemovalsScreen({ season, installer }: {
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
                   {r.fieldName}
                 </div>
+                {r.removalPriority === 'Priority' && !r.removed && (
+                  <div style={{
+                    flexShrink: 0, fontSize: 11, fontWeight: 800,
+                    color: '#fff', background: '#EF4444', borderRadius: 8,
+                    padding: '3px 8px', letterSpacing: '0.04em',
+                    fontFamily: 'var(--font-display)', textTransform: 'uppercase',
+                  }}>
+                    🚨 Priority
+                  </div>
+                )}
                 {r.removed ? (
                   <svg width="18" height="18" fill="none" stroke="var(--field-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                     <polyline points="20 6 9 17 4 12" />

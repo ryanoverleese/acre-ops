@@ -96,6 +96,7 @@ export async function GET(request: Request) {
           installedOn: val(pa.install_date).slice(0, 10),
           installedBy: val(pa.installer),
           plannedRemover: val(fs.planned_remover),
+          removalPriority: val(fs.removal_priority),
           // Notes the crew needs on the way out: gate codes, where it sits.
           fieldNotes: [val(fs.notes), val(pa.placement_notes)].filter(Boolean).join('\n\n'),
           removed,
@@ -106,6 +107,9 @@ export async function GET(request: Request) {
       })
       .sort((a, b) => {
         if (a.removed !== b.removed) return a.removed ? 1 : -1;   // still-out first
+        const ap = a.removalPriority === 'Priority' ? 0 : 1;
+        const bp = b.removalPriority === 'Priority' ? 0 : 1;
+        if (ap !== bp) return ap - bp; // Priority red-alert first
         const ra = a.routeOrder || 'zzz', rb = b.routeOrder || 'zzz';
         if (ra !== rb) return ra.localeCompare(rb, undefined, { numeric: true });
         if (a.fieldName !== b.fieldName) return a.fieldName.localeCompare(b.fieldName);
