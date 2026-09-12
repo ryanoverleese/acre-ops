@@ -107,7 +107,15 @@ function PullForm({ row, installer, onBack, onSaved }: {
       if (notes.trim()) fd.append('removalNotes', notes.trim());
       photos.forEach(p => fd.append('photo', p));
       const res = await fetch('/api/removal', { method: 'POST', body: fd });
-      const data = await res.json();
+      const raw = await res.text();
+      let data: { error?: string; alreadyRemoved?: boolean; photoErrors?: string[] } = {};
+      try { data = raw ? JSON.parse(raw) : {}; } catch {
+        setError(res.redirected || res.status === 307 || res.status === 302
+          ? 'Session blocked the save — tell Ryan (auth redirect)'
+          : `Save failed (HTTP ${res.status}) — removal NOT saved`);
+        setSubmitting(false);
+        return;
+      }
       if (!res.ok) { setError(data.error || 'Failed to save — try again'); setSubmitting(false); return; }
       playSuccessSound();
       const note = data.alreadyRemoved
