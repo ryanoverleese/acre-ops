@@ -97,8 +97,16 @@ export async function GET(request: Request) {
           installedBy: val(pa.installer),
           plannedRemover: val(fs.planned_remover),
           removalPriority: val(fs.removal_priority),
-          // Notes the crew needs on the way out: gate codes, where it sits.
-          fieldNotes: [val(fs.notes), val(pa.placement_notes)].filter(Boolean).join('\n\n'),
+          // Notes the crew needs on the way out — same seasonal sources as desk
+          // Removals: access (field_seasons.notes), placement_notes, install_notes,
+          // then season field_note / probe.notes when present.
+          fieldNotes: [
+            val(fs.notes),
+            val(pa.placement_notes),
+            val(pa.install_notes),
+            val(fs.field_note),
+            val(probe?.notes),
+          ].filter(Boolean).join('\n\n'),
           removed,
           removedOn: val(pa.removal_date).slice(0, 10),
           removedBy: val(pa.removed_by),

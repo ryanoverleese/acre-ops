@@ -179,14 +179,13 @@ function PullForm({ row, installer, onBack, onSaved }: {
           )}
         </div>
 
-        {/* Gate codes, where it sits — what the crew needs on the way out */}
+        {/* Gate codes / placement / install notes — same callout as Install flow */}
         {row.fieldNotes && (
-          <div style={{
-            padding: '12px 14px', background: '#FEF9C3', borderRadius: 12,
-            border: '1.5px solid #FDE047', fontSize: 14, lineHeight: 1.45,
-            whiteSpace: 'pre-wrap', color: 'var(--ink)',
-          }}>
-            {row.fieldNotes}
+          <div className="af-install-note" style={{ padding: '8px 10px' }}>
+            <div className="note-label" style={{ fontSize: 10 }}>Install Note</div>
+            <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--ink)', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
+              {row.fieldNotes}
+            </div>
           </div>
         )}
 
@@ -544,8 +543,21 @@ export default function RemovalsScreen({ season, installer }: {
                     {r.routeOrder}
                   </div>
                 )}
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
-                  {r.fieldName}
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>{r.fieldName}</span>
+                  {r.fieldNotes && (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center',
+                      fontFamily: 'var(--font-display)', fontWeight: 800,
+                      fontSize: 10, letterSpacing: '0.16em',
+                      color: '#fff', background: '#B91C1C',
+                      padding: '3px 8px', borderRadius: 3,
+                      textTransform: 'uppercase',
+                      boxShadow: '0 0 0 2px #FEE2E2',
+                    }}>
+                      Install Note
+                    </span>
+                  )}
                 </div>
                 {r.removalPriority === 'Priority' && !r.removed && (
                   <div style={{
