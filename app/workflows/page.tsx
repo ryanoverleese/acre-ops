@@ -84,6 +84,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           plannedRemover: fs.planned_remover?.value || '',
           needsAtv,
           assignmentIds: seasonAssignments.map((pa) => pa.id),
+          assignmentRemovalDates: seasonAssignments.map((pa) => pa.removal_date || ''),
           hybrid: fs.hybrid_variety || '',
           plantingDate: fs.planting_date || '',
           readyToRemove: fs.ready_to_remove?.value === 'Yes',

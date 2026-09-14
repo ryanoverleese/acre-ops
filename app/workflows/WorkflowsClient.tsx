@@ -44,6 +44,8 @@ export interface EarlyRemovalData {
   /** true = needs ATV (pickup_access false on assignments) */
   needsAtv: boolean;
   assignmentIds: number[];
+  /** Parallel to assignmentIds: each assignment's removal_date ('' if still in ground) */
+  assignmentRemovalDates: string[];
   readyToRemove: boolean;
 }
 
@@ -759,10 +761,23 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         return removalSortDir === 'asc' ? cmp : -cmp;
       });
     const removalProgress = (() => {
-      const total = earlyRemovalRows.length;
-      const removed = earlyRemovalRows.filter((row) => !!row.removalDate).length;
+      let total = 0;
+      let removed = 0;
+      let ready = 0;
+      for (const row of earlyRemovalRows) {
+        const dates = row.assignmentRemovalDates ?? [];
+        // Count probes (assignments); fields with 0 assignments contribute 0
+        for (let i = 0; i < row.assignmentIds.length; i++) {
+          total += 1;
+          const probeRemoved = !!(dates[i] || '');
+          if (probeRemoved) {
+            removed += 1;
+          } else if (row.readyToRemove) {
+            ready += 1;
+          }
+        }
+      }
       const stillInGround = total - removed;
-      const ready = earlyRemovalRows.filter((row) => row.readyToRemove && !row.removalDate).length;
       return { total, removed, stillInGround, ready };
     })();
     const sortMark = (key: RemovalSortKey) => (
@@ -803,19 +818,19 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', fontSize: 13 }}>
                   <span style={{ fontWeight: 650, color: 'var(--text-primary)' }}>
-                    Removed {removalProgress.removed} of {removalProgress.total}
+                    Removed {removalProgress.removed} of {removalProgress.total} probes
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>·</span>
                   <span style={{ color: 'var(--text-primary)' }}>
-                    Still in ground {removalProgress.stillInGround}
+                    Still in ground {removalProgress.stillInGround} probes
                   </span>
                   <span style={{ color: 'var(--text-muted)' }}>·</span>
-                  <span style={{ color: 'var(--text-primary)' }}>
-                    Ready {removalProgress.ready}/{removalProgress.stillInGround}
+                  <span style={{ color: 'var(--text-primary)' }} title="Ready-to-remove probes still in the ground">
+                    Ready {removalProgress.ready}/{removalProgress.stillInGround} probes
                   </span>
                   {removalProgress.total > 0 && (
                     <span
-                      title={`${removalProgress.removed} removed of ${removalProgress.total} current-season fields`}
+                      title={`${removalProgress.removed} removed of ${removalProgress.total} current-season probes`}
                       style={{
                         marginLeft: 4,
                         width: 120,
