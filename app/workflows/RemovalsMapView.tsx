@@ -91,7 +91,7 @@ function Legend() {
     { color: '#0071e3', label: 'Still in ground' },
     { color: '#34c759', label: 'Ready' },
     { color: '#ff3b30', label: 'Priority' },
-    { color: '#ff9f0a', label: 'Remover' },
+    { color: '#ff9f0a', label: 'Planned Remover' },
     { color: '#c7c7cc', label: 'Removed' },
   ];
   return (
