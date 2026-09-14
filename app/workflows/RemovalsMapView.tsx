@@ -61,20 +61,82 @@ function removerColor(name: string): string {
   return REMOVER_COLORS[key] || hashHue(key);
 }
 
-function statusPinColor(row: EarlyRemovalData): string {
-  if (row.removalDate) return STATUS_COLORS.removed;
+function statusPinColor(row: EarlyRemovalData, probeRemoved: boolean): string {
+  if (probeRemoved) return STATUS_COLORS.removed;
   if ((row.removalPriority || '').toLowerCase() === 'priority') return STATUS_COLORS.priority;
   if (row.readyToRemove) return STATUS_COLORS.ready;
   return STATUS_COLORS.stillInGround;
 }
 
-function plannedRemoverPinColor(row: EarlyRemovalData): string {
-  if (row.removalDate) return STATUS_COLORS.removed;
+function plannedRemoverPinColor(row: EarlyRemovalData, probeRemoved: boolean): string {
+  if (probeRemoved) return STATUS_COLORS.removed;
   return removerColor(row.plannedRemover || '');
 }
 
-function pinColor(row: EarlyRemovalData, mode: ColorMode): string {
-  return mode === 'plannedRemover' ? plannedRemoverPinColor(row) : statusPinColor(row);
+function pinColor(row: EarlyRemovalData, mode: ColorMode, probeRemoved: boolean): string {
+  return mode === 'plannedRemover'
+    ? plannedRemoverPinColor(row, probeRemoved)
+    : statusPinColor(row, probeRemoved);
+}
+
+/** Small lat/lng nudge so stacked identical coords stay distinguishable. */
+function offsetCollidingCoords(
+  pins: { lat: number; lng: number }[],
+): { lat: number; lng: number }[] {
+  const seen = new Map<string, number>();
+  const STEP = 0.00012; // ~13m
+  return pins.map((p) => {
+    if (!p.lat || !p.lng) return p;
+    const key = `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+    const n = seen.get(key) ?? 0;
+    seen.set(key, n + 1);
+    if (n === 0) return p;
+    // Spiral-ish offsets: alternate E/N/W/S
+    const angle = (n * 2.4) % (Math.PI * 2);
+    return {
+      lat: p.lat + Math.sin(angle) * STEP * Math.ceil(n / 2),
+      lng: p.lng + Math.cos(angle) * STEP * Math.ceil(n / 2),
+    };
+  });
+}
+
+export type ProbeMapPin = {
+  key: string;
+  fieldSeasonId: number;
+  assignmentId: number;
+  row: EarlyRemovalData;
+  label: string;
+  lat: number;
+  lng: number;
+  probeRemoved: boolean;
+};
+
+function buildProbePins(rows: EarlyRemovalData[]): ProbeMapPin[] {
+  const raw: ProbeMapPin[] = [];
+  for (const row of rows) {
+    const ids = row.assignmentIds || [];
+    if (!ids.length) continue;
+    const dates = row.assignmentRemovalDates || [];
+    const lats = row.assignmentLats || [];
+    const lngs = row.assignmentLngs || [];
+    const labels = row.assignmentLabels || [];
+    for (let i = 0; i < ids.length; i++) {
+      const lat = Number(lats[i] ?? row.lat) || Number(row.lat) || 0;
+      const lng = Number(lngs[i] ?? row.lng) || Number(row.lng) || 0;
+      raw.push({
+        key: `${ids[i]}`,
+        fieldSeasonId: row.fieldSeasonId,
+        assignmentId: ids[i],
+        row,
+        label: labels[i] || `Probe ${i + 1}`,
+        lat,
+        lng,
+        probeRemoved: !!(dates[i] || ''),
+      });
+    }
+  }
+  const offset = offsetCollidingCoords(raw);
+  return raw.map((p, i) => ({ ...p, lat: offset[i].lat, lng: offset[i].lng }));
 }
 
 function makePin(color: string, selected: boolean) {
@@ -114,19 +176,19 @@ function FitBounds({ points }: { points: { lat: number; lng: number }[] }) {
 }
 
 function FlyToSelected({
-  rows,
+  pins,
   selectedId,
 }: {
-  rows: EarlyRemovalData[];
+  pins: ProbeMapPin[];
   selectedId?: number | null;
 }) {
   const map = useMap();
   useEffect(() => {
     if (!selectedId) return;
-    const row = rows.find((r) => r.fieldSeasonId === selectedId && r.lat && r.lng);
-    if (!row) return;
-    map.panTo([row.lat, row.lng], { animate: true });
-  }, [map, rows, selectedId]);
+    const pin = pins.find((p) => p.fieldSeasonId === selectedId && p.lat && p.lng);
+    if (!pin) return;
+    map.panTo([pin.lat, pin.lng], { animate: true });
+  }, [map, pins, selectedId]);
   return null;
 }
 
@@ -266,13 +328,30 @@ function Legend({
 
 export default function RemovalsMapView({ rows, selectedId = null, onSelect }: Props) {
   const [colorMode, setColorMode] = useState<ColorMode>('status');
+  const pins = useMemo(() => buildProbePins(rows), [rows]);
   const valid = useMemo(
-    () => rows.filter((r) => Number(r.lat) && Number(r.lng)),
-    [rows],
+    () => pins.filter((p) => Number(p.lat) && Number(p.lng)),
+    [pins],
   );
   const center: [number, number] = valid[0]
     ? [valid[0].lat, valid[0].lng]
     : [41.5, -99.9];
+  const fieldsWithoutCoords = useMemo(() => {
+    const missing = new Set<number>();
+    for (const row of rows) {
+      const ids = row.assignmentIds || [];
+      if (!ids.length) continue;
+      const lats = row.assignmentLats || [];
+      const lngs = row.assignmentLngs || [];
+      const anyCoord = ids.some((_, i) => {
+        const lat = Number(lats[i] ?? row.lat) || Number(row.lat) || 0;
+        const lng = Number(lngs[i] ?? row.lng) || Number(row.lng) || 0;
+        return lat && lng;
+      });
+      if (!anyCoord) missing.add(row.fieldSeasonId);
+    }
+    return missing.size;
+  }, [rows]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
@@ -285,23 +364,24 @@ export default function RemovalsMapView({ rows, selectedId = null, onSelect }: P
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
 
-        {valid.map((row) => {
-          const selected = selectedId === row.fieldSeasonId;
-          const removed = !!row.removalDate;
+        {valid.map((pin) => {
+          const selected = selectedId === pin.fieldSeasonId;
+          const row = pin.row;
           const statusBits = [
-            removed ? 'Removed' : 'In ground',
-            row.readyToRemove && !removed ? 'Ready' : '',
-            (row.removalPriority || '').toLowerCase() === 'priority' && !removed ? 'Priority' : '',
+            pin.label,
+            pin.probeRemoved ? 'Removed' : 'In ground',
+            row.readyToRemove && !pin.probeRemoved ? 'Ready' : '',
+            (row.removalPriority || '').toLowerCase() === 'priority' && !pin.probeRemoved ? 'Priority' : '',
             row.plannedRemover ? `Planned Remover: ${row.plannedRemover}` : '',
           ].filter(Boolean);
 
           return (
             <Marker
-              key={`${row.fieldSeasonId}-${colorMode}`}
-              position={[row.lat, row.lng]}
-              icon={makePin(pinColor(row, colorMode), selected)}
+              key={`${pin.key}-${colorMode}`}
+              position={[pin.lat, pin.lng]}
+              icon={makePin(pinColor(row, colorMode, pin.probeRemoved), selected)}
               eventHandlers={{
-                click: () => onSelect?.(row.fieldSeasonId),
+                click: () => onSelect?.(pin.fieldSeasonId),
               }}
             >
               <Tooltip direction="top" offset={[0, -10]}>
@@ -343,11 +423,11 @@ export default function RemovalsMapView({ rows, selectedId = null, onSelect }: P
         })}
 
         <FitBounds points={valid} />
-        <FlyToSelected rows={valid} selectedId={selectedId} />
+        <FlyToSelected pins={valid} selectedId={selectedId} />
       </MapContainer>
 
       <ColorModeToggle mode={colorMode} onChange={setColorMode} />
-      <Legend mode={colorMode} rows={valid} />
+      <Legend mode={colorMode} rows={rows} />
 
       <div
         style={{
@@ -363,8 +443,8 @@ export default function RemovalsMapView({ rows, selectedId = null, onSelect }: P
           color: '#1d1d1f',
         }}
       >
-        {valid.length} on map
-        {rows.length !== valid.length ? ` · ${rows.length - valid.length} without coords` : ''}
+        {valid.length} probes on map
+        {fieldsWithoutCoords ? ` · ${fieldsWithoutCoords} fields without coords` : ''}
       </div>
     </div>
   );

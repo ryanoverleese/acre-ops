@@ -76,22 +76,31 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
             })
             .filter(Boolean)
         ));
-        // Coords: first assignment install → placement, else field lat/lng
-        let lat = 0;
-        let lng = 0;
+        // Field fallback coords (also used when an assignment has no install/placement)
+        const fieldLat = Number(field?.lat) || 0;
+        const fieldLng = Number(field?.lng) || 0;
+        const assignmentLats: number[] = [];
+        const assignmentLngs: number[] = [];
+        const assignmentLabels: string[] = [];
         for (const pa of seasonAssignments) {
+          const probeId = pa.probe?.[0]?.id;
+          const probe = probeId ? probeMap.get(probeId) : null;
+          const serial = probe?.serial_number?.toString() || '';
+          assignmentLabels.push([pa.label, serial].filter(Boolean).join(' · '));
           const aLat = Number(pa.install_lat ?? pa.placement_lat);
           const aLng = Number(pa.install_lng ?? pa.placement_lng);
           if (aLat && aLng && !Number.isNaN(aLat) && !Number.isNaN(aLng)) {
-            lat = aLat;
-            lng = aLng;
-            break;
+            assignmentLats.push(aLat);
+            assignmentLngs.push(aLng);
+          } else {
+            assignmentLats.push(fieldLat);
+            assignmentLngs.push(fieldLng);
           }
         }
-        if (!lat || !lng) {
-          lat = Number(field?.lat) || 0;
-          lng = Number(field?.lng) || 0;
-        }
+        // Row-level lat/lng kept for FlyTo / legacy: first assignment with coords, else field
+        const firstIdx = assignmentLats.findIndex((v, i) => v && assignmentLngs[i]);
+        const lat = firstIdx >= 0 ? assignmentLats[firstIdx] : fieldLat;
+        const lng = firstIdx >= 0 ? assignmentLngs[firstIdx] : fieldLng;
 
         // Puller notes for the current season. Baserow has no notes_2026 column —
         // seasonal notes live on the 2026 probe_assignment / field_season rows:
@@ -136,6 +145,9 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           needsAtv,
           assignmentIds: seasonAssignments.map((pa) => pa.id),
           assignmentRemovalDates: seasonAssignments.map((pa) => pa.removal_date || ''),
+          assignmentLats,
+          assignmentLngs,
+          assignmentLabels,
           hybrid: fs.hybrid_variety || '',
           plantingDate: fs.planting_date || '',
           readyToRemove: fs.ready_to_remove?.value === 'Yes',

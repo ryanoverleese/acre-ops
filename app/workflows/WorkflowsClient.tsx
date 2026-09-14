@@ -49,6 +49,12 @@ export interface EarlyRemovalData {
   assignmentIds: number[];
   /** Parallel to assignmentIds: each assignment's removal_date ('' if still in ground) */
   assignmentRemovalDates: string[];
+  /** Parallel to assignmentIds: install/placement lat (field fallback when missing) */
+  assignmentLats: number[];
+  /** Parallel to assignmentIds: install/placement lng (field fallback when missing) */
+  assignmentLngs: number[];
+  /** Parallel to assignmentIds: probe label · serial for map tooltips */
+  assignmentLabels: string[];
   readyToRemove: boolean;
   /** Map pin coords: first assignment install/placement, else field.lat/lng (0 = none) */
   lat: number;
