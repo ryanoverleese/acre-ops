@@ -35,3 +35,6 @@ next-env.d.ts
 
 # worktrees
 .worktrees/
+
+# Local Netlify folder
+.netlify

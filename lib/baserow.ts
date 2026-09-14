@@ -414,6 +414,8 @@ export interface Probe {
   status?: { id: number; value: string };
   rack?: { id: number; value: string };
   rack_slot?: number;
+  // Permanent probe-level notes (not season-scoped). Removals also shows these
+  // after seasonal assignment notes — there is no separate notes_2026 field.
   notes?: string;
   damages_repairs?: string;
   date_created?: string;
@@ -442,6 +444,7 @@ export interface FieldSeason {
   removal_priority?: { id: number; value: string };
   ready_to_install?: boolean;
   install_group?: number | null;
+  // Legacy alias — Baserow field_seasons has field_note / removal_notes, not notes.
   notes?: string;
   // All probe data (probe, probe_status, antenna_type, battery_type,
   // installer, install_*, cropx_telemetry_id, signal_strength) lives on probe_assignments table.
@@ -485,6 +488,7 @@ export interface ProbeAssignment {
   placement_lng?: number;
   elevation?: number | string;
   soil_type?: string;
+  // Seasonal (per assignment / year) pull/placement guidance — Fields UI "Notes".
   placement_notes?: string;
   // Install data
   probe_status?: { id: number; value: string };

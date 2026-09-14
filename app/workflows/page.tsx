@@ -90,8 +90,11 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           lng = Number(field?.lng) || 0;
         }
 
-        // Puller notes: prefer assignment install/placement notes (e.g. 410207),
-        // then field-season field_note, then permanent field directions/notes.
+        // Puller notes for the current season. Baserow has no notes_2026 column —
+        // seasonal notes live on the 2026 probe_assignment / field_season rows:
+        // placement_notes (Fields UI "Notes"), install_notes, removal_notes,
+        // field_note, field_season.removal_notes. Also surface permanent probe.notes
+        // (used for 7640-style guidance) after seasonal assignment notes.
         const noteParts: string[] = [];
         const pushNote = (label: string, value?: string | null) => {
           const trimmed = (value || '').trim();
@@ -104,11 +107,14 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           const probe = probeId ? probeMap.get(probeId) : null;
           const serial = probe?.serial_number?.toString() || '';
           const tag = [pa.label, serial].filter(Boolean).join(' · ');
-          pushNote(tag, pa.install_notes);
-          pushNote(tag ? `${tag} placement` : 'Placement', pa.placement_notes);
+          // Seasonal (2026 assignment) first — placement_notes is the Fields "Notes" col
+          pushNote(tag ? `${tag} notes` : 'Notes', pa.placement_notes);
+          pushNote(tag ? `${tag} install` : 'Install', pa.install_notes);
           pushNote(tag ? `${tag} removal` : 'Removal', pa.removal_notes);
+          pushNote(tag ? `${tag} probe` : 'Probe', probe?.notes);
         }
-        pushNote('', fs.field_note);
+        pushNote('Season note', fs.field_note);
+        pushNote('Season removal', fs.removal_notes);
         pushNote('', fs.notes);
         pushNote('Field', field?.placement_notes);
         pushNote('Directions', field?.field_directions);
