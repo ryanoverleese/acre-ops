@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -12,25 +12,69 @@ interface Props {
   onSelect?: (fieldSeasonId: number) => void;
 }
 
+type ColorMode = 'status' | 'plannedRemover';
+
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
 
+const STATUS_COLORS = {
+  stillInGround: '#0071e3',
+  ready: '#34c759',
+  priority: '#ff3b30',
+  removed: '#c7c7cc',
+} as const;
+
+/** Stable named colors for known removers (case-insensitive keys). */
 const REMOVER_COLORS: Record<string, string> = {
   ryan: '#0071e3',
+  'ryan and kasen': '#5ac8fa',
   brian: '#34c759',
   daine: '#af52de',
   daine1: '#af52de',
+  brandon: '#ff9f0a',
+  carter: '#ff2d55',
+  kasen: '#64d2ff',
 };
 
-function pinColor(row: EarlyRemovalData): string {
-  const removed = !!row.removalDate;
-  if (removed) return '#c7c7cc';
-  if ((row.removalPriority || '').toLowerCase() === 'priority') return '#ff3b30';
-  if (row.readyToRemove) return '#34c759';
-  const remover = (row.plannedRemover || '').toLowerCase();
-  if (remover && REMOVER_COLORS[remover]) return REMOVER_COLORS[remover];
-  if (remover) return '#ff9f0a';
-  return '#0071e3';
+const FALLBACK_REMOVER_PALETTE = [
+  '#ff9f0a',
+  '#af52de',
+  '#5ac8fa',
+  '#ff2d55',
+  '#30b0c7',
+  '#ffd60a',
+  '#bf5af2',
+  '#ac8e68',
+];
+
+const UNASSIGNED_COLOR = '#8e8e93';
+
+function hashHue(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return FALLBACK_REMOVER_PALETTE[h % FALLBACK_REMOVER_PALETTE.length];
+}
+
+function removerColor(name: string): string {
+  const key = name.trim().toLowerCase();
+  if (!key) return UNASSIGNED_COLOR;
+  return REMOVER_COLORS[key] || hashHue(key);
+}
+
+function statusPinColor(row: EarlyRemovalData): string {
+  if (row.removalDate) return STATUS_COLORS.removed;
+  if ((row.removalPriority || '').toLowerCase() === 'priority') return STATUS_COLORS.priority;
+  if (row.readyToRemove) return STATUS_COLORS.ready;
+  return STATUS_COLORS.stillInGround;
+}
+
+function plannedRemoverPinColor(row: EarlyRemovalData): string {
+  if (row.removalDate) return STATUS_COLORS.removed;
+  return removerColor(row.plannedRemover || '');
+}
+
+function pinColor(row: EarlyRemovalData, mode: ColorMode): string {
+  return mode === 'plannedRemover' ? plannedRemoverPinColor(row) : statusPinColor(row);
 }
 
 function makePin(color: string, selected: boolean) {
@@ -86,14 +130,101 @@ function FlyToSelected({
   return null;
 }
 
-function Legend() {
-  const items = [
-    { color: '#0071e3', label: 'Still in ground' },
-    { color: '#34c759', label: 'Ready' },
-    { color: '#ff3b30', label: 'Priority' },
-    { color: '#ff9f0a', label: 'Planned Remover' },
-    { color: '#c7c7cc', label: 'Removed' },
+function ColorModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: ColorMode;
+  onChange: (mode: ColorMode) => void;
+}) {
+  const options: { id: ColorMode; label: string }[] = [
+    { id: 'status', label: 'Status' },
+    { id: 'plannedRemover', label: 'Planned Remover' },
   ];
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 10,
+        right: 12,
+        zIndex: 1000,
+        display: 'flex',
+        background: 'rgba(255,255,255,0.93)',
+        borderRadius: 8,
+        padding: 3,
+        boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+        gap: 2,
+      }}
+      role="group"
+      aria-label="Pin color mode"
+    >
+      {options.map((opt) => {
+        const active = mode === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            aria-pressed={active}
+            style={{
+              border: 'none',
+              cursor: 'pointer',
+              borderRadius: 6,
+              padding: '6px 10px',
+              fontSize: 12,
+              fontWeight: active ? 600 : 500,
+              background: active ? '#1d1d1f' : 'transparent',
+              color: active ? '#fff' : '#1d1d1f',
+              lineHeight: 1.2,
+            }}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function Legend({
+  mode,
+  rows,
+}: {
+  mode: ColorMode;
+  rows: EarlyRemovalData[];
+}) {
+  const items = useMemo(() => {
+    if (mode === 'status') {
+      return [
+        { color: STATUS_COLORS.stillInGround, label: 'Still in ground' },
+        { color: STATUS_COLORS.ready, label: 'Ready' },
+        { color: STATUS_COLORS.priority, label: 'Priority' },
+        { color: STATUS_COLORS.removed, label: 'Removed' },
+      ];
+    }
+
+    const names = Array.from(
+      new Set(
+        rows
+          .map((r) => (r.plannedRemover || '').trim())
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b));
+
+    const removerItems = names.map((name) => ({
+      color: removerColor(name),
+      label: name,
+    }));
+
+    return [
+      ...removerItems,
+      { color: UNASSIGNED_COLOR, label: 'Unassigned' },
+      { color: STATUS_COLORS.removed, label: 'Removed' },
+    ];
+  }, [mode, rows]);
+
+  const title = mode === 'plannedRemover' ? 'Planned Remover' : 'Status';
+
   return (
     <div
       style={{
@@ -109,8 +240,11 @@ function Legend() {
         display: 'flex',
         flexDirection: 'column',
         gap: 5,
+        maxHeight: '55%',
+        overflowY: 'auto',
       }}
     >
+      <div style={{ fontWeight: 700, color: '#1d1d1f', marginBottom: 2 }}>{title}</div>
       {items.map(({ color, label }) => (
         <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
           <div
@@ -131,6 +265,7 @@ function Legend() {
 }
 
 export default function RemovalsMapView({ rows, selectedId = null, onSelect }: Props) {
+  const [colorMode, setColorMode] = useState<ColorMode>('status');
   const valid = useMemo(
     () => rows.filter((r) => Number(r.lat) && Number(r.lng)),
     [rows],
@@ -157,14 +292,14 @@ export default function RemovalsMapView({ rows, selectedId = null, onSelect }: P
             removed ? 'Removed' : 'In ground',
             row.readyToRemove && !removed ? 'Ready' : '',
             (row.removalPriority || '').toLowerCase() === 'priority' && !removed ? 'Priority' : '',
-            row.plannedRemover ? `Remover: ${row.plannedRemover}` : '',
+            row.plannedRemover ? `Planned Remover: ${row.plannedRemover}` : '',
           ].filter(Boolean);
 
           return (
             <Marker
-              key={row.fieldSeasonId}
+              key={`${row.fieldSeasonId}-${colorMode}`}
               position={[row.lat, row.lng]}
-              icon={makePin(pinColor(row), selected)}
+              icon={makePin(pinColor(row, colorMode), selected)}
               eventHandlers={{
                 click: () => onSelect?.(row.fieldSeasonId),
               }}
@@ -211,7 +346,8 @@ export default function RemovalsMapView({ rows, selectedId = null, onSelect }: P
         <FlyToSelected rows={valid} selectedId={selectedId} />
       </MapContainer>
 
-      <Legend />
+      <ColorModeToggle mode={colorMode} onChange={setColorMode} />
+      <Legend mode={colorMode} rows={valid} />
 
       <div
         style={{
