@@ -73,6 +73,48 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
             })
             .filter(Boolean)
         ));
+        // Coords: first assignment install → placement, else field lat/lng
+        let lat = 0;
+        let lng = 0;
+        for (const pa of seasonAssignments) {
+          const aLat = Number(pa.install_lat ?? pa.placement_lat);
+          const aLng = Number(pa.install_lng ?? pa.placement_lng);
+          if (aLat && aLng && !Number.isNaN(aLat) && !Number.isNaN(aLng)) {
+            lat = aLat;
+            lng = aLng;
+            break;
+          }
+        }
+        if (!lat || !lng) {
+          lat = Number(field?.lat) || 0;
+          lng = Number(field?.lng) || 0;
+        }
+
+        // Puller notes: prefer assignment install/placement notes (e.g. 410207),
+        // then field-season field_note, then permanent field directions/notes.
+        const noteParts: string[] = [];
+        const pushNote = (label: string, value?: string | null) => {
+          const trimmed = (value || '').trim();
+          if (!trimmed) return;
+          if (noteParts.some((existing) => existing.includes(trimmed) || trimmed.includes(existing.replace(/^[^:]+:\s*/, '')))) return;
+          noteParts.push(label ? `${label}: ${trimmed}` : trimmed);
+        };
+        for (const pa of seasonAssignments) {
+          const probeId = pa.probe?.[0]?.id;
+          const probe = probeId ? probeMap.get(probeId) : null;
+          const serial = probe?.serial_number?.toString() || '';
+          const tag = [pa.label, serial].filter(Boolean).join(' · ');
+          pushNote(tag, pa.install_notes);
+          pushNote(tag ? `${tag} placement` : 'Placement', pa.placement_notes);
+          pushNote(tag ? `${tag} removal` : 'Removal', pa.removal_notes);
+        }
+        pushNote('', fs.field_note);
+        pushNote('', fs.notes);
+        pushNote('Field', field?.placement_notes);
+        pushNote('Directions', field?.field_directions);
+        pushNote('Install directions', field?.install_directions);
+        pushNote('Field notes', field?.notes);
+
         return {
           fieldSeasonId: fs.id,
           fieldName: field?.name || 'Unknown Field',
@@ -89,6 +131,10 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           plantingDate: fs.planting_date || '',
           readyToRemove: fs.ready_to_remove?.value === 'Yes',
           maturity: getHybridMaturityLabel(fs.crop?.value || '', fs.hybrid_variety || '')?.label || '',
+          lat,
+          lng,
+          removalPriority: fs.removal_priority?.value || '',
+          fieldNotes: noteParts.join('\n\n'),
         };
       })
       .sort((a, b) => a.fieldName.localeCompare(b.fieldName));

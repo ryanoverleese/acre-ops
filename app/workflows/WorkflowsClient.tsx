@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
+
+const RemovalsMapView = dynamic(() => import('./RemovalsMapView'), { ssr: false });
 
 export interface UninstallProbeData {
   assignmentId: number;
@@ -47,6 +50,12 @@ export interface EarlyRemovalData {
   /** Parallel to assignmentIds: each assignment's removal_date ('' if still in ground) */
   assignmentRemovalDates: string[];
   readyToRemove: boolean;
+  /** Map pin coords: first assignment install/placement, else field.lat/lng (0 = none) */
+  lat: number;
+  lng: number;
+  removalPriority: string;
+  /** Puller-facing notes: install/placement/field directions aggregated for Removals */
+  fieldNotes: string;
 }
 
 export interface EarlyRemovalOption {
@@ -81,6 +90,8 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [showOnlyEarlyRemovals, setShowOnlyEarlyRemovals] = useState(false);
   const [removalTableSearch, setRemovalTableSearch] = useState('');
   const [showRemovedRows, setShowRemovedRows] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [selectedMapRowId, setSelectedMapRowId] = useState<number | null>(null);
   type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'brand' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
@@ -748,6 +759,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           row.removalDate,
           row.needsAtv ? 'needs atv' : 'pickup',
           row.readyToRemove ? 'ready' : '',
+          row.fieldNotes || '',
         ].join(' ').toLowerCase();
         return haystack.includes(removalSearchNeedle);
       })
@@ -880,6 +892,22 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 <button className="btn btn-secondary" onClick={() => setShowOnlyEarlyRemovals((value) => !value)}>
                   {showOnlyEarlyRemovals ? 'Show All Fields' : 'Show Marked Only'}
                 </button>
+                <button
+                  onClick={() => setShowMap((v) => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    background: showMap ? '#0071e3' : '#e5e5ea',
+                    color: showMap ? '#fff' : '#1d1d1f',
+                    minHeight: 32,
+                  }}
+                >
+                  <svg width="15" height="15" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                    <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+                    <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+                  </svg>
+                  Map
+                </button>
                 <button className="btn btn-primary" onClick={openEarlyRemovalForm}>+ Add Removal</button>
               </div>
             </div>
@@ -944,6 +972,19 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </div>
               </div>
             )}
+            {showMap && (
+              <div style={{ height: 480, borderRadius: 10, overflow: 'hidden', position: 'relative', marginBottom: 12, border: '1px solid var(--border)' }}>
+                <RemovalsMapView
+                  rows={visibleRows}
+                  selectedId={selectedMapRowId}
+                  onSelect={(fieldSeasonId) => {
+                    setSelectedMapRowId(fieldSeasonId);
+                    const el = document.querySelector(`[data-removal-row="${fieldSeasonId}"]`);
+                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }}
+                />
+              </div>
+            )}
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflowX: 'auto', background: 'var(--bg-secondary)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 1100 }}>
                 <thead>
@@ -967,8 +1008,38 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                             : 'No current-season fields found.'
                     }</td></tr>
                   ) : visibleRows.map((row) => (
-                    <tr key={row.fieldSeasonId} style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ ...cellPad, fontWeight: 600 }}>{row.fieldName}</td>
+                    <tr
+                      key={row.fieldSeasonId}
+                      data-removal-row={row.fieldSeasonId}
+                      onClick={() => setSelectedMapRowId(row.fieldSeasonId)}
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        background: selectedMapRowId === row.fieldSeasonId ? 'rgba(0, 113, 227, 0.08)' : undefined,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <td style={{ ...cellPad, fontWeight: 600, whiteSpace: 'normal', minWidth: 180, maxWidth: 320 }}>
+                        <div>{row.fieldName}</div>
+                        {row.fieldNotes ? (
+                          <div
+                            title={row.fieldNotes}
+                            style={{
+                              marginTop: 4,
+                              padding: '6px 8px',
+                              borderRadius: 6,
+                              background: 'rgba(245, 158, 11, 0.12)',
+                              border: '1px solid rgba(245, 158, 11, 0.35)',
+                              color: '#92400e',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              lineHeight: 1.35,
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          >
+                            {row.fieldNotes}
+                          </div>
+                        ) : null}
+                      </td>
                       <td style={cellPad}>{row.operation || '—'}</td>
                       <td style={cellPad}>{row.crop || '—'}</td>
                       <td style={cellPad}>{row.brand || '—'}</td>

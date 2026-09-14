@@ -394,6 +394,7 @@ export interface Field {
   drip_gpm?: number;
   drip_depth?: number;
   field_directions?: string;
+  install_directions?: string;
   nrcs_field?: boolean;
   ai_ufid?: string;
   plss_township?: number;
