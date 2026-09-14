@@ -2598,6 +2598,7 @@ interface RemovalMapRow {
   removed: boolean;
   plannedRemover?: string;
   removalPriority?: string;
+  rowDirection?: string;
 }
 
 function MapScreen({
@@ -2844,6 +2845,11 @@ function MapScreen({
                   {selectedRemoval.probeSerial ? `#${selectedRemoval.probeSerial}` : 'Still out'}
                   {selectedRemoval.plannedRemover ? ` · ${selectedRemoval.plannedRemover}` : ''}
                 </div>
+                {selectedRemoval.rowDirection && (
+                  <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
+                    Rows: {selectedRemoval.rowDirection}
+                  </div>
+                )}
               </div>
               {!!(selectedRemoval.lat && selectedRemoval.lng) && (
                 <button
