@@ -426,7 +426,7 @@ export default function RemovalsScreen({ season, installer }: {
             background: '#FEE2E2', border: '2px solid #EF4444', color: '#991B1B',
             fontFamily: 'var(--font-display)', letterSpacing: '0.04em', textTransform: 'uppercase',
           }}>
-            🚨 {stillOut.filter(r => r.removalPriority === 'Priority').length} Priority pull{stillOut.filter(r => r.removalPriority === 'Priority').length === 1 ? '' : 's'} — do these first
+            🚨 {stillOut.filter(r => r.removalPriority === 'Priority').length} Priority pull{stillOut.filter(r => r.removalPriority === 'Priority').length === 1 ? '' : 's'}
           </div>
         )}
 
