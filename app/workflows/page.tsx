@@ -38,6 +38,9 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
       .filter((fs) => Number(fs.season) === currentSeason)
       // Removals is Acre Insights pull work — Complete DIY growers handle their own
       .filter((fs) => fs.service_type?.[0]?.value !== 'CropX Complete DIY')
+      // Only seasons that actually have probe assignments this year (empty field_seasons
+      // e.g. Fishell stubs must not appear as Removals rows / map / stats).
+      .filter((fs) => (assignmentsByFieldSeason.get(fs.id) ?? []).length > 0)
       .map((fs) => {
         const fieldId = fs.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
