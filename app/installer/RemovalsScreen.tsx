@@ -225,7 +225,7 @@ function PullForm({ row, installer, onBack, onSaved }: {
 
         {/* Notes */}
         <div>
-          <div className="af-eyebrow" style={{ marginBottom: 6 }}>Notes (optional)</div>
+          <div className="af-eyebrow" style={{ marginBottom: 6 }}>Removal Notes (optional)</div>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
