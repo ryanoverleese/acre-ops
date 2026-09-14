@@ -82,11 +82,13 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
         const assignmentLats: number[] = [];
         const assignmentLngs: number[] = [];
         const assignmentLabels: string[] = [];
+        const assignmentSerials: string[] = [];
         for (const pa of seasonAssignments) {
           const probeId = pa.probe?.[0]?.id;
           const probe = probeId ? probeMap.get(probeId) : null;
           const serial = probe?.serial_number?.toString() || '';
           assignmentLabels.push([pa.label, serial].filter(Boolean).join(' · '));
+          assignmentSerials.push(serial);
           const aLat = Number(pa.install_lat ?? pa.placement_lat);
           const aLng = Number(pa.install_lng ?? pa.placement_lng);
           if (aLat && aLng && !Number.isNaN(aLat) && !Number.isNaN(aLng)) {
@@ -148,6 +150,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           assignmentLats,
           assignmentLngs,
           assignmentLabels,
+          assignmentSerials,
           hybrid: fs.hybrid_variety || '',
           plantingDate: fs.planting_date || '',
           readyToRemove: fs.ready_to_remove?.value === 'Yes',

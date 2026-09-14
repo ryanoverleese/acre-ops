@@ -55,6 +55,8 @@ export interface EarlyRemovalData {
   assignmentLngs: number[];
   /** Parallel to assignmentIds: probe label · serial for map tooltips */
   assignmentLabels: string[];
+  /** Parallel to assignmentIds: probe serial_number (stock/serial/qr) */
+  assignmentSerials: string[];
   readyToRemove: boolean;
   /** Map pin coords: first assignment install/placement, else field.lat/lng (0 = none) */
   lat: number;
@@ -98,7 +100,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
   const [showRemovedRows, setShowRemovedRows] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [selectedMapRowId, setSelectedMapRowId] = useState<number | null>(null);
-  type RemovalSortKey = 'fieldName' | 'operation' | 'crop' | 'brand' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
+  type RemovalSortKey = 'fieldName' | 'serial' | 'operation' | 'crop' | 'brand' | 'hybrid' | 'plantingDate' | 'maturity' | 'earlyRemoval' | 'removalDate' | 'plannedRemover' | 'needsAtv' | 'readyToRemove';
   const [removalSortKey, setRemovalSortKey] = useState<RemovalSortKey>('fieldName');
   const [removalSortDir, setRemovalSortDir] = useState<'asc' | 'desc'>('asc');
   const toggleRemovalSort = (key: RemovalSortKey) => {
@@ -744,6 +746,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
       if (key === 'readyToRemove') return row.readyToRemove ? 0 : 1;
       if (key === 'removalDate') return row.removalDate || '';
       if (key === 'plantingDate') return row.plantingDate || '';
+      if (key === 'serial') return (row.assignmentSerials ?? []).filter(Boolean).join(' ').toLowerCase();
       return (row[key] || '').toString().toLowerCase();
     };
     const removalSearchNeedle = removalTableSearch.trim().toLowerCase();
@@ -766,6 +769,8 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           row.needsAtv ? 'needs atv' : 'pickup',
           row.readyToRemove ? 'ready' : '',
           row.fieldNotes || '',
+          ...(row.assignmentSerials ?? []),
+          ...(row.assignmentLabels ?? []),
         ].join(' ').toLowerCase();
         return haystack.includes(removalSearchNeedle);
       })
@@ -803,6 +808,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
     );
     const columns: { key: RemovalSortKey; label: string }[] = [
       { key: 'fieldName', label: 'Field' },
+      { key: 'serial', label: 'Serial' },
       { key: 'operation', label: 'Operation' },
       { key: 'crop', label: 'Crop' },
       { key: 'brand', label: 'Brand' },
@@ -877,7 +883,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   type="search"
                   value={removalTableSearch}
                   onChange={(e) => setRemovalTableSearch(e.target.value)}
-                  placeholder="Search fields…"
+                  placeholder="Search fields or serial…"
                   aria-label="Search removals table"
                   style={{
                     width: 220,
@@ -1004,7 +1010,7 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </thead>
                 <tbody>
                   {visibleRows.length === 0 ? (
-                    <tr><td colSpan={12} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{
+                    <tr><td colSpan={13} style={{ padding: 18, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{
                       removalSearchNeedle
                         ? 'No fields match that search.'
                         : !showRemovedRows
@@ -1045,6 +1051,11 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                             {row.fieldNotes}
                           </div>
                         ) : null}
+                      </td>
+                      <td style={{ ...cellPad, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: 12, whiteSpace: 'pre-line', minWidth: 100, maxWidth: 160, verticalAlign: 'top' }}>
+                        {(row.assignmentSerials ?? []).filter(Boolean).length
+                          ? (row.assignmentSerials ?? []).filter(Boolean).map((s) => `#${s}`).join('\n')
+                          : '—'}
                       </td>
                       <td style={cellPad}>{row.operation || '—'}</td>
                       <td style={cellPad}>{row.crop || '—'}</td>
