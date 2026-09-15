@@ -9,6 +9,7 @@ const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 import RepairsScreen from './RepairsScreen';
 import RemovalsScreen from './RemovalsScreen';
+import { prefetchRemovalTiles } from './tilePrefetch';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2667,6 +2668,32 @@ function MapScreen({
     return () => { cancelled = true; };
   }, [isRemove, installer, season, showAllRemovals]);
 
+  const [tileWarmHint, setTileWarmHint] = useState<string | null>(null);
+
+  // Dead-zone mode: while Removals/pull map has signal, warm-fetch tiles around
+  // still-out stops (Cache Storage via installer SW + browser Image cache).
+  useEffect(() => {
+    if (!isRemove) return;
+    const stillOut = removalRows.filter(r => !r.removed && r.lat && r.lng);
+    if (stillOut.length === 0) return;
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+    let cancelled = false;
+    setTileWarmHint('Warming map tiles…');
+    prefetchRemovalTiles(
+      stillOut.map(r => ({ lat: r.lat, lng: r.lng })),
+      layer
+    ).then((res) => {
+      if (cancelled) return;
+      if (res.mode === 'online-warm' && res.urls > 0) {
+        setTileWarmHint(`Tiles ready (${res.urls}) — open before dead zone`);
+        window.setTimeout(() => { if (!cancelled) setTileWarmHint(null); }, 4500);
+      } else {
+        setTileWarmHint(null);
+      }
+    }).catch(() => { if (!cancelled) setTileWarmHint(null); });
+    return () => { cancelled = true; };
+  }, [isRemove, removalRows, layer]);
+
   const toggleShowAllRemovals = () => {
     const next = !showAllRemovals;
     setShowAllRemovals(next);
@@ -2743,6 +2770,22 @@ function MapScreen({
               initialView={savedViewRef?.current ?? null}
               onViewChange={(v) => { if (savedViewRef) savedViewRef.current = v; }}
             />
+          )}
+
+          {tileWarmHint && stillOut.length > 0 && (
+            <div
+              style={{
+                position: 'absolute', top: 14, left: 14, right: 120, zIndex: 400,
+                background: 'rgba(31,64,42,0.92)', color: 'var(--bone)',
+                borderRadius: 'var(--r-pill)', padding: '8px 12px',
+                fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                pointerEvents: 'none',
+              }}
+            >
+              {tileWarmHint}
+            </div>
           )}
 
           {(stillOut.length > 0 || removalsLoading) && (

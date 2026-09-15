@@ -10703,6 +10703,39 @@ tr.expanded-row:hover {
 /* Hide labels when zoomed out — they overlap and add clutter */
 .leaflet-container.af-hide-labels .af-map-label.leaflet-tooltip { display: none; }
 
+/* Dead-zone mode: keep pins + GPS above failing Google tiles; never blank the map. */
+.leaflet-container.af-installer-map {
+  background: #dde5d0;
+}
+.leaflet-container.af-installer-map .leaflet-tile-pane {
+  z-index: 200;
+}
+.leaflet-container.af-installer-map .leaflet-overlay-pane,
+.leaflet-container.af-installer-map .leaflet-shadow-pane,
+.leaflet-container.af-installer-map .leaflet-marker-pane,
+.leaflet-container.af-installer-map .leaflet-tooltip-pane,
+.leaflet-container.af-installer-map .leaflet-popup-pane {
+  z-index: 600;
+}
+.leaflet-container.af-installer-map.af-tiles-degraded::after {
+  content: 'Dead zone — pins & GPS still live';
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 700;
+  background: rgba(31, 64, 42, 0.9);
+  color: #F6F2EA;
+  font-family: 'Barlow Condensed', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-radius: 999px;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 /* Brand vars scoped to the installer app wrapper */
 .af-app {
   --field-green:        #1F402A;

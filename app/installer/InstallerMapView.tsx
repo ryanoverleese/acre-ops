@@ -126,6 +126,10 @@ function makePin(label: string, installed: boolean, selected: boolean, hasNote =
 const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
+// Transparent 1×1 GIF — failed/offline tiles show the map background instead of
+// pink error tiles, so pins + blue me-dot stay usable in dead zones.
+const ERROR_TILE =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 // Toggle a CSS class on the map container based on zoom so labels can
 // hide themselves when zoomed out too far to space them out.
@@ -272,6 +276,56 @@ function makeRepairPin(watch = false) {
   });
 }
 
+
+// Track tile failures / offline so we can hint "dead zone" without blanking UX.
+// tileerror/tileload fire on GridLayer — attach via map.eachLayer + online events.
+function TileHealth() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    const onErr = () => { container.classList.add('af-tiles-degraded'); };
+    const onLoad = () => {
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        container.classList.remove('af-tiles-degraded');
+      }
+    };
+    const onOffline = () => { container.classList.add('af-tiles-degraded'); };
+    const onOnline = () => { container.classList.remove('af-tiles-degraded'); };
+
+    const bind = (layer: L.Layer) => {
+      if (layer instanceof L.TileLayer) {
+        layer.on('tileerror', onErr);
+        layer.on('tileload', onLoad);
+      }
+    };
+    const unbind = (layer: L.Layer) => {
+      if (layer instanceof L.TileLayer) {
+        layer.off('tileerror', onErr);
+        layer.off('tileload', onLoad);
+      }
+    };
+    const onLayerAdd = (e: L.LayerEvent) => bind(e.layer);
+    const onLayerRemove = (e: L.LayerEvent) => unbind(e.layer);
+
+    map.eachLayer(bind);
+    map.on('layeradd', onLayerAdd);
+    map.on('layerremove', onLayerRemove);
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online', onOnline);
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) onOffline();
+
+    return () => {
+      map.eachLayer(unbind);
+      map.off('layeradd', onLayerAdd);
+      map.off('layerremove', onLayerRemove);
+      window.removeEventListener('offline', onOffline);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [map]);
+  return null;
+}
+
+
 export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, initialView, onViewChange }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
 
@@ -296,6 +350,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
     <MapContainer
       center={center}
       zoom={initialView ? initialView.zoom : 11}
+      className="af-installer-map"
       style={{ position: 'absolute', inset: 0, background: '#dde5d0' }}
       zoomControl={false}
       attributionControl
@@ -304,7 +359,12 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
         url={layer === 'satellite' ? SAT_URL : STREET_URL}
         attribution={GOOGLE_ATTR}
         maxZoom={20}
+        errorTileUrl={ERROR_TILE}
+        // Keep the last painted tiles when new ones fail (Leaflet default);
+        // errorTileUrl avoids pink blanks so the bone/green bg + pins remain.
+        className="af-map-tiles"
       />
+      <TileHealth />
 
       {/* Stop pins */}
       {valid.map(p => {

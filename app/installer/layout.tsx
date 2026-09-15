@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import InstallerSwRegister from './InstallerSwRegister';
 
 export const metadata: Metadata = {
   title: 'Probe Installer',
@@ -19,5 +20,10 @@ export const viewport: Viewport = {
 };
 
 export default function InstallerLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <InstallerSwRegister />
+      {children}
+    </>
+  );
 }
