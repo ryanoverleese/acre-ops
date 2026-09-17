@@ -2709,7 +2709,8 @@ function MapScreen({
       id: r.id,
       lat: r.lat,
       lng: r.lng,
-      routeOrder: r.routeOrder,
+      // route_order is install-only — plain dots on the pull map
+      routeOrder: '',
       status: 'Assigned', // still out — not installed checkmark styling
       fieldName: r.fieldName,
       operation: r.grower || r.plannedRemover || '',
@@ -2868,9 +2869,7 @@ function MapScreen({
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
               }}>
-                {selectedRemoval.routeOrder || (
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'currentColor' }} />
-                )}
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'currentColor' }} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

@@ -121,8 +121,7 @@ export async function GET(request: Request) {
         const ap = a.removalPriority === 'Priority' ? 0 : 1;
         const bp = b.removalPriority === 'Priority' ? 0 : 1;
         if (ap !== bp) return ap - bp; // Priority red-alert first
-        const ra = a.routeOrder || 'zzz', rb = b.routeOrder || 'zzz';
-        if (ra !== rb) return ra.localeCompare(rb, undefined, { numeric: true });
+        // route_order is install-only — do not sort pulls by it
         if (a.fieldName !== b.fieldName) return a.fieldName.localeCompare(b.fieldName);
         return a.probeNumber - b.probeNumber;
       });

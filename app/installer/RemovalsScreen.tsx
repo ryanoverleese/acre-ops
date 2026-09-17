@@ -545,16 +545,6 @@ export default function RemovalsScreen({ season, installer }: {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                {r.routeOrder && (
-                  <div style={{
-                    fontSize: 11, fontWeight: 700, color: 'var(--field-green)',
-                    background: 'var(--sage-wash,#e8ede4)', borderRadius: 6,
-                    padding: '2px 7px', flexShrink: 0, fontFamily: 'var(--font-display)',
-                    letterSpacing: '0.04em',
-                  }}>
-                    {r.routeOrder}
-                  </div>
-                )}
                 <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span>{r.fieldName}</span>
                   {r.fieldNotes && (
