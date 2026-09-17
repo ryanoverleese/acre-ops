@@ -2599,6 +2599,7 @@ interface RemovalMapRow {
   removed: boolean;
   plannedRemover?: string;
   removalPriority?: string;
+  crop?: string;
   rowDirection?: string;
 }
 
@@ -2714,6 +2715,7 @@ function MapScreen({
       operation: r.grower || r.plannedRemover || '',
       probeSerial: r.probeSerial,
       antennaType: r.antennaType,
+      crop: r.crop,
       priority: r.removalPriority === 'Priority',
     }));
 
@@ -2888,6 +2890,11 @@ function MapScreen({
                   {selectedRemoval.probeSerial ? `#${selectedRemoval.probeSerial}` : 'Still out'}
                   {selectedRemoval.plannedRemover ? ` · ${selectedRemoval.plannedRemover}` : ''}
                 </div>
+                {selectedRemoval.crop && (
+                  <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
+                    Crop: {selectedRemoval.crop}
+                  </div>
+                )}
                 {selectedRemoval.rowDirection && (
                   <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
                     Rows: {selectedRemoval.rowDirection}

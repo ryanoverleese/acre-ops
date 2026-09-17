@@ -23,6 +23,7 @@ interface RemovalRow {
   installedBy: string;
   plannedRemover?: string;
   removalPriority?: string;
+  crop?: string;
   rowDirection?: string;
   fieldNotes: string;
   removed: boolean;
@@ -176,6 +177,11 @@ function PullForm({ row, installer, onBack, onSaved }: {
           {row.plannedRemover && (
             <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
               Planned remover: {row.plannedRemover}
+            </div>
+          )}
+          {row.crop && (
+            <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 4, fontWeight: 600 }}>
+              Crop: {row.crop}
             </div>
           )}
           {row.rowDirection && (
@@ -594,6 +600,11 @@ export default function RemovalsScreen({ season, installer }: {
                   ? `Pulled ${fmtDate(r.removedOn)}${r.removedBy ? ` by ${r.removedBy}` : ''}`
                   : `Installed ${fmtDate(r.installedOn)}${r.installedBy ? ` by ${r.installedBy}` : ''}`}
               </div>
+              {r.crop && (
+                <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>
+                  Crop: {r.crop}
+                </div>
+              )}
               {r.rowDirection && (
                 <div style={{ fontSize: 12, color: 'var(--ink)', fontWeight: 600 }}>
                   Rows: {r.rowDirection}

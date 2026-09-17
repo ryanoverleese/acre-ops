@@ -97,6 +97,7 @@ export async function GET(request: Request) {
           installedBy: val(pa.installer),
           plannedRemover: val(fs.planned_remover),
           removalPriority: val(fs.removal_priority),
+          crop: val(fs.crop),
           // fields.row_direction — planting row orientation at the probe location
           rowDirection: val(field?.row_direction),
           // Notes the crew needs on the way out — same seasonal sources as desk
