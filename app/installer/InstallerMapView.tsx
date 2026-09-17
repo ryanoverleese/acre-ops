@@ -55,11 +55,19 @@ interface Props {
 
 // Build a numbered "pin" as an inline SVG divIcon.
 // When routeOrder is unknown, fall back to a smaller plain dot pin (no '?').
-function makePin(label: string, installed: boolean, selected: boolean, hasNote = false, priority = false) {
+function isSoybeanCrop(crop?: string): boolean {
+  if (!crop) return false;
+  const c = crop.trim().toLowerCase();
+  return c === 'soybean' || c === 'soybeans' || c === 'soy' || c.startsWith('soy');
+}
+
+function makePin(label: string, installed: boolean, selected: boolean, hasNote = false, priority = false, crop?: string) {
   const hasOrder = label && label !== '?';
-  const bg = installed ? '#C8CDD5' : priority ? '#EF4444' : selected ? '#1F402A' : '#FFFFFF';
-  const fg = installed ? '#6B7280' : priority || selected ? '#F6F2EA' : '#0A0A0A';
-  const stroke = installed ? '#9CA3AF' : priority ? '#B91C1C' : selected ? '#1F402A' : '#0A0A0A';
+  const soy = !installed && !priority && isSoybeanCrop(crop);
+  // Priority stays red; soybeans get light blue when not priority/installed.
+  const bg = installed ? '#C8CDD5' : priority ? '#EF4444' : selected ? '#1F402A' : soy ? '#BFDBFE' : '#FFFFFF';
+  const fg = installed ? '#6B7280' : priority || selected ? '#F6F2EA' : soy ? '#1E3A8A' : '#0A0A0A';
+  const stroke = installed ? '#9CA3AF' : priority ? '#B91C1C' : selected ? '#1F402A' : soy ? '#60A5FA' : '#0A0A0A';
 
   // Plain dot pin (for stops without a route order)
   if (!hasOrder && !installed) {
@@ -377,7 +385,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
           <Marker
             key={p.id}
             position={[p.lat, p.lng]}
-            icon={makePin(label, installed, selected, !!p.placementNotes || !!p.priority, !!p.priority)}
+            icon={makePin(label, installed, selected, !!p.placementNotes || !!p.priority, !!p.priority, p.crop)}
             eventHandlers={{ click: () => onSelect(p.id) }}
           >
             <Tooltip
