@@ -815,9 +815,15 @@ function ProbesScreen({ onBack }: { onBack: () => void }) {
           </svg>
           <input
             value={query}
-            onChange={e => setQuery(e.target.value)}
+            onChange={e => setQuery(e.target.value.replace(/\D/g, ''))}
             placeholder="Serial number"
-            inputMode="text"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            enterKeyHint="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
             autoFocus
             className="af-mono"
             style={{ flex: 1, border: 'none', background: 'transparent', fontSize: 15, color: 'var(--ink)', outline: 'none' }}
