@@ -2934,6 +2934,7 @@ function MapScreen({
     operation: a.operation,
     probeSerial: a.probeSerial,
     antennaType: a.antennaType,
+    crop: a.crop,
     placementNotes: a.fieldNotes,
     probeRack: a.probeRack,
     probeRackSlot: a.probeRackSlot,
