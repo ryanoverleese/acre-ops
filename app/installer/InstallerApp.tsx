@@ -10,6 +10,14 @@ const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 import RepairsScreen from './RepairsScreen';
 import RemovalsScreen from './RemovalsScreen';
 import { prefetchRemovalTiles } from './tilePrefetch';
+import {
+  defaultRouteFilter,
+  loadRouteFilter,
+  matchesRouteFilter,
+  routeFilterLabel,
+  saveRouteFilter,
+  type RemovalsRouteFilter,
+} from './removalsRouteFilter';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2642,6 +2650,8 @@ function MapScreen({
   const [removalRows, setRemovalRows] = useState<RemovalMapRow[]>([]);
   const [removalsLoading, setRemovalsLoading] = useState(false);
   const [showAllRemovals, setShowAllRemovals] = useState(false);
+  const [routeFilter, setRouteFilter] = useState<RemovalsRouteFilter>('all');
+  const [routeFilterReady, setRouteFilterReady] = useState(false);
 
   useEffect(() => {
     if (isRemove) return; // repairs clutter the pull map
@@ -2653,6 +2663,13 @@ function MapScreen({
   useEffect(() => {
     if (!isRemove || !installer) return;
     setShowAllRemovals(getRemovalsShowAll());
+    const stored = loadRouteFilter();
+    if (stored) {
+      setRouteFilter(stored);
+      setRouteFilterReady(true);
+    } else {
+      setRouteFilterReady(false);
+    }
   }, [isRemove, installer]);
 
   useEffect(() => {
@@ -2681,7 +2698,9 @@ function MapScreen({
   // still-out stops (Cache Storage via installer SW + browser Image cache).
   useEffect(() => {
     if (!isRemove) return;
-    const stillOut = removalRows.filter(r => !r.removed && r.lat && r.lng);
+    const stillOut = removalRows.filter(
+      r => !r.removed && r.lat && r.lng && matchesRouteFilter(r.routeOrder, routeFilter),
+    );
     if (stillOut.length === 0) return;
     if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
     let cancelled = false;
@@ -2699,7 +2718,7 @@ function MapScreen({
       }
     }).catch(() => { if (!cancelled) setTileWarmHint(null); });
     return () => { cancelled = true; };
-  }, [isRemove, removalRows, layer]);
+  }, [isRemove, removalRows, layer, routeFilter]);
 
   const toggleShowAllRemovals = () => {
     const next = !showAllRemovals;
@@ -2707,9 +2726,32 @@ function MapScreen({
     try { localStorage.setItem(REMOVALS_SHOW_ALL_KEY, next ? '1' : '0'); } catch { /* private mode */ }
   };
 
+  // Default A/B/All once removal rows arrive when nothing persisted yet.
+  useEffect(() => {
+    if (!isRemove || routeFilterReady || removalsLoading) return;
+    const stored = loadRouteFilter();
+    if (stored) {
+      setRouteFilter(stored);
+      setRouteFilterReady(true);
+      return;
+    }
+    const next = defaultRouteFilter(removalRows);
+    setRouteFilter(next);
+    saveRouteFilter(next);
+    setRouteFilterReady(true);
+  }, [isRemove, removalRows, removalsLoading, routeFilterReady]);
+
+  const handleRouteFilter = (next: RemovalsRouteFilter) => {
+    setRouteFilter(next);
+    saveRouteFilter(next);
+    setRouteFilterReady(true);
+  };
+
   // ── Remove-mode map ────────────────────────────────────────────────────────
   if (isRemove) {
-    const stillOut = removalRows.filter(r => !r.removed && r.lat && r.lng);
+    const stillOut = removalRows.filter(
+      r => !r.removed && r.lat && r.lng && matchesRouteFilter(r.routeOrder, routeFilter),
+    );
     const selectedRemoval = removalRows.find(r => r.id === selectedId) ?? null;
     const mapPoints = stillOut.map(r => ({
       id: r.id,
@@ -2751,7 +2793,7 @@ function MapScreen({
             <div className="af-topbar-sub">
               {removalsLoading
                 ? '…'
-                : `${stillOut.length} still out · ${showAllRemovals ? 'all' : 'mine'}`}
+                : `${stillOut.length} still out · ${showAllRemovals ? 'all' : 'mine'} · ${routeFilterLabel(routeFilter)}`}
             </div>
           </div>
           <div style={{ width: 60 }} />
@@ -2766,7 +2808,10 @@ function MapScreen({
               <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                 {removalsLoading ? 'Loading map…' : 'No pull stops with coords'}
               </div>
-              {!removalsLoading && !showAllRemovals && (
+              {!removalsLoading && routeFilter !== 'all' && (
+                <div style={{ fontSize: 13, marginTop: 6 }}>Try All, or another route</div>
+              )}
+              {!removalsLoading && routeFilter === 'all' && !showAllRemovals && (
                 <div style={{ fontSize: 13, marginTop: 6 }}>Tap Show all, or check Removals list</div>
               )}
             </div>
@@ -2797,7 +2842,7 @@ function MapScreen({
             </div>
           )}
 
-          {(stillOut.length > 0 || removalsLoading) && (
+          {(removalRows.length > 0 || removalsLoading || stillOut.length > 0) && (
             <>
               <div style={{
                 position: 'absolute', top: 14, right: 14, zIndex: 400,
@@ -2841,6 +2886,40 @@ function MapScreen({
               >
                 {showAllRemovals ? 'Show all: On' : 'Show all: Off'}
               </button>
+              <div
+                role="group"
+                aria-label="Removal route filter"
+                style={{
+                  position: 'absolute', top: 98, left: 14, right: 14, zIndex: 400,
+                  display: 'flex', gap: 4, padding: 4, borderRadius: 12,
+                  background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
+                  border: '1px solid var(--border-1)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                }}
+              >
+                {([
+                  { id: 'A' as const, label: 'A' },
+                  { id: 'B' as const, label: 'B' },
+                  { id: 'all' as const, label: 'All' },
+                ]).map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
+                    onClick={() => handleRouteFilter(opt.id)}
+                    style={{
+                      flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
+                      border: 'none',
+                      background: routeFilter === opt.id ? 'var(--field-green)' : 'transparent',
+                      color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-700)',
+                      fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15,
+                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </>
           )}
 
