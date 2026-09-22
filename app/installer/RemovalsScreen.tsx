@@ -1,1 +1,1 @@
-@file:///workspace/acre-ops/app/installer/RemovalsScreen.tsx
+@/workspace/acre-ops/app/installer/RemovalsScreen.tsx
