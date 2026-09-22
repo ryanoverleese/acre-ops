@@ -54,18 +54,28 @@ export default function PulledTodayPage() {
 
   return (
     <main
+      className="pulled-today-dashboard"
       style={{
+        // Full-bleed: root .app is display:flex, so without an explicit width
+        // this main shrink-wraps to content and leaves a white gutter on mobile.
+        position: 'fixed',
+        inset: 0,
+        width: '100%',
+        height: '100%',
         minHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1.5rem',
+        boxSizing: 'border-box',
+        margin: 0,
         background: '#0f172a',
         color: '#f8fafc',
         fontFamily:
           'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         textAlign: 'center',
+        zIndex: 1,
       }}
     >
       <p
