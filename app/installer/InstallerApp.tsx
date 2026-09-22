@@ -8,7 +8,7 @@ const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: fals
 const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 import RepairsScreen from './RepairsScreen';
-import RemovalsScreen from './RemovalsScreen';
+import RemovalsScreen, { PullForm, type RemovalRow } from './RemovalsScreen';
 import { prefetchRemovalTiles } from './tilePrefetch';
 import {
   defaultRouteFilter,
@@ -2601,21 +2601,7 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
 
 // ─── Map Screen ───────────────────────────────────────────────────────────────
 
-interface RemovalMapRow {
-  id: number;
-  fieldName: string;
-  grower: string;
-  routeOrder: string;
-  probeSerial: string;
-  antennaType: string;
-  lat: number;
-  lng: number;
-  removed: boolean;
-  plannedRemover?: string;
-  removalPriority?: string;
-  crop?: string;
-  rowDirection?: string;
-}
+type RemovalMapRow = RemovalRow;
 
 function MapScreen({
   assignments,
@@ -2640,7 +2626,7 @@ function MapScreen({
 }) {
   const isRemove = workflowMode === 'remove';
 
-  // Install: preselect next stop. Remove: no preselect (tap navigates).
+  // Install: preselect next stop. Remove: no preselect (tap opens PullForm).
   const [selectedId, setSelectedId] = useState<number | null>(
     isRemove ? null : (assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null)
   );
@@ -2768,13 +2754,24 @@ function MapScreen({
       priority: r.removalPriority === 'Priority',
     }));
 
-    const openNavigate = (lat: number, lng: number) => {
-      window.open(mapsUrlFor(lat, lng, getMapProvider()), '_blank', 'noopener,noreferrer');
-    };
-
+    // Pin tap opens the same PullForm as the Removals list — Navigate stays on that form.
     const handleSelectRemoval = (id: number) => {
       setSelectedId(id);
     };
+
+    if (selectedRemoval && !selectedRemoval.removed && installer) {
+      return (
+        <PullForm
+          row={selectedRemoval}
+          installer={installer}
+          onBack={() => setSelectedId(null)}
+          onSaved={(id) => {
+            setRemovalRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true } : r)));
+            setSelectedId(null);
+          }}
+        />
+      );
+    }
 
     return (
       <div className="af-screen">
@@ -2943,59 +2940,6 @@ function MapScreen({
           )}
         </div>
 
-        {selectedRemoval && !selectedRemoval.removed && (
-          <div style={{ padding: '14px 14px 16px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-                background: 'var(--field-green)', color: 'var(--bone)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
-              }}>
-                <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'currentColor' }} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {selectedRemoval.removalPriority === 'Priority' ? '🚨 ' : ''}{selectedRemoval.fieldName}
-                </div>
-                {selectedRemoval.removalPriority === 'Priority' && (
-                  <div style={{
-                    marginTop: 4, display: 'inline-block', fontSize: 11, fontWeight: 800,
-                    color: '#fff', background: '#EF4444', borderRadius: 8,
-                    padding: '2px 8px', letterSpacing: '0.04em', textTransform: 'uppercase',
-                    fontFamily: 'var(--font-display)',
-                  }}>
-                    Priority — pull ASAP
-                  </div>
-                )}
-                <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
-                  {selectedRemoval.probeSerial ? `#${selectedRemoval.probeSerial}` : 'Still out'}
-                  {selectedRemoval.plannedRemover ? ` · ${selectedRemoval.plannedRemover}` : ''}
-                </div>
-                {selectedRemoval.crop && (
-                  <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
-                    Crop: {selectedRemoval.crop}
-                  </div>
-                )}
-                {selectedRemoval.rowDirection && (
-                  <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
-                    Rows: {selectedRemoval.rowDirection}
-                  </div>
-                )}
-              </div>
-              {!!(selectedRemoval.lat && selectedRemoval.lng) && (
-                <button
-                  className="af-btn af-btn--primary"
-                  style={{ minHeight: 40, padding: '0 14px', fontSize: 12 }}
-                  onClick={() => openNavigate(selectedRemoval.lat, selectedRemoval.lng)}
-                >
-                  Navigate
-                  <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polygon points="3 11 22 2 13 21 11 13 3 11" /></svg>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   }
