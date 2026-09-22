@@ -10806,10 +10806,10 @@ body:has(.af-app)::before {
   overflow: hidden;
 }
 
-/* Top bar */
+/* Top bar — title must sit below iOS status chrome (fog measured at 62–72px CSS) */
 .af-topbar {
   /* Opaque bar — black-translucent + dark theme_color was washing titles foggy on iOS */
-  padding: max(12px, env(safe-area-inset-top, 0px)) 18px 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 18px 10px;
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px;
   background: #F6F2EA;
