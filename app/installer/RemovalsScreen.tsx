@@ -500,14 +500,11 @@ export default function RemovalsScreen({ season, installer }: {
           ))}
         </div>
 
-        {/* Route A | B | All — thumb-friendly; filters list + pull map via localStorage */}
+        {/* Route A | B | All — same height as Mine / Still out */}
         <div
           role="group"
           aria-label="Removal route filter"
-          style={{
-            display: 'flex', gap: 4, padding: 4, borderRadius: 12,
-            background: 'var(--bone-raised,#f0ede8)', border: '1.5px solid var(--border-1)',
-          }}
+          style={{ display: 'flex', gap: 8 }}
         >
           {([
             { id: 'A' as const, label: 'A' },
@@ -520,12 +517,12 @@ export default function RemovalsScreen({ season, installer }: {
               aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
               onClick={() => handleRouteFilter(opt.id)}
               style={{
-                flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
-                border: 'none',
-                background: routeFilter === opt.id ? 'var(--field-green)' : 'transparent',
+                flex: 1, padding: '12px 0', borderRadius: 10, cursor: 'pointer',
+                border: `1.5px solid ${routeFilter === opt.id ? 'var(--field-green)' : 'var(--border-1)'}`,
+                background: routeFilter === opt.id ? 'var(--field-green)' : '#fff',
                 color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-500)',
-                fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15,
-                letterSpacing: '0.08em', textTransform: 'uppercase',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
               }}
             >
               {opt.label}
