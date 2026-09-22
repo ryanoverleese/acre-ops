@@ -10808,20 +10808,25 @@ body:has(.af-app)::before {
 
 /* Top bar */
 .af-topbar {
-  padding: 52px 18px 10px;
+  /* Opaque bar — black-translucent + dark theme_color was washing titles foggy on iOS */
+  padding: max(12px, env(safe-area-inset-top, 0px)) 18px 10px;
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px;
-  background: var(--bone);
+  background: #F6F2EA;
   position: relative; z-index: 2;
   border-bottom: 1px solid var(--border-1);
   flex-shrink: 0;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  isolation: isolate;
 }
 .af-topbar-title {
   font-family: var(--font-display);
   font-weight: 700; text-transform: uppercase;
   font-size: 22px; letter-spacing: 0.01em; line-height: 1;
-  color: var(--ink);
-  /* Condensed + antialiased reads as foggy on iOS — use sharper rasterization */
+  color: #0A0A0A;
+  opacity: 1;
+  filter: none;
   -webkit-font-smoothing: auto;
   text-rendering: geometricPrecision;
 }

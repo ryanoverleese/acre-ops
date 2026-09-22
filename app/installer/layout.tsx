@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   manifest: '/installer-manifest.json',
   appleWebApp: {
     title: 'Probe Installer',
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'default',
     capable: true,
   },
 };
