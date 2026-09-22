@@ -152,7 +152,8 @@ export function PullForm({ row, installer, onBack, onSaved }: {
         <div style={{ width: 60 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {/* Scrollable details — install notes capped so they never shove actions off-screen */}
+      <div className="af-body" style={{ padding: '16px 16px 12px', display: 'flex', flexDirection: 'column', gap: 14 }}>
         {/* What's coming out */}
         <div style={{
           padding: '12px 14px', background: 'var(--bone-raised,#f0ede8)', borderRadius: 12,
@@ -199,9 +200,18 @@ export function PullForm({ row, installer, onBack, onSaved }: {
           )}
         </div>
 
-        {/* Gate codes / placement / install notes — same callout as Install flow */}
+        {/* Gate codes / placement / install notes — scroll inside callout (FieldScreen sticky-CTA pattern) */}
         {row.fieldNotes && (
-          <div className="af-install-note" style={{ padding: '8px 10px' }}>
+          <div
+            className="af-install-note"
+            style={{
+              padding: '8px 10px',
+              maxHeight: 120,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              flexShrink: 0,
+            }}
+          >
             <div className="note-label" style={{ fontSize: 10 }}>Install Note</div>
             <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--ink)', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
               {row.fieldNotes}
@@ -209,52 +219,7 @@ export function PullForm({ row, installer, onBack, onSaved }: {
           </div>
         )}
 
-        {/* Navigate to probe */}
-        {!!(row.lat && row.lng) && (
-          <a
-            href={navigateUrl(row.lat, row.lng)}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              padding: '14px', borderRadius: 12, textDecoration: 'none',
-              background: 'var(--bone-raised,#f0ede8)', border: '1.5px solid var(--border-1)',
-              color: 'var(--field-green)',
-              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
-              letterSpacing: '0.06em', textTransform: 'uppercase',
-            }}
-          >
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-              <polygon points="3 11 22 2 13 21 11 13 3 11" />
-            </svg>
-            Navigate to probe
-          </a>
-        )}
-
-        {/* Who pulled it */}
-        <div>
-          <div className="af-eyebrow" style={{ marginBottom: 6 }}>Pulled by</div>
-          <input
-            type="text"
-            value={removedBy}
-            onChange={e => setRemovedBy(e.target.value)}
-            style={inputStyle}
-            autoComplete="off"
-          />
-        </div>
-
-        {/* Notes */}
-        <div>
-          <div className="af-eyebrow" style={{ marginBottom: 6 }}>Removal Notes (optional)</div>
-          <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            placeholder="Antenna damaged, cable chewed, left flags in place…"
-            style={taStyle}
-          />
-        </div>
-
-        {/* Photos */}
+        {/* Photos — keep attach reachable near the top of the scroll body */}
         <div>
           <div className="af-eyebrow" style={{ marginBottom: 6 }}>Photos (optional)</div>
           <input
@@ -304,8 +269,65 @@ export function PullForm({ row, installer, onBack, onSaved }: {
           </div>
         </div>
 
-        {error && <div style={{ color: '#ef4444', fontSize: 14 }}>{error}</div>}
+        {/* Who pulled it */}
+        <div>
+          <div className="af-eyebrow" style={{ marginBottom: 6 }}>Pulled by</div>
+          <input
+            type="text"
+            value={removedBy}
+            onChange={e => setRemovedBy(e.target.value)}
+            style={inputStyle}
+            autoComplete="off"
+          />
+        </div>
 
+        {/* Removal notes */}
+        <div>
+          <div className="af-eyebrow" style={{ marginBottom: 6 }}>Removal Notes (optional)</div>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            placeholder="Antenna damaged, cable chewed, left flags in place…"
+            style={taStyle}
+          />
+        </div>
+
+        {error && <div style={{ color: '#ef4444', fontSize: 14 }}>{error}</div>}
+      </div>
+
+      {/* Sticky actions — same pattern as FieldScreen Start Install CTA */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: '10px 16px calc(10px + env(safe-area-inset-bottom, 0px))',
+          background: '#fff',
+          borderTop: '1px solid var(--border-1)',
+          boxShadow: '0 -6px 20px rgba(31,64,42,0.12)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}
+      >
+        {!!(row.lat && row.lng) && (
+          <a
+            href={navigateUrl(row.lat, row.lng)}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              padding: '14px', borderRadius: 12, textDecoration: 'none',
+              background: 'var(--bone-raised,#f0ede8)', border: '1.5px solid var(--border-1)',
+              color: 'var(--field-green)',
+              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+            }}
+          >
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+              <polygon points="3 11 22 2 13 21 11 13 3 11" />
+            </svg>
+            Navigate to probe
+          </a>
+        )}
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
