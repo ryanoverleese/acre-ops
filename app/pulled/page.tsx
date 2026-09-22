@@ -6,9 +6,12 @@ const REFRESH_MS = 45_000;
 
 interface PulledToday {
   count: number;
+  remainingInstalled?: number;
+  leftToGo?: number;
   date: string;
   timezone: string;
   label: string;
+  leftLabel?: string;
 }
 
 function formatDisplayDate(isoDate: string): string {
@@ -50,6 +53,8 @@ export default function PulledTodayPage() {
   }, [load]);
 
   const count = data?.count;
+  const left =
+    data?.leftToGo ?? data?.remainingInstalled;
   const dateLabel = data?.date ? formatDisplayDate(data.date) : null;
 
   return (
@@ -105,10 +110,38 @@ export default function PulledTodayPage() {
         {count == null && !error ? '...' : error ? '-' : count}
       </p>
 
+      <p
+        style={{
+          margin: '2rem 0 0',
+          fontSize: 'clamp(0.85rem, 2.8vw, 1.15rem)',
+          letterSpacing: '0.14em',
+          fontWeight: 600,
+          color: '#94a3b8',
+          textTransform: 'uppercase',
+        }}
+      >
+        Left to go
+      </p>
+
+      <p
+        style={{
+          margin: '0.5rem 0 0',
+          fontSize: 'clamp(2.75rem, 16vw, 5.5rem)',
+          fontWeight: 700,
+          fontVariantNumeric: 'tabular-nums',
+          lineHeight: 1,
+          letterSpacing: '-0.03em',
+          color: '#fbbf24',
+        }}
+        aria-live="polite"
+      >
+        {left == null && !error ? '...' : error ? '-' : left}
+      </p>
+
       {dateLabel && (
         <p
           style={{
-            margin: '1rem 0 0',
+            margin: '1.25rem 0 0',
             fontSize: 'clamp(0.95rem, 3vw, 1.25rem)',
             color: '#cbd5e1',
           }}
