@@ -2891,7 +2891,7 @@ function MapScreen({
                 aria-label="Removal route filter"
                 style={{
                   position: 'absolute', top: 98, left: 14, right: 14, zIndex: 400,
-                  display: 'flex', gap: 4, padding: 4, borderRadius: 12,
+                  display: 'flex', gap: 4, padding: 3, borderRadius: 12,
                   background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
                   border: '1px solid var(--border-1)',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
@@ -2908,12 +2908,12 @@ function MapScreen({
                     aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
                     onClick={() => handleRouteFilter(opt.id)}
                     style={{
-                      flex: 1, minHeight: 44, padding: '10px 0', borderRadius: 10, cursor: 'pointer',
+                      flex: 1, minHeight: 32, padding: '6px 0', borderRadius: 10, cursor: 'pointer',
                       border: 'none',
                       background: routeFilter === opt.id ? 'var(--field-green)' : 'transparent',
                       color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-700)',
-                      fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 15,
-                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                      fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
+                      letterSpacing: '0.06em', textTransform: 'uppercase',
                     }}
                   >
                     {opt.label}
