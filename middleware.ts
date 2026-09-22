@@ -22,6 +22,11 @@ export default auth((req) => {
     return NextResponse.redirect(new URL('/installer', req.url));
   }
 
+  // Shareable tally: reuse installer chrome-less shell (AppShell treats /installer as public).
+  if (pathname === '/pulled' || pathname.startsWith('/pulled/')) {
+    return NextResponse.redirect(new URL('/installer/pulled', req.url));
+  }
+
   // Allow public routes
   if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
