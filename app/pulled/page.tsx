@@ -15,7 +15,7 @@ function formatDisplayDate(isoDate: string): string {
   // isoDate is YYYY-MM-DD in Chicago; render as a friendly local label.
   const [y, m, d] = isoDate.split('-').map(Number);
   if (!y || !m || !d) return isoDate;
-  const dt = new Date(Date.UTC(y, m - 1, d, 17)); // noon-ish CT \u2192 stable weekday
+  const dt = new Date(Date.UTC(y, m - 1, d, 17)); // noon-ish CT -> stable weekday
   return dt.toLocaleDateString('en-US', {
     timeZone: 'America/Chicago',
     weekday: 'long',
@@ -102,7 +102,7 @@ export default function PulledTodayPage() {
         }}
         aria-live="polite"
       >
-        {count == null && !error ? '\u2026' : error ? '\u2014' : count}
+        {count == null && !error ? '...' : error ? '-' : count}
       </p>
 
       {dateLabel && (
@@ -131,7 +131,7 @@ export default function PulledTodayPage() {
             color: '#64748b',
           }}
         >
-          Updates every 45s \u00b7 last{' '}
+          Updates every 45s - last{' '}
           {updatedAt.toLocaleTimeString('en-US', {
             timeZone: 'America/Chicago',
             hour: 'numeric',
