@@ -10780,6 +10780,11 @@ tr.expanded-row:hover {
   font-family: inherit; color: inherit; background: none; border: none;
 }
 .af-app button { cursor: pointer; }
+/* Film-grain on body::before fogs installer titles — disable for PWA */
+body:has(.af-app)::before {
+  display: none !important;
+}
+
 .af-app {
   font-family: var(--font-body);
   color: var(--ink);
@@ -10790,6 +10795,7 @@ tr.expanded-row:hover {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   -webkit-tap-highlight-color: transparent;
+  z-index: 1;
 }
 
 /* Screen */
@@ -10814,6 +10820,10 @@ tr.expanded-row:hover {
   font-family: var(--font-display);
   font-weight: 700; text-transform: uppercase;
   font-size: 22px; letter-spacing: 0.01em; line-height: 1;
+  color: var(--ink);
+  /* Condensed + antialiased reads as foggy on iOS — use sharper rasterization */
+  -webkit-font-smoothing: auto;
+  text-rendering: geometricPrecision;
 }
 .af-topbar-sub {
   font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
