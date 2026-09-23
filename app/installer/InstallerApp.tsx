@@ -18,6 +18,12 @@ import {
   saveRouteFilter,
   type RemovalsRouteFilter,
 } from './removalsRouteFilter';
+import {
+  chicagoToday,
+  countTodayPulls,
+  formatTodayPullCounts,
+  matchesPlannedRemover,
+} from './todayPullCounts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -2664,8 +2670,8 @@ function MapScreen({
     (async () => {
       setRemovalsLoading(true);
       try {
-        const qs = new URLSearchParams({ season: String(season), installer });
-        if (showAllRemovals) qs.set('all', '1');
+        // Fleet fetch so today Ryan/Brandon/Carter counts stay accurate under Mine.
+        const qs = new URLSearchParams({ season: String(season), installer, all: '1' });
         const res = await fetch(`/api/installer/removals?${qs}`, { cache: 'no-store' });
         const data = await res.json();
         if (!cancelled) setRemovalRows(data.rows ?? []);
@@ -2676,7 +2682,7 @@ function MapScreen({
       }
     })();
     return () => { cancelled = true; };
-  }, [isRemove, installer, season, showAllRemovals]);
+  }, [isRemove, installer, season]);
 
   const [tileWarmHint, setTileWarmHint] = useState<string | null>(null);
 
@@ -2684,7 +2690,10 @@ function MapScreen({
   // still-out stops (Cache Storage via installer SW + browser Image cache).
   useEffect(() => {
     if (!isRemove) return;
-    const stillOut = removalRows.filter(
+    const scoped = showAllRemovals
+      ? removalRows
+      : removalRows.filter(r => matchesPlannedRemover(r.plannedRemover, installer || ''));
+    const stillOut = scoped.filter(
       r => !r.removed && r.lat && r.lng && matchesRouteFilter(r.routeOrder, routeFilter),
     );
     if (stillOut.length === 0) return;
@@ -2704,7 +2713,7 @@ function MapScreen({
       }
     }).catch(() => { if (!cancelled) setTileWarmHint(null); });
     return () => { cancelled = true; };
-  }, [isRemove, removalRows, layer, routeFilter]);
+  }, [isRemove, removalRows, layer, routeFilter, showAllRemovals, installer]);
 
   const toggleShowAllRemovals = () => {
     const next = !showAllRemovals;
@@ -2721,11 +2730,14 @@ function MapScreen({
       setRouteFilterReady(true);
       return;
     }
-    const next = defaultRouteFilter(removalRows);
+    const scoped = showAllRemovals
+      ? removalRows
+      : removalRows.filter(r => matchesPlannedRemover(r.plannedRemover, installer || ''));
+    const next = defaultRouteFilter(scoped);
     setRouteFilter(next);
     saveRouteFilter(next);
     setRouteFilterReady(true);
-  }, [isRemove, removalRows, removalsLoading, routeFilterReady]);
+  }, [isRemove, removalRows, removalsLoading, routeFilterReady, showAllRemovals, installer]);
 
   const handleRouteFilter = (next: RemovalsRouteFilter) => {
     setRouteFilter(next);
@@ -2735,7 +2747,11 @@ function MapScreen({
 
   // ── Remove-mode map ────────────────────────────────────────────────────────
   if (isRemove) {
-    const stillOut = removalRows.filter(
+    const todayCounts = countTodayPulls(removalRows);
+    const scopedRows = showAllRemovals
+      ? removalRows
+      : removalRows.filter(r => matchesPlannedRemover(r.plannedRemover, installer || ''));
+    const stillOut = scopedRows.filter(
       r => !r.removed && r.lat && r.lng && matchesRouteFilter(r.routeOrder, routeFilter),
     );
     const selectedRemoval = removalRows.find(r => r.id === selectedId) ?? null;
@@ -2765,8 +2781,9 @@ function MapScreen({
           row={selectedRemoval}
           installer={installer}
           onBack={() => setSelectedId(null)}
-          onSaved={(id) => {
-            setRemovalRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true } : r)));
+          onSaved={(id, removedBy) => {
+            const today = chicagoToday();
+            setRemovalRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true, removedOn: today, removedBy } : r)));
             setSelectedId(null);
           }}
         />
@@ -2940,6 +2957,22 @@ function MapScreen({
           )}
         </div>
 
+        {/* Today pulls — above field tile / bottom nav, never over Navigate */}
+        <div
+          aria-label="Today's pulls"
+          style={{
+            flexShrink: 0,
+            textAlign: 'center',
+            padding: '5px 12px 6px',
+            fontSize: 11,
+            lineHeight: 1.2,
+            color: 'var(--stone-500)',
+            background: 'var(--bone)',
+            borderTop: '1px solid var(--border-1)',
+          }}
+        >
+          {removalsLoading ? '…' : formatTodayPullCounts(todayCounts)}
+        </div>
       </div>
     );
   }

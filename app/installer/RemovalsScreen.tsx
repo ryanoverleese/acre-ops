@@ -10,6 +10,12 @@ import {
   saveRouteFilter,
   type RemovalsRouteFilter,
 } from './removalsRouteFilter';
+import {
+  chicagoToday,
+  countTodayPulls,
+  formatTodayPullCounts,
+  matchesPlannedRemover,
+} from './todayPullCounts';
 
 /**
  * The pull half of the season. Defaults to probes assigned to the logged-in
@@ -346,15 +352,16 @@ export default function RemovalsScreen({ season, installer }: {
   const [routeFilter, setRouteFilter] = useState<RemovalsRouteFilter>('all');
   const [routeFilterReady, setRouteFilterReady] = useState(false);
 
-  const fetchRows = async (fresh = false, allOverride?: boolean) => {
+  const fetchRows = async (fresh = false) => {
     setLoading(true);
-    const all = allOverride ?? showAll;
     try {
+      // Always fetch the fleet so today Ryan/Brandon/Carter counts stay accurate
+      // under Mine. List still filters client-side via showAll.
       const qs = new URLSearchParams({
         season: String(season),
         installer,
+        all: '1',
       });
-      if (all) qs.set('all', '1');
       if (fresh) qs.set('fresh', '1');
       const res = await fetch(`/api/installer/removals?${qs}`, fresh ? { cache: 'no-store' } : undefined);
       const data = await res.json();
@@ -373,7 +380,7 @@ export default function RemovalsScreen({ season, installer }: {
   }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchRows(); }, [season, installer, showAll]);
+  useEffect(() => { fetchRows(); }, [season, installer]);
 
   // Default A/B/All once rows arrive when nothing persisted yet.
   useEffect(() => {
@@ -384,11 +391,14 @@ export default function RemovalsScreen({ season, installer }: {
       setRouteFilterReady(true);
       return;
     }
-    const next = defaultRouteFilter(rows);
+    const scoped = showAll
+      ? rows
+      : rows.filter(r => matchesPlannedRemover(r.plannedRemover, installer));
+    const next = defaultRouteFilter(scoped);
     setRouteFilter(next);
     saveRouteFilter(next);
     setRouteFilterReady(true);
-  }, [rows, loading, routeFilterReady]);
+  }, [rows, loading, routeFilterReady, showAll, installer]);
 
   const handleShowAll = (next: boolean) => {
     setShowAll(next);
@@ -402,7 +412,7 @@ export default function RemovalsScreen({ season, installer }: {
   };
 
   const handleSaved = (id: number, removedBy: string, note: string) => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = chicagoToday();
     setRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true, removedOn: today, removedBy } : r)));
     setSelected(null);
     if (note) {
@@ -422,7 +432,12 @@ export default function RemovalsScreen({ season, installer }: {
     );
   }
 
-  const routeRows = rows.filter(r => matchesRouteFilter(r.routeOrder, routeFilter));
+  // Fleet rows power today-by-person counts; Mine/Show all only scopes the list.
+  const todayCounts = countTodayPulls(rows);
+  const scopedRows = showAll
+    ? rows
+    : rows.filter(r => matchesPlannedRemover(r.plannedRemover, installer));
+  const routeRows = scopedRows.filter(r => matchesRouteFilter(r.routeOrder, routeFilter));
   const stillOut = routeRows.filter(r => !r.removed);
   const pulled = routeRows.filter(r => r.removed);
   const base = tab === 'out' ? stillOut : pulled;
@@ -683,6 +698,23 @@ export default function RemovalsScreen({ season, installer }: {
             </button>
           ))
         )}
+      </div>
+
+      {/* Today pulls — compact chrome above bottom nav; not over field-tile actions */}
+      <div
+        aria-label="Today's pulls"
+        style={{
+          flexShrink: 0,
+          textAlign: 'center',
+          padding: '5px 12px 7px',
+          fontSize: 11,
+          lineHeight: 1.2,
+          color: 'var(--stone-500)',
+          background: '#fff',
+          borderTop: '1px solid var(--border-1)',
+        }}
+      >
+        {loading ? '…' : formatTodayPullCounts(todayCounts)}
       </div>
     </div>
   );
