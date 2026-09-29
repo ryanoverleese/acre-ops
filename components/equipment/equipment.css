@@ -1,0 +1,142 @@
+.equipment-workspace {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100dvh;
+}
+
+.equipment-heading {
+  flex-shrink: 0;
+  padding: 20px 24px 12px;
+  background: var(--bg-card);
+}
+
+.equipment-heading h1 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 24px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.equipment-heading p {
+  margin: 4px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.equipment-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.equipment-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 8px 14px;
+  border-bottom: 3px solid transparent;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 550;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.equipment-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.equipment-tab.active {
+  border-bottom-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.equipment-tab:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: -4px;
+}
+
+.equipment-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.equipment-panel > .header {
+  flex-shrink: 0;
+}
+
+.equipment-panel .header h2 {
+  font-size: 18px;
+}
+
+.equipment-probe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.equipment-probe-actions a {
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .equipment-workspace {
+    height: calc(100dvh - 56px);
+  }
+
+  .equipment-heading {
+    padding: 14px 16px 8px;
+  }
+
+  .equipment-heading h1 {
+    font-size: 21px;
+  }
+
+  .equipment-heading p {
+    display: none;
+  }
+
+  .equipment-tabs {
+    gap: 0;
+    padding: 0 8px;
+  }
+
+  .equipment-tab {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .equipment-probe-actions .btn {
+    min-height: 44px;
+  }
+}
+
+@media print {
+  .equipment-tabs,
+  .equipment-probe-actions {
+    display: none;
+  }
+
+  .equipment-workspace,
+  .equipment-panel {
+    display: block;
+    overflow: visible;
+  }
+}

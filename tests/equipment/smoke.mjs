@@ -1,0 +1,161 @@
+// Run after npm run build. Playwright must be available locally or via NODE_PATH.
+// All data is synthetic; the isolated server blocks external fetches.
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { cp, mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+import { encode } from 'next-auth/jwt';
+import { EQUIPMENT_TABS, LEGACY_EQUIPMENT_ROUTES, getEquipmentTab } from '../../lib/equipment-navigation.ts';
+const { chromium } = createRequire(import.meta.url)('playwright');
+const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '');
+const artifacts = await mkdtemp(`${tmpdir()}/acre-equipment-qa-`);
+const base = 'http://127.0.0.1:3197';
+const secret = 'equipment-local-fixture-secret-not-for-production';
+let output = '', browser, server, page;
+let passed = 0;
+const check = async (name, fn) => { await fn(); passed++; console.log(`PASS ${name}`); };
+try {
+  let occupied = false;
+  try { await fetch(base, { signal: AbortSignal.timeout(500) }); occupied = true; } catch {}
+  assert(!occupied, 'Test port 3197 is already occupied');
+  // Isolate Next's runtime caches as well as the database fixtures.
+  const testRoot = `${artifacts}/app`;
+  await mkdir(testRoot);
+  await cp(`${root}/.next`, `${testRoot}/.next`, { recursive: true, filter: source => source !== `${root}/.next/cache` });
+  await cp(`${root}/package.json`, `${testRoot}/package.json`);
+  await cp(`${root}/next.config.js`, `${testRoot}/next.config.js`);
+  await symlink(`${root}/node_modules`, `${testRoot}/node_modules`, 'dir');
+  server = spawn(process.execPath, ['--require', `${root}/tests/equipment/baserow-fixture.cjs`, `${root}/node_modules/next/dist/bin/next`, 'start', '--hostname', '127.0.0.1', '--port', '3197'], {
+    cwd: testRoot, stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, ACRE_EQUIPMENT_TEST: '1', BASEROW_API_TOKEN: 'equipment-fixture-only', AUTH_SECRET: secret, NEXTAUTH_SECRET: secret, AUTH_URL: base, NEXTAUTH_URL: base, AUTH_TRUST_HOST: 'true', NEXT_TELEMETRY_DISABLED: '1' },
+  });
+  server.stdout.on('data', data => { output += data; });
+  server.stderr.on('data', data => { output += data; });
+  let ready = false;
+  for (let i = 0; i < 100; i++) {
+    try { if ((await fetch(`${base}/login`)).ok) { ready = true; break; } } catch {}
+    assert(server.exitCode === null, output);
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  assert(ready, 'Test server did not start');
+  browser = await chromium.launch({ channel: 'chrome', headless: true });
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  await context.route('**/*', route => {
+    const url = new URL(route.request().url());
+    if (url.origin !== base) return route.abort();
+    if (url.pathname === '/api/log-removal') return route.fulfill({ json: { success: true } });
+    return route.continue();
+  });
+  page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  const errors = [], mutations = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('request', request => {
+    if (['POST', 'PATCH', 'DELETE'].includes(request.method())) mutations.push({ method: request.method(), path: new URL(request.url()).pathname, body: request.postDataJSON() });
+  });
+  await check('authentication remains required', async () => {
+    await page.goto(`${base}/equipment`);
+    assert.equal(new URL(page.url()).pathname, '/login');
+  });
+  const session = async role => {
+    const value = await encode({ token: { name: 'Equipment QA', email: 'qa@example.invalid', role, id: 'qa' }, secret, salt: 'authjs.session-token' });
+    await context.addCookies([{ name: 'authjs.session-token', value, url: base, httpOnly: true }]);
+  };
+  await session('admin');
+  await check('four tabs, one Equipment menu item, working probe search', async () => {
+    await page.goto(`${base}/equipment`);
+    await page.getByRole('heading', { name: 'Equipment', exact: true }).waitFor();
+    assert.deepEqual(await page.getByRole('navigation', { name: 'Equipment sections' }).getByRole('link').allTextContents(), EQUIPMENT_TABS.map(tab => tab.label));
+    assert.equal(await page.locator('.sidebar').getByRole('link', { name: 'Equipment', exact: true }).count(), 1);
+    for (const name of ['Probes', 'Racks', 'Inventory', 'Weather Stations']) assert.equal(await page.locator('.sidebar').getByRole('link', { name, exact: true }).count(), 0);
+    await page.getByPlaceholder('Search probes...').fill('400001');
+    await page.locator('table').getByText('#400001', { exact: true }).waitFor();
+    await page.screenshot({ path: `${artifacts}/desktop.png` });
+  });
+  await check('old bookmarks and query strings reach the correct tab', async () => {
+    for (const [oldPath, newPath] of Object.entries(LEGACY_EQUIPMENT_ROUTES)) {
+      await page.goto(`${base}${oldPath}?qa=kept`);
+      assert.equal(new URL(page.url()).pathname, newPath);
+      assert.equal(new URL(page.url()).searchParams.get('qa'), 'kept');
+      assert.equal(await page.locator('.equipment-tab[aria-current="page"]').innerText(), EQUIPMENT_TABS.find(tab => tab.id === getEquipmentTab(newPath)).label);
+      assert(await page.locator('.sidebar a[href="/equipment"]').evaluate(el => el.classList.contains('active')));
+    }
+    await page.getByText('QA Weather', { exact: true }).first().waitFor();
+    await page.goto(`${base}/equipment/supplies`);
+    await page.getByText('QA Antennas', { exact: true }).first().waitFor();
+  });
+  await check('rack move and undo', async () => {
+    await page.goto(`${base}/equipment/racks`);
+    await page.getByText('400001', { exact: true }).first().click();
+    await page.getByRole('button', { name: 'Move Location', exact: true }).click();
+    await page.getByText('Rack 1A · Slot 2', { exact: true }).click();
+    await Promise.all([
+      page.waitForResponse(response => new URL(response.url()).pathname === '/api/probe-rack/501' && response.request().method() === 'PATCH'),
+      page.getByRole('button', { name: 'Undo', exact: true }).click(),
+    ]);
+    await page.getByRole('button', { name: /Undo/ }).waitFor({ state: 'hidden' });
+    assert(mutations.some(m => m.path === '/api/probe-rack/502' && m.body.probe === 11));
+    assert(mutations.some(m => m.path === '/api/probe-rack/501' && m.body.probe === 11));
+  });
+  await check('registration reuses the on-order record and returns to Equipment', async () => {
+    await page.goto(`${base}/equipment`);
+    await page.getByRole('link', { name: '+ Register probe', exact: true }).click();
+    await page.getByPlaceholder('e.g. 412719').fill('499999');
+    await page.getByRole('button', { name: /Probe #13/ }).click();
+    await page.getByRole('button', { name: 'Assign #499999 to On Order Slot' }).click();
+    await page.getByText('Probe registered!', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Skip', exact: true }).click();
+    await page.getByRole('button', { name: 'Back to Equipment', exact: true }).click();
+    await page.waitForURL(`${base}/equipment`);
+    assert(mutations.some(m => m.path === '/api/probes/13' && m.body.serial_number === '499999'));
+  });
+  await check('RMA blocks duplicates, retains history, and never deletes the old probe', async () => {
+    await page.getByRole('link', { name: 'Replace failed probe (RMA)', exact: true }).click();
+    await page.getByText('CropX #400001', { exact: true }).click();
+    await page.getByPlaceholder('e.g. 412719').fill('400002');
+    const before = mutations.length;
+    await page.getByRole('button', { name: 'Confirm Swap', exact: true }).click();
+    await page.getByText(/That serial number is already registered/).waitFor();
+    assert.equal(mutations.length, before);
+    await page.getByPlaceholder('e.g. 412719').fill('499998');
+    await page.getByRole('button', { name: 'Confirm Swap', exact: true }).click();
+    await page.getByText('Swap complete!', { exact: true }).waitFor();
+    assert(mutations.some(m => m.path === '/api/probes/11' && m.method === 'PATCH' && m.body.status === 'RMA'));
+    assert(!mutations.some(m => m.method === 'DELETE' || m.path === '/api/probe-assignments/200'));
+    const old = await (await context.request.get(`${base}/api/probes/11`)).json();
+    assert.equal(old.notes, 'Keep this history');
+    assert.equal(old.status.value, 'RMA');
+  });
+  await check('tablet and phone layouts', async () => {
+    for (const viewport of [{ width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${base}/equipment/racks`);
+      const nav = page.getByRole('navigation', { name: 'Equipment sections' });
+      const bounds = await nav.boundingBox();
+      assert(await nav.isVisible());
+      assert(bounds.y >= 55 && bounds.y + bounds.height < viewport.height);
+      assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
+      await page.screenshot({ path: `${artifacts}/${viewport.width}.png` });
+    }
+  });
+  await check('installer access remains unchanged', async () => {
+    await session('installer');
+    for (const route of ['/equipment', '/equipment/register', '/equipment/replace', '/racks']) {
+      await page.goto(`${base}${route}`);
+      assert.equal(new URL(page.url()).pathname, '/install');
+    }
+  });
+  await check('no browser runtime errors', async () => assert.deepEqual(errors, []));
+  console.log(JSON.stringify({ passed, artifacts }));
+} catch (error) {
+  console.error(error);
+  if (page) await page.screenshot({ path: `${artifacts}/failure.png` }).catch(() => {});
+  console.error(`Artifacts: ${artifacts}`);
+  process.exitCode = 1;
+} finally {
+  await writeFile(`${artifacts}/server.log`, output);
+  if (browser) await browser.close();
+  if (server) server.kill('SIGTERM');
+}

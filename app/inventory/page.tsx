@@ -97,7 +97,7 @@ export default async function InventoryPage() {
     <>
       <header className="header">
         <div className="header-left">
-          <h2>Inventory</h2>
+          <h2>Supplies</h2>
         </div>
       </header>
 

@@ -26,8 +26,7 @@ const navSections: NavSection[] = [
       { name: 'CRM', href: '/crm', icon: 'users' },
       { name: 'Map', href: '/map', icon: 'layers' },
       { name: 'Fields', href: '/fields', icon: 'map' },
-      { name: 'Probes', href: '/probes', icon: 'cpu' },
-      { name: 'Racks', href: '/racks', icon: 'rack' },
+      { name: 'Equipment', href: '/equipment', icon: 'cpu' },
     ],
   },
   {
@@ -53,9 +52,7 @@ const navSections: NavSection[] = [
     title: 'Supplies',
     items: [
       { name: 'Orders', href: '/orders', icon: 'credit-card' },
-      { name: 'Inventory', href: '/inventory', icon: 'package' },
       { name: 'CropX Order', href: '/cropx', icon: 'cpu' },
-      { name: 'Weather Stations', href: '/weather-stations', icon: 'cloud' },
     ],
   },
   {
@@ -318,7 +315,7 @@ export default function AppShell({ children }: AppShellProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`nav-item ${pathname === item.href ? 'active' : ''}`}
+                className={`nav-item ${pathname === item.href || (item.href === '/equipment' && pathname?.startsWith('/equipment/')) ? 'active' : ''}`}
                 onClick={handleNavClick}
                 data-tooltip={item.name}
               >

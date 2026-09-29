@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 
 const RemovalsMapView = dynamic(() => import('./RemovalsMapView'), { ssr: false });
 
@@ -73,6 +74,8 @@ export interface EarlyRemovalOption {
 }
 
 interface WorkflowsClientProps {
+  initialWorkflow?: 'register' | 'rma';
+  returnToEquipment?: boolean;
   earlyRemovals: EarlyRemovalData[];
   seasonFields: EarlyRemovalData[];
   earlyRemovalOptions: EarlyRemovalOption[];
@@ -85,8 +88,14 @@ interface WorkflowsClientProps {
 
 type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
-export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemovalOptions, plannedRemoverOptions, installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
-  const [activeWorkflow, setActiveWorkflow] = useState<'early-removals' | 'uninstall' | 'register' | 'rma' | null>(null);
+export default function WorkflowsClient({ initialWorkflow, returnToEquipment = false, earlyRemovals, seasonFields, earlyRemovalOptions, plannedRemoverOptions, installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
+  const router = useRouter();
+  const [activeWorkflow, setActiveWorkflow] = useState<'early-removals' | 'uninstall' | 'register' | 'rma' | null>(initialWorkflow ?? null);
+  const returnLabel = returnToEquipment ? 'Equipment' : 'Workflows';
+  const returnToList = () => {
+    if (returnToEquipment) router.push('/equipment');
+    else setActiveWorkflow(null);
+  };
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
@@ -314,6 +323,12 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
 
   const handleRmaSubmit = async () => {
     if (!rmaSelected) return;
+    const newSerial = rmaNewSerial.trim();
+    if (!newSerial) return;
+    if (rmaProbes.some(probe => probe.probeSerial.trim().toLowerCase() === newSerial.toLowerCase())) {
+      setRmaError('That serial number is already registered. Enter the new replacement probe’s serial number.');
+      return;
+    }
     setRmaSaving(true);
     setRmaError('');
     try {
@@ -346,11 +361,14 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
         if (!paRes.ok) throw new Error('Failed to update probe assignment');
       }
 
-      // 3. Delete old probe
+      // 3. Retain the failed probe and its historical assignments/repair notes.
+      // Deleting it would remove the history linked to that physical device.
       const oldProbeRes = await fetch(`/api/probes/${rmaSelected.probeId}`, {
-        method: 'DELETE',
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'RMA' }),
       });
-      if (!oldProbeRes.ok) throw new Error('Failed to delete old probe');
+      if (!oldProbeRes.ok) throw new Error('Failed to mark the original probe as RMA');
 
       // 4. Update rack slot (best-effort)
       try {
@@ -1191,13 +1209,13 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           <div className="header-left">
             <button
               className="btn btn-secondary"
-              onClick={() => { setActiveWorkflow(null); resetRegister(); }}
+              onClick={() => { returnToList(); resetRegister(); }}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 18l-6-6 6-6" />
               </svg>
-              Workflows
+              {returnLabel}
             </button>
           </div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>Register Probe</div>
@@ -1493,8 +1511,8 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   <button className="btn btn-primary" onClick={resetRegister} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
                     Register Another
                   </button>
-                  <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
-                    Back to Workflows
+                  <button className="btn btn-secondary" onClick={returnToList} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
+                    Back to {returnLabel}
                   </button>
                 </div>
               </div>
@@ -1585,13 +1603,13 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
           <div className="header-left">
             <button
               className="btn btn-secondary"
-              onClick={() => { setActiveWorkflow(null); resetRma(); }}
+              onClick={() => { returnToList(); resetRma(); }}
               style={{ display: 'flex', alignItems: 'center', gap: 6 }}
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 18l-6-6 6-6" />
               </svg>
-              Workflows
+              {returnLabel}
             </button>
           </div>
           <div style={{ fontWeight: 600, fontSize: 15 }}>Replace Failed Probe</div>
@@ -1673,6 +1691,10 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                 </div>
 
                 {/* New serial input */}
+                <p style={{ color: 'var(--text-secondary)', fontSize: 14, margin: 0 }}>
+                  The original probe will be kept as RMA, including its notes and prior-season history.
+                  Current-season assignments will move to the replacement.
+                </p>
                 <div>
                   <label style={labelStyle}>Replacement Serial Number</label>
                   <input
@@ -1723,15 +1745,15 @@ export default function WorkflowsClient({ earlyRemovals, seasonFields, earlyRemo
                   <div style={{ color: 'var(--text-secondary)', fontSize: 15, lineHeight: 1.5 }}>
                     <strong>{rmaSelected.probeBrand} #{rmaOldSerial}</strong> replaced with{' '}
                     <strong>#{rmaNewSerial.trim()}</strong>.
-                    Old probe deleted. New probe notes reference the original serial.
+                    {' '}The original probe is kept as RMA. Its history is retained, and the new probe notes reference the original serial.
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
                   <button className="btn btn-primary" onClick={resetRma} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
                     Replace Another
                   </button>
-                  <button className="btn btn-secondary" onClick={() => setActiveWorkflow(null)} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
-                    Back to Workflows
+                  <button className="btn btn-secondary" onClick={returnToList} style={{ padding: '16px', fontSize: 16, borderRadius: 10, width: '100%' }}>
+                    Back to {returnLabel}
                   </button>
                 </div>
               </div>

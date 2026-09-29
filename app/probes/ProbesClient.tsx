@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import EmptyState from '@/components/EmptyState';
 import SearchableSelect from '@/components/SearchableSelect';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
@@ -885,7 +886,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
     <>
       <header className="header">
         <div className="header-left">
-          <h2>Probe Inventory</h2>
+          <h2>Probes</h2>
           <select
             value={currentSeason}
             onChange={(e) => {
@@ -913,6 +914,14 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
       </header>
 
       <div className="content">
+        <div className="equipment-probe-actions no-print">
+          <Link className="btn btn-primary" href="/equipment/register" prefetch={false}>
+            + Register probe
+          </Link>
+          <Link className="btn btn-secondary" href="/equipment/replace" prefetch={false}>
+            Replace failed probe (RMA)
+          </Link>
+        </div>
         {/* Quick Hits collapsible */}
         {showQuickHits && (
           <div className="stats-grid stats-grid-5" style={{ marginBottom: 12 }}>
@@ -944,7 +953,7 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
           <div className="probes-filter-left">
             <div className="fields-tabs">
               <button onClick={() => setViewMode('all')} className={viewMode === 'all' ? 'active' : ''}>All Probes</button>
-              <button onClick={() => setViewMode('rack')} className={viewMode === 'rack' ? 'active' : ''}>Probe Rack</button>
+              <button onClick={() => setViewMode('rack')} className={viewMode === 'rack' ? 'active' : ''}>In Racks</button>
               <button onClick={() => setViewMode('on-order')} className={viewMode === 'on-order' ? 'active' : ''}>On Order</button>
             </div>
             <div className="search-box search-box-wide">
@@ -1072,11 +1081,11 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
               </svg>
               Print
             </button>
-            <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
+            <button className="btn btn-secondary" onClick={() => setShowAddModal(true)} title="Add a probe with billing, contact, and other details">
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Add Probe
+              Add with details
             </button>
           </div>
         </div>

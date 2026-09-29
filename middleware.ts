@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { NextResponse } from 'next/server';
+import { LEGACY_EQUIPMENT_ROUTES } from '@/lib/equipment-navigation';
 
 // Routes that installers can access
 const INSTALLER_ROUTES = [
@@ -87,6 +88,14 @@ export default auth((req) => {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
+  }
+
+  // Keep old bookmarks and links working, without changing access rules.
+  const equipmentPath = LEGACY_EQUIPMENT_ROUTES[pathname];
+  if (equipmentPath) {
+    const destination = req.nextUrl.clone();
+    destination.pathname = equipmentPath;
+    return NextResponse.redirect(destination);
   }
 
   return NextResponse.next();
