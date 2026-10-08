@@ -29,14 +29,27 @@ export async function GET(request: NextRequest) {
   if (!search) return NextResponse.json({ results: [] });
 
   try {
-    // Live search the probes table by serial number
-    const params = new URLSearchParams({ user_field_names: 'true', size: '20', search });
+    // Live search the probes table by serial number.
+    // search_mode=compat does a "contains" match, so a partial serial like 9614
+    // finds 19614 (the default full-text mode only matches the start of a number).
+    const params = new URLSearchParams({ user_field_names: 'true', size: '50', search, search_mode: 'compat' });
     const probeRes = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.probes}/?${params}`, {
       headers: { Authorization: `Token ${BASEROW_TOKEN}` },
       cache: 'no-store',
     });
     if (!probeRes.ok) return NextResponse.json({ results: [] });
-    const probes: Probe[] = (await probeRes.json()).results ?? [];
+    const digits = search.replace(/\D/g, '');
+    const rank = (p: Probe) => {
+      const sn = p.serial_number != null ? String(p.serial_number) : '';
+      if (!digits || !sn.includes(digits)) return 3; // matched some other field
+      if (sn === digits) return 0;
+      if (sn.startsWith(digits)) return 1;
+      return 2;
+    };
+    const probes: Probe[] = ((await probeRes.json()).results ?? [] as Probe[])
+      .filter((p: Probe) => !digits || rank(p) < 3)
+      .sort((a: Probe, b: Probe) => rank(a) - rank(b))
+      .slice(0, 20);
     if (probes.length === 0) return NextResponse.json({ results: [] });
 
     const [rackSlots, probeAssignments, fieldSeasons, fields] = await Promise.all([
