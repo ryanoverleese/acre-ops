@@ -774,15 +774,60 @@ interface ProbeSearchResult {
   currentField: string;
 }
 
+const PROBE_INDEX_KEY = 'af-probe-index-v1';
+
+function rankProbeMatch(serial: string, digits: string): number {
+  if (serial === digits) return 0;
+  if (serial.startsWith(digits)) return 1;
+  return 2;
+}
+
 function ProbesScreen({ onBack }: { onBack: () => void }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ProbeSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  // Whole probe list kept on the phone so typing filters instantly.
+  const [index, setIndex] = useState<ProbeSearchResult[] | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = window.localStorage.getItem(PROBE_INDEX_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed?.results) && parsed.results.length ? parsed.results : null;
+    } catch { return null; }
+  });
+
+  // Refresh the saved list in the background every time the screen opens.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/installer/probe-index', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data.results) || data.results.length === 0) return;
+        setIndex(data.results);
+        try { window.localStorage.setItem(PROBE_INDEX_KEY, JSON.stringify({ results: data.results, builtAt: data.builtAt })); } catch { /* storage full */ }
+      } catch { /* offline: keep the saved list */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const q = query.trim();
     if (!q) { setResults([]); setSearched(false); setLoading(false); return; }
+
+    // Instant local search when the probe list is on the phone.
+    if (index) {
+      const matches = index
+        .filter(p => p.serialNumber.includes(q))
+        .sort((a, b) => rankProbeMatch(a.serialNumber, q) - rankProbeMatch(b.serialNumber, q) || a.serialNumber.localeCompare(b.serialNumber))
+        .slice(0, 20);
+      setResults(matches); setSearched(true); setLoading(false);
+      return;
+    }
+
+    // First-ever open (no saved list yet): fall back to the server search.
     setLoading(true);
     let cancelled = false;
     const t = setTimeout(async () => {
@@ -797,7 +842,7 @@ function ProbesScreen({ onBack }: { onBack: () => void }) {
       }
     }, 300);
     return () => { cancelled = true; clearTimeout(t); };
-  }, [query]);
+  }, [query, index]);
 
   return (
     <div className="af-screen">
