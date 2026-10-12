@@ -180,3 +180,53 @@ All views below are in `public`, use `security_invoker=true`, and returned zero 
 - Ryan approved committing the importer on `supabase-schema` without pushing,
   followed by the real run. The completed run's results will be appended below;
   approval is not a claim that the import has completed.
+
+## 2026-10-12: approved import completed and verified
+
+The importer was committed **before** the real run on `supabase-schema` as
+`95be6ca1e9eb05f1fc928830c157056c9ed80628`. Nothing was pushed.
+The run finished at `2026-10-12T19:29:34.979Z` against **this project only**,
+using `DATABASE_URL_ALT` after the primary connection failed. The fresh source
+fingerprint exactly matched the approved full dry run:
+`02f46c8853a9923700d12d7b104d98d661056221899f81367ba450e1b9d915ba`.
+
+| Records | Baserow source / derived | Supabase |
+|---|---:|---:|
+| Source rows, 22 tables | 19,715 | 19,715 |
+| Dropdown options, 35 tables | 165 | 165 |
+| Relationship links, 8 tables | 2,331 | 2,331 |
+| Total, 65 tables | 22,211 | 22,211 |
+
+Every individual table count matched, and all 22 source-table Baserow ID sets
+matched. Journal was excluded as requested. No rack rows or other source rows
+were skipped. `report_type` values were not merged.
+
+- **250 files copied and verified**, totaling **302,539,823 bytes**: 2 document
+  attachments, 213 field-end installation photos, 10 extra installation photos,
+  and 25 removal photos. All 8 document rows were imported, including rows with
+  no file attachment. No failed, skipped, or recovered file transfers.
+- Read-only post-run checks found exactly 250 Storage objects, 250 database file
+  references, and 250 manifest entries; no missing/extra objects or size
+  mismatches. Each upload's bytes were read back and SHA-256 checked by the
+  importer. The `baserow-import` bucket is **private**.
+- **Zero errors** (`scripts/import-errors.json` contains `errors: []`).
+- **RLS enabled on all 65 tables**; all 15 views retain `security_invoker=true`.
+  Client grants remain closed. The Supabase skill's security checks informed
+  verification; no grants or policies were opened for this import.
+- All **60 identity/autonumber counters** were advanced and independently
+  verified at or beyond the imported maxima, with their next values above them.
+- All **595 field-billing links** are in `field_billing_entities`, covering 593
+  fields, including the two fields with multiple entities. The remaining field
+  has no source billing link. All 594 deprecated `fields.billing_entity_id`
+  values remain NULL. Future app cutover must use the join table for billing.
+
+The complete 65-table comparison is in `scripts/import-report.md` and
+`scripts/import-report.json`. The restart manifest and error list are in
+`scripts/import-manifest.json` and `scripts/import-errors.json`. These runtime
+files are local, Git-ignored, and owner-only (0600); preserve the manifest for
+reruns. The completed run removed its temporary lock normally. No credentials
+are stored in this documentation or committed files.
+
+**This was a copy, not an app cutover.** Baserow was read only, other Supabase
+projects were untouched, and application code and Git `main` were unchanged.
+The live website still uses Baserow. No push or deployment occurred.
