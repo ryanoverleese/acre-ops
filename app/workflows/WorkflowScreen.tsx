@@ -164,7 +164,9 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
     const fieldSeasonOptions = selectOptions.field_seasons || {};
 
     const installedProbes: UninstallProbeData[] = probeAssignments
-      .filter((pa) => !!pa.field_season?.[0]?.id)
+      .filter((pa) => Number(fieldSeasonMap.get(pa.field_season?.[0]?.id ?? 0)?.season) === currentSeason
+        && !pa.removal_date && pa.probe_status?.value !== 'Removed'
+        && (!!pa.install_date || pa.probe_status?.value === 'Installed'))
       .map((pa) => {
         const fieldSeasonId = pa.field_season![0].id;
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);

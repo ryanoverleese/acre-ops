@@ -100,6 +100,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
   const [removalDate, setRemovalDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [removedBy, setRemovedBy] = useState('');
   const [removalNotes, setRemovalNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -412,6 +413,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
     setSearch('');
     setSelected(null);
     setRemovalDate(new Date().toISOString().split('T')[0]);
+    setRemovedBy('');
     setRemovalNotes('');
     setError('');
   };
@@ -422,33 +424,25 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
   };
 
   const handleSubmit = async () => {
-    if (!selected) return;
+    if (!selected || !removalDate || !removedBy.trim() || saving) return;
     setSaving(true);
     setError('');
     try {
-      // 1. Update probe assignment: set removal_date, removal_notes, clear probe_status
-      const paRes = await fetch(`/api/probe-assignments/${selected.assignmentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          removal_date: removalDate,
-          removal_notes: removalNotes || null,
-          probe_status: '',
-        }),
-      });
-      if (!paRes.ok) throw new Error('Failed to update probe assignment');
-
-      // 2. Update probe status to "In Stock"
-      if (selected.probeId) {
-        const probeRes = await fetch(`/api/probes/${selected.probeId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'In Stock' }),
-        });
-        if (!probeRes.ok) throw new Error('Failed to update probe status');
-      }
-
+      // Same action as the crew screen; the server resolves the linked probe.
+      const form = new FormData();
+      form.append('probeAssignmentId', String(selected.assignmentId));
+      form.append('source', 'workflows');
+      form.append('removedBy', removedBy.trim());
+      form.append('removalDate', removalDate);
+      form.append('removalNotes', removalNotes.trim());
+      const response = await fetch('/api/removal', { method: 'POST', body: form });
+      const result = await response.json();
+      if (!response.ok || !result.ok) throw new Error(result.error || 'Could not record removal');
+      // On a retry, display the original recorded facts returned by the server.
+      setRemovalDate(result.removal_date || removalDate);
+      setRemovedBy(result.removed_by || removedBy.trim());
       setStep('done');
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -1878,10 +1872,25 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                  <label htmlFor="uninstall-removed-by" style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
+                    Who pulled it?
+                  </label>
+                  <input
+                    id="uninstall-removed-by"
+                    type="text"
+                    value={removedBy}
+                    onChange={(e) => setRemovedBy(e.target.value)}
+                    placeholder="Name of the person who removed this probe"
+                    required
+                    style={{ padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-secondary)', color: 'var(--text-primary)', fontSize: 14, width: '100%' }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="uninstall-removal-date" style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 8 }}>
                     Removal date
                   </label>
                   <input
+                    id="uninstall-removal-date"
                     type="date"
                     value={removalDate}
                     onChange={(e) => setRemovalDate(e.target.value)}
@@ -1933,7 +1942,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
                 <button
                   className="btn btn-primary"
                   onClick={handleSubmit}
-                  disabled={saving || !removalDate}
+                  disabled={saving || !removalDate || !removedBy.trim()}
                 >
                   {saving ? 'Saving...' : 'Confirm Removal'}
                 </button>
@@ -1957,7 +1966,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Probe removed</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
                   <strong>{selected.probeBrand} #{selected.probeSerial}</strong> removed from{' '}
-                  <strong>{selected.fieldName}</strong> on {removalDate}.
+                  <strong>{selected.fieldName}</strong> on {removalDate} by {removedBy}.
                   Probe status set to In Stock.
                 </div>
               </div>

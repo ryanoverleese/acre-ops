@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { TABLE_IDS, getProbeAssignments, updateRow, type ProbeAssignment } from '@/lib/baserow';
+import { recordProbeRemoval, RemovalError } from '@/lib/probe-removal';
 
 /**
  * Record a probe coming OUT of the ground.
@@ -9,8 +10,8 @@ import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
  * going in. All the crew needs to enter is who pulled it, anything worth
  * noting, and a photo if it is worth one. The date and time are stamped here.
  *
- * Idempotent the same way install is: a row already marked Removed returns
- * success rather than overwriting an earlier crew's record with a later one.
+ * Also used by Workflows uninstall. Repeated saves retain the original removal
+ * details while allowing an interrupted probe inventory update to finish.
  */
 
 const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
@@ -125,107 +126,52 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
-
-    const probeAssignmentId = parseInt(formData.get('probeAssignmentId') as string, 10);
-    const removedBy = (formData.get('removedBy') as string | null)?.trim();
-    const removalNotes = (formData.get('removalNotes') as string | null)?.trim() || '';
+    // Existing crew clients omit source; Workflows must identify itself explicitly.
+    const source = formData.get('source') ?? 'crew';
+    if (source !== 'crew' && source !== 'workflows') {
+      throw new RemovalError('Invalid removal source', 400);
+    }
     const photos = formData.getAll('photo').filter((p): p is File => p instanceof File && p.size > 0);
-
-    if (!Number.isFinite(probeAssignmentId)) {
-      return NextResponse.json({ error: 'Invalid probe assignment ID' }, { status: 400 });
-    }
-    if (!removedBy) {
-      return NextResponse.json({ error: 'Who pulled it is required' }, { status: 400 });
-    }
-
-    // Already pulled? Say so and change nothing. A second tap in a dead-signal
-    // field must not restamp the date with a later crew's time.
-    const existingRes = await fetch(
-      `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`,
-      { headers: { Authorization: `Token ${BASEROW_TOKEN}` } },
-    );
-    if (!existingRes.ok) {
-      return NextResponse.json({ error: 'That assignment was not found' }, { status: 404 });
-    }
-    const existing = await existingRes.json();
-    const statusValue = typeof existing.probe_status === 'object' && existing.probe_status
-      ? existing.probe_status.value
-      : existing.probe_status;
-    if (statusValue === 'Removed' && existing.removal_date) {
-      return NextResponse.json({
-        ok: true, alreadyRemoved: true,
-        removal_date: existing.removal_date,
-        message: 'Already recorded as removed.',
-      });
-    }
-
-    // Photos are optional — a failed upload must not lose the removal itself,
-    // which is the fact that actually matters. Report it and carry on.
-    const uploaded: BaserowFile[] = [];
-    const photoErrors: string[] = [];
-    for (const photo of photos) {
-      try {
-        const file = await uploadFileToBaserow(photo);
-        if (file) uploaded.push(file);
-      } catch (e) {
-        photoErrors.push((e as Error).message);
-      }
-    }
-
-    const update: Record<string, unknown> = {
-      probe_status: 'Removed',
-      // Baserow's removal_date column is date-only and rejects ISO timestamps.
-      removal_date: new Date().toISOString().slice(0, 10),
-      removed_by: removedBy,
-    };
-    if (removalNotes) update.removal_notes = removalNotes;
-    if (uploaded.length > 0) update.removal_photo = uploaded.map((f) => ({ name: f.name }));
-
-    const patchRes = await fetch(
-      `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`,
-      {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Token ${BASEROW_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(update),
+    const result = await recordProbeRemoval({
+      source,
+      assignmentId: Number(formData.get('probeAssignmentId')),
+      removedBy: String(formData.get('removedBy') ?? ''),
+      removalDate: formData.has('removalDate') ? String(formData.get('removalDate')) : undefined,
+      notes: String(formData.get('removalNotes') ?? ''),
+      photos,
+    }, {
+      getAssignment: async (id) => {
+        const response = await fetch(
+          `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${id}/?user_field_names=true`,
+          { headers: { Authorization: `Token ${BASEROW_TOKEN}` }, cache: 'no-store' },
+        );
+        if (response.status === 404) throw new RemovalError('That assignment was not found', 404);
+        if (!response.ok) throw new RemovalError('Could not read that assignment. Try again.', 502);
+        return response.json();
       },
-    );
-    if (!patchRes.ok) {
-      const detail = await patchRes.text();
-      return NextResponse.json(
-        { error: `Could not save the removal: ${detail}` },
-        { status: 502 },
-      );
-    }
-    const saved = await patchRes.json();
-    bustTableCache('probe_assignments');
-
-    // Notify Grok Bot for CropX deactivate (fire-and-forget; never fails the installer).
-    // See notifyRemovalWebhook for REMOVAL_WEBHOOK_URL / _KEY|_AUTH / _DRY_RUN.
-    const serial = linkValue(existing.probe) || linkValue(saved.probe);
-    const fieldSeasonId = linkId(existing.field_season) ?? linkId(saved.field_season);
-    const fieldName = linkValue(existing.field_season) || linkValue(saved.field_season);
-    notifyRemovalWebhook({
-      serial,
-      ...(fieldName ? { field_name: fieldName } : {}),
-      ...(fieldSeasonId != null ? { field_season_id: fieldSeasonId } : {}),
-      assignment_id: probeAssignmentId,
-      removed_by: removedBy,
-      removal_date: saved.removal_date || update.removal_date,
+      listAssignments: () => getProbeAssignments(),
+      // updateRow invalidates each table's cache immediately after its PATCH.
+      saveAssignment: (id, patch) => updateRow<ProbeAssignment>('probe_assignments', id, patch),
+      saveProbe: (id, patch) => updateRow('probes', id, patch),
+      uploadPhoto: uploadFileToBaserow,
+      notify: (saved) => {
+        const fieldSeasonId = linkId(saved.field_season);
+        const fieldName = linkValue(saved.field_season);
+        notifyRemovalWebhook({
+          serial: linkValue(saved.probe),
+          ...(fieldName ? { field_name: fieldName } : {}),
+          ...(fieldSeasonId != null ? { field_season_id: fieldSeasonId } : {}),
+          assignment_id: saved.id,
+          removed_by: saved.removed_by,
+          removal_date: saved.removal_date,
+        });
+      },
     });
-
-    return NextResponse.json({
-      ok: true,
-      removal_date: saved.removal_date,
-      photos: uploaded.length,
-      photoErrors: photoErrors.length ? photoErrors : undefined,
-    });
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
-      { error: (error as Error).message || 'Removal failed' },
-      { status: 500 },
+      { error: error instanceof RemovalError ? error.message : 'Removal failed. Try again.' },
+      { status: error instanceof RemovalError ? error.status : 500 },
     );
   }
 }
