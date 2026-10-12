@@ -94,7 +94,7 @@ export default function EditSeasonModal({
       const clean = (val: string | undefined) => (val && val !== 'Unknown') ? val : null;
 
       // Season-level data goes to field_seasons (no probe data here)
-      const patchBody: Record<string, unknown> = {
+      const fullBody: Record<string, unknown> = {
         crop: clean(form.crop),
         service_type: clean(form.service_type),
         side_dress: clean(form.side_dress),
@@ -107,12 +107,19 @@ export default function EditSeasonModal({
         planned_installer: form.planned_installer || null,
         ready_to_install: form.ready_to_install,
       };
-
-      const response = await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patchBody),
+      // Only send fields the user actually changed
+      const patchBody: Record<string, unknown> = {};
+      (Object.keys(fullBody) as (keyof EditSeasonForm)[]).forEach((k) => {
+        if (form[k] !== initialForm[k]) patchBody[k] = fullBody[k];
       });
+
+      const response = Object.keys(patchBody).length
+        ? await fetch(`/api/field-seasons/${field.fieldSeasonId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(patchBody),
+          })
+        : new Response(null, { status: 200 });
 
       // Helper to save a probe via probe_assignments
       // Note: antenna_type and battery_type are managed in the probe expand rows, not here
@@ -120,8 +127,11 @@ export default function EditSeasonModal({
         assignmentId: number | null,
         probeNumber: number,
         selectedId: string,
+        originalId: number | null | undefined,
       ) => {
         const probeId = selectedId ? parseInt(selectedId, 10) : 0;
+        // Probe unchanged: never touch the assignment or its status
+        if (probeId === (originalId || 0)) return;
         if (assignmentId) {
           // Update existing probe_assignment
           await fetch(`/api/probe-assignments/${assignmentId}`, {
@@ -148,8 +158,8 @@ export default function EditSeasonModal({
 
       // Save probe 1 and probe 2 via probe_assignments (both use same pattern)
       await Promise.all([
-        saveProbeAssignment(field.probeAssignmentId, 1, selectedProbeId),
-        saveProbeAssignment(field.probe2AssignmentId, 2, selectedProbe2Id),
+        saveProbeAssignment(field.probeAssignmentId, 1, selectedProbeId, field.probeId),
+        saveProbeAssignment(field.probe2AssignmentId, 2, selectedProbe2Id, field.probe2Id),
       ]);
       if (response.ok) {
         // Create/update invoice line if billing_rate is provided
