@@ -1,15 +1,16 @@
--- Acre Ops: initial, code-derived PostgreSQL schema (PostgreSQL 15+).
+-- Acre Ops: initial, inventory-backed PostgreSQL schema (PostgreSQL 15+).
 -- Source: lib/baserow.ts at 6bb77d8f426a24fcc7e4f360864643df259ef2fa.
+-- Source of field types/formulas: supabase/baserow-inventory.md (2026-10-12).
 -- Additional evidence: lib/data-mappings.ts; app/orders/page.tsx;
 -- app/billing/page.tsx; app/api/{field-seasons,mileage,probe-rack/sync}/route.ts;
 -- app/settings/SettingsClient.tsx; app/installer/InstallerApp.tsx.
 --
 -- DRAFT ONLY: this file was authored and statically checked without connecting
 -- to Baserow, Supabase, or any database, and without executing this migration.
--- The TypeScript contracts are not a complete live Baserow schema export.
--- Reconcile Baserow-only fields, formula definitions, and option metadata with
--- an OFFLINE export before importing data. No undocumented formulas or select
--- option IDs/values are invented here.
+-- The inventory supplies source fields missing from the TypeScript contracts.
+-- These 22 tables cover TABLE_IDS, not the inventory's unused journal table.
+-- Reconcile option IDs and source rows with an OFFLINE export before import.
+-- No select option IDs/values are invented or seeded here.
 --
 -- Import contract:
 -- * Each of the 22 TABLE_IDS entries has a same-named table. Its bigint identity
@@ -18,7 +19,10 @@
 -- * Dropdowns are separate editable, field-scoped lookup tables, never enums.
 --   Their baserow_id is the old OPTION ID, not a row ID. Import options first,
 --   preserving labels, colors and order; identical labels in different fields
---   must not be merged. No data or guessed option seeds are included.
+--   must not be merged. Labels are unique WITHIN each options table; reconcile
+--   any duplicate source labels before import. No guessed seeds are included.
+--   Exception requested for water_recs.report_type: keep the option label as
+--   text rather than adding another lookup table.
 -- * Map every old link ID through the TARGET table's baserow_id; never copy an
 --   old link ID into a new FK. Import base rows, then resolve FKs and junctions.
 -- * Baserow link arrays used as one parent in the checked-in app become nullable
@@ -33,18 +37,25 @@
 -- * Normalize empty date/numeric strings to NULL. Decimal strings become
 --   numeric values; legacy elevation/soil_type select wrappers use their value,
 --   not their option ID. Reject nonnumeric elevation instead of discarding it.
---   Normalize pickup_access boolean/"true"/"false" explicitly; retain NULL.
 --   Keep IDs/serials, notes and contact details as text where defined as text.
+-- * Import source autonumbers separately from row IDs: water_recs.record_name,
+--   orders.order_id and order_items.item_id have their own BY DEFAULT identity.
+--   Preserve their exported values, then advance EVERY identity sequence past
+--   its imported maximum before enabling writes. Do not substitute row IDs.
 -- * Planned installer/remover are separate Baserow dropdowns, NOT links to the
 --   installers table. Historical installer/removed_by/uploaded_by strings are
 --   also not authenticated-user or installer IDs.
 -- * field_seasons.notes is a legacy alias for field_note, not another source
 --   column. Reconcile conflicting alias values; import into field_note only.
--- * File/photo JSON holds Baserow attachment metadata, never relational links.
---   Download/migrate the actual files and replace expiring URLs separately.
--- * No unique constraint is guessed for serials, field+season, probe positions,
---   or rack+slot. In particular, racks 7-13 legitimately have duplicate labels
---   (app/api/probe-rack/sync/route.ts). Only source row crosswalks are unique.
+-- * File/photo JSON stores arrays of {bucket, path, name, size, mime} pointing
+--   to Supabase Storage. size is a nonnegative integer byte count. Upload the
+--   actual files through the Storage API first; never import expiring Baserow
+--   URLs or write directly to storage.objects. [] means no attachments.
+-- * Non-null probe serials are unique, as verified in the inventory. Normalize
+--   missing serials to NULL before import; multiple NULL serials are allowed.
+--   No uniqueness is guessed for field+season, probe positions, or rack+slot.
+--   In particular, racks 7-13 legitimately have duplicate labels
+--   (app/api/probe-rack/sync/route.ts); those labels remain nonunique.
 --
 -- Security:
 -- * Enable RLS on ALL base, lookup and junction tables. There are deliberately
@@ -65,11 +76,48 @@
 
 BEGIN;
 
+-- Validate durable Storage references without connecting to Storage or creating
+-- buckets. No signed URLs, raw Baserow metadata, or extra object keys are kept.
+-- This pure helper is not SECURITY DEFINER and does not read any table.
+CREATE FUNCTION public.storage_file_refs_valid(files jsonb)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+SECURITY INVOKER
+SET search_path = pg_catalog
+AS $$
+    SELECT CASE
+        WHEN jsonb_typeof(files) IS DISTINCT FROM 'array' THEN false
+        ELSE NOT EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(files) AS entry(item)
+            WHERE (CASE WHEN jsonb_typeof(item) = 'object' THEN
+                item ?& ARRAY['bucket', 'path', 'name', 'size', 'mime']
+                AND item - ARRAY['bucket', 'path', 'name', 'size', 'mime'] = '{}'::jsonb
+                AND jsonb_typeof(item -> 'bucket') = 'string'
+                AND length(item ->> 'bucket') > 0
+                AND jsonb_typeof(item -> 'path') = 'string'
+                AND length(item ->> 'path') > 0
+                AND jsonb_typeof(item -> 'name') = 'string'
+                AND length(item ->> 'name') > 0
+                AND jsonb_typeof(item -> 'mime') = 'string'
+                AND length(item ->> 'mime') > 0
+                AND CASE WHEN jsonb_typeof(item -> 'size') = 'number'
+                    THEN (item ->> 'size')::numeric >= 0
+                         AND trunc((item ->> 'size')::numeric) = (item ->> 'size')::numeric
+                    ELSE false
+                END
+            ELSE false END) IS NOT TRUE
+        )
+    END;
+$$;
+REVOKE ALL PRIVILEGES ON FUNCTION public.storage_file_refs_valid(jsonb) FROM PUBLIC, anon, authenticated;
+
 -- 1. Editable dropdown catalogs. Each catalog represents ONE Baserow field.
 CREATE TABLE public.contact_customer_type_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -79,7 +127,7 @@ COMMENT ON TABLE public.contact_customer_type_options IS 'Editable options for c
 CREATE TABLE public.contact_main_contact_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -89,7 +137,7 @@ COMMENT ON TABLE public.contact_main_contact_options IS 'Editable options for co
 CREATE TABLE public.field_water_source_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -99,7 +147,7 @@ COMMENT ON TABLE public.field_water_source_options IS 'Editable options for fiel
 CREATE TABLE public.field_fuel_source_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -109,7 +157,7 @@ COMMENT ON TABLE public.field_fuel_source_options IS 'Editable options for field
 CREATE TABLE public.field_irrigation_type_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -119,7 +167,7 @@ COMMENT ON TABLE public.field_irrigation_type_options IS 'Editable options for f
 CREATE TABLE public.field_row_direction_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -129,7 +177,7 @@ COMMENT ON TABLE public.field_row_direction_options IS 'Editable options for fie
 CREATE TABLE public.field_drip_tubing_direction_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -139,7 +187,7 @@ COMMENT ON TABLE public.field_drip_tubing_direction_options IS 'Editable options
 CREATE TABLE public.probe_brand_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -149,7 +197,7 @@ COMMENT ON TABLE public.probe_brand_options IS 'Editable options for probes.bran
 CREATE TABLE public.probe_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -159,7 +207,7 @@ COMMENT ON TABLE public.probe_status_options IS 'Editable options for probes.sta
 CREATE TABLE public.probe_rack_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -169,7 +217,7 @@ COMMENT ON TABLE public.probe_rack_options IS 'Editable options for probes.rack;
 CREATE TABLE public.probe_trade_year_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -179,7 +227,7 @@ COMMENT ON TABLE public.probe_trade_year_options IS 'Editable options for probes
 CREATE TABLE public.field_season_crop_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -189,7 +237,7 @@ COMMENT ON TABLE public.field_season_crop_options IS 'Editable options for field
 CREATE TABLE public.field_season_side_dress_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -199,7 +247,7 @@ COMMENT ON TABLE public.field_season_side_dress_options IS 'Editable options for
 CREATE TABLE public.field_season_early_removal_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -209,7 +257,7 @@ COMMENT ON TABLE public.field_season_early_removal_options IS 'Editable options 
 CREATE TABLE public.field_season_early_install_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -219,7 +267,7 @@ COMMENT ON TABLE public.field_season_early_install_options IS 'Editable options 
 CREATE TABLE public.field_season_ready_to_remove_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -229,7 +277,7 @@ COMMENT ON TABLE public.field_season_ready_to_remove_options IS 'Editable option
 CREATE TABLE public.field_season_planned_installer_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -239,17 +287,27 @@ COMMENT ON TABLE public.field_season_planned_installer_options IS 'Editable opti
 CREATE TABLE public.field_season_planned_remover_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
 );
 COMMENT ON TABLE public.field_season_planned_remover_options IS 'Editable options for field_seasons.planned_remover; baserow_id is the source option ID.';
 
+CREATE TABLE public.field_season_remover_options (
+    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    baserow_id bigint UNIQUE CHECK (baserow_id > 0),
+    value text NOT NULL UNIQUE,
+    color text,
+    sort_order integer NOT NULL DEFAULT 0,
+    active boolean NOT NULL DEFAULT true
+);
+COMMENT ON TABLE public.field_season_remover_options IS 'Editable options for field_seasons.remover; separate from planned_remover and installer rows.';
+
 CREATE TABLE public.field_season_removal_priority_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -259,7 +317,7 @@ COMMENT ON TABLE public.field_season_removal_priority_options IS 'Editable optio
 CREATE TABLE public.field_season_approval_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -269,7 +327,7 @@ COMMENT ON TABLE public.field_season_approval_status_options IS 'Editable option
 CREATE TABLE public.assignment_antenna_type_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -279,7 +337,7 @@ COMMENT ON TABLE public.assignment_antenna_type_options IS 'Editable options for
 CREATE TABLE public.assignment_battery_type_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -289,7 +347,7 @@ COMMENT ON TABLE public.assignment_battery_type_options IS 'Editable options for
 CREATE TABLE public.assignment_probe_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -299,27 +357,17 @@ COMMENT ON TABLE public.assignment_probe_status_options IS 'Editable options for
 CREATE TABLE public.assignment_approval_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
 );
 COMMENT ON TABLE public.assignment_approval_status_options IS 'Editable options for probe_assignments.approval_status; baserow_id is the source option ID.';
 
-CREATE TABLE public.water_rec_suggested_day_options (
-    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
-    color text,
-    sort_order integer NOT NULL DEFAULT 0,
-    active boolean NOT NULL DEFAULT true
-);
-COMMENT ON TABLE public.water_rec_suggested_day_options IS 'Editable options for water_recs.suggested_water_day; baserow_id is the source option ID.';
-
 CREATE TABLE public.invoice_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -329,7 +377,7 @@ COMMENT ON TABLE public.invoice_status_options IS 'Editable options for invoices
 CREATE TABLE public.product_category_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -339,7 +387,7 @@ COMMENT ON TABLE public.product_category_options IS 'Editable options for produc
 CREATE TABLE public.product_unit_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -349,7 +397,7 @@ COMMENT ON TABLE public.product_unit_options IS 'Editable options for products_s
 CREATE TABLE public.product_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -359,7 +407,7 @@ COMMENT ON TABLE public.product_status_options IS 'Editable options for products
 CREATE TABLE public.inventory_category_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -369,7 +417,7 @@ COMMENT ON TABLE public.inventory_category_options IS 'Editable options for inve
 CREATE TABLE public.user_role_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -379,7 +427,7 @@ COMMENT ON TABLE public.user_role_options IS 'Editable options for users.role; b
 CREATE TABLE public.weather_station_connectivity_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -389,7 +437,7 @@ COMMENT ON TABLE public.weather_station_connectivity_options IS 'Editable option
 CREATE TABLE public.weather_station_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -399,7 +447,7 @@ COMMENT ON TABLE public.weather_station_status_options IS 'Editable options for 
 CREATE TABLE public.order_status_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -409,7 +457,7 @@ COMMENT ON TABLE public.order_status_options IS 'Editable options for orders.sta
 CREATE TABLE public.notification_page_type_options (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    value text NOT NULL,
+    value text NOT NULL UNIQUE,
     color text,
     sort_order integer NOT NULL DEFAULT 0,
     active boolean NOT NULL DEFAULT true
@@ -434,6 +482,8 @@ CREATE TABLE public.billing_entities (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
     name text NOT NULL,
+    notes text,
+    address text,
     self_install boolean
 );
 COMMENT ON TABLE public.billing_entities IS 'Baserow billing_entities (table 817297); baserow_id preserves the source row ID.';
@@ -449,6 +499,10 @@ CREATE TABLE public.contacts (
     address_lat numeric(10,7) CHECK (address_lat BETWEEN -90 AND 90),
     address_lng numeric(10,7) CHECK (address_lng BETWEEN -180 AND 180),
     notes text,
+    cropx_username text,
+    date_entered timestamptz,
+    soil_temp_updates boolean,
+    android boolean,
     is_main_contact_id bigint REFERENCES public.contact_main_contact_options(id) ON DELETE RESTRICT
 );
 COMMENT ON TABLE public.contacts IS 'Baserow contacts (table 817294); baserow_id preserves the source row ID.';
@@ -496,7 +550,7 @@ CREATE TABLE public.fields (
     field_directions text,
     install_directions text,
     nrcs_field boolean,
-    ai_ufid text,
+    cropx_field_uuid text,
     plss_township integer,
     plss_range integer,
     plss_section integer,
@@ -518,7 +572,8 @@ CREATE TABLE public.probes (
     damages_repairs text,
     date_created date,
     trade_year_id bigint REFERENCES public.probe_trade_year_options(id) ON DELETE RESTRICT,
-    is_trade boolean
+    is_trade boolean,
+    solo boolean
 );
 COMMENT ON TABLE public.probes IS 'Baserow probes (table 817299); baserow_id preserves the source row ID.';
 
@@ -540,6 +595,8 @@ CREATE TABLE public.field_seasons (
     route_order text,
     planned_installer_id bigint REFERENCES public.field_season_planned_installer_options(id) ON DELETE RESTRICT,
     planned_remover_id bigint REFERENCES public.field_season_planned_remover_options(id) ON DELETE RESTRICT,
+    remover_id bigint REFERENCES public.field_season_remover_options(id) ON DELETE RESTRICT,
+    irrigator text,
     removal_priority_id bigint REFERENCES public.field_season_removal_priority_options(id) ON DELETE RESTRICT,
     ready_to_install boolean,
     install_group integer,
@@ -547,7 +604,7 @@ CREATE TABLE public.field_seasons (
     removal_notes text,
     approval_status_id bigint REFERENCES public.field_season_approval_status_options(id) ON DELETE RESTRICT,
     approval_notes text,
-    approval_date date,
+    approval_date timestamptz,
     approval_sent date,
     field_note text
 );
@@ -560,6 +617,11 @@ CREATE TABLE public.probe_assignments (
     field_season_id bigint REFERENCES public.field_seasons(id) ON DELETE RESTRICT,
     probe_id bigint REFERENCES public.probes(id) ON DELETE RESTRICT,
     probe_number integer,
+    placement_order integer,
+    route_order integer,
+    ready_to_install boolean,
+    crop_confirmed boolean,
+    planned_remover text,
     label text,
     antenna_type_id bigint REFERENCES public.assignment_antenna_type_options(id) ON DELETE RESTRICT,
     battery_type_id bigint REFERENCES public.assignment_battery_type_options(id) ON DELETE RESTRICT,
@@ -574,14 +636,14 @@ CREATE TABLE public.probe_assignments (
     removal_date date,
     removal_notes text,
     removed_by text,
-    removal_photo jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(removal_photo) = 'array'),
+    removal_photo jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (public.storage_file_refs_valid(removal_photo)),
     install_lat numeric(10,7) CHECK (install_lat BETWEEN -90 AND 90),
     install_lng numeric(10,7) CHECK (install_lng BETWEEN -180 AND 180),
-    install_photo_field_end jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(install_photo_field_end) = 'array'),
-    install_photo_extra jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(install_photo_extra) = 'array'),
+    install_photo_field_end jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (public.storage_file_refs_valid(install_photo_field_end)),
+    install_photo_extra jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (public.storage_file_refs_valid(install_photo_extra)),
     install_notes text,
-    grower_notified text,
-    pickup_access boolean,
+    grower_notified date,
+    pickup_access text,
     cropx_telemetry_id text,
     signal_strength text,
     approval_status_id bigint REFERENCES public.assignment_approval_status_options(id) ON DELETE RESTRICT,
@@ -595,6 +657,7 @@ COMMENT ON TABLE public.probe_assignments IS 'Baserow probe_assignments (table 8
 CREATE TABLE public.repairs (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
+    record_name text,
     field_season_id bigint REFERENCES public.field_seasons(id) ON DELETE RESTRICT,
     probe_assignment_id bigint REFERENCES public.probe_assignments(id) ON DELETE RESTRICT,
     reported_at date,
@@ -612,10 +675,13 @@ COMMENT ON TABLE public.repairs IS 'Baserow repairs (table 817301); baserow_id p
 CREATE TABLE public.water_recs (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
+    record_name bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE,
     field_season_id bigint REFERENCES public.field_seasons(id) ON DELETE RESTRICT,
     date date,
     recommendation text,
-    suggested_water_day_id bigint REFERENCES public.water_rec_suggested_day_options(id) ON DELETE RESTRICT
+    suggested_water_day text,
+    report_type text,
+    priority boolean
 );
 COMMENT ON TABLE public.water_recs IS 'Baserow water_recs (table 817302); baserow_id preserves the source row ID.';
 
@@ -623,6 +689,7 @@ COMMENT ON TABLE public.water_recs IS 'Baserow water_recs (table 817302); basero
 CREATE TABLE public.invoices (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
+    record_name text,
     billing_entity_id bigint REFERENCES public.billing_entities(id) ON DELETE RESTRICT,
     season integer,
     amount numeric(14,2),
@@ -642,6 +709,7 @@ COMMENT ON TABLE public.invoices IS 'Baserow invoices (table 817303); baserow_id
 CREATE TABLE public.invoice_lines (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
+    record_name text,
     invoice_id bigint REFERENCES public.invoices(id) ON DELETE RESTRICT,
     field_season_id bigint REFERENCES public.field_seasons(id) ON DELETE RESTRICT,
     service_type text,
@@ -695,8 +763,11 @@ COMMENT ON TABLE public.weather_stations IS 'Baserow weather_stations (table 831
 CREATE TABLE public.orders (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
+    order_id bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE,
     billing_entity_id bigint REFERENCES public.billing_entities(id) ON DELETE RESTRICT,
     order_date date,
+    tracking_number text,
+    valid_until date,
     status_id bigint REFERENCES public.order_status_options(id) ON DELETE RESTRICT,
     notes text,
     quote_valid_days integer
@@ -707,7 +778,7 @@ COMMENT ON TABLE public.orders IS 'Baserow orders (table 831072); baserow_id pre
 CREATE TABLE public.order_items (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
-    item_id bigint,
+    item_id bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE,
     order_link_id bigint REFERENCES public.orders(id) ON DELETE RESTRICT,
     product_id bigint REFERENCES public.products_services(id) ON DELETE RESTRICT,
     quantity numeric(14,4),
@@ -721,8 +792,8 @@ CREATE TABLE public.notifications (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
     operation_id bigint REFERENCES public.operations(id) ON DELETE RESTRICT,
-    field_id bigint REFERENCES public.fields(id) ON DELETE RESTRICT,
-    changed_field text,
+    field_name text,
+    changed_field bigint REFERENCES public.fields(id) ON DELETE RESTRICT,
     new_value text,
     page_type_id bigint REFERENCES public.notification_page_type_options(id) ON DELETE RESTRICT,
     read boolean,
@@ -735,7 +806,7 @@ CREATE TABLE public.documents (
     id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     baserow_id bigint UNIQUE CHECK (baserow_id > 0),
     name text,
-    file jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(file) = 'array'),
+    file jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (public.storage_file_refs_valid(file)),
     description text,
     uploaded_by text,
     uploaded_at timestamptz
@@ -777,6 +848,18 @@ COMMENT ON COLUMN public.probes.rack_id IS 'Editable probes.rack dropdown; not a
 COMMENT ON COLUMN public.probe_rack.rack IS 'Source text label; rack+rack_slot is deliberately not unique because several source rows can share a physical slot label.';
 COMMENT ON COLUMN public.field_seasons.planned_installer_id IS 'Option from field_seasons.planned_installer, not an installers row ID.';
 COMMENT ON COLUMN public.field_seasons.planned_remover_id IS 'Option from field_seasons.planned_remover, not an installers row ID.';
+COMMENT ON COLUMN public.field_seasons.remover_id IS 'Source remover dropdown; deliberately separate from planned_remover.';
+COMMENT ON COLUMN public.probe_assignments.planned_remover IS 'Source free text, unlike the separate field_seasons.planned_remover dropdown.';
+COMMENT ON COLUMN public.probes.solo IS 'Source boolean named Solo?; normalized to solo.';
+COMMENT ON COLUMN public.billing_entities.address IS 'Source long-text column named Address; normalized to address.';
+COMMENT ON COLUMN public.notifications.changed_field IS 'Actual inventory link to fields, not the text property name inferred by the old TypeScript interface.';
+COMMENT ON COLUMN public.water_recs.report_type IS 'Source option label stored as text by request; preserve full_report/full, water_day_update/update, overview and farm_insight until normalization is explicitly approved.';
+COMMENT ON COLUMN public.water_recs.record_name IS 'Source autonumber; preserve its exported value independently of baserow_id.';
+COMMENT ON COLUMN public.orders.order_id IS 'Source order autonumber; separate from both id and baserow_id.';
+COMMENT ON COLUMN public.probe_assignments.removal_photo IS 'Supabase Storage references: [{bucket, path, name, size, mime}]; size in bytes; no expiring URLs.';
+COMMENT ON COLUMN public.probe_assignments.install_photo_field_end IS 'Supabase Storage references: [{bucket, path, name, size, mime}]; size in bytes; no expiring URLs.';
+COMMENT ON COLUMN public.probe_assignments.install_photo_extra IS 'Supabase Storage references: [{bucket, path, name, size, mime}]; size in bytes; no expiring URLs.';
+COMMENT ON COLUMN public.documents.file IS 'Supabase Storage references: [{bucket, path, name, size, mime}]; size in bytes; no expiring URLs.';
 COMMENT ON COLUMN public.field_seasons.field_note IS 'Canonical source field. FieldSeason.notes in TypeScript is only a legacy alias.';
 COMMENT ON COLUMN public.invoices.amount IS 'Manually writable source amount, including invoice-only charges; do not replace it with a generated column.';
 COMMENT ON COLUMN public.invoices.actual_billed_amount IS 'Manually entered billed amount; NULL means not entered, not zero.';
@@ -869,6 +952,7 @@ CREATE INDEX field_seasons_early_install_id_idx ON public.field_seasons (early_i
 CREATE INDEX field_seasons_ready_to_remove_id_idx ON public.field_seasons (ready_to_remove_id);
 CREATE INDEX field_seasons_planned_installer_id_idx ON public.field_seasons (planned_installer_id);
 CREATE INDEX field_seasons_planned_remover_id_idx ON public.field_seasons (planned_remover_id);
+CREATE INDEX field_seasons_remover_id_idx ON public.field_seasons (remover_id);
 CREATE INDEX field_seasons_removal_priority_id_idx ON public.field_seasons (removal_priority_id);
 CREATE INDEX field_seasons_approval_status_id_idx ON public.field_seasons (approval_status_id);
 CREATE INDEX probe_assignments_field_season_id_idx ON public.probe_assignments (field_season_id);
@@ -880,7 +964,6 @@ CREATE INDEX probe_assignments_approval_status_id_idx ON public.probe_assignment
 CREATE INDEX repairs_field_season_id_idx ON public.repairs (field_season_id);
 CREATE INDEX repairs_probe_assignment_id_idx ON public.repairs (probe_assignment_id);
 CREATE INDEX water_recs_field_season_id_idx ON public.water_recs (field_season_id);
-CREATE INDEX water_recs_suggested_water_day_id_idx ON public.water_recs (suggested_water_day_id);
 CREATE INDEX invoices_billing_entity_id_idx ON public.invoices (billing_entity_id);
 CREATE INDEX invoices_status_id_idx ON public.invoices (status_id);
 CREATE INDEX invoice_lines_invoice_id_idx ON public.invoice_lines (invoice_id);
@@ -895,7 +978,7 @@ CREATE INDEX orders_status_id_idx ON public.orders (status_id);
 CREATE INDEX order_items_order_link_id_idx ON public.order_items (order_link_id);
 CREATE INDEX order_items_product_id_idx ON public.order_items (product_id);
 CREATE INDEX notifications_operation_id_idx ON public.notifications (operation_id);
-CREATE INDEX notifications_field_id_idx ON public.notifications (field_id);
+CREATE INDEX notifications_changed_field_idx ON public.notifications (changed_field);
 CREATE INDEX notifications_page_type_id_idx ON public.notifications (page_type_id);
 CREATE INDEX probe_rack_probe_id_idx ON public.probe_rack (probe_id);
 CREATE INDEX contact_operations_operation_id_idx ON public.contact_operations (operation_id);
@@ -914,7 +997,8 @@ CREATE INDEX field_season_services_product_service_id_idx ON public.field_season
 CREATE INDEX field_season_services_position_idx ON public.field_season_services (field_season_id, position);
 CREATE INDEX contacts_email_idx ON public.contacts (lower(email));
 CREATE INDEX users_email_idx ON public.users (lower(email));
-CREATE INDEX probes_serial_number_idx ON public.probes (serial_number);
+CREATE UNIQUE INDEX probes_serial_number_unique_idx ON public.probes (serial_number)
+    WHERE serial_number IS NOT NULL;
 CREATE INDEX probes_rack_slot_idx ON public.probes (rack_id, rack_slot);
 CREATE INDEX field_seasons_season_idx ON public.field_seasons (season, field_id);
 CREATE INDEX probe_assignments_position_idx ON public.probe_assignments (field_season_id, probe_number);
@@ -928,6 +1012,25 @@ CREATE INDEX documents_uploaded_at_idx ON public.documents (uploaded_at DESC);
 -- 5. Calculations and relationship lookups. Aggregate each child collection
 -- independently before joining, to avoid multiplying totals through contacts
 -- or multiple services/probes. Invoker security applies at every view layer.
+-- These views keep Baserow's original derived column names. A future data-layer
+-- adapter still needs to wrap scalar lookup values in Baserow's array shape;
+-- the current app is deliberately not switched to these views in this commit.
+
+-- Exact ai_ufid formula from the inventory. Baserow row_id() means baserow_id
+-- for imported rows, NOT the newly allocated PostgreSQL primary key. Native
+-- rows fall back to id. Keep right(left(...), 1): the fourth alphabet has only
+-- 13 characters despite the modulo-14 calculation, so substring is not equal.
+CREATE VIEW public.fields_calculated
+WITH (security_invoker = true) AS
+SELECT f.*,
+       concat(
+           right(left('FJKRTXY2345679', (mod(coalesce(f.baserow_id, f.id), 14) + 1)::integer), 1),
+           right(left('FJKRTXY2345679', (mod(coalesce(f.baserow_id, f.id) / 14, 14) + 1)::integer), 1),
+           right(left('FJKRTXY2345679', (mod(coalesce(f.baserow_id, f.id) / 196, 14) + 1)::integer), 1),
+           right(left('JKRTXY2345679', (mod(coalesce(f.baserow_id, f.id) / 2744, 14) + 1)::integer), 1)
+       ) AS ai_ufid
+FROM public.fields AS f;
+COMMENT ON COLUMN public.fields_calculated.ai_ufid IS 'Inventory formula using original Baserow row_id for imports; calculated, never stored.';
 
 -- lib/data-mappings.ts: billing entities reach operations THROUGH contacts;
 -- this is a derived relationship, not another independently editable link.
@@ -1010,14 +1113,19 @@ GROUP BY billing_entity_id, season;
 
 CREATE VIEW public.field_seasons_calculated
 WITH (security_invoker = true) AS
-SELECT fs.*, f.name AS field_name, f.billing_entity_id,
-       be.name AS billing_entity_name, crop.value AS crop,
+SELECT fs.*, CASE WHEN f.id IS NOT NULL AND be.id IS NOT NULL
+                 THEN concat(be.name, ' - ', f.name, ' - ', fs.season)
+            END AS record_name,
+       f.name AS field_name, f.billing_entity_id,
+       be.name AS billing_entity_name, be.name AS entity, crop.value AS crop,
+       remover.value AS remover,
        coalesce(services.service_types, ARRAY[]::text[]) AS service_types,
        coalesce(assignments.probe_count, 0::bigint) AS probe_count
 FROM public.field_seasons AS fs
 LEFT JOIN public.fields AS f ON f.id = fs.field_id
 LEFT JOIN public.billing_entities AS be ON be.id = f.billing_entity_id
 LEFT JOIN public.field_season_crop_options AS crop ON crop.id = fs.crop_id
+LEFT JOIN public.field_season_remover_options AS remover ON remover.id = fs.remover_id
 LEFT JOIN (
     SELECT fss.field_season_id,
            array_agg(ps.service_type ORDER BY fss.position, fss.product_service_id) AS service_types
@@ -1033,7 +1141,10 @@ LEFT JOIN (
 
 CREATE VIEW public.probe_assignments_calculated
 WITH (security_invoker = true) AS
-SELECT pa.*, fs.season, fs.field_id, f.name AS field_name,
+SELECT pa.*, CASE WHEN fs.id IS NOT NULL AND f.id IS NOT NULL AND p.id IS NOT NULL
+                 THEN concat(fs.season, ' - ', f.name, ' - ', p.serial_number)
+            END AS record_name,
+       fs.season, fs.field_id, f.name AS field_name, f.name AS "Field",
        p.serial_number AS probe_serial_number, status.value AS probe_status,
        coalesce(pa.placement_lat, f.lat) AS effective_placement_lat,
        coalesce(pa.placement_lng, f.lng) AS effective_placement_lng,
@@ -1044,6 +1155,28 @@ LEFT JOIN public.field_seasons AS fs ON fs.id = pa.field_season_id
 LEFT JOIN public.fields AS f ON f.id = fs.field_id
 LEFT JOIN public.probes AS p ON p.id = pa.probe_id
 LEFT JOIN public.assignment_probe_status_options AS status ON status.id = pa.probe_status_id;
+
+-- Source water_recs.field = lookup('field_season', 'field'). A missing link
+-- stays NULL, and LEFT JOIN preserves recommendations without a linked season.
+CREATE VIEW public.water_recs_calculated
+WITH (security_invoker = true) AS
+SELECT wr.*, f.name AS field
+FROM public.water_recs AS wr
+LEFT JOIN public.field_seasons AS fs ON fs.id = wr.field_season_id
+LEFT JOIN public.fields AS f ON f.id = fs.field_id;
+
+-- Keep the app's inferred field_id alias as a read-only projection of the one
+-- real source link; never store two independently editable notification links.
+CREATE VIEW public.notifications_calculated
+WITH (security_invoker = true) AS
+SELECT n.*, n.changed_field AS field_id
+FROM public.notifications AS n;
+
+COMMENT ON COLUMN public.field_seasons_calculated.record_name IS 'Inventory: concat(lookup(field,billing_entity), separator, lookup(field,name), separator, season). Empty source lookup becomes NULL.';
+COMMENT ON COLUMN public.field_seasons_calculated.entity IS 'Inventory: lookup(field,billing_entity), exposed as the billing entity name.';
+COMMENT ON COLUMN public.probe_assignments_calculated.record_name IS 'Inventory: concat(lookup(field_season,season), separator, lookup(field_season,field), separator, lookup(probe,serial_number)). Empty source lookup becomes NULL.';
+COMMENT ON COLUMN public.probe_assignments_calculated."Field" IS 'Original case-sensitive Baserow lookup column name.';
+COMMENT ON COLUMN public.water_recs_calculated.field IS 'Original Baserow lookup column name: field name through field_season.';
 
 -- app/repairs/page.tsx: repaired_at is authoritative for resolved/open.
 -- watch_list stays a separate flag rather than overwriting that status.
@@ -1086,13 +1219,13 @@ ALTER TABLE public.field_season_early_install_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_season_ready_to_remove_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_season_planned_installer_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_season_planned_remover_options ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.field_season_remover_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_season_removal_priority_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.field_season_approval_status_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignment_antenna_type_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignment_battery_type_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignment_probe_status_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.assignment_approval_status_options ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.water_rec_suggested_day_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.invoice_status_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_category_options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.product_unit_options ENABLE ROW LEVEL SECURITY;
@@ -1153,13 +1286,13 @@ REVOKE ALL PRIVILEGES ON TABLE
     public.field_season_ready_to_remove_options,
     public.field_season_planned_installer_options,
     public.field_season_planned_remover_options,
+    public.field_season_remover_options,
     public.field_season_removal_priority_options,
     public.field_season_approval_status_options,
     public.assignment_antenna_type_options,
     public.assignment_battery_type_options,
     public.assignment_probe_status_options,
     public.assignment_approval_status_options,
-    public.water_rec_suggested_day_options,
     public.invoice_status_options,
     public.product_category_options,
     public.product_unit_options,
@@ -1200,6 +1333,7 @@ REVOKE ALL PRIVILEGES ON TABLE
     public.probe_owner_operations,
     public.field_season_services,
     public.billing_entity_operations,
+    public.fields_calculated,
     public.products_services_calculated,
     public.order_items_calculated,
     public.orders_calculated,
@@ -1208,6 +1342,8 @@ REVOKE ALL PRIVILEGES ON TABLE
     public.billing_entity_invoice_totals,
     public.field_seasons_calculated,
     public.probe_assignments_calculated,
+    public.water_recs_calculated,
+    public.notifications_calculated,
     public.repairs_calculated,
     public.mileage_logs_calculated,
     public.probe_rack_calculated
@@ -1232,13 +1368,13 @@ REVOKE ALL PRIVILEGES ON SEQUENCE
     public.field_season_ready_to_remove_options_id_seq,
     public.field_season_planned_installer_options_id_seq,
     public.field_season_planned_remover_options_id_seq,
+    public.field_season_remover_options_id_seq,
     public.field_season_removal_priority_options_id_seq,
     public.field_season_approval_status_options_id_seq,
     public.assignment_antenna_type_options_id_seq,
     public.assignment_battery_type_options_id_seq,
     public.assignment_probe_status_options_id_seq,
     public.assignment_approval_status_options_id_seq,
-    public.water_rec_suggested_day_options_id_seq,
     public.invoice_status_options_id_seq,
     public.product_category_options_id_seq,
     public.product_unit_options_id_seq,
@@ -1259,13 +1395,16 @@ REVOKE ALL PRIVILEGES ON SEQUENCE
     public.probe_assignments_id_seq,
     public.repairs_id_seq,
     public.water_recs_id_seq,
+    public.water_recs_record_name_seq,
     public.invoices_id_seq,
     public.invoice_lines_id_seq,
     public.inventory_id_seq,
     public.users_id_seq,
     public.weather_stations_id_seq,
     public.orders_id_seq,
+    public.orders_order_id_seq,
     public.order_items_id_seq,
+    public.order_items_item_id_seq,
     public.notifications_id_seq,
     public.documents_id_seq,
     public.probe_rack_id_seq,
