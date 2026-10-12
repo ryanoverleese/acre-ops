@@ -124,6 +124,7 @@ export function PullForm({ row, installer, onBack, onSaved }: {
     try {
       const fd = new FormData();
       fd.append('probeAssignmentId', String(row.id));
+      fd.append('source', 'crew');
       fd.append('removedBy', removedBy.trim());
       if (notes.trim()) fd.append('removalNotes', notes.trim());
       photos.forEach(p => fd.append('photo', p));
