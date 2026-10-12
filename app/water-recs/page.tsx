@@ -69,8 +69,10 @@ export default async function WaterRecsPage() {
     // Find field_seasons with at least one installed probe
     const installedFieldSeasons = new Set<number>();
     probeAssignments.forEach(pa => {
-      const status = pa.probe_status?.value;
-      if (status?.toLowerCase() === 'installed') {
+      const status = (pa.probe_status?.value || '').toLowerCase();
+      // Removed probes stay out; otherwise a recorded install counts even if the status label is stale
+      const removed = status === 'removed' || !!pa.removal_date;
+      if (!removed && (status === 'installed' || !!pa.install_date)) {
         const fsId = pa.field_season?.[0]?.id;
         if (fsId) installedFieldSeasons.add(fsId);
       }
