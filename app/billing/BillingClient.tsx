@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Fragment, useRef, useCallback, useEffect, type ReactNode } from 'react';
+import { equalShareAmount } from '@/lib/billing-allocation';
 
 const BILLING_COLUMNS = [
   { key: 'invoiceNumber', label: 'Invoice #', defaultOn: true },
@@ -91,6 +92,10 @@ export interface InvoiceLine {
   serviceType: string;
   rate: number;
   quantity: number;
+  shareCount: number;
+  shareIndex: number;
+  fullFieldRate: number;
+  needsAllocation: boolean;
 }
 
 export interface ProcessedInvoice {
@@ -144,8 +149,8 @@ function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -196,7 +201,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
       line.serviceType.toLowerCase().includes('bulk')
     ).length;
     const discount = (be.operationBulkFieldCount || 0) >= BULK_DISCOUNT_MIN_FIELDS && entityBulkCount > 0
-      ? entityBulkCount * BULK_DISCOUNT_PER_FIELD
+      ? invoice.lines.filter(line => line.serviceType.toLowerCase().includes('bulk')).reduce((sum, line) => sum + equalShareAmount(BULK_DISCOUNT_PER_FIELD, line.shareCount, line.shareIndex), 0)
       : 0;
     return subtotal - discount + getOnOrderTotal(be.id);
   };
@@ -292,62 +297,46 @@ export default function BillingClient({ billingEntities: initialEntities, availa
 
     if (operationBulkFieldCount >= BULK_DISCOUNT_MIN_FIELDS && entityBulkCount > 0) {
       return {
-        discount: entityBulkCount * BULK_DISCOUNT_PER_FIELD,
+        discount: Math.round(lines.filter(line => line.serviceType.toLowerCase().includes('bulk')).reduce((sum, line) => sum + equalShareAmount(BULK_DISCOUNT_PER_FIELD, line.shareCount, line.shareIndex), 0) * 100) / 100,
         eligibleCount: entityBulkCount,
       };
     }
     return { discount: 0, eligibleCount: 0 };
   };
 
-  const handleUpdateQuantity = async (line: InvoiceLine, newQty: number, be: ProcessedBillingEntity) => {
-    if (newQty === line.quantity) return;
+  const handleUpdateQuantity = async (line: InvoiceLine, newQty: number, be: ProcessedBillingEntity, force = false) => {
+    if (!force && newQty === line.quantity) return;
     const trackingId = line.invoiceLineId || line.id;
     setSavingQty(prev => new Set(prev).add(trackingId));
     try {
-      let invoiceLineId = line.invoiceLineId;
-
-      if (!invoiceLineId) {
-        // Auto-create invoice line via enrollment
-        const enrollRes = await fetch('/api/billing/enroll', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            billing_entity_id: be.id,
-            season: be.season,
-            field_season_id: line.id,
-            service_type: line.serviceType,
-            rate: line.rate,
-          }),
-        });
-        if (!enrollRes.ok) return;
-        const enrollData = await enrollRes.json();
-        invoiceLineId = enrollData.invoiceLine?.id;
-      }
-
-      // Now update quantity
-      const response = await fetch(`/api/invoice-lines/${invoiceLineId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: newQty }),
+      // One transaction updates every recipient, never just the open entity card.
+      const response = await fetch('/api/billing/enroll', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ billing_entity_id: be.id, season: be.season,
+          field_season_id: line.id, service_type: line.serviceType,
+          rate: line.shareCount > 1 ? line.fullFieldRate : line.rate, quantity: newQty }),
       });
-      if (response.ok) {
-        setBillingEntities(billingEntities.map((entity) => ({
-          ...entity,
-          invoices: entity.invoices.map((inv) => ({
-            ...inv,
-            lines: inv.lines.map((l) =>
-              l.id === line.id ? { ...l, quantity: newQty, invoiceLineId } : l
-            ),
-          })),
-        })));
-      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save billing shares');
+      setBillingEntities(previous => previous.map(entity => {
+        if (entity.season !== be.season) return entity;
+        const charge = data.charges.find((item: {billingEntityId: number}) => item.billingEntityId === entity.id);
+        if (!charge) return entity;
+        return {...entity, invoices: entity.invoices.map(inv => ({...inv,
+          id: charge.invoice.id, amount: Number(charge.invoice.amount),
+          lines: inv.lines.map(item => item.id === line.id ? {...item,
+            invoiceLineId: charge.invoiceLine.id, rate: charge.rate, quantity: charge.quantity,
+            shareCount: charge.shareCount, needsAllocation: false,
+            fullFieldRate: data.charges.reduce((sum: number, c: {rate: number; quantity: number}) => sum + c.rate * c.quantity, 0),
+          } : item),
+        }))};
+      }));
     } catch (error) {
-      console.error('Error updating quantity:', error);
+      alert(error instanceof Error ? error.message : 'Could not save billing shares');
     } finally {
       setSavingQty(prev => { const next = new Set(prev); next.delete(trackingId); return next; });
     }
   };
-
   // Ensure an invoice row exists in Baserow, creating one if needed (id === 0).
   // Returns the real invoice ID, or null on failure.
   const ensureInvoice = async (invoiceId: number, billingEntityId: number, season: number): Promise<number | null> => {
@@ -953,19 +942,25 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                 <tbody>
                                   {lines.map((line) => (
                                     <tr key={line.id}>
-                                      <td>{line.fieldName}</td>
+                                      <td>{line.fieldName}
+                                        {line.shareCount > 1 && <small style={{ display: 'block' }}>1/{line.shareCount} share ({(100 / line.shareCount).toLocaleString(undefined, { maximumFractionDigits: 2 })}%)</small>}
+                                        {!line.invoiceLineId && <small style={{ display: 'block' }}>Estimate — not yet charged</small>}
+                                        {line.needsAllocation && <small style={{ display: 'block', color: '#a16207' }}>Existing charges need equal allocation</small>}
+                                        {line.shareCount > 1 && (line.needsAllocation || !line.invoiceLineId) && <button type="button" disabled={savingQty.has(line.invoiceLineId || line.id)} onClick={() => handleUpdateQuantity(line, 1, be, true)}>Save equal shares</button>}
+                                      </td>
                                       <td className="text-secondary">{line.serviceType || '—'}</td>
                                       <td className="align-right">
-                                        <input
+                                        {line.shareCount > 1 ? '1 share' : <input
                                           type="number"
                                           min={1}
+                                          key={`${line.invoiceLineId}-${line.quantity}`}
                                           defaultValue={line.quantity}
                                           onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1, be)}
                                           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                                           disabled={savingQty.has(line.invoiceLineId || line.id)}
                                           style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
                                           className="inline-input"
-                                        />
+                                        />}
                                       </td>
                                       <td className="align-right">{formatCurrency(line.rate)}</td>
                                       <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>

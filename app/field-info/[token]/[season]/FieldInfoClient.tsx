@@ -342,7 +342,8 @@ export default function FieldInfoClient({ operationName, season, token, fields: 
                     </div>
                   )}
 
-                  {showQuestion('billing_entity') && billingEntityOptions.length > 1 && (
+                  {showQuestion('billing_entity') && field.billingEntityNames.length > 1 && <div className="fi-billing-section">Billing split equally: {field.billingEntityNames.join(' / ')}. Contact Acre to change these links.</div>}
+                  {showQuestion('billing_entity') && field.billingEntityNames.length <= 1 && billingEntityOptions.length > 1 && (
                     <div className="fi-billing-section">
                       <div className="fi-field-label">
                         Billing Entity

@@ -1,11 +1,11 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 // POST - Create new inventory item
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
@@ -14,18 +14,11 @@ export async function POST(request: NextRequest) {
     if (body.category) payload.category = body.category;
     if (body.quantity !== undefined) payload.quantity = body.quantity;
 
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.inventory}/?user_field_names=true`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    const response = await dataRequest({ table: 'inventory' }, { method: 'POST', body: JSON.stringify(payload) });
 
     if (!response.ok) {
       const error = await response.text();
-      return NextResponse.json({ error: `Baserow error: ${error}` }, { status: response.status });
+      return NextResponse.json({ error: `Database error: ${error}` }, { status: response.status });
     }
 
     const data = await response.json();
@@ -35,4 +28,4 @@ export async function POST(request: NextRequest) {
     console.error('Create inventory error:', error);
     return NextResponse.json({ error: 'Failed to create inventory item' }, { status: 500 });
   }
-}
+});

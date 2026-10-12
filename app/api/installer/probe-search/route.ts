@@ -1,6 +1,7 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  TABLE_IDS,
+  getRows,
   getCachedRows,
   type Probe,
   type ProbeRackSlot,
@@ -11,8 +12,6 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 export interface ProbeSearchResult {
   id: number;
@@ -24,20 +23,12 @@ export interface ProbeSearchResult {
   currentField: string;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withApiAuth(async function GET(request: NextRequest) {
   const search = (request.nextUrl.searchParams.get('search') ?? request.nextUrl.searchParams.get('serial') ?? '').trim();
   if (!search) return NextResponse.json({ results: [] });
 
   try {
-    // Live search the probes table by serial number.
-    // search_mode=compat does a "contains" match, so a partial serial like 9614
-    // finds 19614 (the default full-text mode only matches the start of a number).
-    const params = new URLSearchParams({ user_field_names: 'true', size: '50', search, search_mode: 'compat' });
-    const probeRes = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.probes}/?${params}`, {
-      headers: { Authorization: `Token ${BASEROW_TOKEN}` },
-      cache: 'no-store',
-    });
-    if (!probeRes.ok) return NextResponse.json({ results: [] });
+    const matchingProbes = await getRows<Probe>('probes', { search });
     const digits = search.replace(/\D/g, '');
     const rank = (p: Probe) => {
       const sn = p.serial_number != null ? String(p.serial_number) : '';
@@ -46,7 +37,7 @@ export async function GET(request: NextRequest) {
       if (sn.startsWith(digits)) return 1;
       return 2;
     };
-    const probes: Probe[] = ((await probeRes.json()).results ?? [] as Probe[])
+    const probes: Probe[] = matchingProbes
       .filter((p: Probe) => !digits || rank(p) < 3)
       .sort((a: Probe, b: Probe) => rank(a) - rank(b))
       .slice(0, 20);
@@ -105,4 +96,4 @@ export async function GET(request: NextRequest) {
     console.error('installer probe-search error:', error);
     return NextResponse.json({ results: [] }, { status: 500 });
   }
-}
+});

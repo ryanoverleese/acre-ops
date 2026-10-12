@@ -13,7 +13,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, ''
 const artifacts = await mkdtemp(`${tmpdir()}/acre-equipment-qa-`);
 const base = 'http://127.0.0.1:3197';
 const secret = 'equipment-local-fixture-secret-not-for-production';
-let output = '', browser, server, page;
+let output = '', browser, server, page, authCookie = '';
 let passed = 0;
 const check = async (name, fn) => { await fn(); passed++; console.log(`PASS ${name}`); };
 try {
@@ -27,9 +27,9 @@ try {
   await cp(`${root}/package.json`, `${testRoot}/package.json`);
   await cp(`${root}/next.config.js`, `${testRoot}/next.config.js`);
   await symlink(`${root}/node_modules`, `${testRoot}/node_modules`, 'dir');
-  server = spawn(process.execPath, ['--require', `${root}/tests/equipment/baserow-fixture.cjs`, `${root}/node_modules/next/dist/bin/next`, 'start', '--hostname', '127.0.0.1', '--port', '3197'], {
+  server = spawn(process.execPath, ['--require', `${root}/tests/supabase/browser-preload.cjs`, `${root}/node_modules/next/dist/bin/next`, 'start', '--hostname', '127.0.0.1', '--port', '3197'], {
     cwd: testRoot, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, ACRE_EQUIPMENT_TEST: '1', BASEROW_API_TOKEN: 'equipment-fixture-only', AUTH_SECRET: secret, NEXTAUTH_SECRET: secret, AUTH_URL: base, NEXTAUTH_URL: base, AUTH_TRUST_HOST: 'true', NEXT_TELEMETRY_DISABLED: '1' },
+    env: { PATH: process.env.PATH, ACRE_SUPABASE_BROWSER: '1', ACRE_EQUIPMENT_TEST: '1', AUTH_SECRET: secret, NEXTAUTH_SECRET: secret, AUTH_URL: base, NEXTAUTH_URL: base, AUTH_TRUST_HOST: 'true', NEXT_TELEMETRY_DISABLED: '1' },
   });
   server.stdout.on('data', data => { output += data; });
   server.stderr.on('data', data => { output += data; });
@@ -52,6 +52,12 @@ try {
   page.setDefaultTimeout(15000);
   const errors = [], mutations = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('response', async response => {
+    if (response.status() >= 400 && response.url().includes('/api/')) {
+      const body = await response.text().catch(() => '[page closed before response body was read]');
+      console.error('Fixture API failure', response.status(), new URL(response.url()).pathname, body);
+    }
+  });
   page.on('request', request => {
     if (['POST', 'PATCH', 'DELETE'].includes(request.method())) mutations.push({ method: request.method(), path: new URL(request.url()).pathname, body: request.postDataJSON() });
   });
@@ -60,8 +66,9 @@ try {
     assert.equal(new URL(page.url()).pathname, '/login');
   });
   const session = async role => {
-    const value = await encode({ token: { name: 'Equipment QA', email: 'qa@example.invalid', role, id: 'qa' }, secret, salt: 'authjs.session-token' });
-    await context.addCookies([{ name: 'authjs.session-token', value, url: base, httpOnly: true }]);
+    const value = await encode({ token: { name: 'Equipment QA', email: 'qa@example.invalid', role, id: '1', backend: 'supabase-native-v1' }, secret, salt: 'acre-auth-supabase-v1' });
+    authCookie = `acre-auth-supabase-v1=${value}`;
+    await context.addCookies([{ name: 'acre-auth-supabase-v1', value, url: base, httpOnly: true }]);
   };
   await session('admin');
   await check('four tabs, one Equipment menu item, working probe search', async () => {
@@ -92,12 +99,12 @@ try {
     await page.getByRole('button', { name: 'Move Location', exact: true }).click();
     await page.getByText('Rack 1A · Slot 2', { exact: true }).click();
     await Promise.all([
-      page.waitForResponse(response => new URL(response.url()).pathname === '/api/probe-rack/501' && response.request().method() === 'PATCH'),
+      page.waitForResponse(response => new URL(response.url()).pathname === '/api/equipment/actions' && response.request().method() === 'POST'),
       page.getByRole('button', { name: 'Undo', exact: true }).click(),
     ]);
     await page.getByRole('button', { name: /Undo/ }).waitFor({ state: 'hidden' });
-    assert(mutations.some(m => m.path === '/api/probe-rack/502' && m.body.probe === 11));
-    assert(mutations.some(m => m.path === '/api/probe-rack/501' && m.body.probe === 11));
+    assert(mutations.some(m => m.path === '/api/equipment/actions' && m.body.probeId === 11 && m.body.destinationId === 502));
+    assert(mutations.some(m => m.path === '/api/equipment/actions' && m.body.probeId === 11 && m.body.destinationId === 501));
   });
   await check('registration reuses the on-order record and returns to Equipment', async () => {
     await page.goto(`${base}/equipment`);
@@ -122,9 +129,11 @@ try {
     await page.getByPlaceholder('e.g. 412719').fill('499998');
     await page.getByRole('button', { name: 'Confirm Swap', exact: true }).click();
     await page.getByText('Swap complete!', { exact: true }).waitFor();
-    assert(mutations.some(m => m.path === '/api/probes/11' && m.method === 'PATCH' && m.body.status === 'RMA'));
+    assert(mutations.some(m => m.path === '/api/equipment/actions' && m.body.action === 'rma' && m.body.probeId === 11));
     assert(!mutations.some(m => m.method === 'DELETE' || m.path === '/api/probe-assignments/200'));
-    const old = await (await context.request.get(`${base}/api/probes/11`)).json();
+    const oldResponse = await context.request.get(`${base}/api/probes/11`, {headers:{Cookie:authCookie}});
+    const old = await oldResponse.json();
+    assert.equal(oldResponse.status(),200,JSON.stringify(old));
     assert.equal(old.notes, 'Keep this history');
     assert.equal(old.status.value, 'RMA');
   });
@@ -139,6 +148,30 @@ try {
       assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
       await page.screenshot({ path: `${artifacts}/${viewport.width}.png` });
     }
+  });
+  await check('billing shows a saved 50/50 charge under each linked entity', async () => {
+    const partnerResponse = await context.request.post(`${base}/api/billing-entities`, {headers:{Cookie:authCookie},data:{name:'QA Split Partner'}});
+    assert.equal(partnerResponse.status(),200,await partnerResponse.text());
+    const partner = await partnerResponse.json();
+    const linkResponse = await context.request.patch(`${base}/api/fields/1`,{headers:{Cookie:authCookie},data:{billing_entity:[1,partner.id]}});
+    assert.equal(linkResponse.status(),200,await linkResponse.text());
+    const enroll = await context.request.post(`${base}/api/billing/enroll`,{headers:{Cookie:authCookie},data:{field_season_id:101,season:new Date().getFullYear(),rate:300,quantity:1,service_type:'Fixture'}});
+    assert.equal(enroll.status(),200,await enroll.text());
+    assert.deepEqual((await enroll.json()).charges.map(charge=>charge.rate),[150,150]);
+    await page.setViewportSize({width:1440,height:1000});
+    await page.goto(`${base}/billing`);
+    for (const name of ['QA Billing','QA Split Partner']) {
+      const row = page.locator('tr').filter({has:page.getByRole('cell',{name,exact:true})});
+      await row.locator('.expand-chevron').click();
+    }
+    const details = page.locator('.line-items-table tbody tr').filter({hasText:'QA Field'});
+    assert.equal(await details.count(),2);
+    for (const row of await details.all()) {
+      assert.match(await row.innerText(),/1\/2 share \(50%\)/);
+      assert.equal(await row.getByRole('cell',{name:'$150.00',exact:true}).count(),2);
+      assert(!/not yet charged/.test(await row.innerText()));
+    }
+    await page.screenshot({path:`${artifacts}/billing-split.png`});
   });
   await check('installer access remains unchanged', async () => {
     await session('installer');

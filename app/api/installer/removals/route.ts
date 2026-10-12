@@ -1,3 +1,4 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
 import { getCachedRows, getRows } from '@/lib/baserow';
 
@@ -36,7 +37,7 @@ function matchesRemover(plannedRemover: string, installer: string): boolean {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+export const GET = withApiAuth(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
   const fresh = searchParams.get('fresh') === '1';
@@ -80,12 +81,12 @@ export async function GET(request: Request) {
         const fs = fsMap.get(linkId(pa.field_season)!)!;
         const field = fieldMap.get(linkId(fs.field) ?? -1);
         const probe = probeMap.get(linkId(pa.probe) ?? -1);
-        const billingEntity = billingEntityMap.get(linkId(field?.billing_entity) ?? -1);
+        const billingNames = Array.isArray(field?.billing_entity) ? field.billing_entity.map((be: {id: number}) => val(billingEntityMap.get(Number(be.id))?.name)).filter(Boolean).join(' / ') : '';
         const removed = val(pa.probe_status).toLowerCase() === 'removed';
         return {
           id: Number(pa.id),
           fieldName: val(field?.name) || 'Unknown Field',
-          grower: val(billingEntity?.name) || val(fs.grower),
+          grower: billingNames || val(fs.grower),
           routeOrder: val(fs.route_order),
           probeNumber: num(pa.probe_number) || 1,
           label: val(pa.label),
@@ -137,4 +138,4 @@ export async function GET(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
-}
+});

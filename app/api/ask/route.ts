@@ -1,3 +1,4 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities, getRows, updateRow, createRow } from '@/lib/baserow';
 import type { ProbeRackSlot } from '@/lib/baserow';
@@ -323,7 +324,7 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
   }
 
   if (params.billing_entity_contains) {
-    results = results.filter(f => fuzzyMatch(params.billing_entity_contains!, f.billing_entity?.[0]?.value || ''));
+    results = results.filter(f => fuzzyMatch(params.billing_entity_contains!, f.billing_entity?.map(be => be.value).join(' / ') || ''));
   }
 
   return results.slice(0, 50).map(f => {
@@ -364,7 +365,7 @@ async function executeSearchFields(params: { name_contains?: string; billing_ent
       lat: f.lat,
       lng: f.lng,
       irrigation_type: f.irrigation_type?.value,
-      billing_entity: f.billing_entity?.[0]?.value,
+      billing_entity: f.billing_entity?.map(be => be.value).join(' / '),
       seasons: seasonData,
       google_maps_link: f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : null
     };
@@ -553,7 +554,7 @@ async function executeSearchByName(params: { name: string }) {
 
   // Find fields for these billing entities
   const growerFields = fields.filter(f => {
-    const fbe = f.billing_entity?.[0]?.value || '';
+    const fbe = f.billing_entity?.map(be => be.value).join(' / ') || '';
     return matchedBEs.some(be => fbe.toLowerCase().includes(be.toLowerCase()));
   });
 
@@ -574,7 +575,7 @@ async function executeSearchByName(params: { name: string }) {
       lat: f.lat,
       lng: f.lng,
       irrigation_type: f.irrigation_type?.value,
-      billing_entity: f.billing_entity?.[0]?.value,
+      billing_entity: f.billing_entity?.map(be => be.value).join(' / '),
       google_maps_link: f.lat && f.lng ? `https://www.google.com/maps?q=${f.lat},${f.lng}` : null
     })),
     probes: {
@@ -716,7 +717,7 @@ interface Message {
   content: string | Array<{ type: string; text?: string; source?: { type: string; media_type: string; data: string } }>;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest) {
   try {
     if (!ANTHROPIC_API_KEY) {
       return NextResponse.json(
@@ -846,4 +847,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

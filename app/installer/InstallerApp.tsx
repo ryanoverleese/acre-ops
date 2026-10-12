@@ -104,6 +104,7 @@ interface Session {
   installer: string;
   installerId: number;
   season: number;
+  expiresAt?: number;
 }
 
 interface SuccessData {
@@ -204,17 +205,17 @@ export async function compressImage(file: File): Promise<File> {
   });
 }
 
-const SESSION_KEY = 'installer-session';
+const SESSION_KEY = 'installer-session-supabase-v1';
 function loadSession(): Session | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    return s.installer && s.installerId ? s : null;
+    return s.installer && s.installerId && s.expiresAt > Date.now() ? s : null;
   } catch { return null; }
 }
 function saveSession(s: Session) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
-function clearSession() { localStorage.removeItem(SESSION_KEY); }
+function clearSession() { localStorage.removeItem(SESSION_KEY); void fetch('/api/installer-auth', { method: 'DELETE' }); }
 
 // Topo SVG decoration used in green headers
 function TopoDeco() {
@@ -285,6 +286,7 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
     try {
       const url = `/api/installer/assignments?installer=${encodeURIComponent(s.installer)}&season=${s.season}${fresh ? '&fresh=1' : ''}`;
       const res = await fetch(url, fresh ? { cache: 'no-store' } : undefined);
+      if (res.status === 401 || res.status === 403) { clearSession(); setSession(null); setScreen('login'); return; }
       const data = await res.json();
       setAssignments(data.assignments ?? []);
       setSessionInstalledIds(new Set());
@@ -293,7 +295,8 @@ export default function InstallerApp({ installerNames }: { installerNames: strin
   }, []);
 
   const handleLogin = (s: Session) => {
-    setSession(s); saveSession(s); fetchAssignments(s);
+    const expiring = {...s, expiresAt: Date.now() + 12 * 60 * 60 * 1000};
+    setSession(expiring); saveSession(expiring); fetchAssignments(expiring);
     setScreen(getWorkflowMode() === 'remove' ? 'removals' : 'route');
   };
   const handleLogout = () => { clearSession(); setSession(null); setAssignments([]); setScreen('login'); };
@@ -774,7 +777,7 @@ interface ProbeSearchResult {
   currentField: string;
 }
 
-const PROBE_INDEX_KEY = 'af-probe-index-v1';
+const PROBE_INDEX_KEY = 'af-probe-index-supabase-v1';
 
 function rankProbeMatch(serial: string, digits: string): number {
   if (serial === digits) return 0;
@@ -3207,7 +3210,7 @@ function supplyColor(type: string): { bg: string; fg: string } {
 }
 
 type LoadedMap = Record<string, boolean>;
-const LOADED_KEY = 'af-loaded';
+const LOADED_KEY = 'af-loaded-supabase-v1';
 
 function LoadoutScreen({ session, assignments }: { session: Session; assignments: InstallerAssignment[] }) {
   const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');

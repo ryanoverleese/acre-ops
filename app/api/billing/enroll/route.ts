@@ -1,232 +1,52 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { NextResponse } from 'next/server';
+import { withApiAuth } from '@/lib/supabase/api';
+import { createRow, updateRow, getRow, getRows } from '@/lib/supabase/adapter';
+import { transaction, query } from '@/lib/supabase/database';
+import { DataError, positiveId } from '@/lib/supabase/registry';
+import { allocateFieldCharge } from '@/lib/billing-allocation';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-
-interface InvoiceRow {
-  id: number;
-  billing_entity?: { id: number; value: string }[];
-  season?: number;
-  amount?: number;
-  status?: { id: number; value: string };
-}
-
-// Find or create an invoice and add an invoice line for a field season
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    // Validate required fields
-    const { billing_entity_id, season, field_season_id, service_type, rate } = body;
-
-    if (!billing_entity_id || !season || !field_season_id) {
-      return NextResponse.json(
-        { error: 'billing_entity_id, season, and field_season_id are required' },
-        { status: 400 }
-      );
+export const POST = withApiAuth(async request => {
+  const body = await request.json();
+  const season = positiveId(body.season), fsId = positiveId(body.field_season_id);
+  if (body.rate == null || body.rate === '') return NextResponse.json({ message: 'Skipped billing - no rate provided', invoice: null, invoiceLine: null, charges: [] });
+  const rate = Number(body.rate);
+  if (!Number.isFinite(rate) || rate < 0 || Math.abs(rate * 100 - Math.round(rate * 100)) > 0.00001)
+    throw new DataError('Rate must be a non-negative amount with at most two decimal places');
+  const result = await transaction(async () => {
+    const fs = await getRow<{field: {id: number}[]; season: number}>('field_seasons', fsId);
+    if (fs.season !== season) throw new DataError('Season does not match', 409);
+    // All field billing comes from this join. A legacy billing_entity_id input
+    // selects only the compatibility response, never the recipients of charges.
+    const memberships = await query<{billing_entity_id: string}>('SELECT billing_entity_id FROM public.field_billing_entities WHERE field_id=$1 ORDER BY billing_entity_id', [fs.field[0]?.id]);
+    const entityIds = memberships.map(row => Number(row.billing_entity_id));
+    if (!entityIds.length) throw new DataError('Link a billing entity to this field before enrolling it', 409);
+    const lines = await getRows<{id: number; invoice: {id: number}[]; quantity: number | null}>('invoice_lines', {filters: {field_season: fsId}});
+    const existingInvoices = await getRows<{id: number; billing_entity: {id: number}[]; season: number; status?: {value: string}}>('invoices', {filters: {season}});
+    const invoiceMap = new Map(existingInvoices.map(invoice => [invoice.id, invoice]));
+    // Never silently delete an old recipient's charge or move posted money.
+    if (lines.some(line => !entityIds.includes(invoiceMap.get(line.invoice[0]?.id)?.billing_entity[0]?.id ?? 0)))
+      throw new DataError('Existing charges include an entity no longer linked to this field; review those charges first', 409);
+    const quantity = body.quantity === undefined ? (entityIds.length === 1 ? (lines[0]?.quantity ?? 1) : 1) : Number(body.quantity);
+    let allocations;
+    try { allocations = allocateFieldCharge(rate, quantity, entityIds); }
+    catch (error) { throw new DataError((error as Error).message); }
+    const charges = [];
+    for (const allocation of allocations) {
+      const matches = existingInvoices.filter(invoice => invoice.billing_entity[0]?.id === allocation.billingEntityId);
+      if (matches.length > 1) throw new DataError('Multiple invoices exist for this entity and season; review them before enrolling', 409);
+      if (matches[0]?.status?.value && matches[0].status.value.toLowerCase() !== 'draft')
+        throw new DataError('A linked invoice is no longer Draft; review it before changing charges', 409);
+      const invoice = matches[0] || await createRow<{id: number}>('invoices', {billing_entity: [allocation.billingEntityId], season, status: 'Draft', amount: 0});
+      const matchesLines = lines.filter(line => line.invoice[0]?.id === invoice.id);
+      if (matchesLines.length > 1) throw new DataError('Duplicate field charges exist on an invoice; review them first', 409);
+      const patch = {invoice: [invoice.id], field_season: [fsId], service_type: body.service_type || null, rate: allocation.rate, quantity: allocation.quantity};
+      const invoiceLine = matchesLines[0] ? await updateRow('invoice_lines', matchesLines[0].id, patch) : await createRow('invoice_lines', patch);
+      const total = (await query('SELECT coalesce(sum(line_total),0) AS total FROM public.invoice_lines_calculated WHERE invoice_id=$1', [invoice.id]))[0].total;
+      const saved = await updateRow('invoices', invoice.id, {amount: total});
+      charges.push({...allocation, invoice: saved, invoiceLine});
     }
-
-    // Skip if no rate provided
-    if (!rate || parseFloat(rate) === 0) {
-      return NextResponse.json({
-        message: 'Skipped billing - no rate provided',
-        invoice: null,
-        invoiceLine: null
-      });
-    }
-
-    // Step 1: Find existing invoice for this billing_entity + season
-    const searchUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoices}/?user_field_names=true&filter__billing_entity__link_row_has=${billing_entity_id}&filter__season__equal=${season}`;
-
-    const searchResponse = await fetch(searchUrl, {
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!searchResponse.ok) {
-      console.error('Failed to search invoices:', await searchResponse.text());
-      return NextResponse.json(
-        { error: 'Failed to search for existing invoice' },
-        { status: searchResponse.status }
-      );
-    }
-
-    const searchData = await searchResponse.json();
-    let invoice: InvoiceRow | null = null;
-
-    if (searchData.results.length > 0) {
-      // Use existing invoice
-      invoice = searchData.results[0];
-    } else {
-      // Step 2: Create new invoice for this billing_entity + season
-      const createInvoiceUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoices}/?user_field_names=true`;
-      const createInvoiceResponse = await fetch(createInvoiceUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Token ${BASEROW_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          billing_entity: [billing_entity_id],
-          season: parseInt(season),
-          status: 'Draft',
-          amount: 0, // Will be updated as lines are added
-        }),
-      });
-
-      if (!createInvoiceResponse.ok) {
-        console.error('Failed to create invoice:', await createInvoiceResponse.text());
-        return NextResponse.json(
-          { error: 'Failed to create invoice' },
-          { status: createInvoiceResponse.status }
-        );
-      }
-
-      invoice = await createInvoiceResponse.json();
-      bustTableCache('invoices');
-    }
-
-    if (!invoice) {
-      return NextResponse.json(
-        { error: 'Failed to get or create invoice' },
-        { status: 500 }
-      );
-    }
-
-    // Step 3: Check if an invoice line already exists for this field_season
-    const existingLineUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/?user_field_names=true&filter__field_season__link_row_has=${field_season_id}`;
-    const existingLineResponse = await fetch(existingLineUrl, {
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (existingLineResponse.ok) {
-      const existingLineData = await existingLineResponse.json();
-      if (existingLineData.results.length > 0) {
-        // Update existing line instead of creating a new one
-        const existingLine = existingLineData.results[0];
-        const updateLineUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/${existingLine.id}/?user_field_names=true`;
-        const updateLineResponse = await fetch(updateLineUrl, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Token ${BASEROW_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            invoice: [invoice.id],
-            service_type: service_type || '',
-            rate: parseFloat(rate) || 0,
-          }),
-        });
-
-        if (!updateLineResponse.ok) {
-          console.error('Failed to update invoice line:', await updateLineResponse.text());
-          return NextResponse.json(
-            { error: 'Failed to update invoice line' },
-            { status: updateLineResponse.status }
-          );
-        }
-
-        const updatedLine = await updateLineResponse.json();
-        bustTableCache('invoice_lines');
-
-        // Recalculate invoice total
-        await updateInvoiceTotal(invoice.id);
-
-        return NextResponse.json({
-          message: 'Updated existing invoice line',
-          invoice,
-          invoiceLine: updatedLine,
-        });
-      }
-    }
-
-    // Step 4: Create invoice line
-    const createLineUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/?user_field_names=true`;
-    const createLineResponse = await fetch(createLineUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        invoice: [invoice.id],
-        field_season: [field_season_id],
-        service_type: service_type || '',
-        rate: parseFloat(rate) || 0,
-      }),
-    });
-
-    if (!createLineResponse.ok) {
-      console.error('Failed to create invoice line:', await createLineResponse.text());
-      return NextResponse.json(
-        { error: 'Failed to create invoice line' },
-        { status: createLineResponse.status }
-      );
-    }
-
-    const invoiceLine = await createLineResponse.json();
-    bustTableCache('invoice_lines');
-
-    // Step 5: Update invoice total
-    await updateInvoiceTotal(invoice.id);
-
-    return NextResponse.json({
-      message: 'Created invoice line',
-      invoice,
-      invoiceLine,
-    }, { status: 201 });
-
-  } catch (error) {
-    console.error('Error in billing enrollment:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-
-// Helper function to recalculate invoice total from line items
-async function updateInvoiceTotal(invoiceId: number) {
-  try {
-    // Get all lines for this invoice
-    const linesUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/?user_field_names=true&filter__invoice__link_row_has=${invoiceId}`;
-    const linesResponse = await fetch(linesUrl, {
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!linesResponse.ok) {
-      console.error('Failed to fetch invoice lines for total calculation');
-      return;
-    }
-
-    const linesData = await linesResponse.json();
-    const total = linesData.results.reduce((sum: number, line: { rate?: number; quantity?: number }) => {
-      return sum + ((line.rate || 0) * (line.quantity || 1));
-    }, 0);
-
-    // Update invoice amount
-    const updateUrl = `${BASEROW_API_URL}/${TABLE_IDS.invoices}/${invoiceId}/?user_field_names=true`;
-    const updateResponse = await fetch(updateUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ amount: total }),
-    });
-    if (updateResponse.ok) {
-      bustTableCache('invoices');
-    }
-  } catch (error) {
-    console.error('Error updating invoice total:', error);
-  }
-}
+    const selected = charges.find(charge => charge.billingEntityId === Number(body.billing_entity_id)) || charges[0];
+    return {message: 'Saved equal billing shares', invoice: selected.invoice, invoiceLine: selected.invoiceLine, charges};
+  });
+  return NextResponse.json(result);
+});

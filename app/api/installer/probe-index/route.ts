@@ -1,3 +1,4 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
 import {
   getCachedRows,
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 // Full probe list (serial + rack + this-season field) for the installer Probe
 // lookup screen. The phone downloads this once, keeps it in localStorage, and
 // filters locally so each search is instant instead of a round trip.
-export async function GET() {
+export const GET = withApiAuth(async function GET() {
   try {
     const [probes, rackSlots, probeAssignments, fieldSeasons, fields] = await Promise.all([
       getCachedRows<Probe>('probes', undefined, 120),
@@ -69,4 +70,4 @@ export async function GET() {
     console.error('installer probe-index error:', error);
     return NextResponse.json({ results: [] }, { status: 500 });
   }
-}
+});

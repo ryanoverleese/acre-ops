@@ -577,7 +577,7 @@ export default function FieldsClient({
     }
 
     if (effectiveOperation !== 'all') {
-      filtered = filtered.filter((f) => f.operationId?.toString() === effectiveOperation);
+      filtered = filtered.filter((f) => (f.operationIds || (f.operationId ? [f.operationId] : [])).some(id => id.toString() === effectiveOperation));
     }
 
     if (currentIrrigationType !== 'all') {

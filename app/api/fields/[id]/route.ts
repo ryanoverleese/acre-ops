@@ -1,16 +1,16 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, addSpaceVariants, bustTableCache } from '@/lib/baserow';
+import { addSpaceVariants, bustTableCache } from '@/lib/baserow';
 import { fetchSoilType, fetchElevation } from '@/lib/geo';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export const PATCH = withApiAuth(async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const fieldId = parseInt(id, 10);
@@ -42,7 +42,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.row_direction !== undefined) updateData.row_direction = body.row_direction;
     if (body.nrcs_field !== undefined) updateData.nrcs_field = body.nrcs_field;
     if (body.billing_entity !== undefined) {
-      updateData.billing_entity = body.billing_entity ? [Number(body.billing_entity)] : [];
+      if (!Array.isArray(body.billing_entity)) {
+        const existing = await dataRequest({table:'fields',id:fieldId});
+        if (!existing.ok) return existing;
+        if ((await existing.json()).billing_entity.length > 1) return NextResponse.json({error:'This field has multiple billing entities. Submit the complete billing selection; no links were changed.'},{status:409});
+      }
+      updateData.billing_entity = Array.isArray(body.billing_entity) ? body.billing_entity : body.billing_entity ? [Number(body.billing_entity)] : [];
     }
     // Drip irrigation fields
     if (body.drip_tubing_direction !== undefined) updateData.drip_tubing_direction = body.drip_tubing_direction;
@@ -71,23 +76,16 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Add space variants for Baserow field name compatibility
+    // Add space variants for Database field name compatibility
     const patchData = addSpaceVariants(updateData);
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/?user_field_names=true`;
+    const url = { table: 'fields', id: fieldId };
 
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(patchData),
-    });
+    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(patchData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       console.error('Update payload was:', JSON.stringify(patchData, null, 2));
       return NextResponse.json(
         { error: `Failed to update field: ${errorText}` },
@@ -109,9 +107,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function GET(request: NextRequest, { params }: RouteParams) {
+export const GET = withApiAuth(async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const fieldId = parseInt(id, 10);
@@ -123,14 +121,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/?user_field_names=true`;
+    const url = { table: 'fields', id: fieldId };
 
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await dataRequest(url, {  });
 
     if (!response.ok) {
       return NextResponse.json(
@@ -149,9 +142,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export const DELETE = withApiAuth(async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const fieldId = parseInt(id, 10);
@@ -163,17 +156,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.fields}/${fieldId}/`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-    });
+    const url = { table: 'fields', id: fieldId };
+    const response = await dataRequest(url, { method: 'DELETE' });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to delete field' },
         { status: response.status }
@@ -189,4 +177,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

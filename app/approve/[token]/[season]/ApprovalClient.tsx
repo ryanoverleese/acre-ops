@@ -25,12 +25,13 @@ const ApprovalPinMap = dynamic(() => import('./ApprovalPinMap'), {
 });
 
 interface ApprovalClientProps {
+  token: string;
   operationName: string;
   season: number;
   probeAssignments?: ApprovalProbeAssignment[];
 }
 
-export default function ApprovalClient({ operationName, season, probeAssignments: initialProbeAssignments = [] }: ApprovalClientProps) {
+export default function ApprovalClient({ token, operationName, season, probeAssignments: initialProbeAssignments = [] }: ApprovalClientProps) {
   const [probeAssignments, setProbeAssignments] = useState(initialProbeAssignments);
   const [changeNotes, setChangeNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -66,7 +67,7 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({
           approval_status: 'Approved',
           approval_date: new Date().toISOString().split('T')[0],
@@ -97,7 +98,7 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ approval_status: 'Pending', approval_date: '' }),
       });
 
@@ -127,7 +128,7 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({
           approval_status: 'Change Requested',
           approval_notes: notes,
@@ -163,7 +164,7 @@ export default function ApprovalClient({ operationName, season, probeAssignments
       for (const pa of pendingAssignments) {
         await fetch(`/api/probe-assignments/${pa.id}`, {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
           body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
         });
         // Small delay between requests to stay under rate limit
@@ -187,7 +188,7 @@ export default function ApprovalClient({ operationName, season, probeAssignments
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ placement_lat: lat, placement_lng: lng }),
       });
       if (response.ok) {

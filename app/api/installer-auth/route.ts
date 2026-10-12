@@ -1,25 +1,26 @@
 import { NextResponse } from 'next/server';
-import { getInstallerByName } from '@/app/api/installer-pins/route';
-
-export async function POST(request: Request) {
-  try {
-    const { installer, pin } = await request.json();
-    if (!installer || !pin) {
-      return NextResponse.json({ error: 'installer and pin required' }, { status: 400 });
-    }
-    const row = await getInstallerByName(installer);
-    if (!row) {
-      return NextResponse.json({ error: 'Installer not found' }, { status: 401 });
-    }
-    if (!row.pin) {
-      return NextResponse.json({ error: 'No PIN configured for this installer' }, { status: 401 });
-    }
-    if (row.pin !== String(pin)) {
-      return NextResponse.json({ error: 'Incorrect PIN' }, { status: 401 });
-    }
-    return NextResponse.json({ ok: true, id: row.id });
-  } catch (error) {
-    console.error('installer-auth error:', error);
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
-  }
-}
+import { compare } from 'bcryptjs';
+import { timingSafeEqual } from 'node:crypto';
+import { withApiAuth } from '@/lib/supabase/api';
+import { DataError } from '@/lib/supabase/registry';
+import { findInstaller } from '@/lib/supabase/credentials';
+import { createCrewSession, CREW_COOKIE } from '@/lib/crew-session';
+const attempts=new Map<string,{count:number;until:number}>();
+export const POST=withApiAuth(async request=>{
+ const {installer,pin}=await request.json();
+ if(typeof installer!=='string'||!/^\d{4,6}$/.test(String(pin))) throw new DataError('Installer and PIN required');
+ const key=installer.toLowerCase();const now=Date.now(); const prior=attempts.get(key);
+ if(prior&&prior.until>now&&prior.count>=10) throw new DataError('Too many attempts; try again later',429);
+ attempts.set(key,{count:prior&&prior.until>now?prior.count+1:1,until:prior&&prior.until>now?prior.until:now+15*60*1000});
+ if(attempts.size>1000) for(const [k,v] of attempts) if(v.until<now) attempts.delete(k);
+ const row=await findInstaller(installer);
+ const valid=row?.pin?.startsWith('$2')?await compare(String(pin),row.pin):!!row?.pin && Buffer.byteLength(String(pin))===Buffer.byteLength(row.pin)&&timingSafeEqual(Buffer.from(String(pin)),Buffer.from(row.pin));
+ if(!row||!valid) throw new DataError('Incorrect installer or PIN',401);
+ attempts.delete(key);
+ const response=NextResponse.json({ok:true,id:row.id});
+ response.cookies.set(CREW_COOKIE,await createCrewSession(row.id,row.name),{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:12*60*60});
+ return response;
+});
+export const DELETE=withApiAuth(async()=>{
+ const response=NextResponse.json({ok:true}); response.cookies.delete(CREW_COOKIE); return response;
+});

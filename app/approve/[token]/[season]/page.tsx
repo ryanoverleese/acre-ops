@@ -87,7 +87,7 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
 
   // Get fields belonging to this operation (via billing entity)
   const operationFields = rawFields.filter(
-    (f) => f.billing_entity?.[0]?.id && billingEntityIds.has(f.billing_entity[0].id)
+    (f) => f.billing_entity?.some(be => billingEntityIds.has(be.id))
   );
   const fieldIds = new Set(operationFields.map((f) => f.id));
 
@@ -158,6 +158,7 @@ export default async function ApprovePage({ params, searchParams }: PageProps) {
 
   return (
     <ApprovalClient
+      token={token}
       operationName={operation.name}
       season={seasonYear}
       probeAssignments={approvalProbeAssignments}

@@ -1,11 +1,11 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 // PATCH - Update inventory item
-export async function PATCH(
+export const PATCH = withApiAuth(async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -18,18 +18,11 @@ export async function PATCH(
     if (body.category !== undefined) payload.category = body.category;
     if (body.quantity !== undefined) payload.quantity = body.quantity;
 
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.inventory}/${id}/?user_field_names=true`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
+    const response = await dataRequest({ table: 'inventory', id: id }, { method: 'PATCH', body: JSON.stringify(payload) });
 
     if (!response.ok) {
       const error = await response.text();
-      return NextResponse.json({ error: `Baserow error: ${error}` }, { status: response.status });
+      return NextResponse.json({ error: `Database error: ${error}` }, { status: response.status });
     }
 
     const data = await response.json();
@@ -39,26 +32,21 @@ export async function PATCH(
     console.error('Update inventory error:', error);
     return NextResponse.json({ error: 'Failed to update inventory item' }, { status: 500 });
   }
-}
+});
 
 // DELETE - Delete inventory item
-export async function DELETE(
+export const DELETE = withApiAuth(async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
 
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.inventory}/${id}/`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-    });
+    const response = await dataRequest({ table: 'inventory', id: id }, { method: 'DELETE' });
 
     if (!response.ok) {
       const error = await response.text();
-      return NextResponse.json({ error: `Baserow error: ${error}` }, { status: response.status });
+      return NextResponse.json({ error: `Database error: ${error}` }, { status: response.status });
     }
 
     bustTableCache('inventory');
@@ -67,4 +55,4 @@ export async function DELETE(
     console.error('Delete inventory error:', error);
     return NextResponse.json({ error: 'Failed to delete inventory item' }, { status: 500 });
   }
-}
+});

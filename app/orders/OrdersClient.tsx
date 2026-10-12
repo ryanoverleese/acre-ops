@@ -298,7 +298,10 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
         }),
       });
 
-      if (!resp.ok) throw new Error('Failed to fulfill order');
+      if (!resp.ok) {
+        const failure = await resp.json();
+        throw new Error(failure.error || 'Failed to fulfill order');
+      }
 
       const result = await resp.json();
       setOrders(prev => prev.map(o =>
@@ -309,8 +312,8 @@ export default function OrdersClient({ orders: initialOrders, billingEntities, c
       }
       showToast(`Fulfilled! ${result.updatedAssignments} probe assignments updated.`);
       router.refresh();
-    } catch {
-      showToast('Failed to fulfill order');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to fulfill order');
     } finally {
       setSaving(false);
     }

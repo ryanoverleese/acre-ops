@@ -1,3 +1,4 @@
+import { fieldOperationLabel } from '@/lib/data-mappings';
 import { getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedFieldSeasons, getCachedProbeAssignments, getCachedContacts } from '@/lib/baserow';
 import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
@@ -17,16 +18,16 @@ async function getFieldLocations(): Promise<FieldLocation[]> {
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
 
     // Map billing entity to operation through contacts
-    const billingToOperationMap = new Map<number, number>();
+    const billingToOperationMap = new Map<number, number[]>();
     contacts.forEach((contact) => {
       const contactOpIds = contact.operations?.map((op) => op.id) || [];
       const contactBeIds = contact.billing_entity?.map((be) => be.id) || [];
 
       contactBeIds.forEach((beId) => {
         contactOpIds.forEach((opId) => {
-          if (!billingToOperationMap.has(beId)) {
-            billingToOperationMap.set(beId, opId);
-          }
+          const ids = billingToOperationMap.get(beId) || [];
+          if (!ids.includes(opId)) ids.push(opId);
+          billingToOperationMap.set(beId, ids);
         });
       });
     });
@@ -53,13 +54,7 @@ async function getFieldLocations(): Promise<FieldLocation[]> {
 
     // Convert all fields to FieldLocation objects
     const fieldLocations: FieldLocation[] = fields.map((field) => {
-      let operationName = 'Unknown';
-      if (field.billing_entity?.[0]) {
-        const opId = billingToOperationMap.get(field.billing_entity[0].id);
-        if (opId) {
-          operationName = operationMap.get(opId) || 'Unknown';
-        }
-      }
+      const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
 
       const installLocation = installLocationMap.get(field.id);
 

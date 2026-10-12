@@ -1,3 +1,4 @@
+import { fieldOperationLabel } from '@/lib/data-mappings';
 import { getAllSelectOptions, getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact, type SelectOption } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WorkflowsClient, { EarlyRemovalData, UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
@@ -20,7 +21,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
     const probeMap = new Map(probes.map((p) => [p.id, p]));
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    const { billingToOperationIds: billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     const assignmentsByFieldSeason = new Map<number, typeof probeAssignments>();
     for (const pa of probeAssignments) {
@@ -42,11 +43,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
       .map((fs) => {
         const fieldId = fs.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
-        let operationName = '';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) operationName = operationMap.get(opId) || '';
-        }
+        const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
         const seasonAssignments = assignmentsByFieldSeason.get(fs.id) ?? [];
         const assignmentDates = seasonAssignments
           .map((pa) => pa.removal_date)
@@ -172,11 +169,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
         const fieldId = fieldSeason?.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
-        let operationName = '';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) operationName = operationMap.get(opId) || '';
-        }
+        const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
         const probeId = pa.probe?.[0]?.id;
         const probe = probeId ? probeMap.get(probeId) : null;
         return {

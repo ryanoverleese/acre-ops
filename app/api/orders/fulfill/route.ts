@@ -1,105 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
-import { revalidatePath } from 'next/cache';
+import { NextResponse } from 'next/server';
+import { withApiAuth } from '@/lib/supabase/api';
+import { createRow, updateRow, getRow, getRows, deleteRow, type Row } from '@/lib/supabase/adapter';
+import { transaction, query } from '@/lib/supabase/database';
+import { DataError, positiveId } from '@/lib/supabase/registry';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-
-/**
- * Fulfill an order: update all probe assignments that are "On Order"
- * for the order's billing entity to "Ready to Enter Serial".
- * Also updates the order status to "Fulfilled".
- */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { orderId, billingEntityId, probeCount } = body;
-
-    if (!orderId) {
-      return NextResponse.json({ error: 'orderId required' }, { status: 400 });
-    }
-
-    // 1. Find probe assignments with status "On Order" for this billing entity
-    // Fetch all probe assignments and filter client-side (Baserow filtering is limited)
-    let allAssignments: Record<string, unknown>[] = [];
-    let page = 1;
-    let hasMore = true;
-
-    while (hasMore) {
-      const paUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/?user_field_names=true&size=200&page=${page}`;
-      const paResp = await fetch(paUrl, {
-        headers: { Authorization: `Token ${BASEROW_TOKEN}` },
-        cache: 'no-store',
-      });
-      if (!paResp.ok) break;
-      const paData = await paResp.json();
-      allAssignments = allAssignments.concat(paData.results || []);
-      hasMore = paData.next !== null;
-      page++;
-    }
-
-    // Filter to "On Order" status assignments
-    const onOrderAssignments = allAssignments.filter((pa: Record<string, unknown>) => {
-      const status = pa.probe_status || pa['probe status'];
-      const statusVal = typeof status === 'object' && status !== null ? (status as { value: string }).value : status;
-      if (statusVal !== 'On Order') return false;
-
-      // If billing entity filtering is needed
-      if (billingEntityId) {
-        // Get the field_season to check billing entity
-        // For now, we'll update all "On Order" assignments up to probeCount
-        return true;
-      }
-      return true;
-    });
-
-    // Limit to probeCount if specified
-    const toUpdate = probeCount
-      ? onOrderAssignments.slice(0, probeCount)
-      : onOrderAssignments;
-
-    // 2. Update each probe assignment to "Ready to Enter Serial"
-    let updated = 0;
-    for (const pa of toUpdate) {
-      const paId = (pa as { id: number }).id;
-      const updateUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${paId}/?user_field_names=true`;
-      const updateResp = await fetch(updateUrl, {
-        method: 'PATCH',
-        headers: {
-          Authorization: `Token ${BASEROW_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          probe_status: 'Ready to Enter Serial',
-          'probe status': 'Ready to Enter Serial',
-        }),
-      });
-      if (updateResp.ok) updated++;
-    }
-
-    // 3. Update order status to "Fulfilled"
-    const orderUrl = `${BASEROW_API_URL}/${TABLE_IDS.orders}/${orderId}/?user_field_names=true`;
-    const orderResp = await fetch(orderUrl, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status: 'Fulfilled' }),
-    });
-
-    if (updated > 0) bustTableCache('probe_assignments');
-    if (orderResp.ok) bustTableCache('orders');
-    revalidatePath('/orders');
-    revalidatePath('/fields');
-
-    return NextResponse.json({
-      success: true,
-      updatedAssignments: updated,
-      totalOnOrder: onOrderAssignments.length,
-    });
-  } catch (error) {
-    console.error('Error fulfilling order:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+export const POST=withApiAuth(async request=>{
+ const {orderId,billingEntityId,probeCount,assignmentIds}=await request.json();
+ const result=await transaction(async()=>{
+  const order=await getRow<{billing_entity:{id:number}[];status:{value:string}}>('orders',positiveId(orderId));
+  if(order.status?.value==='Fulfilled') return {success:true,updatedAssignments:0,totalOnOrder:0};
+  const entity=order.billing_entity[0]?.id;
+  if(!entity||entity!==positiveId(billingEntityId)) throw new DataError('Order billing entity does not match',409);
+  const items=await getRows<{product:{value:string}[];quantity:number}>('order_items',{filters:{order_link:positiveId(orderId)}});
+  const count=items.filter(item=>/probe|cropx/i.test(item.product[0]?.value||'')).reduce((sum,item)=>sum+Number(item.quantity||0),0);
+  if(!Number.isSafeInteger(count)||count<0) throw new DataError('Order probe quantities must be whole non-negative numbers',409);
+  if(probeCount!==undefined&&Number(probeCount)!==count) throw new DataError('The order quantities changed; refresh before fulfilling',409);
+  const rows=await query('SELECT pa.id FROM public.probe_assignments pa JOIN public.assignment_probe_status_options status ON status.id=pa.probe_status_id JOIN public.field_seasons fs ON fs.id=pa.field_season_id WHERE status.value=$1 AND EXISTS (SELECT 1 FROM public.field_billing_entities fbe WHERE fbe.field_id=fs.field_id AND fbe.billing_entity_id=$2) ORDER BY pa.id',['On Order',entity]);
+  const selected=assignmentIds===undefined?(count===0?[]:rows.map(row=>positiveId(row.id))):Array.isArray(assignmentIds)?assignmentIds.map(positiveId):[];
+  if(selected.length!==count||new Set(selected).size!==count||selected.some((id:number)=>!rows.some(row=>Number(row.id)===id)))
+    throw new DataError('On Order assignments do not exactly match this order. Review the assignments before fulfilling; no probes were changed.',409);
+  for(const id of selected) await updateRow('probe_assignments',id,{probe_status:'Ready to Enter Serial'});
+  await updateRow('orders',positiveId(orderId),{status:'Fulfilled'});
+  return {success:true,updatedAssignments:count,totalOnOrder:rows.length};
+ });
+ return NextResponse.json(result);
+});

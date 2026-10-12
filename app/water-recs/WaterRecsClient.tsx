@@ -8,7 +8,7 @@ interface WaterRecsClientProps {
   operations: OperationGroup[];
   waterRecs: WaterRecRecord[];
   currentSeason: number;
-  fsToOperation: Record<number, number>;
+  fsToOperation: Record<number, number[]>;
   fsToFieldName: Record<number, string>;
   waterDayOptions: string[];
 }
@@ -822,8 +822,7 @@ export default function WaterRecsClient({
     const opsWithRecs = new Set<number>();
     savedRecs.forEach(wr => {
       if (wr.date >= weekRange.start && wr.date <= weekRange.end) {
-        const opId = fsToOperation[wr.fieldSeasonId];
-        if (opId) opsWithRecs.add(opId);
+        for (const opId of fsToOperation[wr.fieldSeasonId] || []) opsWithRecs.add(opId);
       }
     });
     return operations.filter(op => !opsWithRecs.has(op.id));

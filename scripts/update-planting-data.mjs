@@ -7,6 +7,7 @@
  *   DRYRUN=1 BASEROW_TOKEN=your_token node scripts/update-planting-data.mjs
  */
 
+throw new Error('Retired on supabase-schema: source Baserow writes are forbidden. Use the app with reviewed native IDs.');
 const TABLE_ID = 817300; // field_seasons
 const TOKEN = process.env.BASEROW_TOKEN || 'PASTE_YOUR_TOKEN_HERE';
 const DRYRUN = process.env.DRYRUN === '1';

@@ -141,7 +141,7 @@ export default function ReviewClient({
     try {
       const res = await fetch('/api/field-info', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ token, fieldId: field.fieldId, fieldSeasonId: field.fieldSeasonId, field: apiField, value: value || '' }),
       });
       if (!res.ok) throw new Error('Failed to save');
@@ -161,7 +161,7 @@ export default function ReviewClient({
     try {
       const res = await fetch('/api/field-info', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ token, fieldId: field.fieldId, field: 'billing_entity', value: beId }),
       });
       if (!res.ok) throw new Error('Failed to save');
@@ -186,7 +186,7 @@ export default function ReviewClient({
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ approval_status: 'Approved', approval_date: new Date().toISOString().split('T')[0] }),
       });
       if (response.ok) {
@@ -208,7 +208,7 @@ export default function ReviewClient({
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ approval_status: 'Pending', approval_date: '' }),
       });
       if (response.ok) {
@@ -231,7 +231,7 @@ export default function ReviewClient({
     try {
       const response = await fetch(`/api/probe-assignments/${probeAssignmentId}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
         body: JSON.stringify({ approval_status: 'Change Requested', approval_notes: notes }),
       });
       if (response.ok) {
@@ -258,7 +258,7 @@ export default function ReviewClient({
         pendingAssignments.map((pa) =>
           fetch(`/api/probe-assignments/${pa.id}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'x-acre-customer-token': token },
             body: JSON.stringify({ approval_status: 'Approved', approval_date: approvalDate }),
           })
         )
@@ -388,7 +388,8 @@ export default function ReviewClient({
 
                 <div className="card-content">
                   {/* Field Info Section */}
-                  {showQuestion('billing_entity') && billingEntityOptions.length > 1 && (
+                  {showQuestion('billing_entity') && field.billingEntityNames.length > 1 && <div className="fi-billing-section">Billing split equally: {field.billingEntityNames.join(' / ')}. Contact Acre to change these links.</div>}
+                  {showQuestion('billing_entity') && field.billingEntityNames.length <= 1 && billingEntityOptions.length > 1 && (
                     <div className="fi-billing-section">
                       <div className="fi-field-label">Billing Entity</div>
                       <div className="fi-select-row">

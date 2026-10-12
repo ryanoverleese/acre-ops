@@ -1,56 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { NextResponse } from 'next/server';
+import { withApiAuth } from '@/lib/supabase/api';
+import { createRow, updateRow, getRow, getRows, deleteRow, type Row } from '@/lib/supabase/adapter';
+import { transaction, query } from '@/lib/supabase/database';
+import { DataError, positiveId } from '@/lib/supabase/registry';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-const NOTE_TITLE = 'Probe RMA Records';
-
-export async function POST(request: NextRequest) {
-  try {
-    const { serial, reason, date, fieldName, operation } = await request.json();
-
-    const dateStr = date || new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-    const parts = [dateStr, `#${serial}`, reason];
-    if (fieldName) parts.push(fieldName);
-    if (operation) parts.push(operation);
-    const newLine = parts.join(' – ');
-
-    // Find existing note
-    const listRes = await fetch(
-      `${BASEROW_API_URL}/${TABLE_IDS.documents}/?user_field_names=true&size=200`,
-      { headers: { 'Authorization': `Token ${BASEROW_TOKEN}` } }
-    );
-    const listData = await listRes.json();
-    const existing = (listData.results ?? []).find(
-      (r: { name?: string }) => r.name === NOTE_TITLE
-    );
-
-    if (existing) {
-      // Append new line to existing note
-      const updated = existing.description ? `${existing.description}\n${newLine}` : newLine;
-      await fetch(`${BASEROW_API_URL}/${TABLE_IDS.documents}/${existing.id}/?user_field_names=true`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Token ${BASEROW_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: updated, uploaded_at: new Date().toISOString() }),
-      });
-    } else {
-      // Create it fresh
-      await fetch(`${BASEROW_API_URL}/${TABLE_IDS.documents}/?user_field_names=true`, {
-        method: 'POST',
-        headers: { 'Authorization': `Token ${BASEROW_TOKEN}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: NOTE_TITLE,
-          description: newLine,
-          uploaded_by: 'Ryan',
-          uploaded_at: new Date().toISOString(),
-        }),
-      });
-    }
-
-    bustTableCache('documents');
-    return NextResponse.json({ ok: true });
-  } catch (err) {
-    console.error('log-removal error:', err);
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
-  }
-}
+export const POST=withApiAuth(async(request,_context,current)=>{
+ const {serial,reason,date,fieldName,operation}=await request.json();
+ if(!serial||!reason) throw new DataError('Serial and reason are required');
+ const line=[date||new Date().toLocaleDateString('en-US'),`#${serial}`,reason,fieldName,operation].filter(Boolean).join(' – ');
+ await transaction(async()=>{
+  const rows=await getRows<{id:number;description:string}>('documents',{filters:{name:'Probe RMA Records'}});
+  if(rows.length>1) throw new DataError('Multiple RMA notes exist; choose one before appending',409);
+  const payload={description:rows[0]?.description?rows[0].description+'\n'+line:line,uploaded_at:new Date().toISOString()};
+  if(rows[0]) await updateRow('documents',rows[0].id,payload);
+  else await createRow('documents',{...payload,name:'Probe RMA Records',uploaded_by:'name' in current?current.name:'Staff'});
+ });
+ return NextResponse.json({ok:true});
+});

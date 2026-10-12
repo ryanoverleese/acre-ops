@@ -1,70 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { NextResponse } from 'next/server';
+import { withApiAuth } from '@/lib/supabase/api';
+import { createRow, updateRow, getRow, getRows, deleteRow, type Row } from '@/lib/supabase/adapter';
+import { transaction, query } from '@/lib/supabase/database';
+import { DataError, positiveId } from '@/lib/supabase/registry';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-
-export async function GET(request: NextRequest) {
-  const search = request.nextUrl.searchParams.get('search') ?? '';
-  const params = new URLSearchParams({ user_field_names: 'true', size: '10' });
-  if (search) params.set('search', search);
-  const res = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.probes}/?${params}`, {
-    headers: { Authorization: `Token ${BASEROW_TOKEN}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) return NextResponse.json({ results: [] });
-  return NextResponse.json(await res.json());
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    // Serial number is optional (e.g., "On Order" probes don't have one yet)
-    const createData: Record<string, unknown> = {};
-
-    if (body.serial_number) createData.serial_number = body.serial_number;
-    if (body.brand) createData.brand = body.brand;
-    if (body.billing_entity) createData.billing_entity = [body.billing_entity];
-    if (body.contact) createData.contact = [body.contact];
-    if (body.owner_operation) createData.owner_operation = [body.owner_operation];
-    if (body.year_new) createData.year_new = body.year_new;
-    if (body.status) createData.status = body.status;
-    if (body.rack) createData.rack = body.rack;
-    if (body.rack_slot) createData.rack_slot = parseInt(body.rack_slot, 10);
-    if (body.notes) createData.notes = body.notes;
-    if (body.damages_repairs) createData.damages_repairs = body.damages_repairs;
-    if (body.is_trade !== undefined) createData.is_trade = body.is_trade;
-    // Auto-fill date_created with current date
-    createData.date_created = new Date().toISOString().split('T')[0];
-
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.probes}/?user_field_names=true`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(createData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
-      return NextResponse.json(
-        { error: 'Failed to create probe', detail: errorText },
-        { status: response.status }
-      );
-    }
-
-    const newProbe = await response.json();
-    bustTableCache('probes');
-    return NextResponse.json(newProbe, { status: 201 });
-  } catch (error) {
-    console.error('Error creating probe:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+export const GET = withApiAuth(async request => {
+ const search=request.nextUrl.searchParams.get('search')||'';
+ const page=positiveId(request.nextUrl.searchParams.get('page')||1);
+ const rows=await getRows('probes',{search});
+ const link=(p:number)=>`?${new URLSearchParams({page:String(p),search})}`;
+ return NextResponse.json({results:rows.slice((page-1)*10,page*10),count:rows.length,next:rows.length>page*10?link(page+1):null,previous:page>1?link(page-1):null});
+});
+export const POST = withApiAuth(async request => {
+ const body=await request.json();
+ return NextResponse.json(await createRow('probes',{...body,serial_number:body.serial_number||null,date_created:new Date().toISOString().slice(0,10)}),{status:201});
+});

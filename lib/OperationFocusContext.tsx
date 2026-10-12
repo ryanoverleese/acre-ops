@@ -15,7 +15,7 @@ interface OperationFocusContextType {
 
 const OperationFocusContext = createContext<OperationFocusContextType | undefined>(undefined);
 
-const FOCUS_STORAGE_KEY = 'acre-ops-focused-operation';
+const FOCUS_STORAGE_KEY = 'acre-ops-focused-operation-supabase-v1';
 
 export function OperationFocusProvider({ children }: { children: React.ReactNode }) {
   const [focusedOperation, setFocusedOperationState] = useState<FocusedOperation | null>(null);

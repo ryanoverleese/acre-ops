@@ -54,16 +54,13 @@ export default async function WaterRecsPage() {
     const waterDayOptions = (selectOptions.water_recs?.suggested_water_day || []).map(o => o.value);
 
     const operationMap = buildOperationMap(operations);
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    const { billingToOperationIds } = buildBillingToOperationMaps(contacts, operationMap);
 
     // Build field → operation mapping
-    const fieldToOperation = new Map<number, number>();
+    const fieldToOperation = new Map<number, number[]>();
     const fieldMap = new Map(rawFields.map(f => [f.id, f]));
     rawFields.forEach(field => {
-      const beId = field.billing_entity?.[0]?.id;
-      if (beId && billingToOperationMap.has(beId)) {
-        fieldToOperation.set(field.id, billingToOperationMap.get(beId)!);
-      }
+      fieldToOperation.set(field.id, [...new Set((field.billing_entity || []).flatMap(be => billingToOperationIds.get(be.id) || []))]);
     });
 
     // Find field_seasons with at least one installed probe
@@ -87,12 +84,12 @@ export default async function WaterRecsPage() {
       if (String(fs.season) !== String(currentYear)) return;
       if (!installedFieldSeasons.has(fs.id)) return;
 
-      const opId = fieldToOperation.get(fieldId);
-      if (!opId) return;
+      const opIds = fieldToOperation.get(fieldId) || [];
 
       const field = fieldMap.get(fieldId);
       if (!field) return;
 
+      for (const opId of opIds) {
       if (!opFieldsMap.has(opId)) opFieldsMap.set(opId, []);
       opFieldsMap.get(opId)!.push({
         fieldSeasonId: fs.id,
@@ -104,6 +101,7 @@ export default async function WaterRecsPage() {
         hybridVariety: fs.hybrid_variety || '',
         plantingDate: fs.planting_date || '',
       });
+      }
     });
 
     const operationGroups: OperationGroup[] = [];
@@ -125,16 +123,16 @@ export default async function WaterRecsPage() {
         fieldSeasonId: fsId,
         date: wr.date || '',
         recommendation: wr.recommendation || '',
-        suggestedWaterDay: (typeof wr.suggested_water_day === 'object' ? wr.suggested_water_day?.value : wr.suggested_water_day) || '',
+        suggestedWaterDay: wr.suggested_water_day || '',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         priority: !!(wr as any).priority,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        reportType: (wr as any).report_type?.value || '',
+        reportType: (wr as any).report_type || '',
       };
     });
 
     // Also build a fieldSeasonId → operation mapping for water rec filtering
-    const fsToOperation = new Map<number, number>();
+    const fsToOperation = new Map<number, number[]>();
     fieldSeasons.forEach(fs => {
       const fieldId = fs.field?.[0]?.id;
       if (fieldId) {

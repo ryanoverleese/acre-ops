@@ -89,20 +89,24 @@ export default function AddSeasonModal({
         const result = await response.json();
 
         // Create invoice line if billing_rate is provided
-        if (form.billing_rate && result.id && billingEntityId) {
+        if (form.billing_rate && result.id) {
           try {
-            await fetch('/api/billing/enroll', {
+            const billingResponse = await fetch('/api/billing/enroll', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                billing_entity_id: billingEntityId,
                 season: form.season,
                 field_season_id: result.id,
                 service_type: productTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });
+            if (!billingResponse.ok) {
+              const failure = await billingResponse.json();
+              throw new Error(failure.error || 'Billing shares could not be saved');
+            }
           } catch (billingError) {
+            alert('The field/season was saved, but billing needs attention: ' + (billingError instanceof Error ? billingError.message : 'Please open Billing and retry.'));
             console.error('Failed to create billing entry:', billingError);
           }
         }

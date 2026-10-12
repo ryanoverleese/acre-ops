@@ -11,12 +11,12 @@ const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, ''
 const artifacts = await mkdtemp(`${tmpdir()}/acre-removal-qa-`);
 const base = 'http://127.0.0.1:3198';
 const secret = 'removal-local-fixture-secret-not-for-production';
-let server, browser, output = '', passed = 0;
+let server, browser, authCookie = '', output = '', passed = 0;
 const check = async (name, fn) => { await fn(); passed++; console.log(`PASS ${name}`); };
 const snapshot = async () => JSON.parse(await readFile(`${artifacts}/state.json`, 'utf8'));
 const post = async values => {
   const body = new FormData(); for (const [key, value] of Object.entries(values)) body.append(key, value);
-  const response = await fetch(`${base}/api/removal`, { method: 'POST', body });
+  const response = await fetch(`${base}/api/removal`, { method: 'POST', body, headers: {Cookie: authCookie} });
   return { status: response.status, data: await response.json() };
 };
 try {
@@ -27,9 +27,9 @@ try {
   await cp(`${root}/package.json`, `${testRoot}/package.json`);
   await cp(`${root}/next.config.js`, `${testRoot}/next.config.js`);
   await symlink(`${root}/node_modules`, `${testRoot}/node_modules`, 'dir');
-  server = spawn(process.execPath, ['--require', `${root}/tests/removal/baserow-fixture.cjs`, `${root}/node_modules/next/dist/bin/next`, 'start', '--hostname', '127.0.0.1', '--port', '3198'], {
+  server = spawn(process.execPath, ['--require', `${root}/tests/supabase/browser-preload.cjs`, `${root}/node_modules/next/dist/bin/next`, 'start', '--hostname', '127.0.0.1', '--port', '3198'], {
     cwd: testRoot, stdio: ['ignore', 'pipe', 'pipe'],
-    env: { PATH: process.env.PATH, ACRE_REMOVAL_TEST: '1', ACRE_REMOVAL_TEST_STATE: `${artifacts}/state.json`, BASEROW_API_TOKEN: 'removal-fixture-only', REMOVAL_WEBHOOK_URL: 'https://removal-webhook.example.invalid/removal', AUTH_SECRET: secret, NEXTAUTH_SECRET: secret, AUTH_URL: base, NEXTAUTH_URL: base, AUTH_TRUST_HOST: 'true', NEXT_TELEMETRY_DISABLED: '1' },
+    env: { PATH: process.env.PATH, ACRE_SUPABASE_BROWSER: '1', ACRE_REMOVAL_TEST: '1', ACRE_REMOVAL_TEST_STATE: `${artifacts}/state.json`, REMOVAL_WEBHOOK_URL: 'https://removal-webhook.example.invalid/removal', AUTH_SECRET: secret, NEXTAUTH_SECRET: secret, AUTH_URL: base, NEXTAUTH_URL: base, AUTH_TRUST_HOST: 'true', NEXT_TELEMETRY_DISABLED: '1' },
   });
   server.stdout.on('data', data => { output += data; }); server.stderr.on('data', data => { output += data; });
   let ready = false;
@@ -41,10 +41,12 @@ try {
   browser = await chromium.launch({ channel: 'chrome', headless: true });
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   await context.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
-  const value = await encode({ token: { name: 'Removal QA', email: 'qa@example.invalid', role: 'admin', id: 'qa' }, secret, salt: 'authjs.session-token' });
-  await context.addCookies([{ name: 'authjs.session-token', value, url: base, httpOnly: true }]);
+  const value = await encode({ token: { name: 'Removal QA', email: 'qa@example.invalid', role: 'admin', id: '1', backend: 'supabase-native-v1' }, secret, salt: 'acre-auth-supabase-v1' });
+  authCookie = `acre-auth-supabase-v1=${value}`;
+  await context.addCookies([{ name: 'acre-auth-supabase-v1', value, url: base, httpOnly: true }]);
   const page = await context.newPage(), errors = [], requests = [];
   page.on('pageerror', error => errors.push(error.message));
+  page.on('response', async response => { if (response.status() >= 400 && response.url().includes('/api/')) console.error('Fixture API failure', response.status(), new URL(response.url()).pathname, await response.text()); });
   page.on('request', request => { if (['POST', 'PATCH', 'DELETE'].includes(request.method())) requests.push(new URL(request.url()).pathname); });
   page.setDefaultTimeout(15000);
   await check('Workflows shows only current unremoved installations and requires the actual remover', async () => {
@@ -73,7 +75,7 @@ try {
     assert.deepEqual(webhooks, [], 'Workflows must not send the CropX removal webhook');
     const selected = tables[819350].find(row => row.id === 201), sibling = tables[819350].find(row => row.id === 202);
     assert.equal(selected.probe_status.value, 'Removed'); assert.equal(selected.removal_date, '2026-10-11'); assert.equal(selected.removed_by, 'Brandon');
-    assert.equal(selected.planned_remover, 'Carter'); assert.equal(tables[817300][0].planned_remover.value, 'Carter');
+    assert.equal(selected.planned_remover, 'Carter'); assert.equal(tables[817300].find(row=>row.id===101).planned_remover.value, 'Carter');
     assert.equal(sibling.probe_status.value, 'Installed'); assert.equal(sibling.planned_remover, 'Ryan');
     assert.equal(tables[817299][0].status.value, 'In Stock'); assert.equal(tables[817299][1].status.value, 'Installed');
     assert.deepEqual(writes.map(({ table, id }) => [table, id]), [[819350, 201], [817299, 11]]);
@@ -91,8 +93,9 @@ try {
     assert.equal(webhooks[0].assignment_id, 202);
     assert.equal(webhooks[0].source, 'acre-ops');
     assert.deepEqual(tables[819350][0], before.tables[819350][0]);
-    assert.equal(tables[819350][1].probe_status.value, 'Removed'); assert.equal(tables[819350][1].removed_by, 'Ryan');
-    assert.equal(tables[819350][1].removal_date, new Date().toISOString().slice(0, 10));
+    const crewRow = tables[819350].find(row=>row.id===202);
+    assert.equal(crewRow.probe_status.value, 'Removed'); assert.equal(crewRow.removed_by, 'Ryan');
+    assert.equal(crewRow.removal_date, new Date().toISOString().slice(0, 10));
     assert.equal(tables[817299][1].status.value, 'In Stock');
   });
   await check('repeat submission returns original date/remover; no planning writes or browser errors', async () => {

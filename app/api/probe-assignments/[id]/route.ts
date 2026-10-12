@@ -1,15 +1,15 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, addSpaceVariants, bustTableCache } from '@/lib/baserow';
+import { addSpaceVariants, bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export const PATCH = withApiAuth(async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const probeAssignmentId = parseInt(id, 10);
@@ -60,21 +60,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     if (body.approval_sent !== undefined) updateData.approval_sent = body.approval_sent;
 
     const patchData = addSpaceVariants(updateData);
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/?user_field_names=true`;
+    const url = { table: 'probe_assignments', id: probeAssignmentId };
     console.log('PATCH probe assignment:', probeAssignmentId, 'with data:', JSON.stringify(patchData));
 
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(patchData),
-    });
+    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(patchData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       console.error('Request body was:', JSON.stringify(patchData));
       return NextResponse.json(
         { error: 'Failed to update probe assignment', details: errorText },
@@ -93,9 +86,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export const DELETE = withApiAuth(async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const probeAssignmentId = parseInt(id, 10);
@@ -107,17 +100,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${probeAssignmentId}/`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-    });
+    const url = { table: 'probe_assignments', id: probeAssignmentId };
+    const response = await dataRequest(url, { method: 'DELETE' });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to delete probe assignment' },
         { status: response.status }
@@ -133,4 +121,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

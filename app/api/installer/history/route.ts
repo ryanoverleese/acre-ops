@@ -1,3 +1,5 @@
+import { fieldOperationLabel } from '@/lib/data-mappings';
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCachedRows,
@@ -13,7 +15,7 @@ import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappi
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiAuth(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const installer = searchParams.get('installer');
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
@@ -39,7 +41,7 @@ export async function GET(request: NextRequest) {
     const probeMap = new Map(probes.map((p) => [p.id, p]));
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    const { billingToOperationIds: billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     void billingEntities;
 
@@ -83,11 +85,7 @@ export async function GET(request: NextRequest) {
         const fieldId = fs.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
 
-        let operationName = '';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) operationName = operationMap.get(opId) || '';
-        }
+        const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
 
         const probeId = pa.probe?.[0]?.id ?? null;
         const probe = probeId ? probeMap.get(probeId) : null;
@@ -122,4 +120,4 @@ export async function GET(request: NextRequest) {
     console.error('installer history error:', error);
     return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 });
   }
-}
+});

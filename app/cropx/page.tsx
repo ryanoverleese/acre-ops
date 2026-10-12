@@ -58,8 +58,7 @@ export default async function CropXOrderPage() {
   // billing entity → fields
   const beToFields = new Map<number, typeof rawFields>();
   rawFields.forEach((f) => {
-    const beId = f.billing_entity?.[0]?.id;
-    if (beId) {
+    for (const {id: beId} of f.billing_entity || []) {
       if (!beToFields.has(beId)) beToFields.set(beId, []);
       beToFields.get(beId)!.push(f);
     }
@@ -103,7 +102,7 @@ export default async function CropXOrderPage() {
       let totalCropX = 0, totalOnOrderV4 = 0, totalOnOrderTradeV4 = 0, totalOnOrderApex = 0;
       const fieldRows: CropXFieldRow[] = [];
 
-      for (const field of opFields) {
+      for (const field of new Map(opFields.map(field => [field.id, field])).values()) {
         const fss = (fieldToFS.get(field.id) ?? []).filter((fs) => String(fs.season) === season);
         if (fss.length === 0) continue;
 

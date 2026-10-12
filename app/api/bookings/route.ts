@@ -1,10 +1,11 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
 import { getCachedRows, type FieldSeason, type Field, type Contact, type Operation, type ProbeAssignment } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
 export const revalidate = 600; // Cache for 10 minutes
 
-export async function GET() {
+export const GET = withApiAuth(async function GET() {
   try {
     const currentYear = new Date().getFullYear();
     const previousYear = currentYear - 1;
@@ -17,14 +18,14 @@ export async function GET() {
 
     const operationMap = buildOperationMap(operations);
     const fullOpMap = new Map(operations.map(op => [op.id, op]));
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    const { billingToOperationIds } = buildBillingToOperationMaps(contacts, operationMap);
     const fieldMap = new Map(fields.map(f => [f.id, f]));
 
     const notReturningTag = `[NOT_RETURNING_${currentYear}]`;
 
     // Map field_season ID → operation ID for current and previous season
-    const fsToOp = new Map<number, number>();
-    const fsToOpPrev = new Map<number, number>();
+    const fsToOp = new Map<number, number[]>();
+    const fsToOpPrev = new Map<number, number[]>();
     const opFieldsPrev = new Map<number, Set<number>>();
     const opFieldsCurr = new Map<number, Set<number>>();
 
@@ -33,18 +34,17 @@ export async function GET() {
       const fieldId = fs.field?.[0]?.id;
       if (!fieldId) continue;
       const field = fieldMap.get(fieldId);
-      const beId = field?.billing_entity?.[0]?.id;
-      if (!beId) continue;
-      const opId = billingToOperationMap.get(beId);
-      if (!opId) continue;
+      const opIds = [...new Set((field?.billing_entity || []).flatMap(be => billingToOperationIds.get(be.id) || []))];
       if (fs.service_type?.[0]?.value === 'CropX Complete DIY') continue;
 
-      if (fs.season == currentYear) fsToOp.set(fs.id, opId);
-      if (fs.season == previousYear) fsToOpPrev.set(fs.id, opId);
+      if (fs.season == currentYear) fsToOp.set(fs.id, opIds);
+      if (fs.season == previousYear) fsToOpPrev.set(fs.id, opIds);
 
       const bucket = fs.season == previousYear ? opFieldsPrev : opFieldsCurr;
-      if (!bucket.has(opId)) bucket.set(opId, new Set());
-      bucket.get(opId)!.add(fieldId);
+      for (const opId of opIds) {
+        if (!bucket.has(opId)) bucket.set(opId, new Set());
+        bucket.get(opId)!.add(fieldId);
+      }
     }
 
     // Count probe assignments per operation for current and previous season
@@ -53,10 +53,8 @@ export async function GET() {
     for (const pa of probeAssignments) {
       const fsId = pa.field_season?.[0]?.id;
       if (!fsId) continue;
-      const opIdCurr = fsToOp.get(fsId);
-      if (opIdCurr) opProbesCurr.set(opIdCurr, (opProbesCurr.get(opIdCurr) || 0) + 1);
-      const opIdPrev = fsToOpPrev.get(fsId);
-      if (opIdPrev) opProbesPrev.set(opIdPrev, (opProbesPrev.get(opIdPrev) || 0) + 1);
+      for (const opId of fsToOp.get(fsId) || []) opProbesCurr.set(opId, (opProbesCurr.get(opId) || 0) + 1);
+      for (const opId of fsToOpPrev.get(fsId) || []) opProbesPrev.set(opId, (opProbesPrev.get(opId) || 0) + 1);
     }
 
     const allOpIds = new Set([...opFieldsPrev.keys(), ...opFieldsCurr.keys()]);
@@ -106,4 +104,4 @@ export async function GET() {
     console.error('Bookings API error:', (error as Error).message);
     return NextResponse.json({ bookings: [], remainingFields: 0, currentYear: new Date().getFullYear(), previousYear: new Date().getFullYear() - 1 }, { status: 200 });
   }
-}
+});

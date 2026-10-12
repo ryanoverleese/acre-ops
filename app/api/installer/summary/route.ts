@@ -1,3 +1,4 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCachedRows,
@@ -14,7 +15,7 @@ import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappi
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiAuth(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
   const fresh = searchParams.get('fresh') === '1';
@@ -97,4 +98,4 @@ export async function GET(request: NextRequest) {
     console.error('installer summary error:', error);
     return NextResponse.json({ error: 'Failed to fetch summary' }, { status: 500 });
   }
-}
+});
