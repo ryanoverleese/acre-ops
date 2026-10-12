@@ -1,0 +1,7 @@
+# Import runtime state can contain private customer/file metadata.
+/import-errors.json
+/import-manifest.json
+/import-report.json
+/import-report.md
+/import-*.tmp
+/import.lock
