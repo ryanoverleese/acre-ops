@@ -7,12 +7,18 @@ Never run a Baserow write from either script. Do not touch the stash
 
 ## Current prep gates
 
-- The fresh Baserow comparison is **not complete**: `BASEROW_API_TOKEN` is absent
-  from `.env.local`. Production Netlify secret access was blocked by the prep
-  restriction. Ryan must supply a local read-only token before proceeding.
-- Read-only Supabase checks succeeded via `DATABASE_URL_ALT`, with all 65 tables
-  RLS-enabled and no client table grants. Counts are in `cutover-prep-report.md`.
-  These counts do **not** prove source parity or zero changed rows/files.
+- Fresh importer and delta dry runs completed on **October 13, 2026, 10:45 AM
+  America/Chicago**: 4 new `water_recs`, no changed rows to sync, no deletions,
+  no new files, and no errors. All 250 existing file references verified.
+  The full per-table report is in `cutover-prep-report.md`. Recompare under the
+  write freeze; this point-in-time result is not an approval to sync or deploy.
+- The supplied source credential was used in memory only. Before running these
+  commands again, securely add a replacement read-only `BASEROW_API_TOKEN` to
+  ignored `.env.local`; rotate the previously shared token. Do not retrieve
+  production Netlify secrets as a workaround.
+- Read-only Supabase checks succeeded via `DATABASE_URL_ALT`: all 65 tables
+  have RLS, all 15 views are security-invoker, and client table grants remain
+  closed. Hashed PINs and the newer destination login timestamp are preserved.
 - No live delta apply has been executed. The delta's apply path is exercised only
   against synthetic, in-memory PostgreSQL. Review the dry run before live use.
 - Confirm the CropX webhook receiver accepts **Supabase assignment IDs**, not
