@@ -22,14 +22,14 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const STATE = resolve(ROOT, 'scripts');
 const PAGE_SIZE = 200;
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
-type Row = Record<string, unknown>;
+export type Row = Record<string, unknown>;
 type Option = { id: number; value: string; color?: string };
 type Field = { id: number; name: string; type: string; select_options?: Option[]; link_row_table_id?: number };
 type Column = { name: string; type: string; required: boolean; identity: boolean; target?: string };
 type Catalog = { name: string; source: string; field: string };
-type Schema = { tables: Map<string, Column[]>; catalogs: Catalog[] };
-type Snapshot = { fields: Map<string, Field[]>; rows: Map<string, Row[]> };
-type Crosswalk = Map<string, Map<string, string>>;
+export type Schema = { tables: Map<string, Column[]>; catalogs: Catalog[] };
+export type Snapshot = { fields: Map<string, Field[]>; rows: Map<string, Row[]> };
+export type Crosswalk = Map<string, Map<string, string>>;
 export type Issue = { kind: string; table: string; row?: string; field?: string; file_index?: number; target_id?: string; code: string; blocking: boolean };
 type FileRef = { bucket: string; path: string; name: string; size: number; mime: string };
 type ManifestEntry = { ref: FileRef; sha256: string; source_size: number | null };
@@ -72,14 +72,14 @@ export const digest = (value: string | Uint8Array) => createHash('sha256').updat
 const normalizeName = (name: string) => name.toLowerCase().replace(/\?/g, '').replace(/\s+/g, '_');
 const blank = (value: unknown) => value === null || value === undefined || (typeof value === 'string' && !value.trim());
 const label = (value: unknown): unknown => value && typeof value === 'object' && !Array.isArray(value) ? (value as Row).value : value;
-const identifier = (name: string) => { if (!/^[a-z_][a-z0-9_]*$/.test(name)) throw new SafeError('Invalid SQL identifier'); return `"${name}"`; };
+export const identifier = (name: string) => { if (!/^[a-z_][a-z0-9_]*$/.test(name)) throw new SafeError('Invalid SQL identifier'); return `"${name}"`; };
 const rowId = (value: unknown) => {
   if (typeof value === 'number' && !Number.isSafeInteger(value)) throw new SafeError('Unsafe numeric row ID');
   const id = String(value);
   if (!/^[1-9]\d*$/.test(id)) throw new SafeError('Invalid positive row ID');
   return id;
 };
-const fieldFor = (s: Snapshot, table: string, name: string) => s.fields.get(table)?.find(f => normalizeName(f.name) === name);
+export const fieldFor = (s: Snapshot, table: string, name: string) => s.fields.get(table)?.find(f => normalizeName(f.name) === name);
 const sourceValue = (row: Row, field?: Field) => field ? row[`field_${field.id}`] : undefined;
 const issue = (issues: Issue[], value: Issue) => { if (!issues.some(i => JSON.stringify(i) === JSON.stringify(value))) issues.push(value); };
 
@@ -511,7 +511,7 @@ export async function downloadFile(file: Row, fetcher: Fetcher = fetch): Promise
   return { bytes, mime };
 }
 
-async function atomicJson(path: string, value: unknown): Promise<void> {
+export async function atomicJson(path: string, value: unknown): Promise<void> {
   const tmp = resolve(dirname(path), `import-${randomUUID()}.tmp`);
   await writeFile(tmp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
   await rename(tmp, path);
@@ -537,6 +537,10 @@ export class FileCopier {
     }
     const { bytes, mime } = await downloadFile(file, this.fetcher); this.counts.downloaded++; this.counts.bytes += bytes.length;
     const ref: FileRef = { bucket: BUCKET, path: identity.path, name: identity.name, size: bytes.length, mime };
+    if (this.target && !this.target.apply) {
+      const existing = await this.target.objectBytes(identity.path);
+      if (existing && digest(existing) !== digest(bytes)) throw new SafeError('Existing object conflicts with source; will not overwrite');
+    }
     if (this.target?.apply) {
       // Crash recovery: upload may have succeeded immediately before manifest was saved.
       const existing = await this.target.objectBytes(identity.path);
@@ -576,13 +580,13 @@ export class FileCopier {
   }
 }
 
-async function loadManifest(): Promise<Manifest> {
+export async function loadManifest(): Promise<Manifest> {
   try { return JSON.parse(await readFile(resolve(STATE, 'import-manifest.json'), 'utf8')); }
   catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new SafeError('Cannot read manifest; preserve it and repair before rerun'); }
   return { version: 1, project: PROJECT, database: DATABASE, files: {} };
 }
 
-function assertEnvironment(env: NodeJS.ProcessEnv, sourceOnly: boolean): void {
+export function assertEnvironment(env: NodeJS.ProcessEnv, sourceOnly: boolean): void {
   const required = sourceOnly ? ['BASEROW_API_TOKEN'] : ['BASEROW_API_TOKEN', 'DATABASE_URL', 'SUPABASE_URL'];
   for (const key of required) if (!env[key]) throw new SafeError(`Missing environment variable: ${key}`);
   if (!sourceOnly && !env.SUPABASE_SERVICE_ROLE_KEY && !env.SUPABASE_SECRET_KEY) throw new SafeError('Missing acre-ops SUPABASE_SERVICE_ROLE_KEY (or SUPABASE_SECRET_KEY)');
@@ -591,8 +595,19 @@ function assertEnvironment(env: NodeJS.ProcessEnv, sourceOnly: boolean): void {
   if (!sourceOnly) { databaseConfig(env.DATABASE_URL!); if (env.DATABASE_URL_ALT) databaseConfig(env.DATABASE_URL_ALT); }
 }
 
+// The two reviewed cutover migrations are already live. These columns are
+// destination-owned and absent from Baserow; never backfill/overwrite them.
+export async function loadCurrentSchema(): Promise<Schema> {
+  const schema = parseSchema(await readFile(resolve(ROOT, 'supabase/migrations/001_init.sql'), 'utf8'), await readFile(resolve(ROOT, 'supabase/migrations', BILLING_MIGRATION), 'utf8'));
+  schema.tables.get('invoice_lines')!.push(
+    { name: 'field_unit_rate', type: 'numeric(14,2)', required: false, identity: false },
+    { name: 'field_quantity', type: 'numeric(14,4)', required: false, identity: false },
+  );
+  return schema;
+}
+
 export async function run(args: string[], env?: NodeJS.ProcessEnv, log: Logger = console.log): Promise<void> {
-  if (args.includes('--help')) { log('node scripts/import-baserow.ts [--dry-run | --source-only | --apply --expected-fingerprint=SHA256]\nLoads .env.local; existing environment variables take precedence. Default: full read-only dry run. See scripts/import-baserow.README.md.'); return; }
+  if (args.includes('--help')) { log('node scripts/import-baserow.ts [--dry-run | --source-only]\nLoads .env.local; existing environment variables take precedence. Default: full read-only dry run. Legacy apply is disabled; use delta-baserow.ts for cutover. See scripts/import-baserow.README.md.'); return; }
   if (!env) {
     let local: Record<string, string | undefined> = {};
     try { local = parseEnv(await readFile(resolve(ROOT, '.env.local'), 'utf8')); }
@@ -605,7 +620,8 @@ export async function run(args: string[], env?: NodeJS.ProcessEnv, log: Logger =
   const branch = execFileSync('git', ['branch', '--show-current'], { cwd: ROOT, encoding: 'utf8' }).trim();
   if (branch !== 'supabase-schema') throw new SafeError('Run only from branch supabase-schema');
   assertEnvironment(env, sourceOnly);
-  const schema = parseSchema(await readFile(resolve(ROOT, 'supabase/migrations/001_init.sql'), 'utf8'), await readFile(resolve(ROOT, 'supabase/migrations', BILLING_MIGRATION), 'utf8'));
+  if (apply) throw new SafeError('Initial import is complete. Use the reviewed delta-baserow.ts workflow; this legacy apply cannot preserve hashed PINs or destination billing snapshots');
+  const schema = await loadCurrentSchema();
   const target = sourceOnly ? undefined : new Destination(env.DATABASE_URL!, env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY!, apply, fetch, undefined, env.DATABASE_URL_ALT);
   try {
   if (target) { await target.verify(schema); log(`Verified acre-ops Postgres via ${target.connectionUsed}; Storage authentication passed`); }

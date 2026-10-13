@@ -1,5 +1,16 @@
 # One-way Baserow import
 
+## Cutover update
+
+The initial import is complete. `--dry-run` now recognizes the already-applied
+invoice billing-basis columns; legacy `--apply` is intentionally disabled to
+prevent overwriting bcrypt PINs or performing a full re-import. Use the default
+read-only `scripts/delta-baserow.ts --dry-run --report` comparison for cutover.
+The safe apply/restart/deletion procedure is in
+[`supabase/cutover-runbook.md`](../supabase/cutover-runbook.md). The historical
+initial-import procedure below records how the first copy was made, not the
+current cutover command. No migrations are reapplied by either script.
+
 Run with Node 24 or newer from branch `supabase-schema`. App dependencies and
 configuration, migrations, policies and grants are not changed by the importer. It is
 pinned to the SHA-256 of `001_init.sql` at commit `368e25d` and the approved
