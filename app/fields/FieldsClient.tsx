@@ -14,6 +14,7 @@ import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
+import { fieldBilling } from '@/lib/data-mappings';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -959,6 +960,7 @@ export default function FieldsClient({
         body: JSON.stringify(body),
       });
       if (response.ok) {
+        const billing = fieldName === 'billing_entity' ? fieldBilling(await response.json()) : null;
         setFields(prev => prev.map(f => {
           if (f.id !== fieldId) return f;
           const snakeToCamel: Record<string, string> = {
@@ -971,9 +973,9 @@ export default function FieldsClient({
             billing_entity: 'billingEntityId',
           };
           const camelKey = snakeToCamel[fieldName] || fieldName;
-          if (fieldName === 'billing_entity') {
-            const be = billingEntities.find(b => b.id.toString() === String(value));
-            return { ...f, billingEntityId: value ? Number(value) : null, billingEntityName: be?.name || '' };
+          if (billing) {
+            return { ...f, billingEntityId: billing.singleId, billingEntityName: billing.label,
+              billingEntityIds: billing.ids, billingEntityNames: billing.names };
           }
           return { ...f, [camelKey]: value };
         }));
@@ -1031,6 +1033,8 @@ export default function FieldsClient({
       lng: field.lng,
       billingEntityId: field.billingEntityId,
       billingEntityName: field.billingEntityName,
+      billingEntityIds: field.billingEntityIds ?? (field.billingEntityId ? [field.billingEntityId] : []),
+      billingEntityNames: field.billingEntityNames,
       waterSource: field.waterSource,
       fuelSource: field.fuelSource,
       notes: field.notes,
@@ -1088,7 +1092,8 @@ export default function FieldsClient({
           pivot_acres: editForm.pivotAcres,
           lat,
           lng,
-          billing_entity: editForm.billingEntityId || null,
+          // Always submit the complete join, including intentional empty selections.
+          billing_entity: editForm.billingEntityIds ?? selectedField.billingEntityIds ?? (selectedField.billingEntityId ? [selectedField.billingEntityId] : []),
           water_source: editForm.waterSource || null,
           fuel_source: editForm.fuelSource || null,
           notes: editForm.notes || null,
@@ -1110,6 +1115,9 @@ export default function FieldsClient({
         }),
       });
       if (response.ok) {
+        const billing = fieldBilling(await response.json());
+        const billingState = { billingEntityId: billing.singleId, billingEntityName: billing.label,
+          billingEntityIds: billing.ids, billingEntityNames: billing.names };
         // Update local state instead of reloading to preserve current tab
         const updatedField: ProcessedField = {
           ...selectedField,
@@ -1118,8 +1126,7 @@ export default function FieldsClient({
           pivotAcres: editForm.pivotAcres,
           lat: lat ?? selectedField.lat,
           lng: lng ?? selectedField.lng,
-          billingEntityId: editForm.billingEntityId ?? selectedField.billingEntityId,
-          billingEntityName: editForm.billingEntityName ?? selectedField.billingEntityName,
+          ...billingState,
           waterSource: editForm.waterSource,
           fuelSource: editForm.fuelSource,
           notes: editForm.notes,
@@ -1142,9 +1149,8 @@ export default function FieldsClient({
 
         // Update fields array
         setFields(prev => prev.map(f =>
-          f.id === selectedField.id && f.fieldSeasonId === selectedField.fieldSeasonId
-            ? updatedField
-            : f
+          f.id !== selectedField.id ? f : f.fieldSeasonId === selectedField.fieldSeasonId
+            ? updatedField : { ...f, ...billingState }
         ));
 
         // Update selected field and close edit mode
@@ -1172,6 +1178,8 @@ export default function FieldsClient({
         lng: selectedField.lng,
         billingEntityId: selectedField.billingEntityId,
         billingEntityName: selectedField.billingEntityName,
+        billingEntityIds: selectedField.billingEntityIds ?? (selectedField.billingEntityId ? [selectedField.billingEntityId] : []),
+        billingEntityNames: selectedField.billingEntityNames,
         waterSource: selectedField.waterSource,
         fuelSource: selectedField.fuelSource,
         notes: selectedField.notes,
@@ -2749,16 +2757,22 @@ export default function FieldsClient({
                       <input type="text" value={editForm.name || ''} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label>Billing Entity</label>
+                      <label>Billing Entities</label>
                       <SearchableSelect
-                        value={editForm.billingEntityId?.toString() || ''}
-                        onChange={(v) => {
-                          const be = billingEntities.find(b => b.id.toString() === v);
-                          setEditForm({ ...editForm, billingEntityId: v ? parseInt(v, 10) : null, billingEntityName: be?.name || '' });
+                        multi
+                        value={(editForm.billingEntityIds || []).map(String)}
+                        onChange={(values) => {
+                          const ids = values.map(Number);
+                          const names = ids.map(id => billingEntities.find(be => be.id === id)?.name || String(id));
+                          setEditForm({ ...editForm, billingEntityIds: ids, billingEntityNames: names,
+                            billingEntityId: ids.length === 1 ? ids[0] : null, billingEntityName: names.join(' / ') });
                         }}
                         options={billingEntities.map(be => ({ value: be.id.toString(), label: be.name })).sort((a, b) => a.label.localeCompare(b.label))}
-                        placeholder="Select billing entity..."
+                        placeholder="Select billing entities..."
                       />
+                      {(editForm.billingEntityIds?.length || 0) > 1 && (
+                        <small>{editForm.billingEntityNames?.join(' / ')}</small>
+                      )}
                     </div>
                     <div className="form-row">
                       <div className="form-group">

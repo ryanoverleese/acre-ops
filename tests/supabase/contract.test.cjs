@@ -37,6 +37,25 @@ test('billing uses all join links, omitted links survive, and explicit [] clears
   assert.deepEqual((await a.updateRow('fields',temporary.id,{billing_entity:[]})).billing_entity,[]);
   await assert.rejects(a.updateRow('fields',field.id,{billing_entity_id:be2.id}),/not writable/);
 });
+test('field-detail saves preserve every billing link and reject legacy scalar replacement', async () => {
+  const {PATCH}=f.load('app/api/fields/[id]/route.ts');
+  const target=await a.createRow('fields',{name:'Detail save fixture',billing_entity:[be1.id,be2.id]});
+  const context={params:Promise.resolve({id:String(target.id)})};
+  const saved=await PATCH(f.request(`/api/fields/${target.id}`,{notes:'Unrelated detail edit',billing_entity:[be1.id,be2.id]},'PATCH'),context);
+  assert.equal(saved.status,200);
+  assert.deepEqual((await saved.json()).billing_entity.map(link=>link.id),[be1.id,be2.id]);
+  const persisted=await a.getRow('fields',target.id);
+  assert.equal(persisted.notes,'Unrelated detail edit');
+  assert.deepEqual(persisted.billing_entity.map(link=>link.id),[be1.id,be2.id]);
+  const rejected=await PATCH(f.request(`/api/fields/${target.id}`,{notes:'Must not save',billing_entity:be1.id},'PATCH'),context);
+  assert.equal(rejected.status,409);
+  assert.deepEqual(await a.getRow('fields',target.id),persisted);
+  for (const ids of [[be2.id],[]]) {
+    const changed=await PATCH(f.request(`/api/fields/${target.id}`,{billing_entity:ids},'PATCH'),context);
+    assert.equal(changed.status,200);
+    assert.deepEqual((await changed.json()).billing_entity.map(link=>link.id),ids);
+  }
+});
 test('blank text/serials become null; credentials never appear in public DTOs', async () => {
   const probe = await a.createRow('probes',{serial_number:'   ',notes:''});
   assert.equal(probe.serial_number,null); assert.equal(probe.notes,null);

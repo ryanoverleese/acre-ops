@@ -196,6 +196,50 @@ try {
     assert.equal(await quantity().inputValue(),'2');
     await quantity().fill('2'); await quantity().press('Tab'); await checkTotal();
   });
+  await check('shared Fields billing displays every entity and detail saves preserve the complete join', async () => {
+    const readField=async()=>{
+      const response=await context.request.get(`${base}/api/fields/1`,{headers:{Cookie:authCookie}});
+      assert.equal(response.status(),200); return response.json();
+    };
+    const original=await readField();
+    const ids=original.billing_entity.map(link=>link.id);
+    assert.equal(ids.length,2);
+    await page.goto(`${base}/fields`);
+    await page.getByRole('button',{name:'Signup',exact:true}).click();
+    const sharedButton=()=>page.locator('table').getByRole('button',{name:'QA Billing / QA Split Partner',exact:true});
+    await sharedButton().waitFor();
+    await sharedButton().click();
+    const panel=page.locator('.detail-panel');
+    await panel.getByRole('button',{name:'Edit Field',exact:true}).click();
+    await panel.getByRole('button',{name:'2 selected',exact:true}).click();
+    await page.locator('.searchable-select-option input:checked').first().waitFor();
+    assert.equal(await page.locator('.searchable-select-option input:checked').count(),2);
+    await page.locator('.searchable-select-option').filter({hasText:'QA Split Partner'}).getByRole('checkbox').uncheck();
+    await page.locator('.searchable-select-dropdown').getByRole('button',{name:'Close',exact:true}).click();
+    await panel.getByRole('button',{name:'Cancel',exact:true}).click();
+    await panel.getByRole('button',{name:'Edit Field',exact:true}).click();
+    await panel.getByRole('button',{name:'2 selected',exact:true}).waitFor();
+    await panel.locator('.form-group').filter({has:page.locator('label').filter({hasText:/^Notes$/})}).locator('textarea').fill('Shared field detail QA');
+    const [saved]=await Promise.all([
+      page.waitForResponse(response=>new URL(response.url()).pathname==='/api/fields/1'&&response.request().method()==='PATCH'),
+      panel.getByRole('button',{name:'Save Changes',exact:true}).click(),
+    ]);
+    assert.equal(saved.status(),200,await saved.text());
+    assert.deepEqual(saved.request().postDataJSON().billing_entity,ids);
+    await panel.getByRole('button',{name:'Edit Field',exact:true}).waitFor();
+    assert.deepEqual((await readField()).billing_entity,original.billing_entity);
+    assert.equal((await readField()).notes,'Shared field detail QA');
+    await page.reload();
+    await sharedButton().waitFor();
+    await sharedButton().click();
+    await panel.getByText('Shared field detail QA',{exact:true}).waitFor();
+    await panel.getByRole('button',{name:'Edit Field',exact:true}).click();
+    await panel.getByRole('button',{name:'2 selected',exact:true}).click();
+    await page.locator('.searchable-select-option input:checked').first().waitFor();
+    assert.equal(await page.locator('.searchable-select-option input:checked').count(),2);
+    await page.locator('.searchable-select-dropdown').getByRole('button',{name:'Close',exact:true}).click();
+    await page.screenshot({path:`${artifacts}/shared-field-details.png`});
+  });
   await check('installer access remains unchanged', async () => {
     // Separate accounts need separate cookie jars: an in-flight admin request
     // may rotate its session cookie after a same-context role switch.

@@ -160,6 +160,18 @@ export function FieldCell({
     case 'operation':
       return <td key={colKey} style={{ color: 'var(--text-secondary)' }}>{field.operation}</td>;
     case 'billingEntity':
+      if ((field.billingEntityIds?.length || 0) > 1) {
+        return (
+          <td key={colKey} onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="searchable-select-trigger"
+              style={{ whiteSpace: 'normal', textAlign: 'left' }}
+              title="View all billing entities and edit field details"
+              onClick={() => onRowClick(field)}>
+              {field.billingEntityNames?.join(' / ') || field.billingEntityName}
+            </button>
+          </td>
+        );
+      }
       return (
         <td key={colKey} onClick={(e) => e.stopPropagation()}>
           <InlineFieldSelect fieldId={field.id} apiField="billing_entity" value={field.billingEntityId ? String(field.billingEntityId) : ''} options={billingEntityOptions}
