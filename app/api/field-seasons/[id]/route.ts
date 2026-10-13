@@ -1,15 +1,15 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, addSpaceVariants, bustTableCache } from '@/lib/baserow';
+import { addSpaceVariants, bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export const PATCH = withApiAuth(async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const fieldSeasonId = parseInt(id, 10);
@@ -51,21 +51,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 
     const patchData = addSpaceVariants(updateData);
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/?user_field_names=true`;
+    const url = { table: 'field_seasons', id: fieldSeasonId };
     console.log('PATCH field-season:', fieldSeasonId, 'with data:', JSON.stringify(patchData));
 
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(patchData),
-    });
+    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(patchData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to update field season', status: response.status, details: errorText },
         { status: response.status }
@@ -84,9 +77,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export const DELETE = withApiAuth(async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const fieldSeasonId = parseInt(id, 10);
@@ -98,17 +91,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.field_seasons}/${fieldSeasonId}/`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-    });
+    const url = { table: 'field_seasons', id: fieldSeasonId };
+    const response = await dataRequest(url, { method: 'DELETE' });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to delete field season' },
         { status: response.status }
@@ -124,4 +112,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

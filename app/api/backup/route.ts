@@ -1,59 +1,7 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { TABLE_IDS, type TableName } from '@/lib/baserow';
+import { TABLE_IDS, getRows, type TableName } from '@/lib/baserow';
 import { auth } from '@/auth';
-
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-
-async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(url, init);
-    if (response.ok || (response.status < 500 && response.status !== 429)) {
-      return response;
-    }
-    if (attempt < maxRetries) {
-      const delay = Math.pow(2, attempt) * 1000;
-      await new Promise(resolve => setTimeout(resolve, delay));
-    } else {
-      return response;
-    }
-  }
-  throw new Error('fetchWithRetry: exhausted retries');
-}
-
-// Fetch all rows from a table (paginated, with retry)
-async function fetchAllRows(tableId: number): Promise<Record<string, unknown>[]> {
-  const allResults: Record<string, unknown>[] = [];
-  let page = 1;
-  let hasMore = true;
-
-  while (hasMore) {
-    const params = new URLSearchParams({
-      user_field_names: 'true',
-      page: page.toString(),
-      size: '200',
-    });
-
-    const response = await fetchWithRetry(`${BASEROW_API_URL}/${tableId}/?${params}`, {
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Baserow API error for table ${tableId}: ${response.status}`);
-    }
-
-    const data = await response.json();
-    allResults.push(...data.results);
-    hasMore = data.next !== null;
-    page++;
-  }
-
-  return allResults;
-}
 
 // Convert value to CSV-safe string
 function csvValue(val: unknown): string {
@@ -104,7 +52,7 @@ function rowsToCsv(rows: Record<string, unknown>[]): string {
   return lines.join('\n');
 }
 
-export async function GET() {
+export const GET = withApiAuth(async function GET() {
   // Require admin auth
   const session = await auth();
   if (!session?.user || session.user.role !== 'admin') {
@@ -113,7 +61,7 @@ export async function GET() {
 
   try {
     // Exclude users table from backup (contains password hashes)
-    const excludeTables: TableName[] = ['users'];
+    const excludeTables: TableName[] = ['users', 'installers'];
     const tableNames = (Object.keys(TABLE_IDS) as TableName[]).filter(
       (name) => !excludeTables.includes(name)
     );
@@ -121,7 +69,7 @@ export async function GET() {
     // Fetch tables sequentially to avoid Baserow rate limits (429)
     const results: { name: TableName; rows: Record<string, unknown>[] }[] = [];
     for (const name of tableNames) {
-      const rows = await fetchAllRows(TABLE_IDS[name]);
+      const rows = await getRows<Record<string, unknown>>(name);
       results.push({ name, rows });
     }
 
@@ -153,4 +101,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

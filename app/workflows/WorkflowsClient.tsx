@@ -333,71 +333,13 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
     setRmaSaving(true);
     setRmaError('');
     try {
-      const currentYear = new Date().getFullYear();
-
-      // 1. Create new probe record with note referencing old serial
-      const createRes = await fetch('/api/probes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          serial_number: rmaNewSerial.trim(),
-          brand: rmaSelected.probeBrand,
-          year_new: currentYear,
-          status: 'In Stock',
-          notes: `RMA replacement for #${rmaSelected.probeSerial}`,
-        }),
+      const response = await fetch('/api/equipment/actions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({action:'rma',probeId:rmaSelected.probeId,serial:newSerial,
+          assignmentIds:rmaSelected.assignments.filter(a=>a.season===new Date().getFullYear()).map(a=>a.id)}),
       });
-      if (!createRes.ok) throw new Error('Failed to create new probe');
-      const createData = await createRes.json();
-      const newProbeId: number = createData.id;
-
-      // 2. PATCH current-year probe assignments to point to new probe
-      const currentYearAssignments = rmaSelected.assignments.filter(a => a.season === currentYear);
-      for (const a of currentYearAssignments) {
-        const paRes = await fetch(`/api/probe-assignments/${a.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ probe: newProbeId }),
-        });
-        if (!paRes.ok) throw new Error('Failed to update probe assignment');
-      }
-
-      // 3. Retain the failed probe and its historical assignments/repair notes.
-      // Deleting it would remove the history linked to that physical device.
-      const oldProbeRes = await fetch(`/api/probes/${rmaSelected.probeId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'RMA' }),
-      });
-      if (!oldProbeRes.ok) throw new Error('Failed to mark the original probe as RMA');
-
-      // 4. Update rack slot (best-effort)
-      try {
-        const rackRes = await fetch('/api/probe-rack');
-        const rackData = await rackRes.json();
-        const slots: { id: number; probe?: { id: number }[] }[] = rackData.results ?? rackData;
-        const slot = slots.find(s => s.probe?.[0]?.id === rmaSelected.probeId);
-        if (slot) {
-          await fetch(`/api/probe-rack/${slot.id}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ probe: newProbeId }),
-          });
-        }
-      } catch { /* best-effort, skip */ }
-
-      // 5. Log to Apple Notes (best-effort)
-      try {
-        await fetch('/api/log-removal', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            serial: rmaSelected.probeSerial,
-            reason: 'RMA – failed probe replaced',
-            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-          }),
-        });
-      } catch { /* best-effort, skip */ }
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not replace probe');
 
       setRmaOldSerial(rmaSelected.probeSerial);
       setRmaStep('done');

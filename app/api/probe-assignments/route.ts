@@ -1,12 +1,12 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { TABLE_IDS, getRow, Field, FieldSeason, addSpaceVariants, bustTableCache } from '@/lib/baserow';
+import { getRow, Field, FieldSeason, addSpaceVariants, bustTableCache } from '@/lib/baserow';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
@@ -67,23 +67,16 @@ export async function POST(request: NextRequest) {
     if (body.cropx_telemetry_id) createData.cropx_telemetry_id = body.cropx_telemetry_id;
     if (body.signal_strength) createData.signal_strength = body.signal_strength;
 
-    // Send both underscore and space variants for Baserow field name compatibility
+    // Send both underscore and space variants for Database field name compatibility
     const postData = addSpaceVariants(createData);
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/?user_field_names=true`;
+    const url = { table: 'probe_assignments' };
     console.log('POST probe-assignment data:', JSON.stringify(postData));
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(postData),
-    });
+    const response = await dataRequest(url, { method: 'POST', body: JSON.stringify(postData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: `Failed to create probe assignment: ${errorText}` },
         { status: response.status }
@@ -109,15 +102,8 @@ export async function POST(request: NextRequest) {
           if (elev) patchData.elevation = elev;
           if (soil) patchData.soil_type = soil;
           if (Object.keys(patchData).length > 0) {
-            const patchUrl = `${BASEROW_API_URL}/${TABLE_IDS.probe_assignments}/${created.id}/?user_field_names=true`;
-            await fetch(patchUrl, {
-              method: 'PATCH',
-              headers: {
-                'Authorization': `Token ${BASEROW_TOKEN}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(addSpaceVariants(patchData)),
-            });
+            const patchUrl = { table: 'probe_assignments', id: created.id };
+            await dataRequest(patchUrl, { method: 'PATCH', body: JSON.stringify(addSpaceVariants(patchData)) });
             console.log('Backfilled geo data for probe assignment:', created.id, patchData);
             bustTableCache('probe_assignments');
           }
@@ -135,4 +121,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

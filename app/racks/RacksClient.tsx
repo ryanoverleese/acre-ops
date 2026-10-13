@@ -220,19 +220,12 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     if (!destPicker) return;
     setSaving(true);
     try {
-      if (destPicker.rowId !== -1) {
-        // Moving from a slot — unassign source first
-        await fetch(`/api/probe-rack/${destPicker.rowId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ probe: null }),
-        });
-      }
-      await fetch(`/api/probe-rack/${destRowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ probe: destPicker.probeId }),
+      const response = await fetch('/api/equipment/actions', {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'rack',probeId:destPicker.probeId,
+          sourceId:destPicker.rowId===-1?null:destPicker.rowId,destinationId:destRowId}),
       });
+      if (!response.ok) { alert((await response.json()).error || 'Could not move probe'); return; }
       setLastMove({
         sourceRowId: destPicker.rowId === -1 ? null : destPicker.rowId,
         destRowId,
@@ -250,18 +243,12 @@ export default function RacksClient({ slots, probes, probeLabels }: RacksClientP
     if (!lastMove) return;
     setSaving(true);
     try {
-      await fetch(`/api/probe-rack/${lastMove.destRowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ probe: null }),
+      const response = await fetch('/api/equipment/actions', {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'rack',probeId:lastMove.probeId,
+          sourceId:lastMove.destRowId,destinationId:lastMove.sourceRowId}),
       });
-      if (lastMove.sourceRowId !== null) {
-        await fetch(`/api/probe-rack/${lastMove.sourceRowId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ probe: lastMove.probeId }),
-        });
-      }
+      if (!response.ok) { alert((await response.json()).error || 'Could not undo move'); return; }
     } finally {
       setSaving(false);
       setLastMove(null);

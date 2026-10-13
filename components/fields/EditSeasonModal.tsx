@@ -163,20 +163,24 @@ export default function EditSeasonModal({
       ]);
       if (response.ok) {
         // Create/update invoice line if billing_rate is provided
-        if (form.billing_rate && field.billingEntityId) {
+        if (form.billing_rate && field.fieldSeasonId) {
           try {
-            await fetch('/api/billing/enroll', {
+            const billingResponse = await fetch('/api/billing/enroll', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                billing_entity_id: field.billingEntityId,
                 season: field.season,
                 field_season_id: field.fieldSeasonId,
                 service_type: productTypeOptions.find(o => o.value === form.service_type)?.label || '',
                 rate: form.billing_rate,
               }),
             });
+            if (!billingResponse.ok) {
+              const failure = await billingResponse.json();
+              throw new Error(failure.error || 'Billing shares could not be saved');
+            }
           } catch (billingError) {
+            alert('The field/season was saved, but billing needs attention: ' + (billingError instanceof Error ? billingError.message : 'Please open Billing and retry.'));
             console.error('Failed to update billing entry:', billingError);
           }
         }

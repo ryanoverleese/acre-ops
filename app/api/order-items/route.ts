@@ -1,11 +1,11 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
@@ -26,19 +26,12 @@ export async function POST(request: NextRequest) {
     }
     if (body.notes !== undefined) createData.notes = body.notes;
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.order_items}/?user_field_names=true`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(createData),
-    });
+    const url = { table: 'order_items' };
+    const response = await dataRequest(url, { method: 'POST', body: JSON.stringify(createData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json({ error: 'Failed to create order item', details: errorText }, { status: response.status });
     }
 
@@ -50,4 +43,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating order item:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

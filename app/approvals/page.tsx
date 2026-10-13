@@ -84,20 +84,16 @@ async function getApprovalsData(): Promise<ApprovalsData> {
     });
 
     // Build field -> operation mapping
-    const fieldToOperation = new Map<number, { id: number; name: string }>();
+    const fieldToOperation = new Map<number, { id: number; name: string }[]>();
     fields.forEach((field) => {
-      const beId = field.billing_entity?.[0]?.id;
-      if (beId) {
-        for (const [opId, beIds] of operationBillingEntities) {
-          if (beIds.has(beId)) {
-            const op = operations.find((o) => o.id === opId);
-            if (op) {
-              fieldToOperation.set(field.id, { id: op.id, name: op.name });
-            }
-            break;
-          }
+      const linked = [];
+      for (const [opId, beIds] of operationBillingEntities) {
+        if ((field.billing_entity || []).some(be => beIds.has(be.id))) {
+          const op = operations.find(o => o.id === opId);
+          if (op) linked.push({id: op.id, name: op.name});
         }
       }
+      fieldToOperation.set(field.id, linked);
     });
 
     // Collect available seasons
@@ -110,25 +106,24 @@ async function getApprovalsData(): Promise<ApprovalsData> {
 
     // Build approval items from probe assignments
     const items: ApprovalItem[] = probeAssignments
-      .map((pa): ApprovalItem | null => {
+      .flatMap((pa): ApprovalItem[] => {
         const fieldSeason = pa.field_season?.[0]?.id
           ? fieldSeasonMap.get(pa.field_season[0].id)
           : null;
-        if (!fieldSeason) return null;
+        if (!fieldSeason) return [];
 
         const field = fieldSeason.field?.[0]?.id
           ? fieldMap.get(fieldSeason.field[0].id)
           : null;
-        if (!field) return null;
+        if (!field) return [];
 
-        const operation = fieldToOperation.get(field.id);
-        if (!operation) return null;
+        const linkedOperations = fieldToOperation.get(field.id) || [];
 
         const probeSerial = pa.probe?.[0]?.id
           ? probeMap.get(pa.probe[0].id)
           : undefined;
 
-        return {
+        return linkedOperations.map(operation => ({
           id: pa.id,
           operationId: operation.id,
           operationName: operation.name,
@@ -148,9 +143,8 @@ async function getApprovalsData(): Promise<ApprovalsData> {
           approvalDate: pa.approval_date,
           approvalSent: pa.approval_sent,
           season: Number(fieldSeason.season),
-        };
-      })
-      .filter((item): item is ApprovalItem => item !== null);
+        }));
+      });
 
     // Build operation summaries
     const operationStats = new Map<number, OperationSummary>();
@@ -180,11 +174,11 @@ async function getApprovalsData(): Promise<ApprovalsData> {
     fieldSeasons.forEach((fs) => {
       const fieldId = fs.field?.[0]?.id;
       if (!fieldId) return;
-      const operation = fieldToOperation.get(fieldId);
-      if (!operation) return;
+      const linkedOperations = fieldToOperation.get(fieldId) || [];
       const seasonNum = Number(fs.season);
       if (!seasonNum) return;
 
+      for (const operation of linkedOperations) {
       if (!enrolledOpsMap.has(operation.id)) {
         enrolledOpsMap.set(operation.id, { name: operation.name, fieldIdsBySeason: new Map(), seasons: new Set() });
       }
@@ -194,6 +188,7 @@ async function getApprovalsData(): Promise<ApprovalsData> {
         entry.fieldIdsBySeason.set(seasonNum, new Set());
       }
       entry.fieldIdsBySeason.get(seasonNum)!.add(fieldId);
+      }
     });
 
     const enrolledOperations: EnrolledOperation[] = Array.from(enrolledOpsMap.entries())

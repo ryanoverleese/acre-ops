@@ -9,9 +9,10 @@ node tests/removal/smoke.mjs
 
 Smoke checks require Node 24+, Chrome, and Playwright (locally or via `NODE_PATH`).
 They copy the production build to a temporary directory and start a private test
-server on `127.0.0.1:3198`. All records and credentials are synthetic. The Baserow
-preload and browser block external requests; no real database, webhook, or files
-are changed. The fixture rejects any field-season/planning writes.
+server on `127.0.0.1:3198`. All records and credentials are synthetic. The Supabase
+preload runs the actual migrations in PGlite (in-memory PostgreSQL); it and the
+browser block external requests. No real database, webhook, or files are changed.
+Assertions verify unchanged field-season/planning values and selected-device scope.
 
 The browser exercises Workflows' required actual-remover field, date picker, and
 shared endpoint. Two probes on one field prove that only the selected assignment

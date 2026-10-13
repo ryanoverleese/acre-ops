@@ -325,7 +325,7 @@ export default function SettingsClient({ initialProductsServices, availableSeaso
     if (!fieldMeta) return;
 
     const optionToRemove = fieldMeta.options.find(o => o.id === optionId);
-    if (!confirm(`Remove "${optionToRemove?.value}"? Any rows using this value will be cleared.`)) return;
+    if (!confirm(`Retire "${optionToRemove?.value}"? Existing records keep it; it will no longer be offered for new selections.`)) return;
 
     const newOptions = fieldMeta.options.filter(o => o.id !== optionId);
     await saveFieldOptions(tableName, fieldName, newOptions);

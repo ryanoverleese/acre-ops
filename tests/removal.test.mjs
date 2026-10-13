@@ -156,7 +156,7 @@ test('missing assignments and failed safety reads never write anything', async (
   assert.deepEqual(f.writes, []);
 });
 
-test('both screens submit to the same endpoint, which uses shared logic and cache-invalidating Baserow writes', () => {
+test('both screens submit to the same shared transactional removal endpoint', () => {
   const workflow = readFileSync(new URL('../app/workflows/WorkflowsClient.tsx', import.meta.url), 'utf8');
   const submit = workflow.slice(workflow.indexOf('const handleSubmit ='), workflow.indexOf('const handleRegisterSubmit ='));
   assert.match(submit, /fetch\('\/api\/removal'/);
@@ -168,8 +168,9 @@ test('both screens submit to the same endpoint, which uses shared logic and cach
   assert.match(crew, /fetch\('\/api\/removal'/);
   assert.match(crew, /fd.append\('source', 'crew'\)/);
   const route = readFileSync(new URL('../app/api/removal/route.ts', import.meta.url), 'utf8');
-  assert.match(route, /await recordProbeRemoval\(/);
+  assert.match(route, /await transaction\(\(\)=>recordProbeRemoval\(/);
   assert.match(route, /updateRow<ProbeAssignment>\('probe_assignments'/);
   assert.match(route, /updateRow\('probes'/);
-  assert.doesNotMatch(route, /planned_remover|supabase/i);
+  assert.match(route, /afterCommit\(\(\)=>notifyRemovalWebhook/);
+  assert.doesNotMatch(route, /planned_remover|api\.baserow\.io/i);
 });

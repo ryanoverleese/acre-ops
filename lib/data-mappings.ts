@@ -6,6 +6,19 @@
 
 import type { Contact, Operation, BillingEntity } from './baserow';
 
+/** Field billing is always the complete join, never a primary-entity guess. */
+export function fieldBilling(field: {billing_entity?: {id:number;value:string}[]} | null | undefined) {
+  const links=field?.billing_entity || [];
+  return {ids:links.map(l=>l.id),names:links.map(l=>l.value),label:links.map(l=>l.value).filter(Boolean).join(' / '),singleId:links.length===1?links[0].id:null};
+}
+export function fieldOperationIds(field: {billing_entity?: {id:number;value:string}[]} | null | undefined, mapping: Map<number,number[]|number>) {
+  return [...new Set(fieldBilling(field).ids.flatMap(id=>{const ids=mapping.get(id);return ids==null?[]:Array.isArray(ids)?ids:[ids];}))];
+}
+export function fieldOperationLabel(field: {billing_entity?: {id:number;value:string}[]} | null | undefined, mapping: Map<number,number[]|number>, names: Map<number,string>) {
+  const ops=fieldOperationIds(field,mapping);
+  return ops.map(id=>names.get(id)||'Unknown').join(' / ') || fieldBilling(field).label || 'Unknown';
+}
+
 /**
  * Build a map of operation ID to operation name
  */

@@ -1,0 +1,2 @@
+# Official CLI version/cache files are machine-local, not migrations.
+/.temp/

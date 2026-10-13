@@ -17,13 +17,13 @@ interface RemovalInput {
   photos?: File[];
 }
 
-/** Baserow adapters are supplied by the route; tests use an in-memory store. */
+/** Storage adapters are supplied by the route; tests use an in-memory store. */
 interface RemovalStore {
   getAssignment: (id: number) => Promise<ProbeAssignment>;
   listAssignments: () => Promise<ProbeAssignment[]>;
   saveAssignment: (id: number, patch: Record<string, unknown>) => Promise<ProbeAssignment>;
   saveProbe: (id: number, patch: Record<string, unknown>) => Promise<unknown>;
-  uploadPhoto: (photo: File) => Promise<{ name: string } | null>;
+  uploadPhoto: (photo: File) => Promise<{ name: string; bucket?: string; path?: string; size?: number; mime?: string } | null>;
   notify: (assignment: ProbeAssignment) => void;
 }
 
@@ -74,7 +74,7 @@ export async function recordProbeRemoval(input: RemovalInput, store: RemovalStor
     for (const photo of input.photos || []) {
       try {
         const file = await store.uploadPhoto(photo);
-        if (file) uploaded.push({ name: file.name });
+        if (file) uploaded.push(file);
       } catch {
         photoErrors.push('A removal photo could not be uploaded');
       }
@@ -91,13 +91,13 @@ export async function recordProbeRemoval(input: RemovalInput, store: RemovalStor
     } catch {
       throw new RemovalError('Could not save the removal. Try again.', 502);
     }
-    // Only crew removals notify CropX. Workflows records the Baserow removal only.
+    // The Supabase route queues this callback AFTER the transaction commits.
+    // Only crew removals notify CropX; Workflows records the database removal only.
     if (input.source === 'crew') store.notify(saved);
   }
 
-  // Baserow cannot transactionally PATCH two tables. If this second write fails,
-  // report the partial save. A retry finishes inventory without restamping history
-  // or re-uploading photos / notifying the webhook again.
+  // The Supabase route wraps both writes in one transaction. The pure service
+  // also remains usable with a retryable store in the isolated safety tests.
   try {
     await store.saveProbe(probeId, { status: 'In Stock' });
   } catch {

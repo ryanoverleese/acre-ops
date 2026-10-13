@@ -1,6 +1,7 @@
 // Paste this into the browser console on the acre-ops site
 // It calls your own API routes — no token needed
 
+throw new Error('Retired on supabase-schema: these are old Baserow IDs, not native Supabase IDs.');
 const UPDATES = [
   // --- Corn ---
   { id: 1321, field: 'Lost Creek',        hybrid: 'P1457WAM-Q',  planting_date: '2026-04-19' },

@@ -1,96 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { NextResponse } from 'next/server';
+import { withApiAuth } from '@/lib/supabase/api';
+import { createRow, updateRow, getRow, getRows, deleteRow, type Row } from '@/lib/supabase/adapter';
+import { transaction, query } from '@/lib/supabase/database';
+import { DataError, positiveId } from '@/lib/supabase/registry';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_FILE_UPLOAD_URL = 'https://api.baserow.io/api/user-files/upload-file/';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-
-interface BaserowFile {
-  url: string;
-  name: string;
-  size: number;
-  mime_type: string;
-  is_image: boolean;
-  image_width: number;
-  image_height: number;
-  uploaded_at: string;
-}
-
-async function uploadFileToBaserow(file: File): Promise<BaserowFile | null> {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const response = await fetch(BASEROW_FILE_UPLOAD_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      console.error('Baserow file upload error:', response.status, await response.text());
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error uploading file to Baserow:', error);
-    return null;
-  }
-}
-
-// POST - Upload document
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const name = formData.get('name') as string;
-    const description = formData.get('description') as string | null;
-    const date = formData.get('date') as string | null;
-    const uploadedBy = formData.get('uploaded_by') as string;
-
-    if (!name) {
-      return NextResponse.json({ error: 'Name is required' }, { status: 400 });
-    }
-
-    // Create row in documents table
-    const payload: Record<string, unknown> = {
-      name,
-      uploaded_by: uploadedBy,
-      uploaded_at: date || new Date().toISOString(),
-    };
-    if (description) payload.description = description;
-
-    // Upload file to Baserow storage (optional — notes don't have files)
-    if (file) {
-      const uploadedFile = await uploadFileToBaserow(file);
-      if (!uploadedFile) {
-        return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
-      }
-      payload.file = [{ name: uploadedFile.name }];
-    }
-
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_IDS.documents}/?user_field_names=true`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json({ error: `Baserow error: ${error}` }, { status: response.status });
-    }
-
-    const data = await response.json();
-    bustTableCache('documents');
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Upload document error:', error);
-    return NextResponse.json({ error: 'Failed to upload document' }, { status: 500 });
-  }
-}
+import { uploadFile, discardUpload, type StorageFile } from '@/lib/supabase/storage';
+export const POST=withApiAuth(async(request,_context,current)=>{
+ const form=await request.formData(); const name=String(form.get('name')||'').trim();
+ if(!name) throw new DataError('Name is required');
+ let file:StorageFile|undefined;
+ try {
+  const upload=form.get('file');
+  if(upload instanceof File && upload.size) file=await uploadFile(upload);
+  const row=await createRow('documents',{name,description:form.get('description')||null,uploaded_by:'name' in current?current.name:null,uploaded_at:form.get('date')||new Date().toISOString(),file:file?[file]:[]});
+  return NextResponse.json(row);
+ } catch(error) {
+  if(file) await discardUpload(file).catch(()=>{console.warn('Document save failed; an app upload may require cleanup');});
+  throw error;
+ }
+});

@@ -1,5 +1,6 @@
 import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices, getProbes } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
+import { allocateFieldCharge, fieldChargeBasis, type SavedFieldCharge } from '@/lib/billing-allocation';
 import BillingClient, { ProcessedBillingEntity, OnOrderLine } from './BillingClient';
 
 interface BillingData {
@@ -46,20 +47,23 @@ async function getBillingData(): Promise<BillingData> {
     });
 
     // Build map of field ID to field details (including billing entity)
-    const fieldMap = new Map(fields.map((f) => [f.id, { name: f.name, billingEntityId: f.billing_entity?.[0]?.id }]));
+    const fieldMap = new Map(fields.map((f) => [f.id, { name: f.name, billingEntityIds: [...new Set((f.billing_entity || []).map(be => be.id))] }]));
 
     // Build field_season_id → { quantity, invoiceLineId } map from invoice_lines
-    const fsInvoiceLineMap = new Map<number, { quantity: number; invoiceLineId: number }>();
+    const invoiceEntityMap = new Map(invoices.map(inv => [inv.id, inv.billing_entity?.[0]?.id]));
+    const fsInvoiceLineMap = new Map<string, SavedFieldCharge & { invoiceLineId: number }>();
     invoiceLines.forEach((il) => {
       const fsId = il.field_season?.[0]?.id;
-      if (fsId) {
-        fsInvoiceLineMap.set(fsId, { quantity: il.quantity || 1, invoiceLineId: il.id });
+      const entityId = invoiceEntityMap.get(il.invoice?.[0]?.id ?? 0);
+      if (fsId && entityId) {
+        fsInvoiceLineMap.set(`${fsId}-${entityId}`, { rate: Number(il.rate ?? 0), quantity: Number(il.quantity ?? 1), invoiceLineId: il.id,
+          field_unit_rate: il.field_unit_rate == null ? null : Number(il.field_unit_rate), field_quantity: il.field_quantity == null ? null : Number(il.field_quantity) });
       }
     });
 
     // Track field seasons grouped by billing entity and season
     // Key: "beId-season", Value: array of line items (field name, service type, rate, quantity)
-    const beSeasonLines = new Map<string, { fieldSeasonId: number; invoiceLineId: number; fieldName: string; serviceType: string; rate: number; quantity: number }[]>();
+    const beSeasonLines = new Map<string, { fieldSeasonId: number; invoiceLineId: number; fieldName: string; serviceType: string; rate: number; quantity: number; shareCount: number; shareIndex: number; fieldUnitRate: number | null; fieldQuantity: number | null; needsAllocation: boolean }[]>();
     const allSeasons = new Set<number>();
 
     fieldSeasons.forEach((fs) => {
@@ -67,7 +71,7 @@ async function getBillingData(): Promise<BillingData> {
       const fieldInfo = fieldId ? fieldMap.get(fieldId) : null;
       const fieldName = fieldInfo?.name || fs.field?.[0]?.value || 'Unknown';
       const serviceType = fs.service_type?.[0]?.value || '';
-      const billingEntityId = fieldInfo?.billingEntityId;
+      const billingEntityIds = fieldInfo?.billingEntityIds || [];
       // Ensure season is a number (Baserow may return it as string)
       const season = typeof fs.season === 'string' ? parseInt(fs.season, 10) : (fs.season || new Date().getFullYear());
 
@@ -80,11 +84,21 @@ async function getBillingData(): Promise<BillingData> {
       }
 
       // Group by billing entity and season
-      if (billingEntityId && season) {
+      const allocations = billingEntityIds.length ? allocateFieldCharge(rate, 1, billingEntityIds) : [];
+      const savedLines = billingEntityIds.map(id => fsInvoiceLineMap.get(`${fs.id}-${id}`)).filter(line => !!line);
+      const basis = fieldChargeBasis(savedLines, rate);
+      const savedAmounts = savedLines.map(line => Math.round(line.rate * line.quantity * 100));
+      const needsAllocation = savedLines.length > 0 && billingEntityIds.length > 1 &&
+        (savedLines.length !== billingEntityIds.length || Math.max(...savedAmounts) - Math.min(...savedAmounts) > 1);
+      for (const allocation of allocations) {
+        const billingEntityId = allocation.billingEntityId;
+        if (!season) continue;
         const key = `${billingEntityId}-${season}`;
         const existing = beSeasonLines.get(key) || [];
-        const ilData = fsInvoiceLineMap.get(fs.id);
-        existing.push({ fieldSeasonId: fs.id, invoiceLineId: ilData?.invoiceLineId || 0, fieldName, serviceType, rate, quantity: ilData?.quantity || 1 });
+        const ilData = fsInvoiceLineMap.get(`${fs.id}-${billingEntityId}`);
+        existing.push({ fieldSeasonId: fs.id, invoiceLineId: ilData?.invoiceLineId || 0, fieldName,
+          serviceType, rate: ilData?.rate ?? allocation.rate, quantity: ilData?.quantity ?? allocation.quantity,
+          shareCount: allocations.length, shareIndex: allocation.shareIndex, ...basis, needsAllocation });
         beSeasonLines.set(key, existing);
       }
     });
@@ -167,6 +181,11 @@ async function getBillingData(): Promise<BillingData> {
             serviceType: line.serviceType,
             rate: line.rate,
             quantity: line.quantity,
+            shareCount: line.shareCount,
+            shareIndex: line.shareIndex,
+            fieldUnitRate: line.fieldUnitRate,
+            fieldQuantity: line.fieldQuantity,
+            needsAllocation: line.needsAllocation,
           })),
         };
 
@@ -189,19 +208,18 @@ async function getBillingData(): Promise<BillingData> {
 
     // Calculate bulk field counts per operation per season (for discount calculation)
     // Key: "operation-season", Value: count of bulk fields
-    const operationBulkCounts = new Map<string, number>();
+    const operationBulkFields = new Map<string, Set<number>>();
     processedEntities.forEach((entity) => {
       const opKey = `${entity.operation}-${entity.season}`;
-      const bulkCount = entity.invoices[0]?.lines.filter(
-        (line) => line.serviceType.toLowerCase().includes('bulk')
-      ).length || 0;
-      operationBulkCounts.set(opKey, (operationBulkCounts.get(opKey) || 0) + bulkCount);
+      const fieldIds = operationBulkFields.get(opKey) || new Set<number>();
+      entity.invoices[0]?.lines.filter(line => line.serviceType.toLowerCase().includes('bulk')).forEach(line => fieldIds.add(line.id));
+      operationBulkFields.set(opKey, fieldIds);
     });
 
     // Add operation bulk count to each entity so client can calculate discount
     processedEntities.forEach((entity) => {
       const opKey = `${entity.operation}-${entity.season}`;
-      entity.operationBulkFieldCount = operationBulkCounts.get(opKey) || 0;
+      entity.operationBulkFieldCount = operationBulkFields.get(opKey)?.size || 0;
     });
 
     // Build on-order probe lines grouped by billing entity + brand + trade status

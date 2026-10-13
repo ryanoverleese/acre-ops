@@ -1,10 +1,10 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-export async function PATCH(
+export const PATCH = withApiAuth(async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -22,19 +22,12 @@ export async function PATCH(
     if (body.unit !== undefined) updateData.unit = body.unit;
     if (body.active !== undefined) updateData.active = body.active;
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.products_services}/${id}/?user_field_names=true`;
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    });
+    const url = { table: 'products_services', id: id };
+    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(updateData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to update product/service' },
         { status: response.status }
@@ -51,4 +44,4 @@ export async function PATCH(
       { status: 500 }
     );
   }
-}
+});

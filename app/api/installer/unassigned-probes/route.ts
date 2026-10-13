@@ -1,9 +1,10 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
 import { getCachedRows, type Probe, type ProbeAssignment } from '@/lib/baserow';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export const GET = withApiAuth(async function GET() {
   try {
     const [probes, probeAssignments] = await Promise.all([
       getCachedRows<Probe>('probes', undefined, 60),
@@ -34,4 +35,4 @@ export async function GET() {
     console.error('unassigned probes error:', error);
     return NextResponse.json({ error: 'Failed to fetch probes' }, { status: 500 });
   }
-}
+});

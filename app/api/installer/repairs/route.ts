@@ -1,3 +1,5 @@
+import { fieldBilling } from '@/lib/data-mappings';
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCachedRows,
@@ -12,7 +14,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiAuth(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const fresh = searchParams.get('fresh') === '1';
   const completed = searchParams.get('status') === 'completed';
@@ -50,8 +52,7 @@ export async function GET(request: NextRequest) {
         const fieldId = fs?.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
 
-        const beId = field?.billing_entity?.[0]?.id;
-        const operationName = beId ? (billingEntityMap.get(beId)?.name ?? '') : '';
+        const operationName = fieldBilling(field).label;
 
         const paId = r.probe_assignment?.[0]?.id;
         const pa = paId ? paMap.get(paId) : null;
@@ -100,4 +101,4 @@ export async function GET(request: NextRequest) {
     console.error('installer repairs error:', error);
     return NextResponse.json({ error: 'Failed to fetch repairs' }, { status: 500 });
   }
-}
+});

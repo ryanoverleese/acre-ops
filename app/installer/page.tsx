@@ -12,7 +12,7 @@ export default async function InstallerPage() {
   }
 
   // Only show installers that have a PIN set
-  const withPin = installers.filter(i => i.name && i.pin);
+  const withPin = installers.filter(i => i.name && i.pinSet);
   const displayNames = (withPin.length > 0 ? withPin : installers)
     .map(i => i.name!)
     .filter(Boolean);

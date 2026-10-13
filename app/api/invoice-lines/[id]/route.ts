@@ -1,14 +1,14 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export const PATCH = withApiAuth(async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const invoiceLineId = parseInt(id, 10);
@@ -22,19 +22,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     const body = await request.json();
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/${invoiceLineId}/?user_field_names=true`;
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const url = { table: 'invoice_lines', id: invoiceLineId };
+    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(body) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to update invoice line' },
         { status: response.status }
@@ -51,9 +44,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});
 
-export async function DELETE(request: NextRequest, { params }: RouteParams) {
+export const DELETE = withApiAuth(async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const invoiceLineId = parseInt(id, 10);
@@ -65,17 +58,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.invoice_lines}/${invoiceLineId}/`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-    });
+    const url = { table: 'invoice_lines', id: invoiceLineId };
+    const response = await dataRequest(url, { method: 'DELETE' });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to delete invoice line' },
         { status: response.status }
@@ -91,4 +79,4 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       { status: 500 }
     );
   }
-}
+});

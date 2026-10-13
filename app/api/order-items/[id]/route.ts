@@ -1,11 +1,11 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 import { revalidatePath } from 'next/cache';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-export async function PATCH(
+export const PATCH = withApiAuth(async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -21,19 +21,12 @@ export async function PATCH(
     }
     if (body.notes !== undefined) updateData.notes = body.notes;
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.order_items}/${id}/?user_field_names=true`;
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    });
+    const url = { table: 'order_items', id: id };
+    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(updateData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json({ error: 'Failed to update order item', details: errorText }, { status: response.status });
     }
 
@@ -45,24 +38,21 @@ export async function PATCH(
     console.error('Error updating order item:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiAuth(async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.order_items}/${id}/`;
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: { Authorization: `Token ${BASEROW_TOKEN}` },
-    });
+    const url = { table: 'order_items', id: id };
+    const response = await dataRequest(url, { method: 'DELETE' });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json({ error: 'Failed to delete order item' }, { status: response.status });
     }
 
@@ -73,4 +63,4 @@ export async function DELETE(
     console.error('Error deleting order item:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
-}
+});

@@ -1,0 +1,3681 @@
+{
+  "tables": {
+    "contact_customer_type_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "contact_customer_type_options"
+    },
+    "contact_main_contact_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "contact_main_contact_options"
+    },
+    "field_water_source_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_water_source_options"
+    },
+    "field_fuel_source_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_fuel_source_options"
+    },
+    "field_irrigation_type_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_irrigation_type_options"
+    },
+    "field_row_direction_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_row_direction_options"
+    },
+    "field_drip_tubing_direction_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_drip_tubing_direction_options"
+    },
+    "probe_brand_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_brand_options"
+    },
+    "probe_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_status_options"
+    },
+    "probe_rack_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_rack_options"
+    },
+    "probe_trade_year_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_trade_year_options"
+    },
+    "field_season_crop_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_crop_options"
+    },
+    "field_season_side_dress_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_side_dress_options"
+    },
+    "field_season_early_removal_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_early_removal_options"
+    },
+    "field_season_early_install_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_early_install_options"
+    },
+    "field_season_ready_to_remove_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_ready_to_remove_options"
+    },
+    "field_season_planned_installer_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_planned_installer_options"
+    },
+    "field_season_planned_remover_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_planned_remover_options"
+    },
+    "field_season_remover_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_remover_options"
+    },
+    "field_season_removal_priority_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_removal_priority_options"
+    },
+    "field_season_approval_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_approval_status_options"
+    },
+    "assignment_antenna_type_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "assignment_antenna_type_options"
+    },
+    "assignment_battery_type_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "assignment_battery_type_options"
+    },
+    "assignment_probe_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "assignment_probe_status_options"
+    },
+    "assignment_approval_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "assignment_approval_status_options"
+    },
+    "invoice_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "invoice_status_options"
+    },
+    "product_category_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "product_category_options"
+    },
+    "product_unit_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "product_unit_options"
+    },
+    "product_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "product_status_options"
+    },
+    "inventory_category_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "inventory_category_options"
+    },
+    "user_role_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "user_role_options"
+    },
+    "weather_station_connectivity_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "weather_station_connectivity_options"
+    },
+    "weather_station_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "weather_station_status_options"
+    },
+    "order_status_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "order_status_options"
+    },
+    "notification_page_type_options": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "color",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "sort_order",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "notification_page_type_options"
+    },
+    "operations": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_token",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "operations"
+    },
+    "billing_entities": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "self_install",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "billing_entities"
+    },
+    "contacts": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "phone",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "address",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "address_lat",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "address_lng",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "cropx_username",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "date_entered",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "soil_temp_updates",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "android",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "is_main_contact_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "contact_main_contact_options"
+        }
+      ],
+      "read": "contacts"
+    },
+    "products_services": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "service_type",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "rate",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "dealer_fee",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "category_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "product_category_options"
+        },
+        {
+          "name": "unit_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "product_unit_options"
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "product_status_options"
+        }
+      ],
+      "read": "products_services_calculated"
+    },
+    "fields": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "acres",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "pivot_acres",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "lat",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "lng",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "water_source_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_water_source_options"
+        },
+        {
+          "name": "fuel_source_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_fuel_source_options"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "elevation",
+          "type": "numeric",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "soil_type",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "placement_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "irrigation_type_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_irrigation_type_options"
+        },
+        {
+          "name": "row_direction_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_row_direction_options"
+        },
+        {
+          "name": "drip_tubing_direction_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_drip_tubing_direction_options"
+        },
+        {
+          "name": "drip_tubing_spacing",
+          "type": "numeric",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "drip_emitter_spacing",
+          "type": "numeric",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "drip_zones",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "drip_gpm",
+          "type": "numeric",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "drip_depth",
+          "type": "numeric",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_directions",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_directions",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "nrcs_field",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "cropx_field_uuid",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "plss_township",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "plss_range",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "plss_section",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "plss_description",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "fields_calculated"
+    },
+    "probes": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "serial_number",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "brand_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probe_brand_options"
+        },
+        {
+          "name": "year_new",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probe_status_options"
+        },
+        {
+          "name": "rack_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probe_rack_options"
+        },
+        {
+          "name": "rack_slot",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "damages_repairs",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "date_created",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "trade_year_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probe_trade_year_options"
+        },
+        {
+          "name": "is_trade",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "solo",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "probes"
+    },
+    "field_seasons": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "fields"
+        },
+        {
+          "name": "season",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "crop_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_crop_options"
+        },
+        {
+          "name": "crop_confirmed",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "side_dress_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_side_dress_options"
+        },
+        {
+          "name": "logger_id",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "early_removal_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_early_removal_options"
+        },
+        {
+          "name": "early_install_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_early_install_options"
+        },
+        {
+          "name": "hybrid_variety",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "ready_to_remove_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_ready_to_remove_options"
+        },
+        {
+          "name": "planting_date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "route_order",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "planned_installer_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_planned_installer_options"
+        },
+        {
+          "name": "planned_remover_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_planned_remover_options"
+        },
+        {
+          "name": "remover_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_remover_options"
+        },
+        {
+          "name": "irrigator",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removal_priority_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_removal_priority_options"
+        },
+        {
+          "name": "ready_to_install",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_group",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removal_date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removal_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_season_approval_status_options"
+        },
+        {
+          "name": "approval_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_date",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_sent",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_note",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "field_seasons_calculated"
+    },
+    "probe_assignments": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_season_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_seasons"
+        },
+        {
+          "name": "probe_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probes"
+        },
+        {
+          "name": "probe_number",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "placement_order",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "route_order",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "ready_to_install",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "crop_confirmed",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "planned_remover",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "label",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "antenna_type_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "assignment_antenna_type_options"
+        },
+        {
+          "name": "battery_type_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "assignment_battery_type_options"
+        },
+        {
+          "name": "placement_lat",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "placement_lng",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "elevation",
+          "type": "numeric",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "soil_type",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "placement_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "probe_status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "assignment_probe_status_options"
+        },
+        {
+          "name": "installer",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_date",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removal_date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removal_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removed_by",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "removal_photo",
+          "type": "jsonb",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "install_lat",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_lng",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_photo_field_end",
+          "type": "jsonb",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "install_photo_extra",
+          "type": "jsonb",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "install_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "grower_notified",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "pickup_access",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "cropx_telemetry_id",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "signal_strength",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "assignment_approval_status_options"
+        },
+        {
+          "name": "approval_notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "approval_sent",
+          "type": "date",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "probe_assignments_calculated"
+    },
+    "repairs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "record_name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_season_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_seasons"
+        },
+        {
+          "name": "probe_assignment_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probe_assignments"
+        },
+        {
+          "name": "reported_at",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "problem",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "fix",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "repaired_at",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notified_customer",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "probe_replaced",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "new_probe_serial",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "watch_list",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "repairs_calculated"
+    },
+    "water_recs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "record_name",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "field_season_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_seasons"
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "recommendation",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "suggested_water_day",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "report_type",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "priority",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "water_recs_calculated"
+    },
+    "invoices": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "record_name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "season",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "amount",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "invoice_status_options"
+        },
+        {
+          "name": "sent_at",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "deposit_at",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "paid_at",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "check_number",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "actual_billed_amount",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "invoice_number",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "matched_in_qb",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "invoices_calculated"
+    },
+    "invoice_lines": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "record_name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "invoice_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "invoices"
+        },
+        {
+          "name": "field_season_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "field_seasons"
+        },
+        {
+          "name": "service_type",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "rate",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_unit_rate",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_quantity",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "invoice_lines_calculated"
+    },
+    "inventory": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "item_name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "category_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "inventory_category_options"
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "inventory"
+    },
+    "users": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "email",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "password_hash",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "role_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "user_role_options"
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "last_login",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "users"
+    },
+    "weather_stations": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "station_name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "model",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "install_lat",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_lng",
+          "type": "numeric(10,7)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "install_date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "connectivity_type_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "weather_station_connectivity_options"
+        },
+        {
+          "name": "status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "weather_station_status_options"
+        },
+        {
+          "name": "price_paid",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "weather_stations"
+    },
+    "orders": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "order_id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "order_date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "tracking_number",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "valid_until",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "status_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "order_status_options"
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "quote_valid_days",
+          "type": "integer",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "orders_calculated"
+    },
+    "order_items": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "item_id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "order_link_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "orders"
+        },
+        {
+          "name": "product_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "products_services"
+        },
+        {
+          "name": "quantity",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "order_items_calculated"
+    },
+    "notifications": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "operation_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "operations"
+        },
+        {
+          "name": "field_name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "changed_field",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "fields"
+        },
+        {
+          "name": "new_value",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "page_type_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "notification_page_type_options"
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "created_on",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "notifications_calculated"
+    },
+    "documents": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "file",
+          "type": "jsonb",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "uploaded_by",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "uploaded_at",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "documents"
+    },
+    "probe_rack": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "rack",
+          "type": "text",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "rack_slot",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        },
+        {
+          "name": "probe_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false,
+          "target": "probes"
+        }
+      ],
+      "read": "probe_rack_calculated"
+    },
+    "installers": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "name",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "pin",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "installers"
+    },
+    "mileage_logs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "bigint",
+          "required": true,
+          "identity": true
+        },
+        {
+          "name": "baserow_id",
+          "type": "bigint",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "installer",
+          "type": "text",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "date",
+          "type": "date",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "start_miles",
+          "type": "numeric(14,1)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "end_miles",
+          "type": "numeric(14,1)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "notes",
+          "type": "text",
+          "required": false,
+          "identity": false
+        }
+      ],
+      "read": "mileage_logs_calculated"
+    },
+    "contact_operations": {
+      "columns": [
+        {
+          "name": "contact_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "contacts"
+        },
+        {
+          "name": "operation_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "operations"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "contact_operations"
+    },
+    "contact_billing_entities": {
+      "columns": [
+        {
+          "name": "contact_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "contacts"
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "contact_billing_entities"
+    },
+    "contact_customer_types": {
+      "columns": [
+        {
+          "name": "contact_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "contacts"
+        },
+        {
+          "name": "customer_type_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "contact_customer_type_options"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "contact_customer_types"
+    },
+    "probe_contacts": {
+      "columns": [
+        {
+          "name": "probe_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "probes"
+        },
+        {
+          "name": "contact_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "contacts"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_contacts"
+    },
+    "probe_billing_entities": {
+      "columns": [
+        {
+          "name": "probe_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "probes"
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_billing_entities"
+    },
+    "probe_owner_operations": {
+      "columns": [
+        {
+          "name": "probe_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "probes"
+        },
+        {
+          "name": "operation_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "operations"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "probe_owner_operations"
+    },
+    "field_season_services": {
+      "columns": [
+        {
+          "name": "field_season_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "field_seasons"
+        },
+        {
+          "name": "product_service_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "products_services"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_season_services"
+    },
+    "field_billing_entities": {
+      "columns": [
+        {
+          "name": "field_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "fields"
+        },
+        {
+          "name": "billing_entity_id",
+          "type": "bigint",
+          "required": true,
+          "identity": false,
+          "target": "billing_entities"
+        },
+        {
+          "name": "position",
+          "type": "integer",
+          "required": true,
+          "identity": false
+        }
+      ],
+      "read": "field_billing_entities"
+    }
+  },
+  "catalogs": [
+    {
+      "name": "contact_customer_type_options",
+      "source": "contacts",
+      "field": "customer_type"
+    },
+    {
+      "name": "contact_main_contact_options",
+      "source": "contacts",
+      "field": "is_main_contact"
+    },
+    {
+      "name": "field_water_source_options",
+      "source": "fields",
+      "field": "water_source"
+    },
+    {
+      "name": "field_fuel_source_options",
+      "source": "fields",
+      "field": "fuel_source"
+    },
+    {
+      "name": "field_irrigation_type_options",
+      "source": "fields",
+      "field": "irrigation_type"
+    },
+    {
+      "name": "field_row_direction_options",
+      "source": "fields",
+      "field": "row_direction"
+    },
+    {
+      "name": "field_drip_tubing_direction_options",
+      "source": "fields",
+      "field": "drip_tubing_direction"
+    },
+    {
+      "name": "probe_brand_options",
+      "source": "probes",
+      "field": "brand"
+    },
+    {
+      "name": "probe_status_options",
+      "source": "probes",
+      "field": "status"
+    },
+    {
+      "name": "probe_rack_options",
+      "source": "probes",
+      "field": "rack"
+    },
+    {
+      "name": "probe_trade_year_options",
+      "source": "probes",
+      "field": "trade_year"
+    },
+    {
+      "name": "field_season_crop_options",
+      "source": "field_seasons",
+      "field": "crop"
+    },
+    {
+      "name": "field_season_side_dress_options",
+      "source": "field_seasons",
+      "field": "side_dress"
+    },
+    {
+      "name": "field_season_early_removal_options",
+      "source": "field_seasons",
+      "field": "early_removal"
+    },
+    {
+      "name": "field_season_early_install_options",
+      "source": "field_seasons",
+      "field": "early_install"
+    },
+    {
+      "name": "field_season_ready_to_remove_options",
+      "source": "field_seasons",
+      "field": "ready_to_remove"
+    },
+    {
+      "name": "field_season_planned_installer_options",
+      "source": "field_seasons",
+      "field": "planned_installer"
+    },
+    {
+      "name": "field_season_planned_remover_options",
+      "source": "field_seasons",
+      "field": "planned_remover"
+    },
+    {
+      "name": "field_season_remover_options",
+      "source": "field_seasons",
+      "field": "remover"
+    },
+    {
+      "name": "field_season_removal_priority_options",
+      "source": "field_seasons",
+      "field": "removal_priority"
+    },
+    {
+      "name": "field_season_approval_status_options",
+      "source": "field_seasons",
+      "field": "approval_status"
+    },
+    {
+      "name": "assignment_antenna_type_options",
+      "source": "probe_assignments",
+      "field": "antenna_type"
+    },
+    {
+      "name": "assignment_battery_type_options",
+      "source": "probe_assignments",
+      "field": "battery_type"
+    },
+    {
+      "name": "assignment_probe_status_options",
+      "source": "probe_assignments",
+      "field": "probe_status"
+    },
+    {
+      "name": "assignment_approval_status_options",
+      "source": "probe_assignments",
+      "field": "approval_status"
+    },
+    {
+      "name": "invoice_status_options",
+      "source": "invoices",
+      "field": "status"
+    },
+    {
+      "name": "product_category_options",
+      "source": "products_services",
+      "field": "category"
+    },
+    {
+      "name": "product_unit_options",
+      "source": "products_services",
+      "field": "unit"
+    },
+    {
+      "name": "product_status_options",
+      "source": "products_services",
+      "field": "status"
+    },
+    {
+      "name": "inventory_category_options",
+      "source": "inventory",
+      "field": "category"
+    },
+    {
+      "name": "user_role_options",
+      "source": "users",
+      "field": "role"
+    },
+    {
+      "name": "weather_station_connectivity_options",
+      "source": "weather_stations",
+      "field": "connectivity_type"
+    },
+    {
+      "name": "weather_station_status_options",
+      "source": "weather_stations",
+      "field": "status"
+    },
+    {
+      "name": "order_status_options",
+      "source": "orders",
+      "field": "status"
+    },
+    {
+      "name": "notification_page_type_options",
+      "source": "notifications",
+      "field": "page_type"
+    }
+  ],
+  "joins": [
+    {
+      "name": "field_billing_entities",
+      "source": "fields",
+      "field": "billing_entity",
+      "left": "field_id",
+      "right": "billing_entity_id",
+      "target": "billing_entities"
+    },
+    {
+      "name": "contact_operations",
+      "source": "contacts",
+      "field": "operations",
+      "left": "contact_id",
+      "right": "operation_id",
+      "target": "operations"
+    },
+    {
+      "name": "contact_billing_entities",
+      "source": "contacts",
+      "field": "billing_entity",
+      "left": "contact_id",
+      "right": "billing_entity_id",
+      "target": "billing_entities"
+    },
+    {
+      "name": "contact_customer_types",
+      "source": "contacts",
+      "field": "customer_type",
+      "left": "contact_id",
+      "right": "customer_type_id",
+      "target": "contact_customer_type_options"
+    },
+    {
+      "name": "probe_contacts",
+      "source": "probes",
+      "field": "contact",
+      "left": "probe_id",
+      "right": "contact_id",
+      "target": "contacts"
+    },
+    {
+      "name": "probe_billing_entities",
+      "source": "probes",
+      "field": "billing_entity",
+      "left": "probe_id",
+      "right": "billing_entity_id",
+      "target": "billing_entities"
+    },
+    {
+      "name": "probe_owner_operations",
+      "source": "probes",
+      "field": "owner_operation",
+      "left": "probe_id",
+      "right": "operation_id",
+      "target": "operations"
+    },
+    {
+      "name": "field_season_services",
+      "source": "field_seasons",
+      "field": "service_type",
+      "left": "field_season_id",
+      "right": "product_service_id",
+      "target": "products_services"
+    }
+  ],
+  "sourceNames": [
+    "products_services",
+    "inventory",
+    "users",
+    "installers",
+    "mileage_logs",
+    "documents",
+    "billing_entities",
+    "contacts",
+    "operations",
+    "fields",
+    "weather_stations",
+    "field_seasons",
+    "probes",
+    "probe_rack",
+    "probe_assignments",
+    "repairs",
+    "water_recs",
+    "invoices",
+    "invoice_lines",
+    "orders",
+    "order_items",
+    "notifications"
+  ]
+}

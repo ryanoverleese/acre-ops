@@ -1,9 +1,12 @@
+import { withApiAuth, assertCustomerField, operationForToken } from '@/lib/supabase/api';
+import { transaction } from '@/lib/supabase/database';
+import { DataError } from '@/lib/supabase/registry';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRow, getRows, updateRow } from '@/lib/baserow';
 import type { Notification } from '@/lib/baserow';
 
 // GET: Fetch unread notifications, sorted by created_on desc
-export async function GET() {
+export const GET = withApiAuth(async function GET() {
   try {
     const notifications = await getRows<Notification>('notifications', {
       size: 50,
@@ -17,13 +20,18 @@ export async function GET() {
     console.error('Notifications GET error:', error);
     return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
   }
-}
+});
 
 // POST: Create a notification
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest, _context, current) {
   try {
     const body = await request.json();
     const { operationId, fieldId, changed_field, new_value, page_type } = body;
+    if (current.kind === 'customer') {
+      const operation = await operationForToken(current.token);
+      if (Number(operationId) !== operation || !fieldId) throw new DataError('Customer field and operation required',403);
+      await assertCustomerField(current.token,fieldId);
+    }
 
     if (!changed_field) {
       return NextResponse.json({ error: 'changed_field is required' }, { status: 400 });
@@ -32,8 +40,9 @@ export async function POST(request: NextRequest) {
     const rowData: Record<string, unknown> = {
       changed_field,
       new_value: new_value || '',
-      page_type: page_type || 'Field Info',
+      page_type: page_type === 'Field Info' || !page_type ? 'field-info' : page_type,
       read: false,
+      created_on: new Date().toISOString(),
     };
 
     // Link fields use array of IDs
@@ -50,10 +59,10 @@ export async function POST(request: NextRequest) {
     console.error('Notifications POST error:', error);
     return NextResponse.json({ error: 'Failed to create notification' }, { status: 500 });
   }
-}
+});
 
 // PATCH: Mark notifications as read (bulk)
-export async function PATCH(request: NextRequest) {
+export const PATCH = withApiAuth(async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
     const { ids } = body;
@@ -62,13 +71,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'ids array is required' }, { status: 400 });
     }
 
-    await Promise.all(
-      ids.map((id: number) => updateRow('notifications', id, { read: true }))
-    );
+    await transaction(async () => { for (const id of ids) await updateRow('notifications',id,{read:true}); });
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Notifications PATCH error:', error);
     return NextResponse.json({ error: 'Failed to mark notifications as read' }, { status: 500 });
   }
-}
+});

@@ -1,55 +1,13 @@
-import { unstable_cache, revalidateTag } from 'next/cache';
+// Transitional facade: historical imports and DTOs, Supabase-only implementation.
+import { getRows, getCachedRows } from './supabase/adapter';
+import type { FetchOptions } from './supabase/adapter';
+export { getRows, getCachedRows, getRow, createRow, updateRow, deleteRow, bustTableCache, addSpaceVariants,
+  getTableFieldOptions, getTableFieldOptionsWithMeta, getAllSelectOptions, getCachedAllSelectOptions, getAllSelectOptionsWithMeta } from './supabase/adapter';
+export type { SelectOption, TableSelectOptions, TableSelectOptionsWithMeta, FetchOptions } from './supabase/adapter';
+export type FieldOptionsMeta = import('./supabase/adapter').TableSelectOptionsWithMeta[string];
+export type BaserowFilter = import('./supabase/adapter').Filter;
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
-// JWT auth for schema operations (field modifications).
-// Database tokens can CRUD rows but CANNOT modify field definitions (returns 401).
-// Set BASEROW_EMAIL + BASEROW_PASSWORD to enable JWT-based field schema changes.
-const BASEROW_EMAIL = process.env.BASEROW_EMAIL;
-const BASEROW_PASSWORD = process.env.BASEROW_PASSWORD;
-
-/**
- * Get a JWT token for Baserow schema operations (adding select options, etc).
- * Database tokens can only CRUD rows — field definition changes need JWT auth.
- * Returns null if credentials aren't configured or auth fails.
- */
-export async function getBaserowJwt(): Promise<string | null> {
-  const hasEmail = !!BASEROW_EMAIL;
-  const hasPassword = !!BASEROW_PASSWORD;
-  console.log(`getBaserowJwt: BASEROW_EMAIL=${hasEmail ? `set (${BASEROW_EMAIL?.substring(0, 3)}...)` : 'MISSING'}, BASEROW_PASSWORD=${hasPassword ? 'set' : 'MISSING'}`);
-
-  if (!BASEROW_EMAIL || !BASEROW_PASSWORD) {
-    console.error('getBaserowJwt: BASEROW_EMAIL and BASEROW_PASSWORD are required for field schema changes');
-    return null;
-  }
-
-  try {
-    const authUrl = 'https://api.baserow.io/api/user/token-auth/';
-    console.log(`getBaserowJwt: requesting JWT from ${authUrl}`);
-
-    const response = await fetch(authUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: BASEROW_EMAIL, password: BASEROW_PASSWORD }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`getBaserowJwt: auth failed: ${response.status} ${response.statusText}`, errorBody);
-      return null;
-    }
-
-    const data = await response.json();
-    const token = data.token || data.access_token || null;
-    console.log(`getBaserowJwt: success, token=${token ? `${token.substring(0, 10)}...` : 'NULL'}, response keys: ${Object.keys(data).join(',')}`);
-    return token;
-  } catch (error) {
-    console.error('getBaserowJwt: unexpected error:', error);
-    return null;
-  }
-}
-
-// Table IDs from your Baserow database
+// Legacy source inventory identifiers ONLY; no runtime transport uses these numbers.
 export const TABLE_IDS = {
   contacts: 817294,
   operations: 817295,
@@ -76,271 +34,6 @@ export const TABLE_IDS = {
 } as const;
 
 export type TableName = keyof typeof TABLE_IDS;
-
-interface BaserowResponse<T> {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: T[];
-}
-
-export interface BaserowFilter {
-  field: string;
-  type: 'equal' | 'not_equal' | 'contains' | 'higher_than' | 'lower_than';
-  value: string;
-}
-
-interface FetchOptions {
-  page?: number;
-  size?: number;
-  search?: string;
-  orderBy?: string;
-  filters?: Record<string, unknown>;
-  baserowFilters?: BaserowFilter[];
-}
-
-// Normalize Baserow field names: replace spaces with underscores and lowercase.
-// This ensures our TypeScript interfaces (which use snake_case) always match,
-// regardless of whether Baserow fields use spaces or underscores.
-function normalizeKeys(obj: Record<string, unknown>): Record<string, unknown> {
-  const normalized: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(obj)) {
-    const normalizedKey = key.replace(/ /g, '_');
-    normalized[normalizedKey] = value;
-  }
-  return normalized;
-}
-
-/** Add space-variant keys for Baserow write compatibility.
- *  Baserow fields may use spaces or underscores — sending both ensures a match. */
-export function addSpaceVariants(data: Record<string, unknown>): Record<string, unknown> {
-  const result: Record<string, unknown> = { ...data };
-  for (const [key, value] of Object.entries(data)) {
-    if (key.includes('_')) {
-      result[key.replace(/_/g, ' ')] = value;
-    }
-  }
-  return result;
-}
-
-// Global concurrency limiter — max 3 simultaneous Baserow requests per invocation.
-// Prevents 429s when pages fire many parallel Promise.all table fetches.
-const MAX_CONCURRENT = 3;
-let _active = 0;
-const _queue: Array<() => void> = [];
-
-function acquireSemaphore(): Promise<void> {
-  if (_active < MAX_CONCURRENT) {
-    _active++;
-    return Promise.resolve();
-  }
-  return new Promise<void>((resolve) => _queue.push(resolve));
-}
-
-function releaseSemaphore() {
-  _active--;
-  const next = _queue.shift();
-  if (next) { _active++; next(); }
-}
-
-// Retry helper for transient API errors (rate limiting, network issues)
-async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 3): Promise<Response> {
-  await acquireSemaphore();
-  try {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(url, init);
-    if (response.ok || (response.status < 500 && response.status !== 429)) {
-      return response;
-    }
-    // Retry on 429 (rate limit) or 5xx (server error)
-    if (attempt < maxRetries) {
-      const jitter = Math.random() * 500; // up to 500ms random jitter
-      const delay = Math.pow(2, attempt) * 1000 + jitter; // ~1s, ~2s, ~4s
-      console.warn(`Baserow API ${response.status} for ${url}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    } else {
-      return response;
-    }
-  }
-  // Unreachable, but TypeScript needs it
-  throw new Error('fetchWithRetry: exhausted retries');
-  } finally {
-    releaseSemaphore();
-  }
-}
-
-async function baserowFetch<T>(
-  tableId: number,
-  options: FetchOptions = {}
-): Promise<BaserowResponse<T>> {
-  const { page = 1, size = 100, search, orderBy } = options;
-
-  const params = new URLSearchParams({
-    user_field_names: 'true',
-    page: page.toString(),
-    size: size.toString(),
-  });
-
-  if (search) {
-    params.append('search', search);
-  }
-
-  if (orderBy) {
-    params.append('order_by', orderBy);
-  }
-
-  if (options.baserowFilters?.length) {
-    options.baserowFilters.forEach((f) => {
-      params.append(`filter__${f.field}__${f.type}`, f.value);
-    });
-  }
-
-  const url = `${BASEROW_API_URL}/${tableId}/?${params.toString()}`;
-
-  const response = await fetchWithRetry(url, {
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Baserow API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-
-  // Normalize field names in results: spaces → underscores
-  if (data.results) {
-    data.results = data.results.map((row: Record<string, unknown>) => normalizeKeys(row));
-  }
-
-  return data;
-}
-
-// Generic get all rows for a table (fetches ALL pages in parallel)
-export async function getRows<T>(tableName: TableName, options?: FetchOptions): Promise<T[]> {
-  const tableId = TABLE_IDS[tableName];
-  const size = options?.size || 200;
-
-  // Fetch first page to get total count
-  const firstPage = await baserowFetch<T>(tableId, { ...options, page: 1, size });
-  const allResults: T[] = [...firstPage.results];
-
-  if (firstPage.next === null) {
-    return allResults;
-  }
-
-  // Fetch remaining pages in parallel — the MAX_CONCURRENT semaphore in
-  // fetchWithRetry already throttles simultaneous requests, so this can't
-  // hammer Baserow rate limits.
-  const totalPages = Math.ceil(firstPage.count / size);
-  const restPages: number[] = [];
-  for (let page = 2; page <= totalPages; page++) restPages.push(page);
-  const rest = await Promise.all(
-    restPages.map((page) => baserowFetch<T>(tableId, { ...options, page, size }))
-  );
-  for (const result of rest) {
-    allResults.push(...result.results);
-  }
-
-  return allResults;
-}
-
-// Cached version of getRows - caches results for revalidateSeconds
-// Use this for server components that don't need real-time data
-export function getCachedRows<T>(tableName: TableName, options?: FetchOptions, revalidateSeconds = 120): Promise<T[]> {
-  return unstable_cache(
-    () => getRows<T>(tableName, options),
-    [`baserow-${tableName}-${JSON.stringify(options || {})}`],
-    { revalidate: revalidateSeconds, tags: [`baserow-${tableName}`] }
-  )();
-}
-
-/** Bust the getCachedRows cache for a table after a write, so app edits show
- *  up immediately even on cached pages. Safe to call from route handlers and
- *  server actions; no-ops (with a warning) anywhere revalidation isn't allowed. */
-export function bustTableCache(tableName: TableName) {
-  try {
-    // { expire: 0 } = expire immediately; the next read blocks and fetches
-    // fresh. Do NOT use 'max' here — that is stale-while-revalidate, which
-    // serves the OLD data one more time after a save (user saw their edit
-    // vanish when navigating back; bit us on water recs 2026-07-06).
-    revalidateTag(`baserow-${tableName}`, { expire: 0 });
-  } catch (e) {
-    console.warn(`bustTableCache(${tableName}) skipped:`, e);
-  }
-}
-
-// Update a row by ID (PATCH)
-export async function updateRow<T>(tableName: TableName, rowId: number, data: Record<string, unknown>): Promise<T> {
-  const tableId = TABLE_IDS[tableName];
-  const url = `${BASEROW_API_URL}/${tableId}/${rowId}/?user_field_names=true`;
-
-  const response = await fetchWithRetry(url, {
-    method: 'PATCH',
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Baserow update error: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  const result = await response.json();
-  bustTableCache(tableName);
-  return normalizeKeys(result) as T;
-}
-
-// Create a new row (POST)
-export async function createRow<T>(tableName: TableName, data: Record<string, unknown>): Promise<T> {
-  const tableId = TABLE_IDS[tableName];
-  const url = `${BASEROW_API_URL}/${tableId}/?user_field_names=true`;
-
-  const response = await fetchWithRetry(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Baserow create error: ${response.status} ${response.statusText} - ${errorText}`);
-  }
-
-  const result = await response.json();
-  bustTableCache(tableName);
-  return normalizeKeys(result) as T;
-}
-
-// Get a single row by ID
-export async function getRow<T>(tableName: TableName, rowId: number): Promise<T> {
-  const tableId = TABLE_IDS[tableName];
-  const url = `${BASEROW_API_URL}/${tableId}/${rowId}/?user_field_names=true`;
-
-  const response = await fetch(url, {
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    throw new Error(`Baserow API error: ${response.status} ${response.statusText}`);
-  }
-
-  const data = await response.json();
-  return normalizeKeys(data) as T;
-}
 
 // Specific typed fetchers for each table
 export interface Contact {
@@ -519,7 +212,7 @@ export interface WaterRec {
   field_season?: { id: number; value: string }[];
   date?: string;
   recommendation?: string;
-  suggested_water_day?: { id: number; value: string };
+  suggested_water_day?: string;
 }
 
 export interface Invoice {
@@ -545,12 +238,14 @@ export interface InvoiceLine {
   service_type?: string;
   rate?: number;
   quantity?: number;
+  field_unit_rate?: number | null;
+  field_quantity?: number | null;
 }
 
 export interface Installer {
   id: number;
   name?: string;
-  pin?: string;
+  pinSet?: boolean;
 }
 
 export interface ProbeRackSlot {
@@ -652,7 +347,7 @@ export const getOrderItems = (options?: FetchOptions) => getRows<OrderItem>('ord
 export interface User {
   id: number;
   email: string;
-  password_hash: string;
+  password_hash?: string;
   name: string;
   role: { id: number; value: string };
   active: boolean;
@@ -686,147 +381,5 @@ export interface Document {
 
 export async function getDocuments(): Promise<Document[]> {
   return getRows<Document>('documents', { orderBy: '-uploaded_at' });
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Field metadata: fetch single_select options from Baserow table schema
-// ────────────────────────────────────────────────────────────────────────────
-
-export interface SelectOption {
-  id: number;
-  value: string;
-  color: string;
-}
-
-export interface TableSelectOptions {
-  [fieldName: string]: SelectOption[];
-}
-
-export interface FieldOptionsMeta {
-  fieldId: number;
-  options: SelectOption[];
-}
-
-export interface TableSelectOptionsWithMeta {
-  [fieldName: string]: FieldOptionsMeta;
-}
-
-/**
- * Fetch all single_select field options for a given table.
- * Uses Baserow's field metadata API: GET /api/database/fields/table/{table_id}/
- * Returns a map of normalized_field_name → select_options[]
- */
-export async function getTableFieldOptions(tableName: TableName): Promise<TableSelectOptions> {
-  const tableId = TABLE_IDS[tableName];
-  const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
-
-  const response = await fetchWithRetry(url, {
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    console.error(`Failed to fetch field options for ${tableName}:`, response.status);
-    return {};
-  }
-
-  const fields: Array<{
-    id: number;
-    name: string;
-    type: string;
-    select_options?: SelectOption[];
-  }> = await response.json();
-
-  const result: TableSelectOptions = {};
-  for (const field of fields) {
-    if ((field.type === 'single_select' || field.type === 'multiple_select') && field.select_options) {
-      const normalizedName = field.name.replace(/ /g, '_');
-      result[normalizedName] = field.select_options;
-    }
-  }
-
-  return result;
-}
-
-/**
- * Fetch select options with Baserow field IDs (needed for PATCH updates).
- * Returns a map of normalized_field_name → { fieldId, options[] }
- */
-export async function getTableFieldOptionsWithMeta(tableName: TableName): Promise<TableSelectOptionsWithMeta> {
-  const tableId = TABLE_IDS[tableName];
-  const url = `https://api.baserow.io/api/database/fields/table/${tableId}/`;
-
-  const response = await fetchWithRetry(url, {
-    headers: {
-      'Authorization': `Token ${BASEROW_TOKEN}`,
-    },
-    cache: 'no-store',
-  });
-
-  if (!response.ok) {
-    console.error(`Failed to fetch field options for ${tableName}:`, response.status);
-    return {};
-  }
-
-  const fields: Array<{
-    id: number;
-    name: string;
-    type: string;
-    select_options?: SelectOption[];
-  }> = await response.json();
-
-  const result: TableSelectOptionsWithMeta = {};
-  for (const field of fields) {
-    if ((field.type === 'single_select' || field.type === 'multiple_select') && field.select_options) {
-      const normalizedName = field.name.replace(/ /g, '_');
-      result[normalizedName] = { fieldId: field.id, options: field.select_options };
-    }
-  }
-
-  return result;
-}
-
-/**
- * Fetch select options for multiple tables at once.
- * Returns { tableName: { fieldName: SelectOption[] } }
- */
-export async function getAllSelectOptions(tableNames: TableName[]): Promise<Record<string, TableSelectOptions>> {
-  const results = await Promise.all(
-    tableNames.map(async (name) => {
-      const options = await getTableFieldOptions(name);
-      return [name, options] as const;
-    })
-  );
-  return Object.fromEntries(results);
-}
-
-/**
- * Cached version of getAllSelectOptions — table schema changes rarely, so
- * pages should use this instead of hitting the field-metadata API every load.
- * The select-options mutation route busts the 'baserow-select-options' tag
- * so newly added options appear immediately.
- */
-export function getCachedAllSelectOptions(tableNames: TableName[], revalidateSeconds = 3600): Promise<Record<string, TableSelectOptions>> {
-  return unstable_cache(
-    () => getAllSelectOptions(tableNames),
-    [`baserow-select-options-${tableNames.join(',')}`],
-    { revalidate: revalidateSeconds, tags: ['baserow-select-options'] }
-  )();
-}
-
-/**
- * Fetch select options with field IDs for multiple tables.
- * Returns { tableName: { fieldName: { fieldId, options[] } } }
- */
-export async function getAllSelectOptionsWithMeta(tableNames: TableName[]): Promise<Record<string, TableSelectOptionsWithMeta>> {
-  const results = await Promise.all(
-    tableNames.map(async (name) => {
-      const options = await getTableFieldOptionsWithMeta(name);
-      return [name, options] as const;
-    })
-  );
-  return Object.fromEntries(results);
 }
 

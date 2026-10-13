@@ -64,16 +64,9 @@ async function getCRMData() {
 
     const operationFieldCount = new Map<number, number>();
     fields.forEach((field) => {
-      const beLink = field.billing_entity?.[0];
-      if (beLink) {
-        const opIds = beToOperations.get(beLink.id);
-        if (opIds) {
-          opIds.forEach((opId) => {
-            operationFieldCount.set(opId, (operationFieldCount.get(opId) || 0) + 1);
-          });
-        }
-      }
-    });
+      const opIds = new Set((field.billing_entity || []).flatMap(be => [...(beToOperations.get(be.id) || [])]));
+      for(const opId of opIds) operationFieldCount.set(opId, (operationFieldCount.get(opId) || 0) + 1);
+    });;
 
     const operationProbeCount = new Map<number, number>();
     probes.forEach((probe) => {

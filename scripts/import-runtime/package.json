@@ -1,0 +1,7 @@
+{
+  "name": "acre-ops-import-runtime",
+  "private": true,
+  "dependencies": {
+    "pg": "8.16.3"
+  }
+}

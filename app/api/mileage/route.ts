@@ -1,135 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { NextResponse } from 'next/server';
+import { withApiAuth } from '@/lib/supabase/api';
+import { createRow, updateRow, getRow, getRows, deleteRow, type Row } from '@/lib/supabase/adapter';
+import { transaction, query } from '@/lib/supabase/database';
+import { DataError, positiveId } from '@/lib/supabase/registry';
 
-const BASE = 'https://api.baserow.io/api/database/rows/table';
-const TOKEN = process.env.BASEROW_API_TOKEN;
-
-// GET /api/mileage?installer=Brian&date=2026-05-18  (date optional — omit for all logs)
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const installer = searchParams.get('installer');
-  const date = searchParams.get('date');
-
-  if (!installer) {
-    return NextResponse.json({ error: 'installer required' }, { status: 400 });
-  }
-
-  let url = `${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true&size=200`;
-  if (date) {
-    url += `&filters=${encodeURIComponent(JSON.stringify({
-      filter_type: 'AND',
-      filters: [{ field: 'date', type: 'date_equal', value: date }],
-    }))}`;
-  }
-
-  const res = await fetch(url, { headers: { Authorization: `Token ${TOKEN}` } });
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('Baserow mileage GET error:', res.status, err);
-    return NextResponse.json({ logs: [] });
-  }
-
-  const data = await res.json();
-  console.log('mileage GET: total rows', data.results?.length, 'filtering for installer=', installer);
-  const logs = (data.results ?? [])
-    .filter((row: Record<string, unknown>) => row.installer === installer)
-    .map((row: Record<string, unknown>) => ({
-      ...row,
-      date: typeof row.date === 'string' ? row.date.slice(0, 10) : row.date,
-    }))
-    .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
-      String(b.date ?? '').localeCompare(String(a.date ?? ''))
-    );
-
-  console.log('mileage GET: matched', logs.length, 'logs');
-  return NextResponse.json({ logs });
+export const GET=withApiAuth(async(request,_context,current)=>{
+ const installer=request.nextUrl.searchParams.get('installer');
+ if(!installer) throw new DataError('installer required');
+ if(current.kind==='crew'&&installer!==current.name) throw new DataError('Only your mileage is available',403);
+ const date=request.nextUrl.searchParams.get('date');
+ return NextResponse.json({logs:await getRows('mileage_logs',{filters:{installer,...(date?{date}:{})},orderBy:'-date'})});
+});
+export const POST=withApiAuth(async(request,_context,current)=>{
+ const {installer_name,date,start_miles,end_miles,notes}=await request.json();
+ if(!installer_name||!date) throw new DataError('installer_name and date required');
+ if(current.kind==='crew'&&installer_name!==current.name) throw new DataError('Only your mileage can be saved',403);
+ return NextResponse.json(await createRow('mileage_logs',{installer:installer_name,date,start_miles,end_miles,notes}),{status:201});
+});
+async function owner(id:number,current:import('@/lib/supabase/api').Actor) {
+ const row=await getRow<{installer:string}>('mileage_logs',id);
+ if(current.kind==='crew'&&row.installer!==current.name) throw new DataError('Only your mileage can be changed',403);
 }
-
-// POST /api/mileage — create a new log
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { installer_name, date, start_miles, end_miles, notes } = body;
-
-    if (!installer_name || !date) {
-      return NextResponse.json({ error: 'installer_name and date required' }, { status: 400 });
-    }
-
-    const payload: Record<string, unknown> = {
-      installer: installer_name,
-      date,
-    };
-    if (start_miles != null) payload.start_miles = start_miles;
-    if (end_miles != null) payload.end_miles = end_miles;
-    if (notes) payload.notes = notes;
-
-    const res = await fetch(`${BASE}/${TABLE_IDS.mileage_logs}/?user_field_names=true`, {
-      method: 'POST',
-      headers: { Authorization: `Token ${TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('Baserow mileage POST error:', res.status, err);
-      return NextResponse.json({ error: 'Failed to save' }, { status: res.status });
-    }
-
-    bustTableCache('mileage_logs');
-    return NextResponse.json(await res.json(), { status: 201 });
-  } catch (e) {
-    console.error('mileage POST error', e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
-// DELETE /api/mileage?id=123
-export async function DELETE(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
-
-  const res = await fetch(`${BASE}/${TABLE_IDS.mileage_logs}/${id}/`, {
-    method: 'DELETE',
-    headers: { Authorization: `Token ${TOKEN}` },
-  });
-
-  if (!res.ok && res.status !== 204) {
-    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 });
-  }
-  bustTableCache('mileage_logs');
-  return NextResponse.json({ ok: true });
-}
-
-// PATCH /api/mileage?id=123 — update existing log
-export async function PATCH(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 });
-
-    const body = await request.json();
-    const payload: Record<string, unknown> = {};
-    if (body.start_miles != null) payload.start_miles = body.start_miles;
-    if (body.end_miles != null) payload.end_miles = body.end_miles;
-    if (body.notes != null) payload.notes = body.notes;
-
-    const res = await fetch(`${BASE}/${TABLE_IDS.mileage_logs}/${id}/?user_field_names=true`, {
-      method: 'PATCH',
-      headers: { Authorization: `Token ${TOKEN}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('Baserow mileage PATCH error:', res.status, err);
-      return NextResponse.json({ error: 'Failed to update' }, { status: res.status });
-    }
-
-    bustTableCache('mileage_logs');
-    return NextResponse.json(await res.json());
-  } catch (e) {
-    console.error('mileage PATCH error', e);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
+export const PATCH=withApiAuth(async(request,_context,current)=>{
+ const id=positiveId(request.nextUrl.searchParams.get('id'));const body=await request.json();
+ return NextResponse.json(await transaction(async()=>{
+  await owner(id,current); const patch:Row={};
+  for(const key of ['start_miles','end_miles','notes']) if(body[key]!==undefined) patch[key]=body[key];
+  return updateRow('mileage_logs',id,patch);
+ }));
+});
+export const DELETE=withApiAuth(async(request,_context,current)=>{
+ const id=positiveId(request.nextUrl.searchParams.get('id'));
+ await transaction(async()=>{await owner(id,current);await deleteRow('mileage_logs',id);});
+ return NextResponse.json({ok:true});
+});

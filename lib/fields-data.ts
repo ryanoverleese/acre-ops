@@ -1,6 +1,6 @@
 import { getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions, BaserowFilter, Field, Operation, FieldSeason, Probe, BillingEntity, ProbeAssignment, Contact, ProductService } from '@/lib/baserow';
-import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
+import { buildOperationMap, buildBillingToOperationMaps, fieldBilling, fieldOperationIds, fieldOperationLabel } from '@/lib/data-mappings';
 
 export interface ProcessedProbeAssignment {
   id: number;
@@ -41,6 +41,9 @@ export interface ProcessedField {
   operation: string;
   operationId: number | null;
   billingEntityId: number | null;
+  billingEntityIds?: number[];
+  billingEntityNames?: string[];
+  operationIds?: number[];
   acres: number;
   pivotAcres?: number;
   season: string;
@@ -194,7 +197,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
 
     const operationMap = buildOperationMap(operations);
     const probeMap = new Map(probes.map((p) => [p.id, p]));
-    const { billingToOperationMap, billingToOperationNames } = buildBillingToOperationMaps(contacts, operationMap);
+    const { billingToOperationMap, billingToOperationIds, billingToOperationNames } = buildBillingToOperationMaps(contacts, operationMap);
 
     // Filter probe assignments to only those linked to loaded field_seasons
     const loadedFieldSeasonIds = new Set(fieldSeasons.map((fs) => fs.id));
@@ -241,18 +244,10 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
     });
 
     rawFields.forEach((field) => {
-      const billingEntityLink = field.billing_entity?.[0];
-      let operationName = 'Unknown';
-      let operationId: number | null = null;
-
-      if (billingEntityLink) {
-        operationId = billingToOperationMap.get(billingEntityLink.id) || null;
-        if (operationId) {
-          operationName = operationMap.get(operationId) || 'Unknown';
-        } else {
-          operationName = billingEntityLink.value || 'Unknown';
-        }
-      }
+      const billing = fieldBilling(field);
+      const operationIds = fieldOperationIds(field, billingToOperationIds);
+      const operationName = fieldOperationLabel(field, billingToOperationIds, operationMap);
+      const operationId = operationIds.length === 1 ? operationIds[0] : null;
 
       // Find all field seasons for this field
       const fieldFieldSeasons = fieldSeasons.filter((fs) => fs.field?.[0]?.id === field.id);
@@ -265,7 +260,8 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
           name: field.name || 'Unnamed Field',
           operation: operationName,
           operationId,
-          billingEntityId: billingEntityLink?.id || null,
+          billingEntityId: billing.singleId,
+          billingEntityIds: billing.ids, billingEntityNames: billing.names, operationIds,
           acres: field.acres || 0,
           pivotAcres: field.pivot_acres,
           season: '',
@@ -320,7 +316,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
           removalDate: '',
           removalNotes: '',
           // Billing entity name
-          billingEntityName: billingEntityLink?.value || '',
+          billingEntityName: billing.label,
         });
       } else {
         // Create entry for each season
@@ -340,7 +336,8 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             name: field.name || 'Unnamed Field',
             operation: operationName,
             operationId,
-            billingEntityId: billingEntityLink?.id || null,
+            billingEntityId: billing.singleId,
+            billingEntityIds: billing.ids, billingEntityNames: billing.names, operationIds,
             acres: field.acres || 0,
             pivotAcres: field.pivot_acres,
             season: fs.season ? String(fs.season) : '',
@@ -419,7 +416,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             removalDate: fs.removal_date || '',
             removalNotes: fs.removal_notes || '',
             // Billing entity name
-            billingEntityName: billingEntityLink?.value || '',
+            billingEntityName: billing.label,
           });
         });
       }

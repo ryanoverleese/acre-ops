@@ -1,22 +1,15 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 const TABLE_ID = 817294; // contacts table
 
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_ID}/?user_field_names=true`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await dataRequest({ table: 'contacts' }, { method: 'POST', body: JSON.stringify(body) });
 
     if (!response.ok) {
       const error = await response.text();
@@ -30,4 +23,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating contact:', error);
     return NextResponse.json({ error: 'Failed to create contact' }, { status: 500 });
   }
-}
+});

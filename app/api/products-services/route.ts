@@ -1,23 +1,17 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { TABLE_IDS, bustTableCache } from '@/lib/baserow';
+import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 
-export async function GET() {
+export const GET = withApiAuth(async function GET() {
   try {
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.products_services}/?user_field_names=true&size=200`;
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      next: { revalidate: 300 },
-    });
+    const url = { table: 'products_services' };
+    const response = await dataRequest(url, {  });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to fetch products & services' },
         { status: response.status }
@@ -46,9 +40,9 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withApiAuth(async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
@@ -62,19 +56,12 @@ export async function POST(request: NextRequest) {
     if (body.unit) createData.unit = body.unit;
     if (body.active !== undefined) createData.active = body.active;
 
-    const url = `${BASEROW_API_URL}/${TABLE_IDS.products_services}/?user_field_names=true`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(createData),
-    });
+    const url = { table: 'products_services' };
+    const response = await dataRequest(url, { method: 'POST', body: JSON.stringify(createData) });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Baserow API error:', response.status, errorText);
+      console.error('Database API error:', response.status, errorText);
       return NextResponse.json(
         { error: 'Failed to create product/service' },
         { status: response.status }
@@ -91,4 +78,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

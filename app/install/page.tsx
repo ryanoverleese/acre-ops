@@ -1,3 +1,4 @@
+import { fieldOperationLabel } from '@/lib/data-mappings';
 import { getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type BillingEntity, type Operation, type Contact } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
@@ -30,7 +31,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
     const probeMap = new Map(probes.map((p) => [p.id, p]));
     const fieldSeasonMap = new Map(fieldSeasons.map((fs) => [fs.id, fs]));
     const fieldMap = new Map(fields.map((f) => [f.id, f]));
-    const { billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
+    const { billingToOperationIds: billingToOperationMap } = buildBillingToOperationMaps(contacts, operationMap);
 
     // Filter probe_assignments:
     // - probe_status = 'Assigned' (ready to install but not yet installed)
@@ -60,13 +61,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         const field = fieldId ? fieldMap.get(fieldId) : null;
 
         // Get operation name
-        let operationName = 'Unknown';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) {
-            operationName = operationMap.get(opId) || 'Unknown';
-          }
-        }
+        const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
 
         // Get probe data
         const probeId = pa.probe?.[0]?.id;
@@ -138,11 +133,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
         const fieldId = fieldSeason?.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
-        let operationName = 'Unknown';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) operationName = operationMap.get(opId) || 'Unknown';
-        }
+        const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
         const probeId = pa.probe?.[0]?.id;
         const probe = probeId ? probeMap.get(probeId) : null;
         return {
@@ -186,11 +177,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
         const fieldSeason = fieldSeasonMap.get(fieldSeasonId);
         const fieldId = fieldSeason?.field?.[0]?.id;
         const field = fieldId ? fieldMap.get(fieldId) : null;
-        let operationName = 'Unknown';
-        if (field?.billing_entity?.[0]) {
-          const opId = billingToOperationMap.get(field.billing_entity[0].id);
-          if (opId) operationName = operationMap.get(opId) || 'Unknown';
-        }
+        const operationName = fieldOperationLabel(field, billingToOperationMap, operationMap);
         const probeId = pa.probe?.[0]?.id;
         const probe = probeId ? probeMap.get(probeId) : null;
         return {

@@ -606,33 +606,15 @@ export default function ProbesClient({ probes: initialProbes, billingEntities, c
         damages_repairs: editForm.damages_repairs || null,
       };
 
-      const probeRes = await fetch(`/api/probes/${selectedProbe.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      const probeRes = await fetch('/api/equipment/actions', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({action:'edit-probe',probeId:selectedProbe.id,patch:payload,
+          sourceId:originalRackSlotRowId,destinationId:editRackSlotRowId}),
       });
       if (!probeRes.ok) {
         const error = await probeRes.json();
         alert(error.error || 'Failed to update probe');
         return;
-      }
-
-      // Handle rack location change
-      if (editRackSlotRowId !== originalRackSlotRowId) {
-        if (originalRackSlotRowId) {
-          await fetch(`/api/probe-rack/${originalRackSlotRowId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ probe: null }),
-          });
-        }
-        if (editRackSlotRowId) {
-          await fetch(`/api/probe-rack/${editRackSlotRowId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ probe: selectedProbe.id }),
-          });
-        }
       }
 
       setShowEditModal(false);

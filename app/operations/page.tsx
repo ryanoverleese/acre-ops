@@ -40,16 +40,9 @@ async function getOperationsData(): Promise<{
     // Count fields per operation (field -> billing_entity -> operation)
     const operationFieldCount = new Map<number, number>();
     fields.forEach((field) => {
-      const beLink = field.billing_entity?.[0];
-      if (beLink) {
-        const opIds = billingToOperationIds.get(beLink.id);
-        if (opIds) {
-          opIds.forEach((opId) => {
-            operationFieldCount.set(opId, (operationFieldCount.get(opId) || 0) + 1);
-          });
-        }
-      }
-    });
+      const opIds = new Set((field.billing_entity || []).flatMap(be => [...(billingToOperationIds.get(be.id) || [])]));
+      for(const opId of opIds) operationFieldCount.set(opId, (operationFieldCount.get(opId) || 0) + 1);
+    });;
 
     // Count probes per operation (probe -> billing_entity -> operation)
     const operationProbeCount = new Map<number, number>();

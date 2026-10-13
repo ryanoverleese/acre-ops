@@ -1,6 +1,9 @@
-import { auth } from '@/auth';
+import NextAuth from 'next-auth';
+import authConfig from './auth.config';
+const { auth } = NextAuth(authConfig);
 import { NextResponse } from 'next/server';
 import { LEGACY_EQUIPMENT_ROUTES } from '@/lib/equipment-navigation';
+import { CREW_COOKIE, readCrewSession } from '@/lib/crew-session';
 
 // Routes that installers can access
 const INSTALLER_ROUTES = [
@@ -14,7 +17,7 @@ const INSTALLER_ROUTES = [
 // Routes that don't require authentication at all
 const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/removal', '/api/mileage', '/api/probes', '/api/fields', '/api/elevation', '/api/geocode', '/api/repairs', '/pulled', '/api/pulled-today'];
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { pathname } = req.nextUrl;
 
   // The retired general mobile app was replaced by the installer app. Keep
@@ -48,8 +51,16 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Crew sessions may read their private assignment photos and picker data.
+  // Each route independently checks the signed session and its table/action scope.
+  const crewRead = req.method === 'GET' && (
+    /^\/api\/files\/probe_assignments\/\d+\/(install_photo_field_end|install_photo_extra|removal_photo)\/\d+$/.test(pathname) ||
+    pathname === '/api/select-options' || pathname === '/api/probe-rack'
+  );
+  if (crewRead && await readCrewSession(req.cookies.get(CREW_COOKIE)?.value)) return NextResponse.next();
+
   // If not authenticated, redirect to login
-  if (!req.auth) {
+  if (!req.auth?.user?.id) {
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);

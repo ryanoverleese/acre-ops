@@ -1,3 +1,4 @@
+import { fieldBilling } from '@/lib/data-mappings';
 import type { Metadata } from 'next';
 import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts, getCachedAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
@@ -28,6 +29,7 @@ export interface ReviewFieldInfoItem {
   name: string;
   acres: number;
   billingEntityId: number | null;
+  billingEntityNames: string[];
   irrigationType: string;
   rowDirection: string;
   waterSource: string;
@@ -134,7 +136,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
 
   // Get fields belonging to this operation
   const operationFields = rawFields.filter(
-    (f) => f.billing_entity?.[0]?.id && billingEntityIds.has(f.billing_entity[0].id)
+    (f) => f.billing_entity?.some(be => billingEntityIds.has(be.id))
   );
   const fieldIds = new Set(operationFields.map((f) => f.id));
 
@@ -169,7 +171,8 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
       fieldSeasonId: fs.id,
       name: field?.name || 'Unknown Field',
       acres: field?.acres || 0,
-      billingEntityId: field?.billing_entity?.[0]?.id || null,
+      billingEntityId: fieldBilling(field).singleId,
+      billingEntityNames: fieldBilling(field).names,
       irrigationType: field?.irrigation_type?.value || '',
       rowDirection: field?.row_direction?.value || '',
       waterSource: field?.water_source?.value || '',

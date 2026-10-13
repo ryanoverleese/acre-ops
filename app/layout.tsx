@@ -5,6 +5,9 @@ import AppShell from '@/components/AppShell';
 import LoadingBar from '@/components/LoadingBar';
 import Providers from '@/components/Providers';
 
+// Privileged server data must be loaded at request time, never baked into public
+// build output. Explicit adapter caches still expire immediately after writes.
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Acre Insights Operation Center',
@@ -29,8 +32,6 @@ export default function RootLayout({
       <head>
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="dns-prefetch" href="https://api.baserow.io" />
-        <link rel="preconnect" href="https://api.baserow.io" />
         <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('acre-ops-theme');if(t)document.documentElement.dataset.theme=t;})();` }} />
       </head>
       <body>

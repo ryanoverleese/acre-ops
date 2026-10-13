@@ -1,4 +1,5 @@
 'use client';
+import { fieldBilling } from '@/lib/data-mappings';
 
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
@@ -61,8 +62,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
   const fieldToOperation = useMemo(() => {
     const m = new Map<number, string>();
     for (const f of fields) {
-      const be = f.billing_entity?.[0];
-      if (be) m.set(f.id, be.value);
+      m.set(f.id, fieldBilling(f).label);
     }
     return m;
   }, [fields]);

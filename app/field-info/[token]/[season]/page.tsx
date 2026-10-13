@@ -1,3 +1,4 @@
+import { fieldBilling } from '@/lib/data-mappings';
 import type { Metadata } from 'next';
 import { getOperations, getFields, getFieldSeasons, getContacts, getAllSelectOptions } from '@/lib/baserow';
 import type { TableSelectOptions } from '@/lib/baserow';
@@ -32,6 +33,7 @@ export interface FieldInfoItem {
   name: string;
   acres: number;
   billingEntityId: number | null;
+  billingEntityNames: string[];
   fieldLat: number | null;
   fieldLng: number | null;
   // Current values (may be empty for new customers)
@@ -113,7 +115,7 @@ export default async function FieldInfoPage({ params, searchParams }: PageProps)
 
   // Get fields belonging to this operation
   const operationFields = rawFields.filter(
-    (f) => f.billing_entity?.[0]?.id && billingEntityIds.has(f.billing_entity[0].id)
+    (f) => f.billing_entity?.some(be => billingEntityIds.has(be.id))
   );
   const fieldIds = new Set(operationFields.map((f) => f.id));
 
@@ -147,7 +149,8 @@ export default async function FieldInfoPage({ params, searchParams }: PageProps)
       fieldSeasonId: fs.id,
       name: field?.name || 'Unknown Field',
       acres: field?.acres || 0,
-      billingEntityId: field?.billing_entity?.[0]?.id || null,
+      billingEntityId: fieldBilling(field).singleId,
+      billingEntityNames: fieldBilling(field).names,
       fieldLat: field?.lat ?? null,
       fieldLng: field?.lng ?? null,
       irrigationType: field?.irrigation_type?.value || '',

@@ -1,7 +1,8 @@
+import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { getFieldsData } from '@/lib/fields-data';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiAuth(async function GET(request: NextRequest) {
   const season = request.nextUrl.searchParams.get('season');
 
   if (!season || isNaN(Number(season))) {
@@ -14,4 +15,4 @@ export async function GET(request: NextRequest) {
     fields: data.fields,
     probeAssignments: data.probeAssignments,
   });
-}
+});

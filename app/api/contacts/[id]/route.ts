@@ -1,11 +1,11 @@
+import { withApiAuth } from '@/lib/supabase/api';
+import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { bustTableCache } from '@/lib/baserow';
 
-const BASEROW_API_URL = 'https://api.baserow.io/api/database/rows/table';
-const BASEROW_TOKEN = process.env.BASEROW_API_TOKEN;
 const TABLE_ID = 817294; // contacts table
 
-export async function PATCH(
+export const PATCH = withApiAuth(async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -13,14 +13,7 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
 
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_ID}/${id}/?user_field_names=true`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
+    const response = await dataRequest({ table: 'contacts', id: id }, { method: 'PATCH', body: JSON.stringify(body) });
 
     if (!response.ok) {
       const error = await response.text();
@@ -34,21 +27,16 @@ export async function PATCH(
     console.error('Error updating contact:', error);
     return NextResponse.json({ error: 'Failed to update contact' }, { status: 500 });
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withApiAuth(async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
 
-    const response = await fetch(`${BASEROW_API_URL}/${TABLE_ID}/${id}/`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Token ${BASEROW_TOKEN}`,
-      },
-    });
+    const response = await dataRequest({ table: 'contacts', id: id }, { method: 'DELETE' });
 
     if (!response.ok) {
       const error = await response.text();
@@ -61,4 +49,4 @@ export async function DELETE(
     console.error('Error deleting contact:', error);
     return NextResponse.json({ error: 'Failed to delete contact' }, { status: 500 });
   }
-}
+});
