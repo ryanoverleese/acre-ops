@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import authConfig from './auth.config';
 const { auth } = NextAuth(authConfig);
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { LEGACY_EQUIPMENT_ROUTES } from '@/lib/equipment-navigation';
 import { CREW_COOKIE, readCrewSession } from '@/lib/crew-session';
 
@@ -17,7 +17,7 @@ const INSTALLER_ROUTES = [
 // Routes that don't require authentication at all
 const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/removal', '/api/mileage', '/api/probes', '/api/fields', '/api/elevation', '/api/geocode', '/api/repairs', '/pulled', '/api/pulled-today'];
 
-export default auth(async (req) => {
+const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   const { pathname } = req.nextUrl;
 
   // The retired general mobile app was replaced by the installer app. Keep
@@ -33,11 +33,6 @@ export default auth(async (req) => {
 
   // Allow public routes
   if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
-    return NextResponse.next();
-  }
-
-  // Allow auth API routes
-  if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
 
@@ -112,9 +107,30 @@ export default auth(async (req) => {
   return NextResponse.next();
 });
 
+export default async function middleware(request: NextRequest, event: NextFetchEvent) {
+  const response = await authenticatedMiddleware(request, event);
+  if (!response) return response;
+
+  // Authorization must be read-only. A delayed page/prefetch response can
+  // otherwise restore its refreshed cookie after a successful sign-out.
+  // Auth.js endpoints own session creation, refresh, and expiration.
+  const sessionName = authConfig.cookies.sessionToken.name;
+  const cookies = response.headers.getSetCookie();
+  response.headers.delete('set-cookie');
+  for (const cookie of cookies) {
+    const name = cookie.slice(0, cookie.indexOf('='));
+    if (name !== sessionName && !name.startsWith(`${sessionName}.`)) {
+      response.headers.append('set-cookie', cookie);
+    }
+  }
+  return response;
+}
+
 export const config = {
   matcher: [
-    // Match all routes except static files and images
-    '/((?!_next/static|_next/image|favicon.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // Auth.js owns its endpoints, including CSRF and cookie expiration. Running
+    // auth() here renews the session after sign-out has already cleared it.
+    // Exclude only /api/auth and its children, not similarly named app routes.
+    '/((?!api/auth(?:/|$)|_next/static|_next/image|favicon.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

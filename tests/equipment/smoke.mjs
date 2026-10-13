@@ -11,7 +11,9 @@ import { EQUIPMENT_TABS, LEGACY_EQUIPMENT_ROUTES, getEquipmentTab } from '../../
 const { chromium } = createRequire(import.meta.url)('playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '');
 const artifacts = await mkdtemp(`${tmpdir()}/acre-equipment-qa-`);
-const base = 'http://127.0.0.1:3197';
+// Next's standalone auth handler canonicalizes its local request host to localhost.
+// Match it so the real sign-out redirect stays inside the isolated origin.
+const base = 'http://localhost:3197';
 const secret = 'equipment-local-fixture-secret-not-for-production';
 let output = '', browser, server, page, authCookie = '';
 let passed = 0;
@@ -256,6 +258,43 @@ try {
         assert.equal(new URL(installerPage.url()).pathname, '/install');
       }
     } finally { await installerContext.close(); }
+  });
+  await check('staff sign-out clears the session and blocks protected pages and APIs', async () => {
+    await session('admin');
+    await page.goto(`${base}/equipment`);
+    await page.getByPlaceholder('Search probes...').waitFor();
+    // Explicit fixture cookie before logout: APIRequestContext does not send
+    // production Secure cookies over the isolated HTTP localhost server.
+    assert.equal((await (await context.request.get(`${base}/api/auth/session`, {headers: {Cookie: authCookie}})).json()).user.role, 'admin');
+    const protectedPage = await context.request.get(`${base}/equipment`, {headers: {Cookie: authCookie}});
+    assert.equal(protectedPage.status(), 200);
+    assert(!protectedPage.headersArray().some(header => header.name.toLowerCase() === 'set-cookie' && header.value.startsWith('acre-auth-supabase-v1=')), 'Page/prefetch middleware must not restore a session after sign-out');
+    // Auth endpoints must not run the middleware's session refresh: it can
+    // append a live session cookie after the sign-out handler expires it.
+    const csrf = await context.request.get(`${base}/api/auth/csrf`, {headers: {Cookie: authCookie}});
+    assert(!csrf.headersArray().some(header => header.name.toLowerCase() === 'set-cookie' && header.value.startsWith('acre-auth-supabase-v1=')));
+    const arrivedAtLogin = page.waitForURL(`${base}/login`);
+    const [signedOut] = await Promise.all([
+      page.waitForResponse(response => new URL(response.url()).pathname === '/api/auth/signout' && response.request().method() === 'POST'),
+      page.getByRole('button', {name: 'Sign out', exact: true}).click(),
+    ]);
+    assert.equal(signedOut.status(), 200);
+    const sessionCookies = (await signedOut.headersArray()).filter(header => header.name.toLowerCase() === 'set-cookie' && header.value.startsWith('acre-auth-supabase-v1='));
+    assert.equal(sessionCookies.length, 1, 'Sign-out must expire the cookie once, without renewing it');
+    assert.match(sessionCookies[0].value, /^acre-auth-supabase-v1=;/);
+    assert.match(sessionCookies[0].value, /Max-Age=0/i);
+    await arrivedAtLogin;
+    assert(!(await context.cookies()).some(cookie => cookie.name === 'acre-auth-supabase-v1'));
+    assert.equal((await (await context.request.get(`${base}/api/auth/session`)).json())?.user, undefined);
+    for (const path of ['/fields', '/equipment', '/billing', '/documents']) {
+      await page.goto(`${base}${path}`);
+      assert.equal(new URL(page.url()).pathname, '/login', `${path} must require a new login`);
+    }
+    for (const path of ['/api/fields/1', '/api/probes', '/api/invoice-lines', '/api/files/documents/1/file/0']) {
+      const response = await context.request.get(`${base}${path}`, {maxRedirects: 0});
+      assert([401, 403].includes(response.status()) || ([302, 303, 307, 308].includes(response.status()) && new URL(response.headers().location, base).pathname === '/login'), `${path} must deny the signed-out session`);
+    }
+    await page.screenshot({path: `${artifacts}/signed-out.png`});
   });
   await check('no browser runtime errors', async () => assert.deepEqual(errors, []));
   console.log(JSON.stringify({ passed, artifacts }));
