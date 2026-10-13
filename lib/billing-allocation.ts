@@ -9,6 +9,26 @@ export function equalShareAmount(total: number, count: number, index: number) {
   return (Math.floor(cents / count) + (index < cents % count ? 1 : 0)) / 100;
 }
 
+export type SavedFieldCharge = { rate: number; quantity: number; field_unit_rate?: number | null; field_quantity?: number | null };
+export function fieldChargeBasis(lines: SavedFieldCharge[], catalogRate: number) {
+  if (!lines.length) return {fieldUnitRate: catalogRate, fieldQuantity: 1};
+  const first = lines[0];
+  if (lines.every(line => line.field_unit_rate != null && line.field_quantity != null &&
+      line.field_unit_rate === first.field_unit_rate && line.field_quantity === first.field_quantity))
+    return {fieldUnitRate: first.field_unit_rate!, fieldQuantity: first.field_quantity!};
+  // A single legacy unsplit charge retains its original unit rate and quantity.
+  if (lines.length === 1 && first.field_unit_rate == null && first.field_quantity == null)
+    return {fieldUnitRate: first.rate, fieldQuantity: first.quantity};
+  // An old shared total cannot tell us its original unit rate. Never invent one.
+  return {fieldUnitRate: null, fieldQuantity: null};
+}
+
+export function quantityEditBasis(line: {fieldUnitRate: number | null}, quantity: number) {
+  if (line.fieldUnitRate == null) throw new Error('The original field rate is missing. Set the billing rate in Edit Season before changing quantity.');
+  if (!Number.isFinite(quantity) || quantity < 0) throw new Error('Quantity must be a non-negative number');
+  return {rate: line.fieldUnitRate, quantity};
+}
+
 export function allocateFieldCharge(rate: number, quantity: number, entityIds: number[]) {
   if (!Number.isFinite(rate) || rate < 0 || !Number.isFinite(quantity) || quantity < 0)
     throw new Error('Rate and quantity must be non-negative numbers');

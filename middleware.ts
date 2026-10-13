@@ -60,7 +60,7 @@ export default auth(async (req) => {
   if (crewRead && await readCrewSession(req.cookies.get(CREW_COOKIE)?.value)) return NextResponse.next();
 
   // If not authenticated, redirect to login
-  if (!req.auth) {
+  if (!req.auth?.user?.id) {
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);

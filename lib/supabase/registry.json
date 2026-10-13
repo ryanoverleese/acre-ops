@@ -2675,6 +2675,18 @@
           "type": "numeric(14,4)",
           "required": false,
           "identity": false
+        },
+        {
+          "name": "field_unit_rate",
+          "type": "numeric(14,2)",
+          "required": false,
+          "identity": false
+        },
+        {
+          "name": "field_quantity",
+          "type": "numeric(14,4)",
+          "required": false,
+          "identity": false
         }
       ],
       "read": "invoice_lines_calculated"

@@ -40,7 +40,7 @@ test('billing uses all join links, omitted links survive, and explicit [] clears
 test('blank text/serials become null; credentials never appear in public DTOs', async () => {
   const probe = await a.createRow('probes',{serial_number:'   ',notes:''});
   assert.equal(probe.serial_number,null); assert.equal(probe.notes,null);
-  const installer = await a.createRow('installers',{name:'Crew QA',pin:'never-expose'});
+  const installer = await a.createRow('installers',{name:'Crew QA',pin:require('bcryptjs').hashSync('1234',4)});
   assert.equal(installer.pinSet,true); assert.equal(installer.pin,undefined);
   assert.equal(user.password_hash,undefined); assert.equal((await a.getRow('users',user.id,true)).password_hash,'private-test-hash');
 });
@@ -64,6 +64,69 @@ test('thirds and odd pennies retain the exact field total deterministically', as
   assert.deepEqual(allocateFieldCharge(100.01,3,[1,2]).map(c=>c.rate),[150.02,150.01]);
   assert.deepEqual(allocateFieldCharge(0,0,[1,2]).map(c=>c.rate),[0,0]);
 });
+
+test('shared field quantity 2 twice stays 2x, including reload and a catalog rate change', async () => {
+  const {POST}=f.load('app/api/billing/enroll/route.ts');
+  const {fieldChargeBasis,quantityEditBasis}=f.load('lib/billing-allocation.ts');
+  const fs=await a.createRow('field_seasons',{field:[field.id],season:2027});
+  const base={season:2027,field_season_id:fs.id,service_type:'Original custom rate'};
+  let result=await (await POST(f.request('/api/billing/enroll',{...base,rate:125,quantity:1}))).json();
+  for (const quantity of [2,2,3,2]) {
+    // Same helper used by BillingClient; rebuild from saved rows as after reload.
+    const saved=await a.getRows('invoice_lines',{filters:{field_season:fs.id}});
+    const basis=fieldChargeBasis(saved,999);
+    assert.equal(basis.fieldUnitRate,125,'Never use the saved total or changed catalog rate');
+    result=await (await POST(f.request('/api/billing/enroll',{...base,...quantityEditBasis(basis,quantity)}))).json();
+    assert.equal(result.fieldUnitRate,125); assert.equal(result.fieldQuantity,quantity);
+    assert.equal(result.charges.reduce((sum,c)=>sum+c.rate*c.quantity,0),125*quantity);
+    assert.equal(result.charges.length,2);
+  }
+  assert.equal((await a.getRows('invoice_lines',{filters:{field_season:fs.id}})).length,2);
+  const oldShared=fieldChargeBasis([{rate:125,quantity:1},{rate:125,quantity:1}],999);
+  assert.throws(()=>quantityEditBasis(oldShared,2),/original field rate is missing/);
+});
+
+test('installer login accepts only bcrypt, rejects plaintext even before migration, and never returns a PIN', async () => {
+  const previous=f.session; f.session=null;
+  try {
+    const bcrypt=require('bcryptjs');
+    // Raw setup bypasses API authorization; these are isolated synthetic rows.
+    const hashed=bcrypt.hashSync('0123',4);
+    await f.db.query('INSERT INTO installers(name,pin) VALUES($1,$2)',['Hashed auth fixture',hashed]);
+    const {POST}=f.load('app/api/installer-auth/route.ts');
+    const good=await POST(f.request('/api/installer-auth',{installer:'Hashed auth fixture',pin:'0123'}));
+    assert.equal(good.status,200);
+    assert.deepEqual(Object.keys(await good.json()).sort(),['id','ok']);
+    assert.match(good.headers.get('set-cookie'),/HttpOnly/i);
+    assert.equal((await POST(f.request('/api/installer-auth',{installer:'Hashed auth fixture',pin:'9999'}))).status,401);
+    await f.db.exec('BEGIN; ALTER TABLE installers DROP CONSTRAINT installers_pin_bcrypt_only;');
+    try {
+      await f.db.query('INSERT INTO installers(name,pin) VALUES($1,$2)',['Legacy auth fixture','0123']);
+      assert.equal((await POST(f.request('/api/installer-auth',{installer:'Legacy auth fixture',pin:'0123'}))).status,401);
+    } finally {await f.db.exec('ROLLBACK');}
+  } finally {f.session=previous;}
+});
+
+test('crew webhook reads dry-run configuration and defaults safely; Workflows remains silent', async () => {
+  const originalFetch=global.fetch, originalSetting=process.env.REMOVAL_WEBHOOK_DRY_RUN, originalUrl=process.env.REMOVAL_WEBHOOK_URL;
+  const calls=[];process.env.REMOVAL_WEBHOOK_URL='https://webhook.example.invalid/removal';
+  global.fetch=async(_url,init)=>{calls.push(JSON.parse(init.body));return Response.json({ok:true});};
+  await f.db.exec("INSERT INTO probe_status_options(value) VALUES ('Installed'),('In Stock') ON CONFLICT(value) DO NOTHING; INSERT INTO assignment_probe_status_options(value) VALUES ('Installed'),('Removed') ON CONFLICT(value) DO NOTHING;");
+  try {
+    for (const [index,setting] of [undefined,'true','false',' FALSE ','', 'garbage'].entries()) {
+      if(setting===undefined)delete process.env.REMOVAL_WEBHOOK_DRY_RUN;else process.env.REMOVAL_WEBHOOK_DRY_RUN=setting;
+      const probe=await a.createRow('probes',{serial_number:`DRY-${index}`,status:'Installed'});
+      const pa=await a.createRow('probe_assignments',{field_season:[season.id],probe:[probe.id],probe_status:'Installed'});
+      const form=new FormData();form.set('probeAssignmentId',String(pa.id));form.set('removedBy','QA Admin');form.set('source','crew');
+      assert.equal((await f.load('app/api/removal/route.ts').POST(new Request('http://localhost/api/removal',{method:'POST',body:form}))).status,200);
+      assert.equal(calls.at(-1).dry_run,setting?.trim().toLowerCase()!=='false');
+    }
+  } finally {
+    global.fetch=originalFetch;
+    if(originalSetting===undefined)delete process.env.REMOVAL_WEBHOOK_DRY_RUN;else process.env.REMOVAL_WEBHOOK_DRY_RUN=originalSetting;
+    if(originalUrl===undefined)delete process.env.REMOVAL_WEBHOOK_URL;else process.env.REMOVAL_WEBHOOK_URL=originalUrl;
+  }
+});
 test('failure on the second billing recipient rolls back both and sends no cache invalidation', async () => {
   const before = await a.getRows('invoice_lines'); const tags = f.tags.length;
   const {POST} = f.load('app/api/billing/enroll/route.ts');
@@ -85,7 +148,7 @@ test('cached projections invalidate every changed base/join table immediately af
 });
 
 test('Workflows sends no webhook; crew notifies once after commit with native IDs and dry_run', async () => {
-  await f.db.exec("INSERT INTO probe_status_options(value) VALUES ('Installed'),('In Stock'),('RMA'); INSERT INTO assignment_probe_status_options(value) VALUES ('Installed'),('Removed');");
+  await f.db.exec("INSERT INTO probe_status_options(value) VALUES ('Installed'),('In Stock'),('RMA') ON CONFLICT(value) DO NOTHING; INSERT INTO assignment_probe_status_options(value) VALUES ('Installed'),('Removed') ON CONFLICT(value) DO NOTHING;");
   const probe=await a.createRow('probes',{serial_number:'QA-1',status:'Installed'});
   const siblingProbe=await a.createRow('probes',{serial_number:'QA-2',status:'Installed'});
   const assignment=await a.createRow('probe_assignments',{field_season:[season.id],probe:[probe.id],probe_status:'Installed',planned_remover:'Fixture',install_date:'2026-05-01'});

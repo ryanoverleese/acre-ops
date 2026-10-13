@@ -238,6 +238,8 @@ export interface InvoiceLine {
   service_type?: string;
   rate?: number;
   quantity?: number;
+  field_unit_rate?: number | null;
+  field_quantity?: number | null;
 }
 
 export interface Installer {

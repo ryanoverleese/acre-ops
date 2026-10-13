@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { compare } from 'bcryptjs';
-import { timingSafeEqual } from 'node:crypto';
 import { withApiAuth } from '@/lib/supabase/api';
 import { DataError } from '@/lib/supabase/registry';
 import { findInstaller } from '@/lib/supabase/credentials';
@@ -14,7 +13,7 @@ export const POST=withApiAuth(async request=>{
  attempts.set(key,{count:prior&&prior.until>now?prior.count+1:1,until:prior&&prior.until>now?prior.until:now+15*60*1000});
  if(attempts.size>1000) for(const [k,v] of attempts) if(v.until<now) attempts.delete(k);
  const row=await findInstaller(installer);
- const valid=row?.pin?.startsWith('$2')?await compare(String(pin),row.pin):!!row?.pin && Buffer.byteLength(String(pin))===Buffer.byteLength(row.pin)&&timingSafeEqual(Buffer.from(String(pin)),Buffer.from(row.pin));
+ const valid=!!row?.pin && /^\$2[aby]\$(0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}$/.test(row.pin) && await compare(String(pin),row.pin);
  if(!row||!valid) throw new DataError('Incorrect installer or PIN',401);
  attempts.delete(key);
  const response=NextResponse.json({ok:true,id:row.id});

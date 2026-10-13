@@ -65,10 +65,10 @@ try {
     await page.goto(`${base}/equipment`);
     assert.equal(new URL(page.url()).pathname, '/login');
   });
-  const session = async role => {
+  const session = async (role, targetContext = context) => {
     const value = await encode({ token: { name: 'Equipment QA', email: 'qa@example.invalid', role, id: '1', backend: 'supabase-native-v1' }, secret, salt: 'acre-auth-supabase-v1' });
     authCookie = `acre-auth-supabase-v1=${value}`;
-    await context.addCookies([{ name: 'acre-auth-supabase-v1', value, url: base, httpOnly: true }]);
+    await targetContext.addCookies([{ name: 'acre-auth-supabase-v1', value, url: base, httpOnly: true }]);
   };
   await session('admin');
   await check('four tabs, one Equipment menu item, working probe search', async () => {
@@ -168,17 +168,50 @@ try {
     assert.equal(await details.count(),2);
     for (const row of await details.all()) {
       assert.match(await row.innerText(),/1\/2 share \(50%\)/);
-      assert.equal(await row.getByRole('cell',{name:'$150.00',exact:true}).count(),2);
+      assert.equal(await row.getByRole('cell',{name:'$150.00',exact:true}).count(),1);
+      assert.match(await row.innerText(),/\$300.00/);
       assert(!/not yet charged/.test(await row.innerText()));
     }
     await page.screenshot({path:`${artifacts}/billing-split.png`});
   });
+  await check('shared quantity edits never compound, including after a page reload', async () => {
+    const quantity = () => page.getByRole('spinbutton',{name:'Field quantity for QA Field'}).first();
+    await quantity().fill('2');
+    await Promise.all([
+      page.waitForResponse(response=>new URL(response.url()).pathname==='/api/billing/enroll' && response.request().method()==='POST'),
+      quantity().press('Tab'),
+    ]);
+    await page.waitForFunction(()=>[...document.querySelectorAll('input[aria-label="Field quantity for QA Field"]')].every(input=>input.value==='2'));
+    const checkTotal = async () => {
+      const response=await context.request.get(`${base}/api/invoice-lines`,{headers:{Cookie:authCookie}});
+      assert.equal(response.status(),200);
+      const rows=(await response.json()).filter(row=>row.field_season[0]?.id===101);
+      assert.equal(rows.length,2);
+      assert.equal(rows.reduce((sum,row)=>sum+row.rate*row.quantity,0),600);
+      assert(rows.every(row=>row.field_unit_rate===300 && row.field_quantity===2));
+    };
+    await quantity().fill('2'); await quantity().press('Tab'); await checkTotal();
+    await page.reload();
+    for (const name of ['QA Billing','QA Split Partner']) await page.locator('tr').filter({has:page.getByRole('cell',{name,exact:true})}).locator('.expand-chevron').click();
+    assert.equal(await quantity().inputValue(),'2');
+    await quantity().fill('2'); await quantity().press('Tab'); await checkTotal();
+  });
   await check('installer access remains unchanged', async () => {
-    await session('installer');
-    for (const route of ['/equipment', '/equipment/register', '/equipment/replace', '/racks']) {
-      await page.goto(`${base}${route}`);
-      assert.equal(new URL(page.url()).pathname, '/install');
-    }
+    // Separate accounts need separate cookie jars: an in-flight admin request
+    // may rotate its session cookie after a same-context role switch.
+    const installerContext = await browser.newContext();
+    await installerContext.route('**/*', route => new URL(route.request().url()).origin === base ? route.continue() : route.abort());
+    try {
+      await session('installer', installerContext);
+      const installerPage = await installerContext.newPage();
+      installerPage.on('pageerror', error => errors.push(error.message));
+      const sessionResponse = await installerContext.request.get(`${base}/api/auth/session`);
+      assert.equal((await sessionResponse.json()).user.role, 'installer');
+      for (const route of ['/equipment', '/equipment/register', '/equipment/replace', '/racks']) {
+        await installerPage.goto(`${base}${route}`);
+        assert.equal(new URL(installerPage.url()).pathname, '/install');
+      }
+    } finally { await installerContext.close(); }
   });
   await check('no browser runtime errors', async () => assert.deepEqual(errors, []));
   console.log(JSON.stringify({ passed, artifacts }));

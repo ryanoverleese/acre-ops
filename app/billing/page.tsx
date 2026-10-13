@@ -1,6 +1,6 @@
 import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices, getProbes } from '@/lib/baserow';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
-import { allocateFieldCharge } from '@/lib/billing-allocation';
+import { allocateFieldCharge, fieldChargeBasis, type SavedFieldCharge } from '@/lib/billing-allocation';
 import BillingClient, { ProcessedBillingEntity, OnOrderLine } from './BillingClient';
 
 interface BillingData {
@@ -51,18 +51,19 @@ async function getBillingData(): Promise<BillingData> {
 
     // Build field_season_id → { quantity, invoiceLineId } map from invoice_lines
     const invoiceEntityMap = new Map(invoices.map(inv => [inv.id, inv.billing_entity?.[0]?.id]));
-    const fsInvoiceLineMap = new Map<string, { rate: number; quantity: number; invoiceLineId: number }>();
+    const fsInvoiceLineMap = new Map<string, SavedFieldCharge & { invoiceLineId: number }>();
     invoiceLines.forEach((il) => {
       const fsId = il.field_season?.[0]?.id;
       const entityId = invoiceEntityMap.get(il.invoice?.[0]?.id ?? 0);
       if (fsId && entityId) {
-        fsInvoiceLineMap.set(`${fsId}-${entityId}`, { rate: Number(il.rate ?? 0), quantity: Number(il.quantity ?? 1), invoiceLineId: il.id });
+        fsInvoiceLineMap.set(`${fsId}-${entityId}`, { rate: Number(il.rate ?? 0), quantity: Number(il.quantity ?? 1), invoiceLineId: il.id,
+          field_unit_rate: il.field_unit_rate == null ? null : Number(il.field_unit_rate), field_quantity: il.field_quantity == null ? null : Number(il.field_quantity) });
       }
     });
 
     // Track field seasons grouped by billing entity and season
     // Key: "beId-season", Value: array of line items (field name, service type, rate, quantity)
-    const beSeasonLines = new Map<string, { fieldSeasonId: number; invoiceLineId: number; fieldName: string; serviceType: string; rate: number; quantity: number; shareCount: number; shareIndex: number; fullFieldRate: number; needsAllocation: boolean }[]>();
+    const beSeasonLines = new Map<string, { fieldSeasonId: number; invoiceLineId: number; fieldName: string; serviceType: string; rate: number; quantity: number; shareCount: number; shareIndex: number; fieldUnitRate: number | null; fieldQuantity: number | null; needsAllocation: boolean }[]>();
     const allSeasons = new Set<number>();
 
     fieldSeasons.forEach((fs) => {
@@ -85,7 +86,7 @@ async function getBillingData(): Promise<BillingData> {
       // Group by billing entity and season
       const allocations = billingEntityIds.length ? allocateFieldCharge(rate, 1, billingEntityIds) : [];
       const savedLines = billingEntityIds.map(id => fsInvoiceLineMap.get(`${fs.id}-${id}`)).filter(line => !!line);
-      const savedTotal = savedLines.reduce((sum, line) => sum + line.rate * line.quantity, 0);
+      const basis = fieldChargeBasis(savedLines, rate);
       const savedAmounts = savedLines.map(line => Math.round(line.rate * line.quantity * 100));
       const needsAllocation = savedLines.length > 0 && billingEntityIds.length > 1 &&
         (savedLines.length !== billingEntityIds.length || Math.max(...savedAmounts) - Math.min(...savedAmounts) > 1);
@@ -97,7 +98,7 @@ async function getBillingData(): Promise<BillingData> {
         const ilData = fsInvoiceLineMap.get(`${fs.id}-${billingEntityId}`);
         existing.push({ fieldSeasonId: fs.id, invoiceLineId: ilData?.invoiceLineId || 0, fieldName,
           serviceType, rate: ilData?.rate ?? allocation.rate, quantity: ilData?.quantity ?? allocation.quantity,
-          shareCount: allocations.length, shareIndex: allocation.shareIndex, fullFieldRate: savedLines.length ? savedTotal : rate, needsAllocation });
+          shareCount: allocations.length, shareIndex: allocation.shareIndex, ...basis, needsAllocation });
         beSeasonLines.set(key, existing);
       }
     });
@@ -182,7 +183,8 @@ async function getBillingData(): Promise<BillingData> {
             quantity: line.quantity,
             shareCount: line.shareCount,
             shareIndex: line.shareIndex,
-            fullFieldRate: line.fullFieldRate,
+            fieldUnitRate: line.fieldUnitRate,
+            fieldQuantity: line.fieldQuantity,
             needsAllocation: line.needsAllocation,
           })),
         };

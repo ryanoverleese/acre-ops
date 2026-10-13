@@ -4,6 +4,7 @@ const path = require('node:path');
 const Module = require('node:module');
 const ts = require('typescript');
 const { PGlite } = require('@electric-sql/pglite');
+const { pgcrypto } = require('@electric-sql/pglite/contrib/pgcrypto');
 const root = path.resolve(__dirname, '../..');
 const fixture = { db: null, tags: [], session: null, cookies: new Map(), storage: [], callbacks: [], failSql: null };
 const originalLoad = Module._load;
@@ -38,9 +39,9 @@ process.env.AUTH_SECRET = 'fixture-only-not-production';
 process.env.REMOVAL_WEBHOOK_DRY_RUN = 'true';
 global.fetch = async (...args) => { throw new Error('External HTTP is forbidden in contract tests'); };
 fixture.initialize = async () => {
-  fixture.db = new PGlite();
+  fixture.db = new PGlite({extensions: {pgcrypto}});
   await fixture.db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
-  for (const file of ['001_init.sql','20261012183218_field_billing_entities.sql'])
+  for (const file of fs.readdirSync(path.join(root,'supabase/migrations')).filter(file=>file.endsWith('.sql')).sort())
     await fixture.db.exec(fs.readFileSync(path.join(root,'supabase/migrations',file),'utf8'));
   return fixture;
 };

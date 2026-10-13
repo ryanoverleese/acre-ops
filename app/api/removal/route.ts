@@ -32,7 +32,7 @@ let removalWebhookUrlMissingLogged = false;
  *   REMOVAL_WEBHOOK_KEY or REMOVAL_WEBHOOK_AUTH — optional Authorization header
  *     (Bearer-prefixed unless the value already starts with Bearer/Token).
  *   REMOVAL_WEBHOOK_DRY_RUN — must be "true" on the branch deploy.
- *     This migration branch also forces dry_run=true as a fail-safe.
+ *     Unset/blank/unrecognized values default to true; only explicit false opts out.
  */
 async function notifyRemovalWebhook(payload: Record<string, unknown>): Promise<void> {
   const url = process.env.REMOVAL_WEBHOOK_URL?.trim();
@@ -45,9 +45,7 @@ async function notifyRemovalWebhook(payload: Record<string, unknown>): Promise<v
   }
 
   const dryRunEnv = process.env.REMOVAL_WEBHOOK_DRY_RUN;
-  // This migration branch must never deactivate a live CropX installation.
-  const dry_run = true;
-  if (dryRunEnv !== 'true') console.warn('[removal] branch safety: dry run forced on');
+  const dry_run = dryRunEnv?.trim().toLowerCase() !== 'false';
 
   const body = {
     ...payload,

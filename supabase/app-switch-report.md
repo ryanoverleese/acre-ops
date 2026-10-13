@@ -2,6 +2,19 @@
 
 Date: 2026-10-12. Branch: `supabase-schema`. Target: Acre Ops only, `junawlttpyztjlnbmvcb`.
 
+## Follow-up fixes — 2026-10-12
+
+All four requested fixes are prepared locally; see the commit containing this section. **No push, deploy, or live database migration was performed.** Main and the protected stash are unchanged.
+
+1. **Billing:** quantity changes use the saved original unsplit unit rate, never the sum of already-allocated charges. Enrollment persists `field_unit_rate` and `field_quantity` on every recipient's invoice line, so reloads and later catalog price changes cannot compound the charge. Each entity still receives its equal share. Regression coverage changes quantity 2 → 2 → 3 → 2 and repeats 2 in the real Billing screen after reloading. Ambiguous older shared charges without original-rate metadata are not guessed; set the original rate explicitly through Edit Season before editing quantity. Historical charges are not backfilled or automatically changed.
+2. **Installer PINs:** added a rerunnable, transactional pgcrypto migration converting plaintext numeric PINs to independently salted cost-12 bcrypt, preserving already-hashed values and leading zeros, normalizing blank values to NULL, and adding a bcrypt-only constraint. Unexpected formats abort before any PIN changes. Installer login now rejects plaintext entirely. Seven synthetic PINs were converted and checked with bcrypt in isolated tests; the seven reported live plaintext PINs were **not** changed by this work.
+3. **Removal notifications:** `REMOVAL_WEBHOOK_DRY_RUN` controls the crew payload. Missing/blank/unrecognized values default to true; only explicit `false` opts out. Workflows still sends no webhook. The branch deploy must set this variable to true. The payload and native Supabase assignment ID are unchanged.
+4. **Dependency security:** pinned Next.js `16.4.0`, NextAuth `5.0.0-beta.32`, and `@auth/core` `0.41.3`; refreshed the lockfile and tightened middleware to require a valid user ID. Final `npm audit --json` reports **0 vulnerabilities at every severity**, including dev dependencies. This replaces the earlier eight-package audit finding; it is not a claim of a complete security audit.
+
+**Required before any separately approved deployment:** apply `supabase/migrations/20261013032326_invoice_line_field_basis.sql` and then `supabase/migrations/20261013032328_hash_installer_pins.sql` to the Acre Ops project only. These files were written and tested, **not applied live**. Without the first, invoice-line queries lack their new columns; without the second, existing plaintext installer PINs cannot authenticate. Follow the existing project-only deployment safeguards; do not run the old Baserow importer after bcrypt enforcement without separately reviewing its credential handling. Supabase security guidance informed the transactional migration, bcrypt constraint, and preservation of existing RLS/grants.
+
+Files: billing route/page/client, `lib/billing-allocation.ts`, `lib/baserow.ts`, `lib/supabase/registry.json`, the two migrations, installer-auth/removal routes, `middleware.ts`, dependency files, Supabase/equipment test harnesses and regression tests, and their documentation.
+
 ## Status and commits
 
 Implementation is committed locally and locally tested. **Not pushed or deployed. No Netlify configuration was changed.** This is a branch-test implementation, not a production cutover approval.
@@ -155,10 +168,10 @@ The shared expiry deliberately covers more than the minimal dependencies. It avo
 
 ## Verification
 
-- `node --test tests/supabase/contract.test.cjs tests/removal.test.mjs scripts/import-baserow.test.mjs`: **69 passed**, zero failures/skips (23 Supabase contracts, 15 shared-removal tests, 31 importer tests).
+- `node --test tests/supabase/contract.test.cjs tests/supabase/pin-migration.test.cjs tests/removal.test.mjs scripts/import-baserow.test.mjs`: **74 passed**, zero failures/skips (26 Supabase contracts, 2 PIN-migration tests, 15 shared-removal tests, 31 importer tests).
 - `npx tsc --noEmit --incremental false`: passed.
 - Production `npm run build`: passed, with database connection variables and Storage key disabled for the build. Pages are dynamic; private data is not embedded into a static build. Next's existing middleware→proxy deprecation warning remains.
-- `tests/equipment/smoke.mjs`: **10 passed**, including real production-build Billing rendering of a saved $300 charge as two $150 charges, rack move/undo, RMA, registration, login gating and phone/tablet layout.
+- `tests/equipment/smoke.mjs`: **11 passed**, including real production-build Billing rendering of a saved $300 charge as two $150 charges, repeated quantity edits before/after reloading, rack move/undo, RMA, registration, login gating and phone/tablet layout.
 - `tests/removal/smoke.mjs`: **4 passed**, including selected-device scope, actual remover/date, untouched planning/sibling, zero Workflows notifications, one crew dry-run notification and retry history.
 - Browser tests use the actual migrations in isolated PGlite databases and block external traffic. Synthetic authenticated sessions test access, not a live user's password. Crew-role notification-list requests are denied (403) by design; no browser runtime errors.
 - Read-only live check: connection succeeded through `DATABASE_URL_ALT` after primary failed. Confirmed target project, private Storage bucket authentication, **65/65 tables with RLS**, **15 security-invoker views**, 595 field-billing links across 593 fields, and 15,767 water recommendation rows. No database or Storage writes.
@@ -190,11 +203,11 @@ Optional/fallback configuration:
 
 `COMMIT_REF` is supplied by Netlify for the version display; `NEXT_PUBLIC_GIT_SHA` is derived at build time. Neither Baserow credentials nor SUPABASE_ACCESS_TOKEN nor a browser Supabase key is required.
 
-The database connection and Storage origin are pinned to the Acre Ops project. The branch must use dry-run removal notifications. **REMOVAL_WEBHOOK_DRY_RUN must be true**; the code additionally forces true on this branch. The payload still contains `serial`, `assignment_id`, `source: 'acre-ops'`, and `dry_run`; **assignment_id is now the native Supabase ID**, not the old Baserow ID. The receiver's crosswalk handling must be reviewed before any production notification is enabled.
+The database connection and Storage origin are pinned to the Acre Ops project. The branch must use dry-run removal notifications. **REMOVAL_WEBHOOK_DRY_RUN must be true**; the code defaults to true unless explicitly set to false. The payload still contains `serial`, `assignment_id`, `source: 'acre-ops'`, and `dry_run`; **assignment_id is now the native Supabase ID**, not the old Baserow ID. The receiver's crosswalk handling must be reviewed before any production notification is enabled.
 
 ## Review items and limits before deployment
 
-1. **Dependency security gate:** npm audit reported 8 affected packages (3 critical, 4 high, 1 moderate): @auth/core, next-auth, next, sharp, postcss, nanoid, source-map-js and baseline-browser-mapping. Their installed versions are unchanged from 011039a. No automatic upgrade was applied during this database conversion. Review/update and retest before a public deployment; passing migration tests is not a security clearance.
+1. **Dependency security gate resolved in the follow-up:** Next.js, NextAuth and @auth/core were upgraded and retested; the final full npm audit reports zero affected packages. The two new migrations remain a deployment prerequisite. Passing these tests/audit is not a complete security clearance.
 2. Postgres and Storage access is privileged and server-only. Existing RLS/grants were preserved, not relaxed, but the configured backend role can bypass RLS. Route authorization is therefore essential. A dedicated least-privilege application database role is a separate hardening step; no new role/grants were created here.
 3. Notifications' existing schema has a naming mismatch; the explicit mapping above preserves the app's current label + field-link contract without a schema change. Review that choice if other consumers expect SQL field_name to mean the literal field name.
 4. Existing imported billing history is preserved until an explicit safe draft allocation save. Paid/non-draft invoices and ambiguous duplicate charges require review. Equal splitting applies to field charges, not independently owned probe purchases or weather-station bills.

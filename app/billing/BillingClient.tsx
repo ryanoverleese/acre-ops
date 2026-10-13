@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, Fragment, useRef, useCallback, useEffect, type ReactNode } from 'react';
-import { equalShareAmount } from '@/lib/billing-allocation';
+import { equalShareAmount, quantityEditBasis } from '@/lib/billing-allocation';
 
 const BILLING_COLUMNS = [
   { key: 'invoiceNumber', label: 'Invoice #', defaultOn: true },
@@ -94,7 +94,8 @@ export interface InvoiceLine {
   quantity: number;
   shareCount: number;
   shareIndex: number;
-  fullFieldRate: number;
+  fieldUnitRate: number | null;
+  fieldQuantity: number | null;
   needsAllocation: boolean;
 }
 
@@ -305,7 +306,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
   };
 
   const handleUpdateQuantity = async (line: InvoiceLine, newQty: number, be: ProcessedBillingEntity, force = false) => {
-    if (!force && newQty === line.quantity) return;
+    if (!force && newQty === line.fieldQuantity) return;
     const trackingId = line.invoiceLineId || line.id;
     setSavingQty(prev => new Set(prev).add(trackingId));
     try {
@@ -314,7 +315,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ billing_entity_id: be.id, season: be.season,
           field_season_id: line.id, service_type: line.serviceType,
-          rate: line.shareCount > 1 ? line.fullFieldRate : line.rate, quantity: newQty }),
+          ...quantityEditBasis(line, newQty) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Could not save billing shares');
@@ -327,7 +328,7 @@ export default function BillingClient({ billingEntities: initialEntities, availa
           lines: inv.lines.map(item => item.id === line.id ? {...item,
             invoiceLineId: charge.invoiceLine.id, rate: charge.rate, quantity: charge.quantity,
             shareCount: charge.shareCount, needsAllocation: false,
-            fullFieldRate: data.charges.reduce((sum: number, c: {rate: number; quantity: number}) => sum + c.rate * c.quantity, 0),
+            fieldUnitRate: data.fieldUnitRate, fieldQuantity: data.fieldQuantity,
           } : item),
         }))};
       }));
@@ -946,23 +947,27 @@ export default function BillingClient({ billingEntities: initialEntities, availa
                                         {line.shareCount > 1 && <small style={{ display: 'block' }}>1/{line.shareCount} share ({(100 / line.shareCount).toLocaleString(undefined, { maximumFractionDigits: 2 })}%)</small>}
                                         {!line.invoiceLineId && <small style={{ display: 'block' }}>Estimate — not yet charged</small>}
                                         {line.needsAllocation && <small style={{ display: 'block', color: '#a16207' }}>Existing charges need equal allocation</small>}
-                                        {line.shareCount > 1 && (line.needsAllocation || !line.invoiceLineId) && <button type="button" disabled={savingQty.has(line.invoiceLineId || line.id)} onClick={() => handleUpdateQuantity(line, 1, be, true)}>Save equal shares</button>}
+                                        {line.fieldUnitRate == null && <small style={{display:'block',color:'#a16207'}}>Set original billing rate in Edit Season before changing quantity</small>}
+                                        {line.shareCount > 1 && (line.needsAllocation || !line.invoiceLineId) && <button type="button" disabled={line.fieldUnitRate == null || savingQty.has(line.invoiceLineId || line.id)} onClick={() => handleUpdateQuantity(line, line.fieldQuantity ?? 1, be, true)}>Save equal shares</button>}
                                       </td>
                                       <td className="text-secondary">{line.serviceType || '—'}</td>
                                       <td className="align-right">
-                                        {line.shareCount > 1 ? '1 share' : <input
+                                        <input
                                           type="number"
-                                          min={1}
-                                          key={`${line.invoiceLineId}-${line.quantity}`}
-                                          defaultValue={line.quantity}
-                                          onBlur={(e) => handleUpdateQuantity(line, parseInt(e.target.value, 10) || 1, be)}
+                                          aria-label={`Field quantity for ${line.fieldName}`}
+                                          min={0}
+                                          step="any"
+                                          key={`${line.invoiceLineId}-${line.fieldQuantity}`}
+                                          defaultValue={line.fieldQuantity ?? ''}
+                                          onBlur={(e) => { if (e.target.value !== '') handleUpdateQuantity(line, Number(e.target.value), be); }}
                                           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                                          disabled={savingQty.has(line.invoiceLineId || line.id)}
+                                          disabled={line.fieldUnitRate == null || savingQty.has(line.invoiceLineId || line.id)}
                                           style={{ width: '48px', textAlign: 'right', padding: '2px 4px' }}
                                           className="inline-input"
-                                        />}
+                                        />
+                                        {line.shareCount > 1 && <small style={{display:'block'}}>field qty</small>}
                                       </td>
-                                      <td className="align-right">{formatCurrency(line.rate)}</td>
+                                      <td className="align-right">{formatCurrency(line.fieldUnitRate ?? line.rate)}{line.shareCount > 1 && <small style={{display:'block'}}>full field rate</small>}</td>
                                       <td className="align-right">{formatCurrency(line.rate * line.quantity)}</td>
                                     </tr>
                                   ))}

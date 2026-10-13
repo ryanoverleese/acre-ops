@@ -1,6 +1,7 @@
 // Production Next server, in-memory Postgres, synthetic fixtures. Never live data.
 const fs=require('node:fs'), path=require('node:path'), vm=require('node:vm'), Module=require('node:module');
 const {PGlite}=require('@electric-sql/pglite');
+const {pgcrypto}=require('@electric-sql/pglite/contrib/pgcrypto');
 const ts=require('typescript');
 const root=path.resolve(__dirname,'../..');
 if(process.env.ACRE_SUPABASE_BROWSER!=='1') throw Error('Explicit isolated browser test environment required');
@@ -11,7 +12,7 @@ const ids={817294:'contacts',817295:'operations',817297:'billing_entities',81729
 const source=fs.readFileSync(path.join(root,`tests/${mode}/baserow-fixture.cjs`),'utf8');
 const start=source.indexOf('const year ='), end=source.indexOf(mode==='removal'?'const writes =':'let nextId =',start);
 const fixture=vm.runInNewContext(source.slice(start,end)+';tables',{Date});
-const db=new PGlite(); const writes=[],webhooks=[];
+const db=new PGlite({extensions:{pgcrypto}}); const writes=[],webhooks=[];
 let initialized=false, adapter;
 process.env.SUPABASE_URL='https://junawlttpyztjlnbmvcb.supabase.co';
 process.env.DATABASE_URL='postgresql://postgres:fixture-only@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres';
@@ -75,7 +76,7 @@ async function option(table,value) {
 }
 const ready=(async()=>{
   await db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
-  for(const name of ['001_init.sql','20261012183218_field_billing_entities.sql']) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',name),'utf8'));
+  for(const name of fs.readdirSync(path.join(root,'supabase/migrations')).filter(name=>name.endsWith('.sql')).sort()) await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',name),'utf8'));
   for(const catalog of inventory.catalogs) await option(catalog.name,'Fixture');
   for(const value of ['Installed','In Stock','RMA','On Order','On Order - Trade','Trade Ordered','Lost']) await option('probe_status_options',value);
   for(const value of ['Installed','Removed','Assigned','Unassigned']) await option('assignment_probe_status_options',value);
