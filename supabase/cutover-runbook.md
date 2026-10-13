@@ -1,9 +1,34 @@
 # Acre Ops morning cutover runbook
 
-Status: PREP ONLY. Nothing below authorizes a cutover today. Stop at any failed
-gate. Target is **acre-ops / junawlttpyztjlnbmvcb** only. Journal is excluded.
+Status: Ryan authorized executing the cutover on **October 13, 2026**, confirmed
+the writer freeze in chat, and approved the exceptions below. Stop at any failed
+gate. **A separate explicit "push" is required after the local merge and tests.**
+Target is **acre-ops / junawlttpyztjlnbmvcb** only. Journal is excluded.
 Never run a Baserow write from either script. Do not touch the stash
 `wip hold for autosave` (`65856746e3c4f7b1776f6680aef1dc5b7ba7b408`).
+
+## Approved execution exceptions — October 13, 2026
+
+- **Skip the delta sync.** Ryan does not need the four new `water_recs` with
+  Baserow IDs **22508–22511**. Do not import them. The fresh comparison at
+  `2026-10-13T22:15:11.428Z` has exactly those four additions, no other new,
+  changed, or deleted rows, no file differences, and no errors. Expected base
+  counts therefore remain **19,719 Baserow / 19,715 Supabase**; `water_recs`
+  remains **15,771 / 15,767**. This is an explicit exception to the zero-delta
+  gate below, not a claim that the source counts match exactly. All other table
+  counts and mapped values must still match under the preservation rules.
+- **Keep `REMOVAL_WEBHOOK_DRY_RUN=true` in production and branch deploys.**
+  Grok Bot must verify the CropX routine and native Supabase assignment IDs
+  before Ryan separately authorizes false. Do not fire a live removal webhook
+  as a cutover test. Workflows never notifies regardless of this setting.
+- The initial recovery export stopped because the Mac was full. After Ryan
+  freed space, all **65 public tables** were restored and compared in an isolated
+  local PostgreSQL-compatible database, and all **250 Storage files**
+  (**302,539,823 bytes**) were byte-verified. The private application recovery
+  export completed at `2026-10-13T22:13:35.616Z`; its location and private Netlify
+  recovery records are recorded in the Notion journey log. This is an app-data
+  recovery export, not a managed-service/cluster backup. No live database writes
+  were made for backup or restore verification.
 
 ## Current prep gates
 
@@ -147,9 +172,10 @@ views retain `security_invoker`, and the bucket remains private. Spot-check
 serials, dates, actual vs planned removers, multi-entity billing shares, and files.
 Keep the last successful pre/post reports privately with the backup.
 
-## 4. Configure production Netlify (future approved action only)
+## 4. Configure production Netlify
 
-Do this only after the frozen delta passes. Target the linked Acre Ops site
+Do this only after the frozen comparison passes (including Ryan's explicit
+four-row omission above). Target the linked Acre Ops site
 `b30f7623-6647-4a17-9bc2-c5fb49172a6c`, **production context only**, with appropriate
 server-side Builds/Functions scopes. No values belong in Git or `netlify.toml`.
 Do not reuse the preview authentication URL or accidentally edit all contexts.
@@ -169,8 +195,9 @@ Variable names:
 Use the verified project and working session-pooler connection. Generate a new
 production auth secret so old Baserow-ID sessions cannot be reused against native
 Supabase IDs; users must log in again. Configure authentication for the actual
-production origin. Set **`REMOVAL_WEBHOOK_DRY_RUN=false`** only after receiver ID
-compatibility is confirmed. The branch-deploy override must remain **true**.
+production origin. Set **`REMOVAL_WEBHOOK_DRY_RUN=true`** for this cutover.
+Do not change it to false until Grok Bot verifies receiver ID compatibility and
+Ryan separately approves enabling it. The branch-deploy override remains **true**.
 Workflows must never notify; only crew removals notify after a successful commit.
 Retain existing unrelated integrations and the securely recorded Baserow settings.
 Changing settings does not by itself prove a new deploy used them.
@@ -226,7 +253,8 @@ fixtures. Build with live database credentials disabled. Never run delta after
 the merge (the branch guard intentionally refuses it on main). Confirm the merge
 contains 5b2c467 and both protections: no planned-remover/sibling-probe writes,
 and no Workflows webhook. Commit the reviewed merge, record its SHA and both
-parents, then—with Ryan's cutover authorization—`git push origin main`.
+parents, show Ryan the merge/test summary, and **stop for his explicit "push"**.
+Only after that approval run `git push origin main`.
 
 ## 6. Verify the deploy, smoke test, then reopen
 
