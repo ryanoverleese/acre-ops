@@ -2,6 +2,10 @@
 
 Date: 2026-10-12. Branch: `supabase-schema`. Target: Acre Ops only, `junawlttpyztjlnbmvcb`.
 
+## Migration filename reconciliation — 2026-10-12
+
+Ryan reports both follow-up migrations are now live. Renamed the local files, without changing their SQL, to the recorded versions: `20261013034457_invoice_line_field_basis.sql` and `20261013034508_hash_installer_pins.sql`. Updated the PIN test's filename reference. Do not re-apply these migrations. The unapplied-migration warnings below describe the earlier review state, before Ryan's confirmation.
+
 ## Follow-up fixes — 2026-10-12
 
 All four requested fixes are prepared locally; see the commit containing this section. **No push, deploy, or live database migration was performed.** Main and the protected stash are unchanged.

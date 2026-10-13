@@ -5,7 +5,7 @@ const path = require('node:path');
 const {PGlite} = require('@electric-sql/pglite');
 const {pgcrypto} = require('@electric-sql/pglite/contrib/pgcrypto');
 const bcrypt = require('bcryptjs');
-const sql = fs.readFileSync(path.join(__dirname,'../../supabase/migrations/20261013032328_hash_installer_pins.sql'),'utf8');
+const sql = fs.readFileSync(path.join(__dirname,'../../supabase/migrations/20261013034508_hash_installer_pins.sql'),'utf8');
 
 test('PIN migration hashes all seven synthetic plaintext PINs, verifies with bcrypt, and is rerun-safe', async () => {
   const db = new PGlite({extensions:{pgcrypto}});
