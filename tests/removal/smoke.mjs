@@ -73,12 +73,12 @@ try {
     assert.deepEqual(requests, ['/api/removal']);
     const { tables, writes, webhooks } = await snapshot();
     assert.deepEqual(webhooks, [], 'Workflows must not send the CropX removal webhook');
-    const selected = tables[819350].find(row => row.id === 201), sibling = tables[819350].find(row => row.id === 202);
+    const selected = tables.probe_assignments.find(row => row.id === 201), sibling = tables.probe_assignments.find(row => row.id === 202);
     assert.equal(selected.probe_status.value, 'Removed'); assert.equal(selected.removal_date, '2026-10-11'); assert.equal(selected.removed_by, 'Brandon');
-    assert.equal(selected.planned_remover, 'Carter'); assert.equal(tables[817300].find(row=>row.id===101).planned_remover.value, 'Carter');
+    assert.equal(selected.planned_remover, 'Carter'); assert.equal(tables.field_seasons.find(row=>row.id===101).planned_remover.value, 'Carter');
     assert.equal(sibling.probe_status.value, 'Installed'); assert.equal(sibling.planned_remover, 'Ryan');
-    assert.equal(tables[817299][0].status.value, 'In Stock'); assert.equal(tables[817299][1].status.value, 'Installed');
-    assert.deepEqual(writes.map(({ table, id }) => [table, id]), [[819350, 201], [817299, 11]]);
+    assert.equal(tables.probes[0].status.value, 'In Stock'); assert.equal(tables.probes[1].status.value, 'Installed');
+    assert.deepEqual(writes.map(({ table, id }) => [table, id]), [['probe_assignments', 201], ['probes', 11]]);
   });
   await check('crew-shaped submission validates the remover and then saves the same states on its own probe', async () => {
     const before = await snapshot();
@@ -92,11 +92,11 @@ try {
     assert.equal(webhooks.length, 1, 'Existing crew clients must still notify');
     assert.equal(webhooks[0].assignment_id, 202);
     assert.equal(webhooks[0].source, 'acre-ops');
-    assert.deepEqual(tables[819350][0], before.tables[819350][0]);
-    const crewRow = tables[819350].find(row=>row.id===202);
+    assert.deepEqual(tables.probe_assignments[0], before.tables.probe_assignments[0]);
+    const crewRow = tables.probe_assignments.find(row=>row.id===202);
     assert.equal(crewRow.probe_status.value, 'Removed'); assert.equal(crewRow.removed_by, 'Ryan');
     assert.equal(crewRow.removal_date, new Date().toISOString().slice(0, 10));
-    assert.equal(tables[817299][1].status.value, 'In Stock');
+    assert.equal(tables.probes[1].status.value, 'In Stock');
   });
   await check('repeat submission returns original date/remover; no planning writes or browser errors', async () => {
     const before = await snapshot();

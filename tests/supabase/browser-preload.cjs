@@ -1,5 +1,5 @@
 // Production Next server, in-memory Postgres, synthetic fixtures. Never live data.
-const fs=require('node:fs'), path=require('node:path'), vm=require('node:vm'), Module=require('node:module');
+const fs=require('node:fs'), path=require('node:path'), Module=require('node:module');
 const {PGlite}=require('@electric-sql/pglite');
 const {pgcrypto}=require('@electric-sql/pglite/contrib/pgcrypto');
 const ts=require('typescript');
@@ -7,11 +7,8 @@ const root=path.resolve(__dirname,'../..');
 if(process.env.ACRE_SUPABASE_BROWSER!=='1') throw Error('Explicit isolated browser test environment required');
 const mode=process.env.ACRE_REMOVAL_TEST==='1'?'removal':'equipment';
 const inventory=require('../../lib/supabase/registry.json');
-const ids={817294:'contacts',817295:'operations',817297:'billing_entities',817298:'fields',817299:'probes',817300:'field_seasons',817301:'water_recs',817302:'repairs',817303:'invoices',817304:'invoice_lines',819350:'probe_assignments',827222:'inventory',831050:'weather_stations',934076:'probe_rack'};
-// Reuse the historical synthetic records ONLY, not the retired Baserow transport.
-const source=fs.readFileSync(path.join(root,`tests/${mode}/baserow-fixture.cjs`),'utf8');
-const start=source.indexOf('const year ='), end=source.indexOf(mode==='removal'?'const writes =':'let nextId =',start);
-const fixture=vm.runInNewContext(source.slice(start,end)+';tables',{Date});
+const snapshotTables=['contacts','operations','billing_entities','fields','probes','field_seasons','water_recs','repairs','invoices','invoice_lines','probe_assignments','inventory','weather_stations','probe_rack'];
+const fixture=require(path.join(root,`tests/${mode}/seed-data.cjs`))();
 const db=new PGlite({extensions:{pgcrypto}}); const writes=[],webhooks=[];
 let initialized=false, adapter;
 process.env.SUPABASE_URL='https://junawlttpyztjlnbmvcb.supabase.co';
@@ -23,9 +20,9 @@ const rawLoad=Module._load;
 async function persist() {
   if(!process.env.ACRE_REMOVAL_TEST_STATE) return;
   const tables={};
-  for(const [id,table] of Object.entries(ids)) {
+  for(const table of snapshotTables) {
     const rows=(await db.query(`SELECT ${adapter.readProjection(table)} FROM public."${inventory.tables[table].read}" r ORDER BY r.id`)).rows;
-    tables[id]=rows.map(row=>adapter.serialize(table,row));
+    tables[table]=rows.map(row=>adapter.serialize(table,row));
   }
   fs.writeFileSync(process.env.ACRE_REMOVAL_TEST_STATE,JSON.stringify({tables,writes,webhooks}),{mode:0o600});
 }
@@ -37,8 +34,8 @@ class Pool {
     if(initialized) {
       const update=sql.match(/^UPDATE public\."(\w+)" SET (.+) WHERE id =/);
       if(update) {
-        const table=Number(Object.keys(ids).find(key=>ids[key]===update[1]));
-        if(table) writes.push({table,id:Number(values.at(-1)),patch:Object.fromEntries([...update[2].matchAll(/"(\w+)" = \$(\d+)/g)].map(match=>[match[1],values[Number(match[2])-1]]))});
+        const table=update[1];
+        if(snapshotTables.includes(table)) writes.push({table,id:Number(values.at(-1)),patch:Object.fromEntries([...update[2].matchAll(/"(\w+)" = \$(\d+)/g)].map(match=>[match[1],values[Number(match[2])-1]]))});
       }
       if(sql==='COMMIT') await persist();
     }
@@ -85,10 +82,9 @@ const ready=(async()=>{
   const adminRole=(await db.query("SELECT id FROM user_role_options WHERE value='admin'")).rows[0].id;
   await db.query('INSERT INTO users(id,email,password_hash,name,role_id,active) OVERRIDING SYSTEM VALUE VALUES(1,$1,$2,$3,$4,true)',['qa@example.invalid','fixture-no-password','QA Admin',adminRole]);
   const joins=[];
-  const sourceOrder=['operations','billing_entities','contacts','fields','field_seasons','probes','probe_assignments','probe_rack','inventory','weather_stations'];
-  for(const table of sourceOrder) {
-    const tableId=Object.keys(ids).find(id=>ids[id]===table);
-    for(const row of fixture[tableId]||[]) {
+  const seedOrder=['operations','billing_entities','contacts','fields','field_seasons','probes','probe_assignments','probe_rack','inventory','weather_stations'];
+  for(const table of seedOrder) {
+    for(const row of fixture[table]||[]) {
       const columns={id:row.id};
       for(const c of inventory.tables[table].columns) {
         if(c.identity||c.name==='baserow_id'||table==='fields'&&c.name==='billing_entity_id')continue;

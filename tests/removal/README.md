@@ -14,6 +14,10 @@ preload runs the actual migrations in PGlite (in-memory PostgreSQL); it and the
 browser block external requests. No real database, webhook, or files are changed.
 Assertions verify unchanged field-season/planning values and selected-device scope.
 
+`seed-data.cjs` supplies plain synthetic records keyed by table name. The shared
+Supabase preload inserts them into PostgreSQL and snapshots the real adapter's
+results under those same names; no legacy backend transport is simulated.
+
 The browser exercises Workflows' required actual-remover field, date picker, and
 shared endpoint. Two probes on one field prove that only the selected assignment
 and linked device change. A locally intercepted fake webhook proves Workflows
