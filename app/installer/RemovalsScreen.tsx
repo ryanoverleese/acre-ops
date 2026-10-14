@@ -106,6 +106,8 @@ export function PullForm({ row, installer, onBack, onSaved }: {
   const [compressing, setCompressing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // Two-tap removal: first tap arms, second ("Confirm removal") saves.
+  const [confirming, setConfirming] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
 
   const handlePhoto = async (file: File | null) => {
@@ -117,6 +119,9 @@ export function PullForm({ row, installer, onBack, onSaved }: {
   };
 
   const canSubmit = removedBy.trim().length > 0 && !submitting && !compressing;
+
+  // Any edit to the form disarms the confirm step.
+  useEffect(() => { setConfirming(false); }, [removedBy, notes, photos]);
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
@@ -136,9 +141,10 @@ export function PullForm({ row, installer, onBack, onSaved }: {
           ? 'Session blocked the save — tell Ryan (auth redirect)'
           : `Save failed (HTTP ${res.status}) — removal NOT saved`);
         setSubmitting(false);
+        setConfirming(false);
         return;
       }
-      if (!res.ok) { setError(data.error || 'Failed to save — try again'); setSubmitting(false); return; }
+      if (!res.ok) { setError(data.error || 'Failed to save — try again'); setSubmitting(false); setConfirming(false); return; }
       playSuccessSound();
       const note = data.alreadyRemoved
         ? 'Already recorded as removed'
@@ -146,7 +152,7 @@ export function PullForm({ row, installer, onBack, onSaved }: {
           ? 'Removal saved — a photo failed to upload'
           : '';
       onSaved(row.id, removedBy.trim(), note);
-    } catch { setError('Network error — removal NOT saved'); setSubmitting(false); }
+    } catch { setError('Network error — removal NOT saved'); setSubmitting(false); setConfirming(false); }
   };
 
   return (
@@ -319,19 +325,51 @@ export function PullForm({ row, installer, onBack, onSaved }: {
 
         {error && <div style={{ color: '#ef4444', fontSize: 13 }}>{error}</div>}
 
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          style={{
-            padding: '12px', borderRadius: 10, border: 'none', cursor: 'pointer',
-            background: 'var(--field-green)', color: 'var(--bone)',
-            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
-            letterSpacing: '0.06em', textTransform: 'uppercase',
-            opacity: canSubmit ? 1 : 0.5,
-          }}
-        >
-          {submitting ? 'Saving…' : 'Mark Pulled ✓'}
-        </button>
+        {!confirming ? (
+          <button
+            onClick={() => { if (canSubmit) setConfirming(true); }}
+            disabled={!canSubmit}
+            style={{
+              padding: '12px', minHeight: 48, borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: 'var(--field-green)', color: 'var(--bone)',
+              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              opacity: canSubmit ? 1 : 0.5,
+            }}
+          >
+            Mark Pulled ✓
+          </button>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              style={{
+                padding: '12px', minHeight: 48, borderRadius: 10, border: 'none', cursor: 'pointer',
+                background: '#dc2626', color: '#fff',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                opacity: canSubmit ? 1 : 0.5,
+              }}
+            >
+              {submitting ? 'Saving…' : 'Confirm removal'}
+            </button>
+            <button
+              onClick={() => setConfirming(false)}
+              disabled={submitting}
+              style={{
+                padding: '12px', minHeight: 48, borderRadius: 10, cursor: 'pointer',
+                background: 'var(--bone-raised, #f0ede8)', color: 'var(--ink)',
+                border: '1.5px solid var(--stone-300, #d6d3d1)',
+                fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                opacity: submitting ? 0.5 : 1,
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
