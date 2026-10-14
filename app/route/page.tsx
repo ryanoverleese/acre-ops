@@ -1,5 +1,5 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
-import { getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedFieldSeasons, getCachedProbeAssignments, getCachedContacts } from '@/lib/baserow';
+import { getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedFieldSeasons, getCachedProbeAssignments, getCachedContacts } from '@/lib/data';
 import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
 export const dynamic = 'force-dynamic';

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ProbeRackSlot } from '@/lib/baserow';
+import type { ProbeRackSlot } from '@/lib/types';
 
 export interface SimpleProbe {
   id: number;

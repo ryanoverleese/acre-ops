@@ -1,4 +1,6 @@
-import { getCachedRows, getRows, ProbeRackSlot, Probe, BillingEntity, Contact, Operation, Field, FieldSeason, getCachedProbeAssignments } from '@/lib/baserow';
+import { getCachedRows, getRows } from '@/lib/supabase/adapter';
+import type { ProbeRackSlot, Probe, BillingEntity, Contact, Operation, Field, FieldSeason } from '@/lib/types';
+import { getCachedProbeAssignments } from '@/lib/data';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import RacksClient from './RacksClient';
 

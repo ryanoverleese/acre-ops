@@ -1,14 +1,7 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getRows,
-  getCachedRows,
-  type Probe,
-  type ProbeRackSlot,
-  type ProbeAssignment,
-  type FieldSeason,
-  type Field,
-} from '@/lib/baserow';
+import { getRows, getCachedRows } from '@/lib/supabase/adapter';
+import type { Probe, ProbeRackSlot, ProbeAssignment, FieldSeason, Field } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 

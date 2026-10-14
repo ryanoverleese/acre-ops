@@ -1,6 +1,6 @@
 import { withApiAuth, errorResponse } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getRow, updateRow } from '@/lib/baserow';
+import { getRow, updateRow } from '@/lib/supabase/adapter';
 import { transaction } from '@/lib/supabase/database';
 import { moveProbe } from '@/lib/supabase/equipment';
 import { DataError } from '@/lib/supabase/registry';

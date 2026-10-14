@@ -1,4 +1,5 @@
-import { getContacts, getOperations, getBillingEntities, getTableFieldOptions } from '@/lib/baserow';
+import { getContacts, getOperations, getBillingEntities } from '@/lib/data';
+import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import { buildOperationMap, buildBillingEntityMap } from '@/lib/data-mappings';
 import ContactsClient from './ContactsClient';
 

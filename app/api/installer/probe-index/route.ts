@@ -1,13 +1,7 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import {
-  getCachedRows,
-  type Probe,
-  type ProbeRackSlot,
-  type ProbeAssignment,
-  type FieldSeason,
-  type Field,
-} from '@/lib/baserow';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { Probe, ProbeRackSlot, ProbeAssignment, FieldSeason, Field } from '@/lib/types';
 import type { ProbeSearchResult } from '../probe-search/route';
 
 export const dynamic = 'force-dynamic';

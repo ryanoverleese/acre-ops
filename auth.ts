@@ -3,7 +3,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { compare } from 'bcryptjs';
 import config from './auth.config';
 import { findUser } from './lib/supabase/credentials';
-import { updateRow } from './lib/baserow';
+import { updateRow } from './lib/supabase/adapter';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...config,

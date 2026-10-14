@@ -1,11 +1,4 @@
-import {
-  getCachedOperations,
-  getCachedFields,
-  getCachedFieldSeasons,
-  getCachedProbeAssignments,
-  getCachedProbes,
-  getCachedContacts,
-} from '@/lib/baserow';
+import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import ApprovalsClient from './ApprovalsClient';
 
 export const dynamic = 'force-dynamic';

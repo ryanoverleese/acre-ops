@@ -1,4 +1,4 @@
-import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices, getProbes } from '@/lib/baserow';
+import { getBillingEntities, getInvoices, getInvoiceLines, getOperations, getContacts, getFieldSeasons, getFields, getProductsServices, getProbes } from '@/lib/data';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import { allocateFieldCharge, fieldChargeBasis, type SavedFieldCharge } from '@/lib/billing-allocation';
 import BillingClient, { ProcessedBillingEntity, OnOrderLine } from './BillingClient';

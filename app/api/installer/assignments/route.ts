@@ -1,18 +1,8 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getCachedRows,
-  getRows,
-  type Field,
-  type FieldSeason,
-  type Probe,
-  type ProbeAssignment,
-  type Operation,
-  type BillingEntity,
-  type Contact,
-  type ProbeRackSlot,
-} from '@/lib/baserow';
+import { getCachedRows, getRows } from '@/lib/supabase/adapter';
+import type { Field, FieldSeason, Probe, ProbeAssignment, Operation, BillingEntity, Contact, ProbeRackSlot } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
 export const dynamic = 'force-dynamic';

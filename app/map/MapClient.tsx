@@ -3,7 +3,7 @@ import { fieldBilling } from '@/lib/data-mappings';
 
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/baserow';
+import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers } from './UnifiedMap';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 

@@ -1,7 +1,8 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getRows, ProbeRackSlot, bustTableCache } from '@/lib/baserow';
+import { getRows, bustTableCache } from '@/lib/supabase/adapter';
+import type { ProbeRackSlot } from '@/lib/types';
 
 
 export const GET = withApiAuth(async function GET() {

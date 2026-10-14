@@ -1,6 +1,8 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { TABLE_IDS, getRows, type TableName } from '@/lib/baserow';
+import { TABLE_IDS } from '@/lib/data';
+import { getRows } from '@/lib/supabase/adapter';
+import type { TableName } from '@/lib/types';
 import { auth } from '@/auth';
 
 // Convert value to CSV-safe string

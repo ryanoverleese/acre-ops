@@ -1,4 +1,5 @@
-import { getOperations, getContacts, getBillingEntities, getFields, getProbes, getTableFieldOptions } from '@/lib/baserow';
+import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/data';
+import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import CRMClient from './CRMClient';
 
 // Re-export types needed by client components

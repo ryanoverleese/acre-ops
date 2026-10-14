@@ -1,4 +1,4 @@
-import { getDocuments } from '@/lib/baserow';
+import { getDocuments } from '@/lib/data';
 import DocumentsClient from './DocumentsClient';
 
 export const dynamic = 'force-dynamic';

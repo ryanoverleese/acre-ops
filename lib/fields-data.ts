@@ -1,5 +1,5 @@
-import { getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
-import type { TableSelectOptions, BaserowFilter, Field, Operation, FieldSeason, Probe, BillingEntity, ProbeAssignment, Contact, ProductService } from '@/lib/baserow';
+import { getCachedRows, getCachedAllSelectOptions } from '@/lib/supabase/adapter';
+import type { TableSelectOptions, DataFilter, Field, Operation, FieldSeason, Probe, BillingEntity, ProbeAssignment, Contact, ProductService } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps, fieldBilling, fieldOperationIds, fieldOperationLabel } from '@/lib/data-mappings';
 
 export interface ProcessedProbeAssignment {
@@ -168,7 +168,7 @@ export interface FieldsDataResult {
 export async function getFieldsData(season?: number): Promise<FieldsDataResult> {
   try {
     // When a specific season is requested, filter field_seasons server-side
-    const seasonFilters: BaserowFilter[] | undefined = season
+    const seasonFilters: DataFilter[] | undefined = season
       ? [{ field: 'season', type: 'equal', value: String(season) }]
       : undefined;
 

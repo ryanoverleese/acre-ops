@@ -1,4 +1,5 @@
-import { getRows, type Installer } from '@/lib/baserow';
+import { getRows } from '@/lib/supabase/adapter';
+import type { Installer } from '@/lib/types';
 import InstallerApp from './InstallerApp';
 
 export const dynamic = 'force-dynamic';

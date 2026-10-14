@@ -1,6 +1,7 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { getCachedRows, type FieldSeason, type Field, type Contact, type Operation, type ProbeAssignment } from '@/lib/baserow';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { FieldSeason, Field, Contact, Operation, ProbeAssignment } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
 export const revalidate = 600; // Cache for 10 minutes

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/baserow';
+import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ApprovalClient from './ApprovalClient';
 

@@ -4,7 +4,7 @@ import { getRow, getRows, updateRow, type Row } from '@/lib/supabase/adapter';
 import { transaction } from '@/lib/supabase/database';
 import { DataError, positiveId } from '@/lib/supabase/registry';
 import { uploadFile, discardUpload, type StorageFile } from '@/lib/supabase/storage';
-import type { ProbeAssignment } from '@/lib/baserow';
+import type { ProbeAssignment } from '@/lib/types';
 export const dynamic='force-dynamic';
 export const POST=withApiAuth(async(request,_context,current)=>{
  const form=await request.formData();

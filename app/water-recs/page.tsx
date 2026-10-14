@@ -1,5 +1,5 @@
-import { getRows, getCachedRows, getCachedAllSelectOptions } from '@/lib/baserow';
-import type { WaterRec, FieldSeason, Field, Operation, Contact, ProbeAssignment } from '@/lib/baserow';
+import { getRows, getCachedRows, getCachedAllSelectOptions } from '@/lib/supabase/adapter';
+import type { WaterRec, FieldSeason, Field, Operation, Contact, ProbeAssignment } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WaterRecsClient from './WaterRecsClient';
 

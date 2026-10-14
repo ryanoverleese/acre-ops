@@ -2,8 +2,8 @@ import { withApiAuth, assertCustomerField, operationForToken } from '@/lib/supab
 import { transaction } from '@/lib/supabase/database';
 import { DataError } from '@/lib/supabase/registry';
 import { NextRequest, NextResponse } from 'next/server';
-import { createRow, getRows, updateRow } from '@/lib/baserow';
-import type { Notification } from '@/lib/baserow';
+import { createRow, getRows, updateRow } from '@/lib/supabase/adapter';
+import type { Notification } from '@/lib/types';
 
 // GET: Fetch unread notifications, sorted by created_on desc
 export const GET = withApiAuth(async function GET() {

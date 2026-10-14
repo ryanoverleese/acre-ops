@@ -1,5 +1,7 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
-import { getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type BillingEntity, type Operation, type Contact } from '@/lib/baserow';
+import { getCachedProbeAssignments } from '@/lib/data';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { Field, FieldSeason, Probe, BillingEntity, Operation, Contact } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
 

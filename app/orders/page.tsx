@@ -1,4 +1,5 @@
-import { getOrders, getOrderItems, getBillingEntities, getProductsServices, getTableFieldOptions } from '@/lib/baserow';
+import { getOrders, getOrderItems, getBillingEntities, getProductsServices } from '@/lib/data';
+import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import OrdersClient from './OrdersClient';
 
 export const dynamic = 'force-dynamic';

@@ -1,4 +1,4 @@
-import { getBillingEntities, getOperations, getContacts } from '@/lib/baserow';
+import { getBillingEntities, getOperations, getContacts } from '@/lib/data';
 import BillingEntitiesClient from './BillingEntitiesClient';
 
 export interface ProcessedBillingEntity {

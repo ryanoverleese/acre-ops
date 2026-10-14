@@ -1,13 +1,8 @@
 import { fieldBilling } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  getCachedRows,
-  type Field,
-  type FieldSeason,
-  type ProbeAssignment,
-  type BillingEntity,
-} from '@/lib/baserow';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { Field, FieldSeason, ProbeAssignment, BillingEntity } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 

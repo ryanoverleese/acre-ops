@@ -1,4 +1,5 @@
-import { getCachedRows, type Repair, type FieldSeason, type ProbeAssignment, type Order, type BillingEntity, type Probe } from '@/lib/baserow';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { Repair, FieldSeason, ProbeAssignment, Order, BillingEntity, Probe } from '@/lib/types';
 import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe } from './DashboardClient';
 
 // Revalidate dashboard data every 2 minutes instead of force-dynamic

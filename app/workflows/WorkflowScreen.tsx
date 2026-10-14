@@ -1,5 +1,7 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
-import { getAllSelectOptions, getCachedProbeAssignments, getCachedRows, type Field, type FieldSeason, type Probe, type Operation, type BillingEntity, type Contact, type SelectOption } from '@/lib/baserow';
+import { getAllSelectOptions, getCachedRows } from '@/lib/supabase/adapter';
+import { getCachedProbeAssignments } from '@/lib/data';
+import type { Field, FieldSeason, Probe, Operation, BillingEntity, Contact, SelectOption } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WorkflowsClient, { EarlyRemovalData, UninstallProbeData, RmaProbeData, OnOrderProbe } from './WorkflowsClient';
 import { getHybridMaturityLabel } from '@/lib/hybrid-maturity';

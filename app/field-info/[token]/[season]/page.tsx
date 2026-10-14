@@ -1,7 +1,8 @@
 import { fieldBilling } from '@/lib/data-mappings';
 import type { Metadata } from 'next';
-import { getOperations, getFields, getFieldSeasons, getContacts, getAllSelectOptions } from '@/lib/baserow';
-import type { TableSelectOptions } from '@/lib/baserow';
+import { getOperations, getFields, getFieldSeasons, getContacts } from '@/lib/data';
+import { getAllSelectOptions } from '@/lib/supabase/adapter';
+import type { TableSelectOptions } from '@/lib/types';
 import FieldInfoClient from './FieldInfoClient';
 
 interface PageProps {

@@ -1,5 +1,5 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
-import { getCachedRepairs, getCachedFieldSeasons, getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedProbes, getCachedProbeAssignments, getCachedContacts } from '@/lib/baserow';
+import { getCachedRepairs, getCachedFieldSeasons, getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedProbes, getCachedProbeAssignments, getCachedContacts } from '@/lib/data';
 import { buildOperationMap, buildBillingToOperationMaps, getOperationNameForBillingEntity } from '@/lib/data-mappings';
 import RepairsClient, { ProcessedRepair, FieldSeasonOption, ProbeAssignmentOption } from './RepairsClient';
 

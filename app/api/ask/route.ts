@@ -1,8 +1,9 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities, getRows, updateRow, createRow } from '@/lib/baserow';
-import type { ProbeRackSlot } from '@/lib/baserow';
-import type { FieldSeason, Probe, Repair, ProbeAssignment } from '@/lib/baserow';
+import { getFields, getProbes, getFieldSeasons, getContacts, getOperations, getProbeAssignments, getBillingEntities } from '@/lib/data';
+import { getRows, updateRow, createRow } from '@/lib/supabase/adapter';
+import type { ProbeRackSlot } from '@/lib/types';
+import type { FieldSeason, Probe, Repair, ProbeAssignment } from '@/lib/types';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 

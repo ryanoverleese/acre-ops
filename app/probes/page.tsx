@@ -1,5 +1,6 @@
-import { getCachedRows, ProbeRackSlot } from '@/lib/baserow';
-import type { Probe, BillingEntity, FieldSeason, Field, Contact, Operation, ProbeAssignment } from '@/lib/baserow';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { ProbeRackSlot } from '@/lib/types';
+import type { Probe, BillingEntity, FieldSeason, Field, Contact, Operation, ProbeAssignment } from '@/lib/types';
 import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 

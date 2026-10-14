@@ -1,5 +1,5 @@
-import { getCachedRows } from '@/lib/baserow';
-import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/baserow';
+import { getCachedRows } from '@/lib/supabase/adapter';
+import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import MapClient from './MapClient';
 
 export const dynamic = 'force-dynamic';

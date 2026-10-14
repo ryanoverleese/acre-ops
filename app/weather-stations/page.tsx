@@ -1,4 +1,5 @@
-import { getWeatherStations, getBillingEntities, getTableFieldOptions } from '@/lib/baserow';
+import { getWeatherStations, getBillingEntities } from '@/lib/data';
+import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import WeatherStationsClient from './WeatherStationsClient';
 
 export const dynamic = 'force-dynamic';

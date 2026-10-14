@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/supabase/api';
 import { getRows, updateRow } from '@/lib/supabase/adapter';
 import { transaction } from '@/lib/supabase/database';
-import type { Probe, ProbeRackSlot } from '@/lib/baserow';
+import type { Probe, ProbeRackSlot } from '@/lib/types';
 export const POST=withApiAuth(async()=>{
  const result=await transaction(async()=>{
   const probes=await getRows<Probe>('probes'),slots=await getRows<ProbeRackSlot>('probe_rack');

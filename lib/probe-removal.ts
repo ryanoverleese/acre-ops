@@ -1,4 +1,4 @@
-import type { ProbeAssignment } from './baserow';
+import type { ProbeAssignment } from './types';
 
 export class RemovalError extends Error {
   status: number;

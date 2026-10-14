@@ -1,5 +1,6 @@
-import { getProductsServices, getFieldSeasons, getAllSelectOptionsWithMeta, getOperations } from '@/lib/baserow';
-import type { TableSelectOptionsWithMeta } from '@/lib/baserow';
+import { getProductsServices, getFieldSeasons, getOperations } from '@/lib/data';
+import { getAllSelectOptionsWithMeta } from '@/lib/supabase/adapter';
+import type { TableSelectOptionsWithMeta } from '@/lib/types';
 import SettingsClient, { ProcessedProductService } from './SettingsClient';
 
 export const dynamic = 'force-dynamic';

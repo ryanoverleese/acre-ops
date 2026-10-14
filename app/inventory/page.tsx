@@ -1,4 +1,4 @@
-import { getInventory, getCachedFieldSeasons, getCachedProbeAssignments } from '@/lib/baserow';
+import { getInventory, getCachedFieldSeasons, getCachedProbeAssignments } from '@/lib/data';
 
 // Force dynamic rendering to always get fresh data
 export const dynamic = 'force-dynamic';

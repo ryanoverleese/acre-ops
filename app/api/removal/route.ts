@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getRow, getProbeAssignments, updateRow, type ProbeAssignment } from '@/lib/baserow';
+import { getRow, updateRow } from '@/lib/supabase/adapter';
+import { getProbeAssignments } from '@/lib/data';
+import type { ProbeAssignment } from '@/lib/types';
 import { recordProbeRemoval, RemovalError } from '@/lib/probe-removal';
 import { withApiAuth } from '@/lib/supabase/api';
 import { transaction, afterCommit } from '@/lib/supabase/database';

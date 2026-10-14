@@ -1,6 +1,6 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { getCachedRows, getRows } from '@/lib/baserow';
+import { getCachedRows, getRows } from '@/lib/supabase/adapter';
 
 /**
  * The pull route: probes currently in the ground (and already pulled this

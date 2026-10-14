@@ -1,4 +1,4 @@
-import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/baserow';
+import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/data';
 import { buildOperationMap, buildBillingEntityMap, buildBillingToOperationMaps, buildOperationToBillingEntityMap } from '@/lib/data-mappings';
 import OperationsClient, { ProcessedOperation, ContactOption, LinkedContact } from './OperationsClient';
 

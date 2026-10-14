@@ -4,7 +4,7 @@
  * contacts, operations, billing entities, fields, and probes.
  */
 
-import type { Contact, Operation, BillingEntity } from './baserow';
+import type { Contact, Operation, BillingEntity } from './types';
 
 /** Field billing is always the complete join, never a primary-entity guess. */
 export function fieldBilling(field: {billing_entity?: {id:number;value:string}[]} | null | undefined) {

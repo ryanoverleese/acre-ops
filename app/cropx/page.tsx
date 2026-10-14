@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/baserow';
+import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import CropXClient from './CropXClient';
 
 export const metadata: Metadata = { title: 'CropX Order Summary' };

@@ -2,7 +2,8 @@ import { withApiAuth } from '@/lib/supabase/api';
 import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { getRow, Field, FieldSeason, addSpaceVariants, bustTableCache } from '@/lib/baserow';
+import { getRow, addSpaceVariants, bustTableCache } from '@/lib/supabase/adapter';
+import type { Field, FieldSeason } from '@/lib/types';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 
 

@@ -2,7 +2,7 @@ import { withApiAuth } from '@/lib/supabase/api';
 import { dataRequest } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
-import { addSpaceVariants, bustTableCache } from '@/lib/baserow';
+import { addSpaceVariants, bustTableCache } from '@/lib/supabase/adapter';
 
 
 interface RouteParams {
