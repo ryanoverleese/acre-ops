@@ -21,7 +21,7 @@ export async function actor(request: Request): Promise<Actor> {
   return {kind:'public'};
 }
 const publicReads = new Set(['/api/ping','/api/pulled-today','/api/geocode','/api/elevation','/api/soil','/api/plss/lookup']);
-const adminOnly = ['/api/backup','/api/debug','/api/register','/api/select-options','/api/installer-pins','/api/probe-rack/sync','/api/probe-assignments/backfill'];
+const adminOnly = ['/api/backup','/api/debug','/api/register','/api/select-options','/api/installer-pins','/api/probe-rack/sync'];
 const crewReads = ['/api/installer/','/api/select-options','/api/probes','/api/fields','/api/probe-rack','/api/mileage','/api/files/probe_assignments'];
 const crewWrites = ['/api/install','/api/removal','/api/repairs','/api/probe-assignments','/api/mileage'];
 function matches(path: string, prefix: string) { return path===prefix || path.startsWith(prefix.endsWith('/')?prefix:prefix+'/'); }
