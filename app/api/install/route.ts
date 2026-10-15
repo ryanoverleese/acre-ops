@@ -5,6 +5,11 @@ import { transaction } from '@/lib/supabase/database';
 import { DataError, positiveId } from '@/lib/supabase/registry';
 import { uploadFile, discardUpload, type StorageFile } from '@/lib/supabase/storage';
 import type { ProbeAssignment } from '@/lib/types';
+// Terminal assignments keep their install/removal history; a stale or repeated install must not reopen them.
+const TERMINAL_STATUSES=new Set(['Removed']);
+const assertNotTerminal=(a:ProbeAssignment)=>{
+ if(TERMINAL_STATUSES.has(a.probe_status?.value||'')||a.removal_date) throw new DataError('This probe assignment was already removed; its install history cannot be overwritten. Create a new assignment to reinstall.',409);
+};
 export const dynamic='force-dynamic';
 export const POST=withApiAuth(async(request,_context,current)=>{
  const form=await request.formData();
@@ -14,6 +19,7 @@ export const POST=withApiAuth(async(request,_context,current)=>{
  if(current.kind==='crew'&&installer!==current.name) throw new DataError('Install must use the signed-in crew member',403);
  const existing=await getRow<ProbeAssignment>('probe_assignments',id);
  if(existing.probe_status?.value==='Installed') return NextResponse.json({success:true,probeAssignment:existing});
+ assertNotTerminal(existing);
  const photos:Record<string,StorageFile>={};const photoErrors:string[]=[];
  for(const [formKey,column] of [['photoFieldEnd','install_photo_field_end'],['photoExtra','install_photo_extra']]) {
   const file=form.get(formKey);
@@ -25,6 +31,7 @@ export const POST=withApiAuth(async(request,_context,current)=>{
   const saved=await transaction(async()=>{
    const assignment=await getRow<ProbeAssignment>('probe_assignments',id);
    if(assignment.probe_status?.value==='Installed') return assignment;
+   assertNotTerminal(assignment);
    const season=assignment.field_season?.[0]?.id;
    if(!season || form.get('fieldSeasonId')&&positiveId(form.get('fieldSeasonId'))!==season) throw new DataError('Field season does not match the selected assignment',409);
    const probe=form.get('changedProbeId')?positiveId(form.get('changedProbeId')):assignment.probe?.[0]?.id;

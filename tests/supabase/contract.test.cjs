@@ -337,3 +337,28 @@ test('fulfillment scopes the exact assignment set, ignores another entity, and r
   assert.equal((await POST(f.request('/api/orders/fulfill',{orderId:supplies.id,billingEntityId:entity.id}))).status,200);
   assert.deepEqual(await a.getRow('probe_assignments',extra.id),extra);
 });
+
+test('install: repeat on Installed is a no-op; stale install on Removed returns 409 without writes', async () => {
+  await f.db.exec("INSERT INTO probe_status_options(value) VALUES ('Installed'),('In Stock') ON CONFLICT(value) DO NOTHING; INSERT INTO assignment_probe_status_options(value) VALUES ('Installed'),('Removed') ON CONFLICT(value) DO NOTHING;");
+  const {POST}=f.load('app/api/install/route.ts');
+  const request=(id,installer='QA Admin')=>{const form=new FormData();for(const [k,v] of Object.entries({probeAssignmentId:String(id),installer,lat:'40.5',lng:'-99.1',installNotes:'resubmitted'}))form.set(k,v);return new Request('http://localhost/api/install',{method:'POST',body:form});};
+  const installedProbe=await a.createRow('probes',{serial_number:'QA-install-repeat',status:'Installed'});
+  const installed=await a.createRow('probe_assignments',{field_season:[season.id],probe:[installedProbe.id],probe_status:'Installed',installer:'Original',install_date:'2026-05-01T12:00:00.000Z',install_lat:40.1,install_lng:-99.2,install_notes:'original'});
+  const repeat=await POST(request(installed.id));
+  assert.equal(repeat.status,200);
+  assert.deepEqual(await a.getRow('probe_assignments',installed.id),installed);
+  const removedProbe=await a.createRow('probes',{serial_number:'QA-install-stale',status:'In Stock'});
+  const removed=await a.createRow('probe_assignments',{field_season:[season.id],probe:[removedProbe.id],probe_status:'Removed',installer:'Original',install_date:'2026-05-01T12:00:00.000Z',removal_date:'2026-09-20',removed_by:'Fixture',install_notes:'original'});
+  const writes=[]; f.failSql=sql=>{if(/^\s*(UPDATE|INSERT|DELETE)/i.test(sql))writes.push(sql);return false;};
+  try {
+    const stale=await POST(request(removed.id));
+    assert.equal(stale.status,409);
+    assert.match((await stale.json()).error,/already removed/);
+  } finally {f.failSql=null;}
+  assert.deepEqual(writes,[]);
+  const after=await a.getRow('probe_assignments',removed.id);
+  assert.deepEqual(after,removed);
+  assert.equal(after.installer,'Original'); assert.equal(after.probe_status.value,'Removed');
+  assert.equal(new Date(after.install_date).toISOString(),'2026-05-01T12:00:00.000Z');
+  assert.equal((await a.getRow('probes',removedProbe.id)).status.value,'In Stock');
+});
