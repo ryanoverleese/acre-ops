@@ -2,6 +2,7 @@ import { getRows, getCachedRows, getCachedAllSelectOptions } from '@/lib/supabas
 import type { WaterRec, FieldSeason, Field, Operation, Contact, ProbeAssignment } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import WaterRecsClient from './WaterRecsClient';
+import { valleyEnabled } from '@/lib/valley/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,6 +160,7 @@ export default async function WaterRecsPage() {
         fsToOperation={Object.fromEntries(fsToOperation)}
         fsToFieldName={Object.fromEntries(fsToFieldName)}
         waterDayOptions={waterDayOptions}
+        valleyEnabled={valleyEnabled()}
       />
     );
   } catch (error) {
@@ -171,6 +173,7 @@ export default async function WaterRecsPage() {
         fsToOperation={{}}
         fsToFieldName={{}}
         waterDayOptions={['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']}
+        valleyEnabled={valleyEnabled()}
       />
     );
   }

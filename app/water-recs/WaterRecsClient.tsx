@@ -3,6 +3,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import SearchableSelect from '@/components/SearchableSelect';
 import type { OperationGroup, WaterRecRecord } from './page';
+import PivotStatusIcon from './PivotStatusIcon';
+import { useValleyPivots } from './useValleyPivots';
 
 interface WaterRecsClientProps {
   operations: OperationGroup[];
@@ -11,6 +13,7 @@ interface WaterRecsClientProps {
   fsToOperation: Record<number, number[]>;
   fsToFieldName: Record<number, string>;
   waterDayOptions: string[];
+  valleyEnabled?: boolean;
 }
 
 interface FieldForm {
@@ -336,6 +339,7 @@ export default function WaterRecsClient({
   fsToOperation,
   fsToFieldName,
   waterDayOptions: rawDayOptions,
+  valleyEnabled = false,
 }: WaterRecsClientProps) {
   // Smart-order day options: start from report date's day, wrap around, non-days at end
   const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -641,6 +645,7 @@ export default function WaterRecsClient({
     () => operations.find(o => o.id === selectedOperationId) || null,
     [operations, selectedOperationId]
   );
+  const valley = useValleyPivots(valleyEnabled, currentOperation?.fields.map(field => field.fieldId) ?? []);
 
   // Weather is shared by fields with the same planting date. Fetch once per
   // unique date for the selected operation instead of once per field card.
@@ -1593,6 +1598,7 @@ export default function WaterRecsClient({
                   <div className="wr-field-info">
                     <span className="wr-field-name">
                       {field.fieldName}
+                      {valleyEnabled && <PivotStatusIcon status={valley.fields[field.fieldId]} now={valley.now} />}
                       {suggestion && (suggestion.recommendation || suggestion.suggestedWaterDay) && (
                         <span className="wr-suggestion-dot" title="Suggestion available">&bull;</span>
                       )}
@@ -1891,7 +1897,7 @@ export default function WaterRecsClient({
                 className={`wr-update-card${isUpdated ? ' updated' : ''}`}
               >
                 <div className="wr-update-field-info">
-                  <span className="wr-field-name">{field.fieldName}</span>
+                  <span className="wr-field-name">{field.fieldName}{valleyEnabled && <PivotStatusIcon status={valley.fields[field.fieldId]} now={valley.now} />}</span>
                   {form.originalDay && (
                     <span className="wr-field-meta">
                       was {form.originalDay}
