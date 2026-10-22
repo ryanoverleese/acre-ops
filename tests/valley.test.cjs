@@ -139,6 +139,18 @@ test('mapping migration has RLS, foreign key integrity and no browser grants',as
   await f.db.query('INSERT INTO field_valley_pivots(field_id,valley_username,serial) VALUES($1,$2,$3)',[field.id,'grower','12345']);
   await assert.rejects(f.db.query('INSERT INTO field_valley_pivots(field_id,valley_username,serial) VALUES($1,$2,$3)',[field.id,'grower','12345']));
 });
+test('mapping permissions remove Supabase default write grants before allowing service reads',async()=>{
+  const migrationName=fs.readdirSync(path.join(__dirname,'../supabase/migrations')).find(name=>name.endsWith('_field_valley_pivots.sql'));
+  const migration=fs.readFileSync(path.join(__dirname,'../supabase/migrations',migrationName),'utf8');
+  const permissions=migration.match(/REVOKE ALL ON public\.field_valley_pivots[^;]+;\s*GRANT SELECT ON public\.field_valley_pivots TO service_role;/)?.[0];
+  assert(permissions);
+  await f.db.exec('GRANT ALL ON public.field_valley_pivots TO anon, authenticated, service_role;');
+  await f.db.exec(permissions);
+  for(const role of ['anon','authenticated','service_role']) {
+    const row=(await f.db.query("SELECT has_table_privilege($1,'public.field_valley_pivots','SELECT') AS read,has_table_privilege($1,'public.field_valley_pivots','INSERT') AS insert,has_table_privilege($1,'public.field_valley_pivots','UPDATE') AS update,has_table_privilege($1,'public.field_valley_pivots','DELETE') AS delete",[role])).rows[0];
+    assert.deepEqual(row,{read:role==='service_role',insert:false,update:false,delete:false});
+  }
+});
 test('status endpoint has GET only and enforces authentication before any Valley access',async()=>{
   const route=f.load('app/api/valley/status/route.ts');
   const {NextRequest}=require('next/server');

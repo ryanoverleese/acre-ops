@@ -1,13 +1,14 @@
 # Valley / AgSense365 — read-only Water Recs
 
-Status: local implementation, disabled by default. No production deployment,
-live database migration, field links, or pivot commands are included.
+Status: release prepared October 22, 2026; enabled only through server-side
+configuration. No pivot commands are included.
 
-Read-only live connection verified October 15, 2026: device discovery returned
-31 pivots and one latest-status request returned position, power and direction
-(HTTP 200). The saved AgSense365 login worked. Partner API credentials were
-used in memory for this check, not saved in source or the local env file.
-This verifies access, not all devices, field matching, or all device models.
+Read-only live connection rechecked October 22, 2026: all 31 discovered pivots
+returned a latest status. Names, operation membership and vendor center
+coordinates were checked against Acre fields; Ryan confirmed the shared-field
+pairs and the remaining name mismatch. Thirty devices have 34 reviewed field
+links. An old duplicate device remains unlinked in favor of its replacement.
+Private account/field mapping records are stored in the database, not Git.
 
 Ryan's scope is a small icon beside each field name in both Full Report and
 Water Day Update. It shows reported pivot angle (north at zero), ON/OFF/IDLE,
@@ -18,9 +19,11 @@ silently translated to clockwise/counterclockwise.
 
 ## Setup gate
 
-1. Rotate the vendor-issued API key/IV before production activation: a setup
-   email excerpt was accidentally displayed during discovery. No values belong
-   in this document, source, test fixtures, or the journey log.
+1. Ryan approved using the existing partner credentials and storing them with
+   the AgSense365 login as secret, server-only Netlify environment variables
+   for the test deploy and production on October 22, 2026. A precautionary
+   rotation was discussed and declined; no credentials were changed. No values
+   belong in this document, source, test fixtures, or the journey log.
 2. Supply server-only environment variables (never NEXT_PUBLIC):
    `VALLEY_APID`, `VALLEY_API_KEY`, `VALLEY_API_IV`,
    `AGSENSE365_USERNAME`, `AGSENSE365_PASSWORD`.
@@ -29,11 +32,11 @@ silently translated to clockwise/counterclockwise.
    Growers must authorize Acre's API partner in AgSense365. Validate real
    response envelopes, serials, device time zones and north/angle orientation
    before enabling badges; documentation alone is not a live connection test.
-4. Separately review/apply
-   `supabase/migrations/20261015220225_field_valley_pivots.sql` in Acre Ops only.
-   Populate reviewed field ID + AgSense account username + pivot serial links.
-   Do not infer links from similar names. Multiple pivots per field are allowed.
-   No mapping write UI or data migration is shipped in this change.
+4. `supabase/migrations/20261022185404_field_valley_pivots.sql` was applied only
+   to Acre Ops (`junawlttpyztjlnbmvcb`) and 34 reviewed field ID + AgSense account
+   username + pivot serial links were populated separately. Future links also
+   require review: do not infer them from similar names. Multiple pivots per
+   field are allowed. No mapping write UI is shipped in this change.
 5. Enable `VALLEY_READ_ONLY_ENABLED=true` only in an approved test deployment
    first. Leaving it unset hides the badges and prevents Valley requests.
    Disabling it is the rollback; other app workflows are unaffected.
@@ -78,4 +81,7 @@ tablet and phone sizes with synthetic readings. Its six checks cover both
 report views, background refresh without draft loss, copy text unchanged,
 stale/unknown/unavailable states and GET-only calls. Existing Equipment (13)
 and Removal (4) browser checks also pass. The full automated suite passes
-108 tests, with TypeScript and the production build passing as well.
+110 tests, with TypeScript and the production build passing as well.
+
+The release also updates Next.js from 16.4.0 to 16.4.2 for its published security
+fixes. No CropX, removal, billing, or recommendation-save behavior is changed.

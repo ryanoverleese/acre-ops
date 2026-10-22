@@ -1,4 +1,4 @@
--- PREPARED ONLY: apply separately after reviewing the first real pivot links.
+-- Server-only links; populate separately after reviewing the real pivot matches.
 -- No device settings, commands, credentials, or telemetry are stored here.
 CREATE TABLE public.field_valley_pivots (
     field_id bigint NOT NULL REFERENCES public.fields(id) ON DELETE CASCADE,
@@ -8,6 +8,7 @@ CREATE TABLE public.field_valley_pivots (
     PRIMARY KEY (field_id, valley_username, serial)
 );
 ALTER TABLE public.field_valley_pivots ENABLE ROW LEVEL SECURITY;
-REVOKE ALL ON public.field_valley_pivots FROM PUBLIC, anon, authenticated;
+-- Revoke service_role too: Supabase may give new tables default ALL grants.
+REVOKE ALL ON public.field_valley_pivots FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON public.field_valley_pivots TO service_role;
 COMMENT ON TABLE public.field_valley_pivots IS 'Reviewed Acre field to AgSense device links. Server-only read-only telemetry integration; never auto-match by field name.';
