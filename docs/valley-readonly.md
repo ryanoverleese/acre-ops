@@ -41,6 +41,19 @@ silently translated to clockwise/counterclockwise.
    first. Leaving it unset hides the badges and prevents Valley requests.
    Disabling it is the rollback; other app workflows are unaffected.
 
+Netlify secrets scanning has a narrow `SECRETS_SCAN_OMIT_KEYS` exception for
+`VALLEY_APID` and `AGSENSE365_USERNAME`: both are the public company identifier
+already present in an existing contact email. The first two preview builds
+stopped on those false positives. The API key, IV and password remain secret
+and scanned; no files or other variables are excluded and scanning stays on.
+
+The existing Water Recs eligibility rules are unchanged: current calendar
+season plus an installed, unremoved probe. At the October 22 release check,
+none of the mapped fields has an installed 2026 probe (the 2025 records do).
+Consequently those field cards are currently hidden by the existing filter.
+Links are permanent field-level links and will work when eligible field cards
+appear. Do not change installation records just to display a pivot icon.
+
 ## Boundaries and freshness
 
 - Only HTTPS GET `/json/GetDevices/pivot/` and `/json/GetDeviceStatus/` at
