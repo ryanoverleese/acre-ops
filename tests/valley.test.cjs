@@ -185,3 +185,10 @@ test('copy builders never include the pivot readout and no command path exists',
   assert(!/valley|PivotStatusIcon/.test(builders));
   for(const name of ['client.ts','service.ts'])assert(!/method:\s*['"](?:POST|PATCH|PUT|DELETE)['"]/.test(fs.readFileSync(path.join(__dirname,'../lib/valley',name),'utf8')));
 });
+
+test('all-pivots list includes unlinked devices, links fields, and survives failures',async()=>{
+  const r=(name,serial)=>({serial,name,angle:10,power:'ON',direction:'FWD',isLateral:false,reportedLocalTime:null,observedAt:null,behind:null});
+  const rows=await s.collectAllPivots([{serial:'1',name:'B'},{serial:'2',name:'A'}],[{field_id:7,valley_username:'u2',serial:'2'},{field_id:8,valley_username:'u3',serial:'3'}],
+    async(user,serial)=>{if(serial==='3')throw new Error('x');return r(serial==='1'?'B':'A',serial);},'u1');
+  assert.deepEqual(rows.map(x=>[x.serial,x.fieldId,!!x.reading]),[['3',8,false],['2',7,true],['1',null,true]]);
+});
