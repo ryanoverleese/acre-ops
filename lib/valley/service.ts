@@ -50,3 +50,37 @@ export async function fieldPivotStatuses(ids: number[]) {
     'SELECT field_id, valley_username, serial FROM public.field_valley_pivots WHERE field_id = ANY($1::bigint[]) ORDER BY field_id, serial', [ids]);
   return collectFieldPivots(ids, links, cachedReader(client.latestPivot));
 }
+
+export interface PivotListRow { serial: string; name: string; fieldId: number | null; reading: PivotReading | null }
+// Temporary all-pivots view. GET-only device list + status reads through the
+// same 5-minute cache; links table is SELECT-only. No commands, no writes.
+export async function collectAllPivots(devices: {serial:string;name:string}[], links: PivotLink[], read: (user: string, serial: string) => Promise<PivotReading>, defaultUser: string) {
+  const bySerial = new Map<string, {serial:string;name:string;user:string;fieldId:number|null}>();
+  for (const d of devices) bySerial.set(d.serial, {serial:d.serial,name:d.name,user:defaultUser,fieldId:null});
+  for (const l of links) {
+    const e = bySerial.get(l.serial);
+    if (e) { e.fieldId = Number(l.field_id); e.user = l.valley_username; }
+    else bySerial.set(l.serial, {serial:l.serial,name:'',user:l.valley_username,fieldId:Number(l.field_id)});
+  }
+  const jobs = [...bySerial.values()].slice(0, 100);
+  const rows: PivotListRow[] = [];
+  let next = 0;
+  await Promise.all(Array.from({length: Math.min(4, jobs.length)}, async () => {
+    while (next < jobs.length) {
+      const j = jobs[next++];
+      let reading: PivotReading | null = null;
+      try { reading = await read(j.user, j.serial); } catch { reading = null; }
+      rows.push({serial:j.serial, name:reading?.name || j.name || j.serial, fieldId:j.fieldId, reading});
+    }
+  }));
+  return rows.sort((a,b) => a.name.localeCompare(b.name) || a.serial.localeCompare(b.serial));
+}
+export async function allPivotStatuses() {
+  const creds = readCredentials();
+  const client = createValleyClient(creds, fetch, Date.now, AbortSignal.timeout(20000));
+  const [devices, links] = await Promise.all([
+    client.listPivots().catch(() => []),
+    query<PivotLink & Record<string, unknown>>('SELECT field_id, valley_username, serial FROM public.field_valley_pivots ORDER BY serial', []),
+  ]);
+  return collectAllPivots(devices, links, cachedReader(client.latestPivot), creds.username);
+}
