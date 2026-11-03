@@ -1,3 +1,4 @@
+import { buildNotesThread } from '@/lib/notes-thread';
 import { fieldOperationLabel } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
@@ -145,6 +146,8 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
           // all relevant notes.
           fieldNotes: [fs.notes, pa.placement_notes].filter(Boolean).join('\n\n'),
           installNotes: pa.install_notes ?? '',
+          accessNotes: fs.notes ?? '',
+          notesThread: buildNotesThread({ fieldNote: fs.field_note, placementNotes: pa.placement_notes, installNotes: pa.install_notes, removalNotes: pa.removal_notes }),
           status: pa.probe_status?.value ?? 'Assigned',
           installGroup: fs.install_group ?? null,
         };

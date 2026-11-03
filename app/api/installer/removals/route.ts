@@ -1,3 +1,4 @@
+import { buildNotesThread } from '@/lib/notes-thread';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
 import { getCachedRows, getRows } from '@/lib/supabase/adapter';
@@ -115,6 +116,8 @@ export const GET = withApiAuth(async function GET(request: Request) {
           removedOn: val(pa.removal_date).slice(0, 10),
           removedBy: val(pa.removed_by),
           removalNotes: val(pa.removal_notes),
+          accessNotes: [val(fs.notes), val(probe?.notes)].filter(Boolean).join('\n\n'),
+          notesThread: buildNotesThread({ fieldNote: val(fs.field_note), placementNotes: val(pa.placement_notes), installNotes: val(pa.install_notes), removalNotes: val(pa.removal_notes) }),
         };
       })
       .sort((a, b) => {

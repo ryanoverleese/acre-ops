@@ -8,6 +8,8 @@ const InstallerMapView = dynamic(() => import('./InstallerMapView'), { ssr: fals
 const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 import RepairsScreen from './RepairsScreen';
+import NotesThread from '@/components/NotesThread';
+import type { NoteStage } from '@/lib/notes-thread';
 import RemovalsScreen, { PullForm, type RemovalRow } from './RemovalsScreen';
 import { prefetchRemovalTiles } from './tilePrefetch';
 import {
@@ -50,6 +52,8 @@ export interface InstallerAssignment {
   batteryType: string;
   fieldNotes: string;
   installNotes: string;
+  accessNotes?: string;
+  notesThread?: NoteStage[];
   status: string;
   plannedInstaller: string;
   installGroup: number | null;
@@ -1499,14 +1503,26 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
         </div>
 
         {/* Install note / access notes */}
-        {a.fieldNotes && (
+        {(a.accessNotes || (a.notesThread && a.notesThread.length > 0)) ? (
+          <div style={{ padding: '10px 14px 0' }}>
+            <div className="af-install-note" style={{ padding: '8px 10px' }}>
+              {a.accessNotes && (
+                <>
+                  <div className="note-label" style={{ fontSize: 10 }}>Access Note</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--ink)', fontWeight: 500, whiteSpace: 'pre-wrap', marginBottom: a.notesThread?.length ? 8 : 0 }}>{a.accessNotes}</div>
+                </>
+              )}
+              <NotesThread thread={a.notesThread} />
+            </div>
+          </div>
+        ) : a.fieldNotes ? (
           <div style={{ padding: '10px 14px 0' }}>
             <div className="af-install-note" style={{ padding: '8px 10px' }}>
               <div className="note-label" style={{ fontSize: 10 }}>Install Note</div>
               <div style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--ink)', fontWeight: 500 }}>{a.fieldNotes}</div>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Open in Maps — compact */}
         {mapsUrl && (
@@ -3193,6 +3209,11 @@ function MapScreen({
               <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           </div>
+          {selected.notesThread && selected.notesThread.length > 0 && (
+            <div style={{ marginTop: 10, color: 'var(--ink)', maxHeight: 140, overflowY: 'auto' }}>
+              <NotesThread thread={selected.notesThread} compact />
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import AddFieldModal from '@/components/fields/AddFieldModal';
 import AddSeasonModal from '@/components/fields/AddSeasonModal';
 import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
 import SearchableSelect from '@/components/SearchableSelect';
+import NotesThread from '@/components/NotesThread';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
@@ -3207,7 +3208,12 @@ export default function FieldsClient({
                             </span>
                           </div>
                         )}
-                        {selectedField.installNotes && (
+                        {selectedField.notesThread && selectedField.notesThread.length > 0 ? (
+                          <div className="detail-row">
+                            <span className="detail-label">Notes</span>
+                            <span className="detail-value"><NotesThread thread={selectedField.notesThread} /></span>
+                          </div>
+                        ) : selectedField.installNotes && (
                           <div className="detail-row">
                             <span className="detail-label">Install Notes</span>
                             <span className="detail-value">{selectedField.installNotes}</span>

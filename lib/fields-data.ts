@@ -1,5 +1,6 @@
 import { getCachedRows, getCachedAllSelectOptions } from '@/lib/supabase/adapter';
 import type { TableSelectOptions, DataFilter, Field, Operation, FieldSeason, Probe, BillingEntity, ProbeAssignment, Contact, ProductService } from '@/lib/types';
+import { buildNotesThread, type NoteStage } from '@/lib/notes-thread';
 import { buildOperationMap, buildBillingToOperationMaps, fieldBilling, fieldOperationIds, fieldOperationLabel } from '@/lib/data-mappings';
 
 export interface ProcessedProbeAssignment {
@@ -116,6 +117,8 @@ export interface ProcessedField {
   // Removal
   removalDate?: string;
   removalNotes?: string;
+  // Plan → Placement → Install → Removal (probe 1 assignment + season plan note)
+  notesThread?: NoteStage[];
   // Billing entity name for display
   billingEntityName?: string;
 }
@@ -415,6 +418,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             // Removal
             removalDate: fs.removal_date || '',
             removalNotes: fs.removal_notes || '',
+            notesThread: buildNotesThread({ fieldNote: fs.field_note, placementNotes: probe1Assignment?.placement_notes, installNotes: probe1Assignment?.install_notes, removalNotes: probe1Assignment?.removal_notes }),
             // Billing entity name
             billingEntityName: billing.label,
           });

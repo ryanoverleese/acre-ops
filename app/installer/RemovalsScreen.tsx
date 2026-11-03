@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { compressImage, playSuccessSound } from './InstallerApp';
+import NotesThread from '@/components/NotesThread';
+import type { NoteStage } from '@/lib/notes-thread';
 import {
   defaultRouteFilter,
   loadRouteFilter,
@@ -44,6 +46,8 @@ export interface RemovalRow {
   removedOn: string;
   removedBy: string;
   removalNotes: string;
+  accessNotes?: string;
+  notesThread?: NoteStage[];
 }
 
 const SHOW_ALL_KEY = 'af-removals-show-all';
@@ -219,14 +223,24 @@ export function PullForm({ row, installer, onBack, onSaved }: {
         </div>
 
         {/* Gate codes / placement / install notes — same callout as Install flow */}
-        {row.fieldNotes && (
+        {(row.accessNotes || (row.notesThread && row.notesThread.length > 0)) ? (
+          <div className="af-install-note" style={{ padding: '6px 8px', color: 'var(--ink)' }}>
+            {row.accessNotes && (
+              <>
+                <div className="note-label" style={{ fontSize: 9 }}>Access Note</div>
+                <div style={{ fontSize: 12, lineHeight: 1.3, fontWeight: 500, whiteSpace: 'pre-wrap', marginBottom: row.notesThread?.length ? 6 : 0 }}>{row.accessNotes}</div>
+              </>
+            )}
+            <NotesThread thread={row.notesThread} compact />
+          </div>
+        ) : row.fieldNotes ? (
           <div className="af-install-note" style={{ padding: '6px 8px' }}>
             <div className="note-label" style={{ fontSize: 9 }}>Install Note</div>
             <div style={{ fontSize: 12, lineHeight: 1.3, color: 'var(--ink)', fontWeight: 500, whiteSpace: 'pre-wrap' }}>
               {row.fieldNotes}
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Navigate to probe */}
         {!!(row.lat && row.lng) && (
