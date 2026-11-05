@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import BoundaryLayer from '@/components/BoundaryLayer';
+import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -99,9 +101,10 @@ const btnStyle: React.CSSProperties = {
 interface Props {
   lat: number;
   lng: number;
+  boundary?: FieldBoundaryCollection | null;
 }
 
-export default function FieldMiniMap({ lat, lng }: Props) {
+export default function FieldMiniMap({ lat, lng, boundary }: Props) {
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
 
   if (!lat || !lng) return null;
@@ -116,6 +119,7 @@ export default function FieldMiniMap({ lat, lng }: Props) {
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
+        <BoundaryLayer data={boundary} />
         <Marker position={[lat, lng]} icon={pin()} interactive={false} />
         <UserLocation posRef={posRef} />
         <RecenterListener posRef={posRef} />

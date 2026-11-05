@@ -690,6 +690,7 @@ export default function FieldsClient({
       lng: number,
     ): FieldData => ({
       id: `${f.id}-p${probeNum}`,
+      fieldId: f.id,
       name: f.name,
       operation: f.operation,
       operationId: f.operationId,

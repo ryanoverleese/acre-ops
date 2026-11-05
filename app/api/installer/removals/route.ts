@@ -86,6 +86,7 @@ export const GET = withApiAuth(async function GET(request: Request) {
         const removed = val(pa.probe_status).toLowerCase() === 'removed';
         return {
           id: Number(pa.id),
+          fieldId: Number(field?.id) || 0,
           fieldName: val(field?.name) || 'Unknown Field',
           grower: billingNames || val(fs.grower),
           routeOrder: val(fs.route_order),

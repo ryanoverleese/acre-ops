@@ -9,6 +9,7 @@ const InstallGpsMap = dynamic(() => import('./InstallGpsMap'), { ssr: false });
 const FieldMiniMap = dynamic(() => import('./FieldMiniMap'), { ssr: false });
 import RepairsScreen from './RepairsScreen';
 import NotesThread from '@/components/NotesThread';
+import { useFieldBoundaries } from '@/components/useFieldBoundaries';
 import type { NoteStage } from '@/lib/notes-thread';
 import RemovalsScreen, { PullForm, type RemovalRow } from './RemovalsScreen';
 import { prefetchRemovalTiles } from './tilePrefetch';
@@ -1370,6 +1371,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
   onUpdateAssignment?: (updates: Partial<InstallerAssignment>) => void;
 }) {
   const mapsUrl = a.lat && a.lng ? mapsUrlFor(a.lat, a.lng, getMapProvider()) : null;
+  const fieldBoundary = useFieldBoundaries([a.fieldId]);
   const isDone = a.status.toLowerCase() === 'installed';
 
   // Edit mode for installed probes
@@ -1462,7 +1464,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
         {/* Satellite mini-map */}
         {a.lat && a.lng && (
           <div style={{ height: '50dvh', position: 'relative', background: '#c8d5b9' }}>
-            <FieldMiniMap lat={a.lat} lng={a.lng} />
+            <FieldMiniMap lat={a.lat} lng={a.lng} boundary={fieldBoundary} />
           </div>
         )}
 
@@ -2708,6 +2710,7 @@ function MapScreen({
   const [showAllRemovals, setShowAllRemovals] = useState(false);
   const [routeFilter, setRouteFilter] = useState<RemovalsRouteFilter>('all');
   const [routeFilterReady, setRouteFilterReady] = useState(false);
+  const boundaries = useFieldBoundaries([...assignments.map(a => a.fieldId), ...removalRows.map(row => row.fieldId)]);
 
   useEffect(() => {
     if (isRemove) return; // repairs clutter the pull map
@@ -2897,6 +2900,7 @@ function MapScreen({
               selectedId={selectedId}
               onSelect={handleSelectRemoval}
               layer={layer}
+              boundaries={boundaries}
               initialView={savedViewRef?.current ?? null}
               onViewChange={(v) => { if (savedViewRef) savedViewRef.current = v; }}
             />
@@ -3097,6 +3101,7 @@ function MapScreen({
             selectedId={selectedId}
             onSelect={setSelectedId}
             layer={layer}
+            boundaries={boundaries}
             repairPoints={repairPoints}
             onSelectRepair={onSelectRepair}
             initialView={savedViewRef?.current ?? null}
