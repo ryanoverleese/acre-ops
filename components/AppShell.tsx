@@ -45,6 +45,7 @@ const navSections: NavSection[] = [
     title: 'Reports',
     items: [
       { name: 'Water Recs', href: '/water-recs', icon: 'edit' },
+      { name: 'Valley Pivots', href: '/valley-pivots', icon: 'pivot' },
       { name: 'Billing', href: '/billing', icon: 'dollar' },
     ],
   },
@@ -177,6 +178,12 @@ const icons: Record<string, ReactNode> = {
   layers: (
     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+    </svg>
+  ),
+  pivot: (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4a8 8 0 100 16 8 8 0 000-16z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 12V4" />
     </svg>
   ),
 };
