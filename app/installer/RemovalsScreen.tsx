@@ -26,6 +26,7 @@ import {
 
 export interface RemovalRow {
   id: number;
+  fieldId: number;
   fieldName: string;
   grower: string;
   routeOrder: string;

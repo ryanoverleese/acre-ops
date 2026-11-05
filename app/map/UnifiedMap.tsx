@@ -5,6 +5,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { zoneBounds, zoneCenter, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import type { LatBand } from '@/lib/territory-grid';
+import { useFieldBoundaries } from '@/components/useFieldBoundaries';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
@@ -105,6 +106,7 @@ function probeDaysColor(plantingDate?: string): string {
 }
 
 export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom }: Props) {
+  const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerGroupsRef = useRef<{
@@ -156,6 +158,12 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     const g = layerGroupsRef.current?.fields;
     if (!g) return;
     g.clearLayers();
+    if (boundaries.features.length) {
+      L.geoJSON(boundaries as GeoJSON.GeoJsonObject, {
+        interactive: false,
+        style: { color: '#f8fafc', weight: 2, fillColor: '#1F402A', fillOpacity: 0.22 },
+      }).addTo(g);
+    }
     for (const f of fields) {
       const circle = L.circleMarker([f.lat, f.lng], {
         radius: 6,
@@ -169,7 +177,7 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       );
       g.addLayer(circle);
     }
-  }, [fields]);
+  }, [fields, boundaries]);
 
   // Rebuild probes layer
   useEffect(() => {

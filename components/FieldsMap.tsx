@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { MeasureMode } from './MeasureTool';
+import BoundaryLayer from './BoundaryLayer';
+import { useFieldBoundaries } from './useFieldBoundaries';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -29,6 +31,7 @@ const COLOR_BY_LABELS: Record<Exclude<ColorByMode, 'none'>, string> = {
 
 export interface FieldData {
   id: string;
+  fieldId: number;
   name: string;
   operation: string;
   operationId: number | null;
@@ -139,6 +142,7 @@ const MeasureTool = dynamic(
 );
 
 export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }: FieldsMapProps) {
+  const boundaries = useFieldBoundaries(visible ? fields.map(field => field.fieldId) : []);
   const [isClient, setIsClient] = useState(false);
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -501,6 +505,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         <ElevationOverlay show={showElevation} />
         <PLSSOverlay show={showPLSS} />
         <MeasureTool mode={measureMode} onModeChange={setMeasureMode} clearSignal={clearMeasureCounter} />
+        <BoundaryLayer data={boundaries} />
         {mappableFields.map((field) => {
           const popupContent = (
             <Popup>

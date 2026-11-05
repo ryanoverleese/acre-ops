@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { repairColor } from '@/lib/repair-status';
+import BoundaryLayer from '@/components/BoundaryLayer';
+import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import 'leaflet/dist/leaflet.css';
 
 export interface MapPoint {
@@ -47,6 +49,7 @@ interface Props {
   layer: Layer;
   repairPoints?: RepairMapPoint[];
   onSelectRepair?: (id: number) => void;
+  boundaries?: FieldBoundaryCollection | null;
   // When provided, restore this center/zoom on mount instead of fitting to all
   // points (used to return to the exact spot after viewing a repair ticket).
   initialView?: MapView | null;
@@ -335,7 +338,7 @@ function TileHealth() {
 }
 
 
-export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, initialView, onViewChange }: Props) {
+export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, boundaries, initialView, onViewChange }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
 
   // Expose current user location through a ref so the recenter listener can read it
@@ -374,6 +377,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
         className="af-map-tiles"
       />
       <TileHealth />
+      <BoundaryLayer data={boundaries} />
 
       {/* Stop pins */}
       {valid.map(p => {
