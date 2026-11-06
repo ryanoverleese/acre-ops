@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useState, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import dynamic from 'next/dynamic';
@@ -173,7 +175,7 @@ export default function InstallsMap({ probes, visible, onClose }: InstallsMapPro
       </div>
 
       <MapContainer center={center} zoom={11} style={{ height: '100%', width: '100%' }} zoomControl={true}>
-        <TileLayer attribution='&copy; Google' url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" />
+        <TileLayer attribution={GOOGLE_ATTR} url={SAT_URL} />
         <PLSSOverlay show={showPLSS} />
         {mappable.map((probe) => {
           const dateStr = probe.installDate

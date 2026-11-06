@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -16,8 +18,6 @@ interface Props {
 }
 
 // Google hybrid tiles — same source used elsewhere in Acre Ops
-const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
-const ATTR = '&copy; Google';
 
 // Exposes map instance via callback so parent can call zoom
 function MapRef({ onMap }: { onMap: (m: L.Map) => void }) {
@@ -122,7 +122,7 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
         touchZoom={false}
         keyboard={false}
       >
-        <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
+        <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={21} />
         <FollowUser pos={userPos} />
         <MapRef onMap={handleMap} />
         {userPos && userIcon && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} interactive={false} />}

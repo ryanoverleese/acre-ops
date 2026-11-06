@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import BoundaryLayer from '@/components/BoundaryLayer';
@@ -7,8 +9,6 @@ import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
-const GOOGLE_ATTR = '&copy; Google';
 
 function pin() {
   return L.divIcon({

@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, WMSTileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -140,8 +142,8 @@ export default function ApprovalMap({ lat, lng, fieldName }: ApprovalMapProps) {
       >
         <BrightnessFilter brightness={brightness} />
         <TileLayer
-          attribution="&copy; Google"
-          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+          attribution={GOOGLE_ATTR}
+          url={SAT_URL}
         />
         {showSoilLayer && (
           <>

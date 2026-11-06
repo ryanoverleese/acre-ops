@@ -24,8 +24,8 @@ Every map component must be loaded with
 Leaflet touches `window` at import time and crashes server rendering; a plain
 `lazy()` still lands in the SSR bundle (this broke all maps on 2026-07-01).
 
-Map tiles: use the Google tile URLs already in the codebase
-(`mt1.google.com/vt/lyrs=m` streets, `lyrs=y` hybrid). No API key needed.
+Map tiles: import `STREET_URL` / `SAT_URL` / `GOOGLE_ATTR` from
+`lib/map-tiles.ts` (Google `mt1` streets/hybrid). No API key needed.
 
 ## Caching (`lib/supabase/adapter.ts`)
 Server reads go through `getCachedRows` (`unstable_cache`, tag

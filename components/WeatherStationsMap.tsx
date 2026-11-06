@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_ONLY_URL } from '@/lib/map-tiles';
+
 import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -48,7 +50,7 @@ export default function WeatherStationsMap({ stations, onClose }: WeatherStation
     mapRef.current = map;
 
     // Satellite tiles
-    L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    L.tileLayer(SAT_ONLY_URL, {
       maxZoom: 20,
       attribution: '',
     }).addTo(map);

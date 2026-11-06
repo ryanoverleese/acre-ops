@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup } from 'react-leaflet';
 import { useMap } from 'react-leaflet';
@@ -17,9 +19,6 @@ interface Props {
   onAssignGroup?: (fieldSeasonId: number, group: number | null) => void;
 }
 
-const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
-const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
-const GOOGLE_ATTR = '&copy; Google';
 
 // ── Color helpers ──────────────────────────────────────────────────────────────
 

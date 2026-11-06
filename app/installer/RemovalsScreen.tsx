@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { compressImage, playSuccessSound } from './InstallerApp';
+import { compressImage, playSuccessSound } from './installerShared';
 import NotesThread from '@/components/NotesThread';
 import type { NoteStage } from '@/lib/notes-thread';
 import {

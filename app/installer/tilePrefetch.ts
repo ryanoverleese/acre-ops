@@ -1,3 +1,4 @@
+import { STREET_URL, SAT_URL } from '@/lib/map-tiles';
 /**
  * Dead-zone tile warm-up for installer Removals / Pull map.
  *
@@ -12,8 +13,6 @@
 
 export type PrefetchPoint = { lat: number; lng: number };
 
-const STREET_TMPL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
-const SAT_TMPL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
 /** Walk-up zooms — not statewide overview. */
 const DEFAULT_ZOOMS = [14, 15, 16] as const;
@@ -77,7 +76,7 @@ export function buildRemovalTileUrls(
   const valid = points.filter(p => Number.isFinite(p.lat) && Number.isFinite(p.lng) && p.lat && p.lng);
   if (valid.length === 0) return [];
 
-  const tmpl = layer === 'satellite' ? SAT_TMPL : STREET_TMPL;
+  const tmpl = layer === 'satellite' ? SAT_URL : STREET_URL;
   const budget = { left: MAX_TILES };
 
   let south = Infinity, north = -Infinity, west = Infinity, east = -Infinity;

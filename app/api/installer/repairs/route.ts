@@ -1,27 +1,24 @@
 import { fieldBilling } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedRows, getRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable, parseFresh } from '@/lib/installer-load';
 import type { Repair, Field, FieldSeason, ProbeAssignment, Probe, BillingEntity } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withApiAuth(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const fresh = searchParams.get('fresh') === '1';
+  const fresh = parseFresh(searchParams);
   const completed = searchParams.get('status') === 'completed';
 
   try {
-    const c = <T>(table: Parameters<typeof getCachedRows>[0], ttl: number): Promise<T[]> =>
-      fresh ? getRows<T>(table) : getCachedRows<T>(table, undefined, ttl);
-
     const [repairs, fieldSeasons, fields, probeAssignments, probes, billingEntities] = await Promise.all([
-      c<Repair>('repairs', 30),
-      c<FieldSeason>('field_seasons', 60),
-      c<Field>('fields', 120),
-      c<ProbeAssignment>('probe_assignments', 30),
-      c<Probe>('probes', 120),
-      c<BillingEntity>('billing_entities', 300),
+      loadTable<Repair>('repairs', INSTALLER_TTL.repairs, fresh),
+      loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons, fresh),
+      loadTable<Field>('fields', INSTALLER_TTL.fields, fresh),
+      loadTable<ProbeAssignment>('probe_assignments', INSTALLER_TTL.probe_assignments, fresh),
+      loadTable<Probe>('probes', INSTALLER_TTL.probes, fresh),
+      loadTable<BillingEntity>('billing_entities', INSTALLER_TTL.billing_entities, fresh),
     ]);
 
     const fieldMap = new Map(fields.map(f => [f.id, f]));

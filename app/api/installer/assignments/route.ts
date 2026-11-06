@@ -2,7 +2,7 @@ import { buildNotesThread } from '@/lib/notes-thread';
 import { fieldOperationLabel } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedRows, getRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable, parseFresh } from '@/lib/installer-load';
 import type { Field, FieldSeason, Probe, ProbeAssignment, Operation, BillingEntity, Contact, ProbeRackSlot } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
@@ -13,7 +13,7 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
   const installer = searchParams.get('installer');
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
   const debug = searchParams.get('debug') === '1';
-  const fresh = searchParams.get('fresh') === '1';
+  const fresh = parseFresh(searchParams);
   const all = searchParams.get('all') === '1'; // skip installer filter; return all ready-to-install fields
 
   if (!installer) {
@@ -23,26 +23,16 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
   try {
     // When fresh=1, skip the cache so updates in Baserow (planned_installer,
     // route_order, etc.) show up immediately when the user taps refresh.
-    const read = {
-      fields: fresh ? getRows<Field>('fields') : getCachedRows<Field>('fields', undefined, 120),
-      fieldSeasons: fresh ? getRows<FieldSeason>('field_seasons') : getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-      probes: fresh ? getRows<Probe>('probes') : getCachedRows<Probe>('probes', undefined, 120),
-      billingEntities: fresh ? getRows<BillingEntity>('billing_entities') : getCachedRows<BillingEntity>('billing_entities', undefined, 300),
-      operations: fresh ? getRows<Operation>('operations') : getCachedRows<Operation>('operations', undefined, 300),
-      contacts: fresh ? getRows<Contact>('contacts') : getCachedRows<Contact>('contacts', undefined, 300),
-      rackSlots: fresh ? getRows<ProbeRackSlot>('probe_rack') : getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
-      probeAssignments: fresh ? getRows<ProbeAssignment>('probe_assignments') : getCachedRows<ProbeAssignment>('probe_assignments', undefined, 30),
-    };
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts, rackSlots] =
       await Promise.all([
-        read.fields,
-        read.fieldSeasons,
-        read.probes,
-        read.billingEntities,
-        read.operations,
-        read.probeAssignments,
-        read.contacts,
-        read.rackSlots,
+        loadTable<Field>('fields', INSTALLER_TTL.fields, fresh),
+        loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons, fresh),
+        loadTable<Probe>('probes', INSTALLER_TTL.probes, fresh),
+        loadTable<BillingEntity>('billing_entities', INSTALLER_TTL.billing_entities, fresh),
+        loadTable<Operation>('operations', INSTALLER_TTL.operations, fresh),
+        loadTable<ProbeAssignment>('probe_assignments', INSTALLER_TTL.probe_assignments, fresh),
+        loadTable<Contact>('contacts', INSTALLER_TTL.contacts, fresh),
+        loadTable<ProbeRackSlot>('probe_rack', INSTALLER_TTL.probe_rack, fresh),
       ]);
 
     const operationMap = buildOperationMap(operations);

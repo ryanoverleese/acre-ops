@@ -1,5 +1,7 @@
 'use client';
 
+import { STREET_URL } from '@/lib/map-tiles';
+
 import { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -54,7 +56,7 @@ export default function RepairsMap({ repairs, onSelect }: Props) {
       style={{ width: '100%', height: '100%', minHeight: 500, borderRadius: 'var(--radius)' }}
     >
       <TileLayer
-        url="https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}"
+        url={STREET_URL}
         attribution=""
       />
 

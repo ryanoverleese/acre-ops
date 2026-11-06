@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, CircleMarker, Tooltip, useMapEvents, WMSTileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -89,8 +91,8 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
       style={{ height: '100%', width: '100%' }}
     >
       <TileLayer
-        attribution='&copy; Google'
-        url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+        attribution={GOOGLE_ATTR}
+        url={SAT_URL}
       />
       <BrightnessFilter brightness={brightness} />
       {showSoilLayer && (
