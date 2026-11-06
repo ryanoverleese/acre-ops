@@ -3023,79 +3023,79 @@ function MapScreen({
           />
         )}
 
-        {/* Map / Satellite */}
+        {/* One top-right cluster: basemap + mode filters */}
         {showMap && (
-          <div style={{
-            position: 'absolute', top: 14, right: 14, zIndex: 400,
-            ...glass, borderRadius: 'var(--r-pill)', padding: 3, display: 'flex', gap: 2,
-          }}>
-            {(['street', 'satellite'] as const).map(lyr => (
+          <div
+            style={{
+              position: 'absolute', top: 12, right: 12, zIndex: 400,
+              ...glass, borderRadius: 14, padding: 3,
+              display: 'flex', flexDirection: 'column', gap: 3, minWidth: 118,
+            }}
+          >
+            <div role="group" aria-label="Basemap" style={{ display: 'flex', gap: 2 }}>
+              {(['street', 'satellite'] as const).map(lyr => (
+                <button
+                  key={lyr}
+                  onClick={() => setLayer(lyr)}
+                  aria-pressed={layer === lyr ? 'true' : 'false'}
+                  style={{
+                    flex: 1, minHeight: 30, padding: '0 10px', borderRadius: 11,
+                    fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 700,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
+                    background: layer === lyr ? 'var(--field-green)' : 'transparent',
+                    color: layer === lyr ? 'var(--bone)' : 'var(--stone-500)',
+                    border: 'none', cursor: 'pointer',
+                    transition: 'background 140ms ease, color 140ms ease',
+                  }}
+                >
+                  {lyr === 'street' ? 'Map' : 'Sat'}
+                </button>
+              ))}
+            </div>
+            {isInstall && (
               <button
-                key={lyr}
-                onClick={() => setLayer(lyr)}
-                aria-pressed={layer === lyr ? 'true' : 'false'}
+                onClick={() => setShowInstalled(v => !v)}
+                aria-pressed={showInstalled ? 'true' : 'false'}
                 style={{
-                  minHeight: 32, padding: '0 12px', borderRadius: 999,
-                  fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  background: layer === lyr ? 'var(--field-green)' : 'transparent',
-                  color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
+                  minHeight: 30, padding: '0 10px', borderRadius: 11,
+                  fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 700,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  background: showInstalled ? 'var(--field-green)' : 'transparent',
+                  color: showInstalled ? 'var(--bone)' : 'var(--stone-500)',
                   border: 'none', cursor: 'pointer',
+                  transition: 'background 140ms ease, color 140ms ease',
                 }}
               >
-                {lyr === 'street' ? 'Map' : 'Satellite'}
+                {showInstalled ? 'Installed' : 'Todo only'}
               </button>
-            ))}
+            )}
+            {isRemove && (
+              <button
+                onClick={toggleShowAllRemovals}
+                aria-pressed={showAllRemovals ? 'true' : 'false'}
+                style={{
+                  minHeight: 30, padding: '0 10px', borderRadius: 11,
+                  fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 700,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                  background: showAllRemovals ? 'var(--field-green)' : 'transparent',
+                  color: showAllRemovals ? 'var(--bone)' : 'var(--stone-500)',
+                  border: 'none', cursor: 'pointer',
+                  transition: 'background 140ms ease, color 140ms ease',
+                }}
+              >
+                {showAllRemovals ? 'All crew' : 'Mine'}
+              </button>
+            )}
           </div>
-        )}
-
-        {/* Install: show installed pins */}
-        {isInstall && showMap && (
-          <button
-            onClick={() => setShowInstalled(v => !v)}
-            style={{
-              position: 'absolute', top: 58, right: 14, zIndex: 400,
-              ...glass,
-              background: showInstalled ? 'var(--field-green)' : glass.background,
-              borderRadius: 'var(--r-pill)',
-              padding: '0 12px', minHeight: 32,
-              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: showInstalled ? 'var(--bone)' : 'var(--stone-700)',
-              cursor: 'pointer',
-            }}
-          >
-            {showInstalled ? 'Installed: On' : 'Installed: Off'}
-          </button>
-        )}
-
-        {/* Remove: show all removers */}
-        {isRemove && (
-          <button
-            onClick={toggleShowAllRemovals}
-            style={{
-              position: 'absolute', top: 58, right: 14, zIndex: 400,
-              ...glass,
-              background: showAllRemovals ? 'var(--field-green)' : glass.background,
-              borderRadius: 'var(--r-pill)',
-              padding: '0 12px', minHeight: 32,
-              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-              letterSpacing: '0.1em', textTransform: 'uppercase',
-              color: showAllRemovals ? 'var(--bone)' : 'var(--stone-700)',
-              cursor: 'pointer',
-            }}
-          >
-            {showAllRemovals ? 'Show all: On' : 'Show all: Off'}
-          </button>
         )}
 
         {tileWarmHint && isRemove && stillOut.length > 0 && (
           <div
             style={{
-              position: 'absolute', top: 14, left: 14, right: 120, zIndex: 400,
+              position: 'absolute', top: 12, left: 12, right: 140, zIndex: 400,
               background: 'rgba(31,64,42,0.92)', color: 'var(--bone)',
-              borderRadius: 'var(--r-pill)', padding: '8px 12px',
-              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+              borderRadius: 'var(--r-pill)', padding: '7px 11px',
+              fontSize: 10, fontFamily: 'var(--font-display)', fontWeight: 700,
               letterSpacing: '0.06em', textTransform: 'uppercase',
               boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
               pointerEvents: 'none',
@@ -3105,11 +3105,11 @@ function MapScreen({
           </div>
         )}
 
-        {/* Mode picker + A/B (Remove only) — docked above the bottom edge */}
+        {/* Mode dock + A/B — thin segmented controls */}
         <div
           style={{
-            position: 'absolute', left: 12, right: 12, bottom: 14, zIndex: 450,
-            display: 'flex', flexDirection: 'column', gap: 8,
+            position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 450,
+            display: 'flex', flexDirection: 'column', gap: 6,
             pointerEvents: 'none',
           }}
         >
@@ -3118,33 +3118,38 @@ function MapScreen({
               role="group"
               aria-label="Removal route"
               style={{
-                ...glass, borderRadius: 14, padding: 3, display: 'flex', gap: 3,
+                ...glass, borderRadius: 12, padding: 2, display: 'flex', gap: 2,
                 pointerEvents: 'auto',
                 alignSelf: 'center',
-                width: 'min(220px, 100%)',
+                width: 'min(200px, 100%)',
+                position: 'relative',
               }}
             >
               {([
                 { id: 'A' as const, label: 'A' },
                 { id: 'B' as const, label: 'B' },
                 { id: 'all' as const, label: 'All' },
-              ]).map(opt => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
-                  onClick={() => handleRouteFilter(opt.id)}
-                  style={{
-                    flex: 1, minHeight: 36, borderRadius: 11, cursor: 'pointer', border: 'none',
-                    background: routeFilter === opt.id ? 'var(--field-green)' : 'transparent',
-                    color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-700)',
-                    fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-                    letterSpacing: '0.08em', textTransform: 'uppercase',
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
+              ]).map(opt => {
+                const active = routeFilter === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    aria-pressed={active ? 'true' : 'false'}
+                    onClick={() => handleRouteFilter(opt.id)}
+                    style={{
+                      flex: 1, minHeight: 30, borderRadius: 10, cursor: 'pointer', border: 'none',
+                      background: active ? 'var(--field-green)' : 'transparent',
+                      color: active ? 'var(--bone)' : 'var(--stone-500)',
+                      fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 12,
+                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                      transition: 'background 140ms ease, color 140ms ease',
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -3153,14 +3158,31 @@ function MapScreen({
             aria-label="Map mode"
             style={{
               ...glass,
-              borderRadius: 16,
-              padding: 4,
+              borderRadius: 14,
+              padding: 2,
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: 3,
+              gap: 0,
               pointerEvents: 'auto',
+              position: 'relative',
             }}
           >
+            {/* Sliding active pill */}
+            <div
+              aria-hidden
+              style={{
+                position: 'absolute',
+                top: 2,
+                bottom: 2,
+                left: `calc(${MAP_MODES.findIndex(m => m.id === mapMode)} * 25% + 2px)`,
+                width: 'calc(25% - 4px)',
+                borderRadius: 12,
+                background: 'var(--field-green)',
+                boxShadow: '0 1px 4px rgba(31,64,42,0.28)',
+                transition: 'left 180ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+                pointerEvents: 'none',
+              }}
+            />
             {MAP_MODES.map(m => {
               const active = mapMode === m.id;
               return (
@@ -3171,18 +3193,20 @@ function MapScreen({
                   aria-selected={active}
                   onClick={() => handleMapMode(m.id)}
                   style={{
-                    minHeight: 44,
+                    position: 'relative',
+                    zIndex: 1,
+                    minHeight: 36,
                     borderRadius: 12,
                     border: 'none',
                     cursor: 'pointer',
-                    background: active ? 'var(--field-green)' : 'transparent',
-                    color: active ? 'var(--bone)' : 'var(--stone-700)',
+                    background: 'transparent',
+                    color: active ? 'var(--bone)' : 'var(--stone-500)',
                     fontFamily: 'var(--font-display)',
                     fontWeight: 700,
-                    fontSize: 12,
-                    letterSpacing: '0.06em',
+                    fontSize: 11,
+                    letterSpacing: '0.05em',
                     textTransform: 'uppercase',
-                    transition: 'background 120ms ease, color 120ms ease',
+                    transition: 'color 160ms ease',
                   }}
                 >
                   {m.label}
@@ -3197,15 +3221,16 @@ function MapScreen({
             onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-me'))}
             aria-label="Recenter on my location"
             style={{
-              position: 'absolute', bottom: isRemove ? 118 : 72, right: 14, zIndex: 400,
-              width: 48, height: 48, borderRadius: '50%',
-              background: 'var(--bone-raised)', color: 'var(--field-green)',
+              position: 'absolute', bottom: isRemove ? 96 : 58, right: 12, zIndex: 400,
+              width: 40, height: 40, borderRadius: '50%',
+              background: 'rgba(246,242,234,0.94)', color: 'var(--field-green)',
               border: '1px solid var(--border-1)',
+              backdropFilter: 'blur(10px)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.18)', cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.14)', cursor: 'pointer',
             }}
           >
-            <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
               <circle cx="12" cy="12" r="3" />
               <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
               <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
@@ -3277,22 +3302,13 @@ function MapScreen({
 
       {/* Season / All: tapped field identity */}
       {isReference && selectedField && (
-        <div style={{ padding: '14px 14px 16px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 10, flexShrink: 0,
-              background: 'var(--field-green)', color: 'var(--bone)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
-              </svg>
-            </div>
+        <div style={{ padding: '12px 14px 14px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {selectedField.name}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--stone-700)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 13, color: 'var(--stone-500)', marginTop: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {selectedField.operation || 'Unknown operation'}
               </div>
             </div>
@@ -3301,9 +3317,9 @@ function MapScreen({
               aria-label="Clear field"
               onClick={() => setSelectedFieldId(null)}
               style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                border: '1px solid var(--border-1)', background: 'var(--bone-raised)',
-                color: 'var(--stone-500)', cursor: 'pointer',
+                width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                border: 'none', background: 'transparent',
+                color: 'var(--stone-400)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
             >
