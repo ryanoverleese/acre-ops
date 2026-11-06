@@ -177,12 +177,11 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
 
     // Fetch core data and select options separately so select options failure doesn't kill everything.
     // All reads are cached (unstable_cache) — writes through the API bust the
-    // table's cache tag, so app edits still show up immediately. TTLs are just
-    // a fallback for edits made directly in the Baserow UI.
+    // table's cache tag, so app edits still show up immediately.
     const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawProductsServices] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 120),
       getCachedRows<Operation>('operations', undefined, 600),
-      getCachedRows<FieldSeason>('field_seasons', seasonFilters ? { baserowFilters: seasonFilters } : undefined, 120),
+      getCachedRows<FieldSeason>('field_seasons', seasonFilters ? { where: seasonFilters } : undefined, 120),
       getCachedRows<Probe>('probes', undefined, 300),
       getCachedRows<BillingEntity>('billing_entities', undefined, 600),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),

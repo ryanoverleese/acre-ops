@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import SearchableSelect from '@/components/SearchableSelect';
+import { ANTENNA_OPTIONS } from '@/lib/antenna';
 import type { ProbeOption } from './page';
 
 const InstallsMap = dynamic(() => import('@/components/InstallsMap'), { ssr: false });
@@ -194,16 +195,7 @@ const initialFormData: InstallFormData = {
 
 const INSTALLERS = ['Brian', 'Daine', 'Ryan', 'Ryan and Kasen'];
 const CROPS = ['Corn', 'Soybeans', 'Seed Corn', 'Popcorn', 'Wheat', 'Sorghum'];
-const ANTENNA_TYPES = [
-  'Sentek Stub',
-  'CropX Stub',
-  'CropX Stub + White Flag',
-  'CropX Stub + No Flag',
-  "Sentek 10'",
-  "CropX 10'",
-  "CropX 6'",
-  'ASK',
-];
+
 
 export interface InstalledProbeData {
   id: number;
@@ -912,7 +904,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                                 style={{ flex: 1, fontSize: 13, borderColor: needs ? 'var(--danger, #de350b)' : undefined }}
                               >
                                 <option value="">— Not set —</option>
-                                {ANTENNA_TYPES.map(a => <option key={a} value={a}>{a}</option>)}
+                                {ANTENNA_OPTIONS.map(a => <option key={a} value={a}>{a}</option>)}
                               </select>
                               {savingAntenna.has(probe.id) && <span className="text-muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>Saving…</span>}
                               {savedAntenna.has(probe.id) && <span style={{ fontSize: 12, color: 'var(--accent-primary)', whiteSpace: 'nowrap' }}>Saved ✓</span>}

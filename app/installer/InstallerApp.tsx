@@ -27,6 +27,7 @@ import {
   formatTodayPullCounts,
   matchesPlannedRemover,
 } from './todayPullCounts';
+import { ANTENNA_OPTIONS, calcFlags } from '@/lib/antenna';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -155,24 +156,6 @@ function probeBadgeColors(brand: string, antenna = ''): { bg: string; fg: string
   if (/sentek/.test(combined)) return { bg: '#DCFCE7', fg: '#166534' };                                            // muted green
   if (/cropx\s*v\d|cropx\s*v(?!\w)|v4/.test(combined)) return { bg: '#DBEAFE', fg: '#1E40AF' };                    // muted blue
   return { bg: 'var(--sage-wash)', fg: 'var(--field-green)' };                                                      // default sage
-}
-
-const ANTENNA_OPTIONS = [
-  'Sentek Stub',
-  'CropX Stub',
-  'CropX Stub + White Flag',
-  'CropX Stub + No Flag',
-  "Sentek 10'",
-  "CropX 10'",
-];
-
-function calcFlags(antennaType: string, sideDress: string) {
-  const antenna = antennaType.toLowerCase();
-  const sd = sideDress.toLowerCase();
-  const hasCoulter = antenna.includes('coulter') || sd.includes('cultivat') || sd.includes('coulter');
-  const hasStub = antenna.includes('stub');
-  const white = hasStub && !hasCoulter ? 2 : 1;
-  return { pink: 1, blue: 5, white };
 }
 
 const TARGET_SIZE = 800 * 1024; // 800 KB target
