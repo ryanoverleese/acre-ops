@@ -1,76 +1,22 @@
-import { withApiAuth } from '@/lib/supabase/api';
-import { dataRequest } from '@/lib/supabase/api';
-import { NextRequest, NextResponse } from 'next/server';
-import { bustTableCache } from '@/lib/supabase/adapter';
-import { revalidatePath } from 'next/cache';
+import { NextResponse } from 'next/server';
+import { asLink, crudItem, pick } from '@/lib/supabase/crud-route';
 
-
-export const PATCH = withApiAuth(async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-
-    const updateData: Record<string, unknown> = {};
+export const { PATCH, DELETE } = crudItem({
+  table: 'orders',
+  revalidate: '/orders',
+  mapUpdate: (body) => {
+    const mapped = pick(body, ['billing_entity', 'order_date', 'status', 'notes', 'quote_valid_days'], {
+      aliases: {
+        billing_entity: 'billing entity',
+        order_date: 'order date',
+        quote_valid_days: 'quote valid days',
+      },
+    });
+    if (mapped instanceof NextResponse) return mapped;
     if (body.billing_entity !== undefined) {
-      updateData.billing_entity = Array.isArray(body.billing_entity)
-        ? body.billing_entity
-        : body.billing_entity ? [parseInt(body.billing_entity, 10)] : [];
-      updateData['billing entity'] = updateData.billing_entity;
+      mapped.billing_entity = asLink(body.billing_entity);
+      mapped['billing entity'] = mapped.billing_entity;
     }
-    if (body.order_date !== undefined) {
-      updateData.order_date = body.order_date;
-      updateData['order date'] = body.order_date;
-    }
-    if (body.status !== undefined) updateData.status = body.status;
-    if (body.notes !== undefined) updateData.notes = body.notes;
-    if (body.quote_valid_days !== undefined) {
-      updateData.quote_valid_days = body.quote_valid_days;
-      updateData['quote valid days'] = body.quote_valid_days;
-    }
-
-    const url = { table: 'orders', id: id };
-    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(updateData) });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Database API error:', response.status, errorText);
-      return NextResponse.json({ error: 'Failed to update order', details: errorText }, { status: response.status });
-    }
-
-    bustTableCache('orders');
-    revalidatePath('/orders');
-    const updated = await response.json();
-    return NextResponse.json(updated);
-  } catch (error) {
-    console.error('Error updating order:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-});
-
-export const DELETE = withApiAuth(async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-
-    const url = { table: 'orders', id: id };
-    const response = await dataRequest(url, { method: 'DELETE' });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Database API error:', response.status, errorText);
-      return NextResponse.json({ error: 'Failed to delete order' }, { status: response.status });
-    }
-
-    bustTableCache('orders');
-    revalidatePath('/orders');
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Error deleting order:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    return mapped;
+  },
 });

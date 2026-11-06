@@ -1,9 +1,8 @@
 import { withApiAuth } from '@/lib/supabase/api';
-import { dataRequest } from '@/lib/supabase/api';
-import { NextRequest, NextResponse } from 'next/server';
-import { getRows, bustTableCache } from '@/lib/supabase/adapter';
+import { NextResponse } from 'next/server';
+import { getRows } from '@/lib/supabase/adapter';
 import type { ProbeRackSlot } from '@/lib/types';
-
+import { asLink, crudCollection, pick } from '@/lib/supabase/crud-route';
 
 export const GET = withApiAuth(async function GET() {
   try {
@@ -15,36 +14,14 @@ export const GET = withApiAuth(async function GET() {
   }
 });
 
-export const POST = withApiAuth(async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-
-    const createData: Record<string, unknown> = {};
-
-    if (body.rack) createData.rack = body.rack;
-    if (body.rack_slot) createData.rack_slot = parseInt(body.rack_slot, 10);
-    if (body.probe) createData.probe = [body.probe];
-
-    const url = { table: 'probe_rack' };
-    const response = await dataRequest(url, { method: 'POST', body: JSON.stringify(createData) });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Database API error:', response.status, errorText);
-      return NextResponse.json(
-        { error: 'Failed to create probe rack slot', detail: errorText },
-        { status: response.status }
-      );
-    }
-
-    const newSlot = await response.json();
-    bustTableCache('probe_rack');
-    return NextResponse.json(newSlot, { status: 201 });
-  } catch (error) {
-    console.error('Error creating probe rack slot:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+export const { POST } = crudCollection({
+  table: 'probe_rack',
+  createStatus: 201,
+  mapCreate: (body) => {
+    const mapped = pick(body, ['rack']);
+    if (mapped instanceof NextResponse) return mapped;
+    if (body.rack_slot) mapped.rack_slot = parseInt(String(body.rack_slot), 10);
+    if (body.probe) mapped.probe = asLink(body.probe);
+    return mapped;
+  },
 });

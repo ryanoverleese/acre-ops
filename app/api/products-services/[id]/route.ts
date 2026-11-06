@@ -1,47 +1,16 @@
-import { withApiAuth } from '@/lib/supabase/api';
-import { dataRequest } from '@/lib/supabase/api';
-import { NextRequest, NextResponse } from 'next/server';
-import { bustTableCache } from '@/lib/supabase/adapter';
+import { crudItem, pick } from '@/lib/supabase/crud-route';
 
-
-export const PATCH = withApiAuth(async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-
-    const updateData: Record<string, unknown> = {};
-    if (body.service_type !== undefined) updateData.service_type = body.service_type;
-    if (body.rate !== undefined) updateData.rate = body.rate;
-    if (body.dealer_fee !== undefined) updateData.dealer_fee = body.dealer_fee;
-    if (body.description !== undefined) updateData.description = body.description;
-    if (body.status !== undefined) updateData.status = body.status;
-    if (body.category !== undefined) updateData.category = body.category;
-    if (body.unit !== undefined) updateData.unit = body.unit;
-    if (body.active !== undefined) updateData.active = body.active;
-
-    const url = { table: 'products_services', id: id };
-    const response = await dataRequest(url, { method: 'PATCH', body: JSON.stringify(updateData) });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Database API error:', response.status, errorText);
-      return NextResponse.json(
-        { error: 'Failed to update product/service' },
-        { status: response.status }
-      );
-    }
-
-    const updatedItem = await response.json();
-    bustTableCache('products_services');
-    return NextResponse.json(updatedItem);
-  } catch (error) {
-    console.error('Error updating product/service:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
+export const { PATCH } = crudItem({
+  table: 'products_services',
+  mapUpdate: (body) =>
+    pick(body, [
+      'service_type',
+      'rate',
+      'dealer_fee',
+      'description',
+      'status',
+      'category',
+      'unit',
+      'active',
+    ]),
 });
