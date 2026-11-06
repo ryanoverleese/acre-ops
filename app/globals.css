@@ -10375,7 +10375,7 @@ tr.expanded-row:hover {
   bottom: 58px;
 }
 .leaflet-container.af-installer-map.af-tiles-degraded::after {
-  content: 'Dead zone — pins & GPS still live';
+  content: 'Dead zone';
   position: absolute;
   top: 12px;
   left: 12px;

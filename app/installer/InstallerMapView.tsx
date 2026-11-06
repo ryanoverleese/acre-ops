@@ -322,20 +322,62 @@ function makeRepairPin(watch = false) {
 }
 
 
-// Track tile failures / offline so we can hint "dead zone" without blanking UX.
-// tileerror/tileload fire on GridLayer — attach via map.eachLayer + online events.
+// Dead-zone badge: only for real offline / sustained tile failure.
+// A single Google tileabort or 404 used to flip the badge on immediately —
+// and the transparent errorTileUrl "load" made it flicker during normal pans.
 function TileHealth() {
   const map = useMap();
   useEffect(() => {
     const container = map.getContainer();
-    const onErr = () => { container.classList.add('af-tiles-degraded'); };
-    const onLoad = () => {
-      if (typeof navigator !== 'undefined' && navigator.onLine) {
-        container.classList.remove('af-tiles-degraded');
+    let failStreak = 0;
+    let showTimer: ReturnType<typeof setTimeout> | null = null;
+    let hideTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const setDegraded = (on: boolean) => {
+      container.classList.toggle('af-tiles-degraded', on);
+    };
+
+    const onErr = () => {
+      failStreak += 1;
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      // One-off blips while panning are normal; wait for a burst.
+      if (failStreak < 8 && (typeof navigator === 'undefined' || navigator.onLine)) return;
+      if (!showTimer) {
+        showTimer = setTimeout(() => {
+          showTimer = null;
+          setDegraded(true);
+        }, 1000);
       }
     };
-    const onOffline = () => { container.classList.add('af-tiles-degraded'); };
-    const onOnline = () => { container.classList.remove('af-tiles-degraded'); };
+
+    const onLoad = (e: L.TileEvent) => {
+      // errorTileUrl is a data: GIF — that "load" is not a recovery.
+      const src = e.tile?.getAttribute?.('src') ?? '';
+      if (src.startsWith('data:')) return;
+
+      failStreak = 0;
+      if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+      if (!hideTimer) {
+        hideTimer = setTimeout(() => {
+          hideTimer = null;
+          setDegraded(false);
+        }, 500);
+      }
+    };
+
+    const onOffline = () => {
+      failStreak = 99;
+      if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      setDegraded(true);
+    };
+    const onOnline = () => {
+      failStreak = 0;
+      if (showTimer) { clearTimeout(showTimer); showTimer = null; }
+      if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
+      setDegraded(false);
+    };
 
     const bind = (layer: L.Layer) => {
       if (layer instanceof L.TileLayer) {
@@ -360,11 +402,14 @@ function TileHealth() {
     if (typeof navigator !== 'undefined' && navigator.onLine === false) onOffline();
 
     return () => {
+      if (showTimer) clearTimeout(showTimer);
+      if (hideTimer) clearTimeout(hideTimer);
       map.eachLayer(unbind);
       map.off('layeradd', onLayerAdd);
       map.off('layerremove', onLayerRemove);
       window.removeEventListener('offline', onOffline);
       window.removeEventListener('online', onOnline);
+      setDegraded(false);
     };
   }, [map]);
   return null;
