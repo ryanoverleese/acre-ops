@@ -3296,25 +3296,6 @@ function MapScreen({
         </div>
       )}
 
-      {isReference && !selectedField && (
-        <div
-          style={{
-            flexShrink: 0,
-            textAlign: 'center',
-            padding: '8px 14px 10px',
-            fontSize: 11,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-            fontFamily: 'var(--font-display)',
-            fontWeight: 600,
-            color: 'var(--stone-500)',
-            background: 'var(--bone)',
-            borderTop: '1px solid var(--border-1)',
-          }}
-        >
-          Tap a field for name &amp; grower
-        </div>
-      )}
     </div>
   );
 }
