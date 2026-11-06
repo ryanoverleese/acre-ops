@@ -2678,7 +2678,7 @@ function saveMapMode(mode: MapMode) {
   try { localStorage.setItem(MAP_MODE_KEY, mode); } catch { /* private mode */ }
 }
 
-type MapFieldRow = { id: number; name: string; lat: number | null; lng: number | null };
+type MapFieldRow = { id: number; name: string; operation: string; lat: number | null; lng: number | null };
 
 function MapScreen({
   assignments,
@@ -2714,13 +2714,14 @@ function MapScreen({
   const [routeFilterReady, setRouteFilterReady] = useState(false);
   const [refFields, setRefFields] = useState<MapFieldRow[]>([]);
   const [refLoading, setRefLoading] = useState(false);
+  const [selectedFieldId, setSelectedFieldId] = useState<number | null>(null);
   const [tileWarmHint, setTileWarmHint] = useState<string | null>(null);
 
   const isRemove = mapMode === 'remove';
   const isInstall = mapMode === 'install';
   const isReference = mapMode === 'season' || mapMode === 'all';
 
-  // Boundary field IDs for the active mode (reference-only polygons).
+  // Boundary field IDs for the active mode.
   const boundaryFieldIds = (() => {
     if (isReference) return refFields.map(f => f.id);
     if (isInstall) return assignments.map(a => a.fieldId);
@@ -2731,6 +2732,7 @@ function MapScreen({
   useEffect(() => {
     // Preselect next install stop once when entering Install mode.
     if (!isInstall) { setSelectedId(null); return; }
+    setSelectedFieldId(null);
     setSelectedId(assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null);
   }, [isInstall]); // eslint-disable-line react-hooks/exhaustive-deps -- only on mode enter
 
@@ -2773,7 +2775,7 @@ function MapScreen({
   }, [isRemove, installer, season]);
 
   useEffect(() => {
-    if (!isReference) { setRefFields([]); return; }
+    if (!isReference) { setRefFields([]); setSelectedFieldId(null); return; }
     let cancelled = false;
     (async () => {
       setRefLoading(true);
@@ -2784,7 +2786,16 @@ function MapScreen({
         });
         const res = await fetch(`/api/installer/map-fields?${qs}`, { cache: 'no-store' });
         const data = await res.json();
-        if (!cancelled) setRefFields(data.fields ?? []);
+        if (!cancelled) {
+          setRefFields((data.fields ?? []).map((f: MapFieldRow) => ({
+            id: f.id,
+            name: f.name || 'Unnamed',
+            operation: f.operation || '',
+            lat: f.lat ?? null,
+            lng: f.lng ?? null,
+          })));
+          setSelectedFieldId(null);
+        }
       } catch {
         if (!cancelled) setRefFields([]);
       } finally {
@@ -2843,6 +2854,7 @@ function MapScreen({
     setMapMode(next);
     saveMapMode(next);
     setSelectedId(null);
+    setSelectedFieldId(null);
     if (savedViewRef) savedViewRef.current = null; // re-fit for the new mode
   };
 
@@ -2911,6 +2923,9 @@ function MapScreen({
 
   const selected = isInstall ? (assignments.find(a => a.id === selectedId) ?? null) : null;
   const selectedRemoval = isRemove ? (removalRows.find(r => r.id === selectedId) ?? null) : null;
+  const selectedField = isReference
+    ? (refFields.find(f => f.id === selectedFieldId) ?? null)
+    : null;
 
   if (selectedRemoval && !selectedRemoval.removed && installer) {
     return (
@@ -2997,6 +3012,9 @@ function MapScreen({
             onSelect={setSelectedId}
             layer={layer}
             boundaries={boundaries}
+            boundaryInteractive={isReference}
+            selectedBoundaryId={selectedFieldId}
+            onSelectBoundary={setSelectedFieldId}
             fitKey={`${mapMode}-${isRemove ? routeFilter : showInstalled ? 'inst' : 'todo'}-${boundaryFieldIds.length}-${boundaries.features?.length ?? 0}-${mapPoints.length}`}
             repairPoints={isInstall ? repairPoints : undefined}
             onSelectRepair={isInstall ? onSelectRepair : undefined}
@@ -3257,8 +3275,47 @@ function MapScreen({
         </div>
       )}
 
-      {/* Season / All: quiet reference hint */}
-      {isReference && !selected && (
+      {/* Season / All: tapped field identity */}
+      {isReference && selectedField && (
+        <div style={{ padding: '14px 14px 16px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10, flexShrink: 0,
+              background: 'var(--field-green)', color: 'var(--bone)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
+              </svg>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {selectedField.name}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--stone-700)', marginTop: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {selectedField.operation || 'Unknown operation'}
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Clear field"
+              onClick={() => setSelectedFieldId(null)}
+              style={{
+                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                border: '1px solid var(--border-1)', background: 'var(--bone-raised)',
+                color: 'var(--stone-500)', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" viewBox="0 0 24 24">
+                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {isReference && !selectedField && (
         <div
           style={{
             flexShrink: 0,
@@ -3274,7 +3331,7 @@ function MapScreen({
             borderTop: '1px solid var(--border-1)',
           }}
         >
-          Boundaries for reference
+          Tap a field for name &amp; grower
         </div>
       )}
     </div>

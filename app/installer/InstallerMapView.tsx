@@ -50,6 +50,10 @@ interface Props {
   repairPoints?: RepairMapPoint[];
   onSelectRepair?: (id: number) => void;
   boundaries?: FieldBoundaryCollection | null;
+  /** Season/All: tap a polygon to identify the field. */
+  boundaryInteractive?: boolean;
+  selectedBoundaryId?: number | null;
+  onSelectBoundary?: (fieldId: number) => void;
   /** Change this when map mode switches so we re-fit to the new content. */
   fitKey?: string;
   // When provided, restore this center/zoom on mount instead of fitting to all
@@ -367,7 +371,7 @@ function TileHealth() {
 }
 
 
-export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, boundaries, fitKey, initialView, onViewChange }: Props) {
+export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, boundaries, boundaryInteractive, selectedBoundaryId, onSelectBoundary, fitKey, initialView, onViewChange }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
   const boundarySeed = useMemo(() => collectBoundaryLatLngs(boundaries), [boundaries]);
 
@@ -409,7 +413,12 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
         className="af-map-tiles"
       />
       <TileHealth />
-      <BoundaryLayer data={boundaries} />
+      <BoundaryLayer
+        data={boundaries}
+        interactive={boundaryInteractive}
+        selectedId={selectedBoundaryId}
+        onSelect={onSelectBoundary}
+      />
 
       {/* Stop pins */}
       {valid.map(p => {

@@ -1,14 +1,15 @@
+import { fieldOperationLabel } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/supabase/database';
 import { getCachedRows } from '@/lib/supabase/adapter';
-import type { Field, FieldSeason } from '@/lib/types';
+import type { Contact, Field, FieldSeason, Operation } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Field IDs (+ optional pin coords) for installer map Season / All modes.
- * Boundaries stay reference-only — this just tells the client what to load.
+ * Field IDs + name/operation for installer map Season / All modes.
+ * Used for boundary loading and tap labels (who's field / field name).
  */
 export const GET = withApiAuth(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -16,28 +17,51 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
 
   try {
-    if (scope === 'all') {
-      const rows = await query<{ field_id: number; name: string | null; lat: number | null; lng: number | null }>(
-        `SELECT b.field_id, f.name, f.lat, f.lng
-           FROM public.field_boundaries b
-           JOIN public.fields f ON f.id = b.field_id
-          ORDER BY f.name NULLS LAST, b.field_id`,
-      );
-      return NextResponse.json({
-        scope: 'all',
-        fields: rows.map(r => ({
-          id: Number(r.field_id),
-          name: r.name || 'Unnamed',
-          lat: r.lat != null ? Number(r.lat) : null,
-          lng: r.lng != null ? Number(r.lng) : null,
-        })),
-      });
+    const [fields, operations, contacts] = await Promise.all([
+      getCachedRows<Field>('fields', undefined, 120),
+      getCachedRows<Operation>('operations', undefined, 300),
+      getCachedRows<Contact>('contacts', undefined, 300),
+    ]);
+
+    const operationMap = new Map(operations.map(op => [op.id, op.name]));
+    const billingToOperationMap = new Map<number, number[]>();
+    for (const contact of contacts) {
+      const contactOpIds = contact.operations?.map(op => op.id) || [];
+      const contactBeIds = contact.billing_entity?.map(be => be.id) || [];
+      for (const beId of contactBeIds) {
+        const ids = billingToOperationMap.get(beId) || [];
+        for (const opId of contactOpIds) {
+          if (!ids.includes(opId)) ids.push(opId);
+        }
+        billingToOperationMap.set(beId, ids);
+      }
     }
 
-    const [fieldSeasons, fields] = await Promise.all([
-      getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-      getCachedRows<Field>('fields', undefined, 120),
-    ]);
+    const labelFor = (field: Field | undefined) =>
+      field ? fieldOperationLabel(field, billingToOperationMap, operationMap) : '';
+
+    if (scope === 'all') {
+      const rows = await query<{ field_id: number }>(
+        'SELECT field_id FROM public.field_boundaries ORDER BY field_id',
+      );
+      const fieldMap = new Map(fields.map(f => [f.id, f]));
+      const list = rows
+        .map(r => {
+          const id = Number(r.field_id);
+          const f = fieldMap.get(id);
+          return {
+            id,
+            name: f?.name || 'Unnamed',
+            operation: labelFor(f),
+            lat: f?.lat ?? null,
+            lng: f?.lng ?? null,
+          };
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return NextResponse.json({ scope: 'all', fields: list });
+    }
+
+    const fieldSeasons = await getCachedRows<FieldSeason>('field_seasons', undefined, 60);
     const fieldMap = new Map(fields.map(f => [f.id, f]));
     const seasonFieldIds = new Set<number>();
     for (const fs of fieldSeasons) {
@@ -52,6 +76,7 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
         return {
           id,
           name: f?.name || 'Unnamed',
+          operation: labelFor(f),
           lat: f?.lat ?? null,
           lng: f?.lng ?? null,
         };
