@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -212,7 +214,7 @@ export default function ApprovalPinMap({ fieldName, onSave, saving, initialPin }
       >
         <ClickHandler onPin={(lat, lng) => setPin([lat, lng])} />
         <FlyToHandler target={flyTarget} />
-        <TileLayer attribution="&copy; Google" url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}" />
+        <TileLayer attribution={GOOGLE_ATTR} url={SAT_URL} />
         {pin && (
           <Marker
             position={pin}

@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -14,8 +16,6 @@ interface Props {
 
 type ColorMode = 'status' | 'plannedRemover';
 
-const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
-const GOOGLE_ATTR = '&copy; Google';
 
 const STATUS_COLORS = {
   stillInGround: '#0071e3',

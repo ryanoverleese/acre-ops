@@ -1,7 +1,7 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable } from '@/lib/installer-load';
 import { getProbeAssignments } from '@/lib/data';
 import type { Field, FieldSeason, Probe, Operation, BillingEntity, Contact } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
@@ -21,13 +21,13 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
   try {
     const [fields, fieldSeasons, probes, billingEntities, operations, probeAssignments, contacts] =
       await Promise.all([
-        getCachedRows<Field>('fields', undefined, 120),
-        getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-        getCachedRows<Probe>('probes', undefined, 120),
-        getCachedRows<BillingEntity>('billing_entities', undefined, 300),
-        getCachedRows<Operation>('operations', undefined, 300),
+        loadTable<Field>('fields', INSTALLER_TTL.fields),
+        loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons),
+        loadTable<Probe>('probes', INSTALLER_TTL.probes),
+        loadTable<BillingEntity>('billing_entities', INSTALLER_TTL.billing_entities),
+        loadTable<Operation>('operations', INSTALLER_TTL.operations),
         getProbeAssignments(),
-        getCachedRows<Contact>('contacts', undefined, 300),
+        loadTable<Contact>('contacts', INSTALLER_TTL.contacts),
       ]);
 
     const operationMap = buildOperationMap(operations);

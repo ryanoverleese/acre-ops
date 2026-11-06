@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import L from 'leaflet';
@@ -499,8 +501,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         zoomControl={true}
       >
         <TileLayer
-          attribution='&copy; Google'
-          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+          attribution={GOOGLE_ATTR}
+          url={SAT_URL}
         />
         <ElevationOverlay show={showElevation} />
         <PLSSOverlay show={showPLSS} />

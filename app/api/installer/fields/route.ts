@@ -1,7 +1,7 @@
 import { fieldBilling } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable } from '@/lib/installer-load';
 import type { Field, FieldSeason, ProbeAssignment, BillingEntity } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -12,10 +12,10 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
 
   try {
     const [fieldSeasons, fields, probeAssignments, billingEntities] = await Promise.all([
-      getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-      getCachedRows<Field>('fields', undefined, 120),
-      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
-      getCachedRows<BillingEntity>('billing_entities', undefined, 300),
+      loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons),
+      loadTable<Field>('fields', INSTALLER_TTL.fields),
+      loadTable<ProbeAssignment>('probe_assignments', 60),
+      loadTable<BillingEntity>('billing_entities', INSTALLER_TTL.billing_entities),
     ]);
 
     const fieldMap = new Map(fields.map(f => [f.id, f]));

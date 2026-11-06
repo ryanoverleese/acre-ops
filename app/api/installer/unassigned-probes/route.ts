@@ -1,6 +1,6 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { getCachedRows } from '@/lib/supabase/adapter';
+import { loadTable } from '@/lib/installer-load';
 import type { Probe, ProbeAssignment } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 export const GET = withApiAuth(async function GET() {
   try {
     const [probes, probeAssignments] = await Promise.all([
-      getCachedRows<Probe>('probes', undefined, 60),
-      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
+      loadTable<Probe>('probes', 60),
+      loadTable<ProbeAssignment>('probe_assignments', 60),
     ]);
 
     // Probes currently in an active (not installed) assignment

@@ -1,6 +1,7 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getRows, getCachedRows } from '@/lib/supabase/adapter';
+import { getRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable } from '@/lib/installer-load';
 import type { Probe, ProbeRackSlot, ProbeAssignment, FieldSeason, Field } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -37,10 +38,10 @@ export const GET = withApiAuth(async function GET(request: NextRequest) {
     if (probes.length === 0) return NextResponse.json({ results: [] });
 
     const [rackSlots, probeAssignments, fieldSeasons, fields] = await Promise.all([
-      getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
-      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
-      getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-      getCachedRows<Field>('fields', undefined, 120),
+      loadTable<ProbeRackSlot>('probe_rack', INSTALLER_TTL.probe_rack),
+      loadTable<ProbeAssignment>('probe_assignments', 60),
+      loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons),
+      loadTable<Field>('fields', INSTALLER_TTL.fields),
     ]);
 
     // probeId → rack location (from probe_rack table)

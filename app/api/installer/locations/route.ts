@@ -1,7 +1,7 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { getCachedRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable } from '@/lib/installer-load';
 import type { Field, FieldSeason, ProbeAssignment, Operation, Contact } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -38,11 +38,11 @@ export interface InstallerFieldLocation {
 export const GET = withApiAuth(async function GET() {
   try {
     const [fields, operations, fieldSeasons, probeAssignments, contacts] = await Promise.all([
-      getCachedRows<Field>('fields', undefined, 120),
-      getCachedRows<Operation>('operations', undefined, 300),
-      getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
-      getCachedRows<Contact>('contacts', undefined, 300),
+      loadTable<Field>('fields', INSTALLER_TTL.fields),
+      loadTable<Operation>('operations', INSTALLER_TTL.operations),
+      loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons),
+      loadTable<ProbeAssignment>('probe_assignments', 60),
+      loadTable<Contact>('contacts', INSTALLER_TTL.contacts),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));

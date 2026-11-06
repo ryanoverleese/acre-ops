@@ -1,8 +1,8 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextRequest, NextResponse } from 'next/server';
-import { getCachedRows, getRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable, parseFresh } from '@/lib/installer-load';
 import { getProbeAssignments } from '@/lib/data';
-import type { Field, FieldSeason, Probe, Operation, BillingEntity, Contact } from '@/lib/types';
+import type { Field, FieldSeason, Operation, BillingEntity, Contact } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 
 export const dynamic = 'force-dynamic';
@@ -10,27 +10,17 @@ export const dynamic = 'force-dynamic';
 export const GET = withApiAuth(async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
-  const fresh = searchParams.get('fresh') === '1';
-
-  const read = {
-    fields: fresh ? getRows<Field>('fields') : getCachedRows<Field>('fields', undefined, 120),
-    fieldSeasons: fresh ? getRows<FieldSeason>('field_seasons') : getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-    probes: fresh ? getRows<Probe>('probes') : getCachedRows<Probe>('probes', undefined, 120),
-    billingEntities: fresh ? getRows<BillingEntity>('billing_entities') : getCachedRows<BillingEntity>('billing_entities', undefined, 300),
-    operations: fresh ? getRows<Operation>('operations') : getCachedRows<Operation>('operations', undefined, 300),
-    contacts: fresh ? getRows<Contact>('contacts') : getCachedRows<Contact>('contacts', undefined, 300),
-  };
+  const fresh = parseFresh(searchParams);
 
   try {
-    const [fields, fieldSeasons, , billingEntities, operations, probeAssignments, contacts] =
+    const [fields, fieldSeasons, billingEntities, operations, probeAssignments, contacts] =
       await Promise.all([
-        read.fields,
-        read.fieldSeasons,
-        read.probes,
-        read.billingEntities,
-        read.operations,
+        loadTable<Field>('fields', INSTALLER_TTL.fields, fresh),
+        loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons, fresh),
+        loadTable<BillingEntity>('billing_entities', INSTALLER_TTL.billing_entities, fresh),
+        loadTable<Operation>('operations', INSTALLER_TTL.operations, fresh),
         getProbeAssignments(),
-        read.contacts,
+        loadTable<Contact>('contacts', INSTALLER_TTL.contacts, fresh),
       ]);
 
     const operationMap = buildOperationMap(operations);

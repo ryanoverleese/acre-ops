@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL } from '@/lib/map-tiles';
+
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -7,7 +9,6 @@ import { zoneBounds, zoneCenter, CENTER_LAT, CENTER_LNG } from '@/lib/territory-
 import type { LatBand } from '@/lib/territory-grid';
 import { useFieldBoundaries } from '@/components/useFieldBoundaries';
 
-const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
 export interface MapField {
   id: number;

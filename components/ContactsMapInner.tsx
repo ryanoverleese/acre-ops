@@ -1,5 +1,7 @@
 'use client';
 
+import { SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
 import L from 'leaflet';
@@ -122,8 +124,8 @@ export default function ContactsMapInner({ contacts, colorBy = 'none', onContact
         zoomControl={true}
       >
         <TileLayer
-          attribution='&copy; Google'
-          url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
+          attribution={GOOGLE_ATTR}
+          url={SAT_URL}
         />
         <PLSSOverlay show={showPLSS} />
         {mappableContacts.map((contact) => {

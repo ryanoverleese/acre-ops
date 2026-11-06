@@ -1,5 +1,7 @@
 'use client';
 
+import { STREET_URL, SAT_URL, GOOGLE_ATTR } from '@/lib/map-tiles';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
@@ -135,9 +137,6 @@ function makePin(label: string, installed: boolean, selected: boolean, hasNote =
 // Tile URL templates — using the same Google tile servers as the rest of
 // the Acre Insights app (see InstallsMap.tsx, WeatherStationsMap.tsx).
 // lyrs=m = roadmap (streets), lyrs=y = hybrid (satellite + labels)
-const STREET_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
-const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
-const GOOGLE_ATTR = '&copy; Google';
 // Transparent 1×1 GIF — failed/offline tiles show the map background instead of
 // pink error tiles, so pins + blue me-dot stay usable in dead zones.
 const ERROR_TILE =

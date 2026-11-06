@@ -1,6 +1,6 @@
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { getCachedRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable } from '@/lib/installer-load';
 import type { Probe, ProbeRackSlot, ProbeAssignment, FieldSeason, Field } from '@/lib/types';
 import type { ProbeSearchResult } from '../probe-search/route';
 
@@ -12,11 +12,11 @@ export const dynamic = 'force-dynamic';
 export const GET = withApiAuth(async function GET() {
   try {
     const [probes, rackSlots, probeAssignments, fieldSeasons, fields] = await Promise.all([
-      getCachedRows<Probe>('probes', undefined, 120),
-      getCachedRows<ProbeRackSlot>('probe_rack', undefined, 120),
-      getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
-      getCachedRows<FieldSeason>('field_seasons', undefined, 60),
-      getCachedRows<Field>('fields', undefined, 120),
+      loadTable<Probe>('probes', INSTALLER_TTL.probes),
+      loadTable<ProbeRackSlot>('probe_rack', INSTALLER_TTL.probe_rack),
+      loadTable<ProbeAssignment>('probe_assignments', 60),
+      loadTable<FieldSeason>('field_seasons', INSTALLER_TTL.field_seasons),
+      loadTable<Field>('fields', INSTALLER_TTL.fields),
     ]);
 
     const probeRackMap = new Map<number, { rack: string; slot: number }>();

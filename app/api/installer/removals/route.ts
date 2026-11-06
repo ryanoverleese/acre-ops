@@ -1,7 +1,7 @@
 import { buildNotesThread } from '@/lib/notes-thread';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
-import { getCachedRows, getRows } from '@/lib/supabase/adapter';
+import { INSTALLER_TTL, loadTable, parseFresh } from '@/lib/installer-load';
 
 /**
  * The pull route: probes currently in the ground (and already pulled this
@@ -41,7 +41,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withApiAuth(async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const season = parseInt(searchParams.get('season') || String(new Date().getFullYear()), 10);
-  const fresh = searchParams.get('fresh') === '1';
+  const fresh = parseFresh(searchParams);
   const installer = searchParams.get('installer');
   const all = searchParams.get('all') === '1';
 
@@ -51,11 +51,11 @@ export const GET = withApiAuth(async function GET(request: Request) {
 
   try {
     const [assignments, fieldSeasons, fields, probes, billingEntities] = await Promise.all([
-      fresh ? getRows<Row>('probe_assignments') : getCachedRows<Row>('probe_assignments', undefined, 60),
-      fresh ? getRows<Row>('field_seasons') : getCachedRows<Row>('field_seasons', undefined, 60),
-      getCachedRows<Row>('fields', undefined, 300),
-      getCachedRows<Row>('probes', undefined, 300),
-      getCachedRows<Row>('billing_entities', undefined, 300),
+      loadTable<Row>('probe_assignments', 60, fresh),
+      loadTable<Row>('field_seasons', INSTALLER_TTL.field_seasons, fresh),
+      loadTable<Row>('fields', 300, false),
+      loadTable<Row>('probes', 300, false),
+      loadTable<Row>('billing_entities', INSTALLER_TTL.billing_entities, false),
     ]);
 
     const fsMap = new Map(fieldSeasons.map((r) => [Number(r.id), r]));
