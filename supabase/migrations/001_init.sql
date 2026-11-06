@@ -1,6 +1,6 @@
 -- Acre Ops: initial, inventory-backed PostgreSQL schema (PostgreSQL 15+).
 -- Source: lib/baserow.ts at 6bb77d8f426a24fcc7e4f360864643df259ef2fa.
--- Source of field types/formulas: supabase/baserow-inventory.md (2026-10-12).
+-- Source of field types/formulas: historical Baserow inventory (2026-10-12; removed after cutover).
 -- Additional evidence: lib/data-mappings.ts; app/orders/page.tsx;
 -- app/billing/page.tsx; app/api/{field-seasons,mileage,probe-rack/sync}/route.ts;
 -- app/settings/SettingsClient.tsx; app/installer/InstallerApp.tsx.
