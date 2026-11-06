@@ -77,7 +77,7 @@ function fmtDate(iso: string): string {
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', fontSize: 16,
   border: '1.5px solid var(--border-1)', borderRadius: 10,
-  background: '#fff', color: 'var(--ink)', boxSizing: 'border-box',
+  background: 'var(--bone-raised)', color: 'var(--ink)', boxSizing: 'border-box',
   fontFamily: 'inherit',
 };
 
@@ -176,33 +176,26 @@ export function PullForm({ row, installer, onBack, onSaved }: {
       </div>
 
       {/* Single-stack PullForm — denser spacing so Navigate + Mark Pulled fit with notes */}
-      <div className="af-body" style={{ padding: '10px 12px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="af-body" style={{ padding: '10px 12px 18px', display: 'flex', flexDirection: 'column', gap: 12, background: 'var(--bone)' }}>
         {/* What's coming out */}
-        <div style={{
-          padding: '8px 10px', background: 'var(--bone-raised,#f0ede8)', borderRadius: 10,
-          border: '1.5px solid var(--border-1)',
-        }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            {row.fieldName}
-          </div>
-          {row.grower && <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 1 }}>{row.grower}</div>}
-          {row.removalPriority === 'Priority' && (
-            <div style={{
-              marginTop: 6, padding: '5px 8px', borderRadius: 8,
-              background: '#FEE2E2', border: '2px solid #EF4444',
-              color: '#991B1B', fontWeight: 800, fontSize: 12,
-              letterSpacing: '0.04em', textTransform: 'uppercase',
-              fontFamily: 'var(--font-display)',
-            }}>
-              🚨 Priority — pull ASAP
+        <div style={{ padding: '2px 2px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.02em', lineHeight: 1.05 }}>
+              {row.fieldName}
             </div>
-          )}
+            {row.removalPriority === 'Priority' && (
+              <span className="af-chip" style={{ background: '#FEE2E2', color: '#B91C1C', padding: '2px 7px', fontSize: 10 }}>
+                Priority
+              </span>
+            )}
+          </div>
+          {row.grower && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 3 }}>{row.grower}</div>}
           {row.probeSerial && (
             <div style={{ fontSize: 12, color: 'var(--ink)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
               #{row.probeSerial}{row.label ? ` · ${row.label}` : ''}
             </div>
           )}
-          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 3 }}>
             Installed {fmtDate(row.installedOn)}{row.installedBy ? ` by ${row.installedBy}` : ''}
             {row.antennaType ? ` · ${row.antennaType}` : ''}
           </div>
@@ -211,14 +204,9 @@ export function PullForm({ row, installer, onBack, onSaved }: {
               Planned remover: {row.plannedRemover}
             </div>
           )}
-          {row.crop && (
-            <div style={{ fontSize: 11, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
-              Crop: {row.crop}
-            </div>
-          )}
-          {row.rowDirection && (
-            <div style={{ fontSize: 11, color: 'var(--ink)', marginTop: 2, fontWeight: 600 }}>
-              Rows: {row.rowDirection}
+          {(row.crop || row.rowDirection) && (
+            <div style={{ fontSize: 11, color: 'var(--stone-700)', marginTop: 3 }}>
+              {[row.crop && `Crop ${row.crop}`, row.rowDirection && `Rows ${row.rowDirection}`].filter(Boolean).join(' · ')}
             </div>
           )}
         </div>
@@ -249,14 +237,8 @@ export function PullForm({ row, installer, onBack, onSaved }: {
             href={navigateUrl(row.lat, row.lng)}
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              padding: '10px', borderRadius: 10, textDecoration: 'none',
-              background: 'var(--bone-raised,#f0ede8)', border: '1.5px solid var(--border-1)',
-              color: 'var(--field-green)',
-              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14,
-              letterSpacing: '0.06em', textTransform: 'uppercase',
-            }}
+            className="af-btn af-btn--secondary af-btn--block"
+            style={{ textDecoration: 'none', color: 'var(--field-green)', minHeight: 44, fontSize: 13 }}
           >
             <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
               <polygon points="3 11 22 2 13 21 11 13 3 11" />
@@ -324,7 +306,7 @@ export function PullForm({ row, installer, onBack, onSaved }: {
               type="button"
               style={{
                 width: 64, height: 64, borderRadius: 8, cursor: 'pointer',
-                border: '1.5px dashed var(--border-1)', background: '#fff',
+                border: '1.5px dashed var(--border-1)', background: 'var(--bone-raised)',
                 color: 'var(--stone-500)', display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center', gap: 2, fontSize: 10,
               }}
@@ -344,42 +326,26 @@ export function PullForm({ row, installer, onBack, onSaved }: {
           <button
             onClick={() => { if (canSubmit) setConfirming(true); }}
             disabled={!canSubmit}
-            style={{
-              padding: '12px', minHeight: 48, borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: 'var(--field-green)', color: 'var(--bone)',
-              fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
-              letterSpacing: '0.06em', textTransform: 'uppercase',
-              opacity: canSubmit ? 1 : 0.5,
-            }}
+            className="af-btn af-btn--primary af-btn--block"
+            style={{ opacity: canSubmit ? 1 : 0.5 }}
           >
-            Mark Pulled ✓
+            Mark Pulled
           </button>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              style={{
-                padding: '12px', minHeight: 48, borderRadius: 10, border: 'none', cursor: 'pointer',
-                background: '#dc2626', color: '#fff',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                opacity: canSubmit ? 1 : 0.5,
-              }}
+              className="af-btn af-btn--primary af-btn--block"
+              style={{ background: '#B91C1C', opacity: canSubmit ? 1 : 0.5 }}
             >
               {submitting ? 'Saving…' : 'Confirm removal'}
             </button>
             <button
               onClick={() => setConfirming(false)}
               disabled={submitting}
-              style={{
-                padding: '12px', minHeight: 48, borderRadius: 10, cursor: 'pointer',
-                background: 'var(--bone-raised, #f0ede8)', color: 'var(--ink)',
-                border: '1.5px solid var(--stone-300, #d6d3d1)',
-                fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 15,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                opacity: submitting ? 0.5 : 1,
-              }}
+              className="af-btn af-btn--secondary af-btn--block"
+              style={{ opacity: submitting ? 0.5 : 1 }}
             >
               Cancel
             </button>
@@ -532,11 +498,11 @@ export default function RemovalsScreen({ season, installer }: {
         </button>
       </div>
 
-      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10, background: '#fff' }}>
+      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bone)' }}>
         {banner && (
           <div style={{
-            padding: '10px 14px', borderRadius: 10, fontSize: 14, fontWeight: 600,
-            background: '#FEF9C3', border: '1.5px solid #FDE047', color: 'var(--ink)',
+            padding: '8px 10px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+            background: 'var(--sage-wash)', border: '1px solid var(--border-1)', color: 'var(--stone-700)',
           }}>
             {banner}
           </div>
@@ -544,43 +510,33 @@ export default function RemovalsScreen({ season, installer }: {
 
         {!loading && stillOut.some(r => r.removalPriority === 'Priority') && tab === 'out' && (
           <div style={{
-            padding: '10px 14px', borderRadius: 10, fontSize: 14, fontWeight: 800,
-            background: '#FEE2E2', border: '2px solid #EF4444', color: '#991B1B',
+            padding: '8px 10px', borderRadius: 10, fontSize: 12, fontWeight: 700,
+            background: '#FEE2E2', border: '1px solid #FECACA', color: '#B91C1C',
             fontFamily: 'var(--font-display)', letterSpacing: '0.04em', textTransform: 'uppercase',
+            display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            🚨 {stillOut.filter(r => r.removalPriority === 'Priority').length} Priority pull{stillOut.filter(r => r.removalPriority === 'Priority').length === 1 ? '' : 's'}
+            <span className="af-chip" style={{ background: '#B91C1C', color: '#fff', padding: '2px 6px', fontSize: 9 }}>Priority</span>
+            {stillOut.filter(r => r.removalPriority === 'Priority').length} pull{stillOut.filter(r => r.removalPriority === 'Priority').length === 1 ? '' : 's'}
           </div>
         )}
 
-        {/* Mine / Show all */}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="af-segmented" style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
           {([
             { id: false, label: 'Mine' },
             { id: true, label: 'Show all' },
           ] as const).map(opt => (
             <button
               key={String(opt.id)}
+              type="button"
+              aria-pressed={showAll === opt.id ? 'true' : 'false'}
               onClick={() => handleShowAll(opt.id)}
-              style={{
-                flex: 1, padding: '12px 0', borderRadius: 10, cursor: 'pointer',
-                border: `1.5px solid ${showAll === opt.id ? 'var(--field-green)' : 'var(--border-1)'}`,
-                background: showAll === opt.id ? 'var(--field-green)' : '#fff',
-                color: showAll === opt.id ? 'var(--bone)' : 'var(--stone-500)',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}
             >
               {opt.label}
             </button>
           ))}
         </div>
 
-        {/* Route A | B | All — same height as Mine / Still out */}
-        <div
-          role="group"
-          aria-label="Removal route filter"
-          style={{ display: 'flex', gap: 8 }}
-        >
+        <div className="af-segmented" style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' }} role="group" aria-label="Removal route filter">
           {([
             { id: 'A' as const, label: 'A' },
             { id: 'B' as const, label: 'B' },
@@ -591,36 +547,21 @@ export default function RemovalsScreen({ season, installer }: {
               type="button"
               aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
               onClick={() => handleRouteFilter(opt.id)}
-              style={{
-                flex: 1, padding: '12px 0', borderRadius: 10, cursor: 'pointer',
-                border: `1.5px solid ${routeFilter === opt.id ? 'var(--field-green)' : 'var(--border-1)'}`,
-                background: routeFilter === opt.id ? 'var(--field-green)' : '#fff',
-                color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-500)',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}
             >
               {opt.label}
             </button>
           ))}
         </div>
 
-        {/* Still out / Pulled tabs */}
-        <div style={{ display: 'flex', gap: 8, padding: '2px 0 2px' }}>
+        <div className="af-segmented" style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
           {(['out', 'pulled'] as const).map(t => (
             <button
               key={t}
+              type="button"
+              aria-pressed={tab === t ? 'true' : 'false'}
               onClick={() => setTab(t)}
-              style={{
-                flex: 1, padding: '9px 0', borderRadius: 10, cursor: 'pointer',
-                border: `1.5px solid ${tab === t ? 'var(--field-green)' : 'var(--border-1)'}`,
-                background: tab === t ? 'var(--field-green)' : '#fff',
-                color: tab === t ? 'var(--bone)' : 'var(--stone-500)',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}
             >
-              {t === 'out' ? `Still out (${stillOut.length})` : `Pulled (${pulled.length})`}
+              {t === 'out' ? `Out (${stillOut.length})` : `Pulled (${pulled.length})`}
             </button>
           ))}
         </div>
@@ -669,61 +610,31 @@ export default function RemovalsScreen({ season, installer }: {
               key={r.id}
               onClick={() => { if (!r.removed) setSelected(r); }}
               style={{
-                display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
-                padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
-                background: r.removed
-                  ? 'var(--bone-raised,#f0ede8)'
-                  : r.removalPriority === 'Priority'
-                    ? '#FEF2F2'
-                    : '#fff',
+                display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start',
+                padding: '12px 14px', borderRadius: 12, width: '100%', textAlign: 'left',
+                background: 'var(--bone-raised)',
                 border: r.removalPriority === 'Priority' && !r.removed
-                  ? '2px solid #EF4444'
-                  : '1.5px solid var(--border-1)',
-                boxShadow: r.removed
-                  ? 'none'
-                  : r.removalPriority === 'Priority'
-                    ? '0 2px 10px rgba(239,68,68,0.25)'
-                    : '0 2px 8px rgba(0,0,0,0.06)',
+                  ? '1px solid #FECACA'
+                  : '1px solid var(--border-1)',
                 cursor: r.removed ? 'default' : 'pointer',
-                opacity: r.removed ? 0.75 : 1,
+                opacity: r.removed ? 0.7 : 1,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em', flex: 1, color: 'var(--ink)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span>{r.fieldName}</span>
                   {r.fieldNotes && (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      fontFamily: 'var(--font-display)', fontWeight: 800,
-                      fontSize: 10, letterSpacing: '0.16em',
-                      color: '#fff', background: '#B91C1C',
-                      padding: '3px 8px', borderRadius: 3,
-                      textTransform: 'uppercase',
-                      boxShadow: '0 0 0 2px #FEE2E2',
-                    }}>
-                      Install Note
-                    </span>
+                    <span className="af-chip" style={{ background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', fontSize: 9 }}>Note</span>
+                  )}
+                  {r.removalPriority === 'Priority' && !r.removed && (
+                    <span className="af-chip" style={{ background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', fontSize: 9 }}>Priority</span>
                   )}
                 </div>
-                {r.removalPriority === 'Priority' && !r.removed && (
-                  <div style={{
-                    flexShrink: 0, fontSize: 11, fontWeight: 800,
-                    color: '#fff', background: '#EF4444', borderRadius: 8,
-                    padding: '3px 8px', letterSpacing: '0.04em',
-                    fontFamily: 'var(--font-display)', textTransform: 'uppercase',
-                  }}>
-                    🚨 Priority
-                  </div>
-                )}
                 {r.removed ? (
-                  <svg width="18" height="18" fill="none" stroke="var(--field-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                  <svg width="16" height="16" fill="none" stroke="var(--field-green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                ) : (
-                  <svg width="16" height="16" fill="none" stroke="var(--stone-400,#a8a29e)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                )}
+                ) : null}
               </div>
               {r.grower && <div style={{ fontSize: 12, color: 'var(--stone-500)' }}>{r.grower}</div>}
               <div style={{ fontSize: 12, color: 'var(--stone-500)', fontFamily: 'var(--font-mono)' }}>
@@ -764,7 +675,7 @@ export default function RemovalsScreen({ season, installer }: {
           fontSize: 11,
           lineHeight: 1.2,
           color: 'var(--stone-500)',
-          background: '#fff',
+          background: 'var(--bone)',
           borderTop: '1px solid var(--border-1)',
         }}
       >

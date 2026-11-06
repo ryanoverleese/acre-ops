@@ -559,7 +559,7 @@ function LocationsScreen({ onBack }: { onBack: () => void }) {
         <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '12px 14px 24px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '12px 14px 24px', background: 'var(--bone)' }}>
         {/* Search */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -852,7 +852,7 @@ function ProbesScreen({ onBack }: { onBack: () => void }) {
         <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '12px 14px 24px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '12px 14px 24px', background: 'var(--bone)' }}>
         {/* Search */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -1189,55 +1189,35 @@ function RouteScreen({
         </div>
       </div>
 
-      {/* Filter bar */}
-      <div className="af-filterbar" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div className="af-segmented">
-            {(['todo', 'done', 'all'] as Filter[]).map(f => (
-              <button
-                key={f}
-                aria-pressed={filter === f ? 'true' : 'false'}
-                onClick={() => onFilterChange(f)}
-              >
-                {f === 'todo' ? 'To install' : f === 'done' ? 'Done' : 'All'}
-                <span className="count">{f === 'todo' ? groupTodo.length : f === 'done' ? groupDone.length : groupFiltered.length}</span>
-              </button>
-            ))}
-          </div>
+      {/* Filter bar — status + groups on one row */}
+      <div className="af-filterbar">
+        <div className="af-segmented">
+          {(['todo', 'done', 'all'] as Filter[]).map(f => (
+            <button
+              key={f}
+              aria-pressed={filter === f ? 'true' : 'false'}
+              onClick={() => onFilterChange(f)}
+            >
+              {f === 'todo' ? 'Todo' : f === 'done' ? 'Done' : 'All'}
+              <span className="count">{f === 'todo' ? groupTodo.length : f === 'done' ? groupDone.length : groupFiltered.length}</span>
+            </button>
+          ))}
         </div>
         {hasGroups && (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--stone-400)', marginRight: 2, fontFamily: 'var(--font-display)' }}>Group</span>
-            {allGroups.map(n => {
-              const active = activeGroups.has(n);
-              return (
-                <button
-                  key={n}
-                  onClick={() => toggleGroup(n)}
-                  style={{
-                    height: 28, paddingInline: 14, borderRadius: 'var(--r-pill)',
-                    border: active ? 'none' : '1.5px solid var(--border-1)',
-                    cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                    fontFamily: 'var(--font-display)', letterSpacing: '0.04em',
-                    background: active ? 'var(--field-green)' : 'transparent',
-                    color: active ? 'var(--bone)' : 'var(--stone-500)',
-                    transition: 'background 0.15s, color 0.15s',
-                  }}
-                >
-                  {n}
-                </button>
-              );
-            })}
-            {activeGroups.size > 0 && (
+          <div className="af-group-pills" role="group" aria-label="Install groups">
+            <span className="lbl">Group</span>
+            {allGroups.map(n => (
               <button
-                onClick={() => onActiveGroupsChange(new Set())}
-                style={{
-                  height: 28, paddingInline: 10, borderRadius: 'var(--r-pill)',
-                  border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
-                  background: 'transparent', color: 'var(--stone-400)',
-                  fontFamily: 'var(--font-display)', letterSpacing: '0.04em',
-                }}
+                key={n}
+                type="button"
+                aria-pressed={activeGroups.has(n) ? 'true' : 'false'}
+                onClick={() => toggleGroup(n)}
               >
+                {n}
+              </button>
+            ))}
+            {activeGroups.size > 0 && (
+              <button type="button" className="af-group-clear" onClick={() => onActiveGroupsChange(new Set())}>
                 Clear
               </button>
             )}
@@ -1246,20 +1226,20 @@ function RouteScreen({
       </div>
 
       {/* List */}
-      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10, background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '10px 14px 24px', display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bone)' }}>
         {loading && (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)', fontFamily: 'var(--font-display)', fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)', fontFamily: 'var(--font-display)', fontSize: 15, letterSpacing: '0.04em' }}>
             Loading route…
           </div>
         )}
         {!loading && visible.length === 0 && (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--stone-500)' }}>
-            <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ margin: '0 auto' }}>
+            <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" style={{ margin: '0 auto' }}>
               <path d="M22 11.08V12a10 10 0 11-5.93-9.14" strokeLinecap="round" strokeLinejoin="round" />
               <polyline points="22 4 12 14.01 9 11.01" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, marginTop: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              {filter === 'todo' ? 'All done for today! 🎉' : 'Nothing here yet'}
+            <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              {filter === 'todo' ? 'All done for today' : 'Nothing here yet'}
             </div>
             <div style={{ fontSize: 13, marginTop: 4 }}>Switch filters to see other stops.</div>
           </div>
@@ -1277,41 +1257,32 @@ function RouteScreen({
             >
               <div className="af-stop-order">
                 {isInstalled ? (
-                  <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 ) : orderLabel}
-                <span className="stop-label">{isInstalled ? 'DONE' : 'STOP'}</span>
               </div>
-              <div className="af-stop-main" style={{ padding: '2px 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div className="af-stop-main">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <div className="af-stop-field">{a.fieldName}</div>
                   {a.fieldNotes && (
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center',
-                      fontFamily: 'var(--font-display)', fontWeight: 800,
-                      fontSize: 10, letterSpacing: '0.16em',
-                      color: '#fff', background: '#B91C1C',
-                      padding: '3px 8px', borderRadius: 3,
-                      textTransform: 'uppercase',
-                      boxShadow: '0 0 0 2px #FEE2E2',
-                    }}>
-                      Install Note
+                    <span className="af-chip" style={{ background: '#FEE2E2', color: '#B91C1C', padding: '2px 6px', fontSize: 9 }}>
+                      Note
                     </span>
                   )}
                 </div>
                 <div className="af-stop-op">{a.operation}</div>
                 {(a.probeSerial || a.probeBrand || a.label) && (
-                  <div className="af-stop-probe" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <div className="af-stop-probe" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {a.probeSerial && <span>#{a.probeSerial}</span>}
                     {a.probeBrand && (() => {
                       const c = probeBadgeColors(a.probeBrand, a.antennaType);
                       return (
                         <span style={{
                           fontFamily: 'var(--font-display)', fontWeight: 600,
-                          fontSize: 10, letterSpacing: '0.1em',
+                          fontSize: 9, letterSpacing: '0.08em',
                           color: c.fg, background: c.bg,
-                          padding: '2px 6px', borderRadius: 3,
+                          padding: '1px 5px', borderRadius: 3,
                           textTransform: 'uppercase',
                         }}>
                           {a.probeBrand}
@@ -1319,25 +1290,19 @@ function RouteScreen({
                       );
                     })()}
                     {a.label && (
-                                        <span style={{
-                                          fontFamily: 'var(--font-display)', fontWeight: 700,
-                                          fontSize: 10, letterSpacing: '0.08em',
-                                          color: 'var(--field-green)',
-                                          background: 'var(--sage-wash)',
-                                          padding: '2px 6px', borderRadius: 3,
-                                          textTransform: 'uppercase',
-                                          border: '1px solid var(--field-green)',
-                                        }}>
-                                          {a.label}
-                                        </span>
-                                      )}
+                      <span style={{
+                        fontFamily: 'var(--font-display)', fontWeight: 700,
+                        fontSize: 9, letterSpacing: '0.06em',
+                        color: 'var(--field-green)',
+                        background: 'var(--sage-wash)',
+                        padding: '1px 5px', borderRadius: 3,
+                        textTransform: 'uppercase',
+                      }}>
+                        {a.label}
+                      </span>
+                    )}
                   </div>
                 )}
-              </div>
-              <div className="af-stop-right">
-                <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
               </div>
             </button>
           );
@@ -1443,7 +1408,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
         <div style={{ width: 32 }} />
       </div>
 
-      <div className="af-body" style={{ paddingBottom: 24, background: '#FFFFFF' }}>
+      <div className="af-body" style={{ paddingBottom: 24, background: 'var(--bone)' }}>
         {/* Satellite mini-map */}
         {a.lat && a.lng && (
           <div style={{ height: '50dvh', position: 'relative', background: '#c8d5b9' }}>
@@ -1570,7 +1535,7 @@ function FieldScreen({ assignment: a, onBack, onStartInstall, onUpdateAssignment
 
       {/* Edit actions — installed probes only */}
       {isDone && (
-        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-1)', background: '#FFFFFF' }}>
+        <div style={{ flexShrink: 0, borderTop: '1px solid var(--border-1)', background: 'var(--bone)' }}>
           {/* Inline edit form */}
           {editMode && (
             <div style={{ padding: '14px 14px 0' }}>
@@ -1870,7 +1835,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
         <div style={{ position: 'absolute', inset: 0, right: 'auto', width: `${progress * 100}%`, background: 'var(--field-green)', transition: 'width 200ms var(--ease-out)' }} />
       </div>
 
-      <div className="af-body" style={{ background: '#FFFFFF' }}>
+      <div className="af-body" style={{ background: 'var(--bone)' }}>
         {/* Compact field header */}
         <div style={{ background: 'var(--field-green)', color: 'var(--bone)', padding: '14px 18px 16px', position: 'relative', overflow: 'hidden' }}>
           <TopoDeco />
@@ -3437,7 +3402,7 @@ function LoadoutScreen({ session, assignments }: { session: Session; assignments
         </button>
       </div>
 
-      <div className="af-body" style={{ padding: '0 0 24px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '0 0 24px', background: 'var(--bone)' }}>
         {/* Hero card */}
         <div style={{
           margin: '14px 14px 0', padding: '18px 18px 20px',
@@ -3875,7 +3840,7 @@ function MeScreen({
         <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '0 0 24px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '0 0 24px', background: 'var(--bone)' }}>
         {/* Profile header — green with topo, avatar + name */}
         <div style={{
           padding: '24px 18px 28px',
@@ -4118,7 +4083,7 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
 
   const inputStyle: CSSProperties = {
     width: '100%', boxSizing: 'border-box',
-    background: 'var(--bone)', border: '1px solid var(--border-1)',
+    background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
     borderRadius: 'var(--r-sm)', padding: '9px 12px',
     fontSize: 15, color: 'var(--ink)', outline: 'none',
     fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
@@ -4156,7 +4121,7 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
         <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '14px 14px 24px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '14px 14px 24px', background: 'var(--bone)' }}>
         {/* Today's entry */}
         <div style={{ marginBottom: 22 }}>
           <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Today — {fmtDate(today)}</div>
@@ -4318,11 +4283,11 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>{label}</div>
+    <div style={{ marginBottom: 14 }}>
+      <div className="af-eyebrow" style={{ padding: '0 4px 6px' }}>{label}</div>
       <div style={{
         background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-        borderRadius: 'var(--r-lg)', overflow: 'hidden',
+        borderRadius: 12, overflow: 'hidden',
       }}>
         {children}
       </div>
@@ -4340,27 +4305,27 @@ function MenuRow({
     <button
       onClick={onClick}
       style={{
-        width: '100%', padding: '14px 14px',
-        display: 'flex', alignItems: 'center', gap: 12,
+        width: '100%', padding: '11px 12px',
+        display: 'flex', alignItems: 'center', gap: 10,
         background: 'transparent', border: 'none',
         borderBottom: last ? 'none' : '1px solid var(--border-1)',
         cursor: onClick || showChevron ? 'pointer' : 'default', textAlign: 'left',
       }}
     >
       <div style={{
-        width: 36, height: 36, borderRadius: 10,
-        background: destructive ? '#f3d6d6' : 'var(--sage-wash)',
-        color: destructive ? '#a84a3a' : 'var(--field-green)',
+        width: 32, height: 32, borderRadius: 9,
+        background: destructive ? '#FEE2E2' : 'var(--sage-wash)',
+        color: destructive ? '#B91C1C' : 'var(--field-green)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
       }}>
         {icon}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, color: destructive ? '#a84a3a' : 'var(--ink)' }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, color: destructive ? '#B91C1C' : 'var(--ink)' }}>
           {label}
         </div>
-        {sub && <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>{sub}</div>}
+        {sub && <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 1 }}>{sub}</div>}
       </div>
       {showChevron && (
         <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" style={{ color: 'var(--stone-300)', flexShrink: 0 }}>
@@ -4507,7 +4472,7 @@ function HistoryScreen({ session, onBack }: { session: Session; onBack: () => vo
         <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '12px 14px 24px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '12px 14px 24px', background: 'var(--bone)' }}>
         {/* Search */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
@@ -4742,42 +4707,23 @@ function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenT
         <div style={{ width: 40 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '14px 14px 40px', background: '#FFFFFF' }}>
+      <div className="af-body" style={{ padding: '14px 14px 40px', background: 'var(--bone)' }}>
         {/* Workflow */}
-        <div style={{ marginBottom: 22 }}>
+        <div style={{ marginBottom: 20 }}>
           <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Workflow</div>
-          <div style={{
-            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-            borderRadius: 'var(--r-lg)', overflow: 'hidden',
-          }}>
+          <div className="af-segmented" style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
             {[
-              { id: 'install' as const, label: 'Install', sub: 'Put probes in the ground' },
-              { id: 'remove' as const, label: 'Remove', sub: 'Pull assigned probes' },
-            ].map((opt, i, arr) => (
+              { id: 'install' as const, label: 'Install' },
+              { id: 'remove' as const, label: 'Remove' },
+            ].map(opt => (
               <button
                 key={opt.id}
+                type="button"
+                aria-pressed={workflowMode === opt.id ? 'true' : 'false'}
                 onClick={() => onWorkflowModeChange(opt.id)}
-                style={{
-                  width: '100%', padding: '14px 14px',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  background: 'transparent', border: 'none',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
-                  cursor: 'pointer', textAlign: 'left',
-                }}
+                style={{ minHeight: 40 }}
               >
-                <div style={{
-                  width: 22, height: 22, borderRadius: 11,
-                  border: workflowMode === opt.id ? '7px solid var(--field-green)' : '2px solid var(--stone-300)',
-                  flexShrink: 0, transition: 'border-width 0.1s',
-                }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
-                    {opt.label}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
-                    {opt.sub}
-                  </div>
-                </div>
+                {opt.label}
               </button>
             ))}
           </div>
@@ -4787,40 +4733,21 @@ function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenT
         </div>
 
         {/* Map provider */}
-        <div style={{ marginBottom: 22 }}>
+        <div style={{ marginBottom: 20 }}>
           <div className="af-eyebrow" style={{ padding: '0 4px 8px' }}>Map provider</div>
-          <div style={{
-            background: 'var(--bone-raised)', border: '1px solid var(--border-1)',
-            borderRadius: 'var(--r-lg)', overflow: 'hidden',
-          }}>
+          <div className="af-segmented" style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
             {[
-              { id: 'google' as const, label: 'Google Maps', sub: 'maps.google.com' },
-              { id: 'apple' as const, label: 'Apple Maps', sub: 'maps.apple.com · iOS default' },
-            ].map((opt, i, arr) => (
+              { id: 'google' as const, label: 'Google' },
+              { id: 'apple' as const, label: 'Apple' },
+            ].map(opt => (
               <button
                 key={opt.id}
+                type="button"
+                aria-pressed={mapProvider === opt.id ? 'true' : 'false'}
                 onClick={() => setMapProvider(opt.id)}
-                style={{
-                  width: '100%', padding: '14px 14px',
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  background: 'transparent', border: 'none',
-                  borderBottom: i < arr.length - 1 ? '1px solid var(--border-1)' : 'none',
-                  cursor: 'pointer', textAlign: 'left',
-                }}
+                style={{ minHeight: 40 }}
               >
-                <div style={{
-                  width: 22, height: 22, borderRadius: 11,
-                  border: mapProvider === opt.id ? '7px solid var(--field-green)' : '2px solid var(--stone-300)',
-                  flexShrink: 0, transition: 'border-width 0.1s',
-                }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14 }}>
-                    {opt.label}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 2 }}>
-                    {opt.sub}
-                  </div>
-                </div>
+                {opt.label}
               </button>
             ))}
           </div>
@@ -4865,16 +4792,16 @@ function SettingsScreen({ session, onBack, onAdHocInstall, hiddenTabs, onHiddenT
                     aria-pressed={shown}
                     aria-label={`${shown ? 'Hide' : 'Show'} ${tab.label} tab`}
                     style={{
-                      width: 52, height: 30, borderRadius: 15, border: 'none', cursor: 'pointer',
-                      background: shown ? 'var(--field-green)' : '#d1d5db',
+                      width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
+                      background: shown ? 'var(--field-green)' : 'var(--stone-100)',
                       position: 'relative', transition: 'background 0.2s', flexShrink: 0,
                     }}
                   >
                     <div style={{
-                      position: 'absolute', top: 4, left: shown ? 26 : 4,
+                      position: 'absolute', top: 3, left: shown ? 23 : 3,
                       width: 22, height: 22, borderRadius: 11,
-                      background: '#fff', transition: 'left 0.2s',
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+                      background: 'var(--bone-raised)', transition: 'left 0.2s',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                     }} />
                   </button>
                 </div>
@@ -5107,7 +5034,7 @@ function SummaryScreen({ session, onBack }: { session: Session; onBack: () => vo
         </button>
       </div>
 
-      <div className="af-body" style={{ padding: '16px 14px 40px', background: '#fff', overflowY: 'auto' }}>
+      <div className="af-body" style={{ padding: '16px 14px 40px', background: 'var(--bone)', overflowY: 'auto' }}>
         {loading && (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--stone-500)', fontSize: 13 }}>Loading…</div>
         )}

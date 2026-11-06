@@ -118,7 +118,7 @@ function InsertionLine() {
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px', fontSize: 16,
   border: '1.5px solid var(--border-1)', borderRadius: 10,
-  background: '#fff', color: 'var(--ink)', boxSizing: 'border-box',
+  background: 'var(--bone-raised)', color: 'var(--ink)', boxSizing: 'border-box',
   fontFamily: 'inherit',
 };
 
@@ -214,7 +214,7 @@ function CreateRepairForm({ season, onBack, onSaved }: {
           {filtered.length > 0 && (
             <div style={{
               border: '1.5px solid var(--border-1)', borderRadius: 10, marginTop: 6,
-              overflow: 'hidden', background: '#fff',
+              overflow: 'hidden', background: 'var(--bone-raised)',
               boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
             }}>
               {filtered.map((f, i) => (
@@ -387,43 +387,41 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap, onWatchChanged }: {
         <div style={{ width: 60 }} />
       </div>
 
-      <div className="af-body" style={{ padding: '16px 16px 32px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="af-body" style={{ padding: '14px 14px 28px', display: 'flex', flexDirection: 'column', gap: 14, background: 'var(--bone)' }}>
         {/* Repair summary */}
         <div style={{
-          padding: '12px 14px', background: '#fff5f5', borderRadius: 12,
-          border: '1.5px solid #fecaca',
+          padding: '12px 14px', background: 'var(--bone-raised)', borderRadius: 12,
+          border: '1px solid var(--border-1)',
+          borderLeft: '3px solid #B91C1C',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{repair.fieldName}</div>
-          </div>
-          {repair.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginLeft: 18 }}>{repair.operation}</div>}
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.02em' }}>{repair.fieldName}</div>
+          {repair.operation && <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 3 }}>{repair.operation}</div>}
           {repair.problem && (
-            <div style={{ fontSize: 14, color: 'var(--ink)', marginTop: 8, marginLeft: 18, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 8, lineHeight: 1.4 }}>
               <span style={{ fontWeight: 600 }}>Problem: </span>{repair.problem}
             </div>
           )}
           {repair.probeSerial && (
-            <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18, fontFamily: 'var(--font-mono)' }}>#{repair.probeSerial}</div>
+            <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>#{repair.probeSerial}</div>
           )}
           {repair.reportedAt && (
-            <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 4, marginLeft: 18 }}>Reported {fmtDate(repair.reportedAt)}</div>
+            <div style={{ fontSize: 11, color: 'var(--stone-500)', marginTop: 3 }}>Reported {fmtDate(repair.reportedAt)}</div>
           )}
         </div>
 
-        {/* Watch list toggle — light-blue pin, keep an eye on it without closing */}
+        {/* Watch list toggle */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 14px', borderRadius: 12,
-          background: watchOn ? '#E0F2FE' : 'var(--bone-raised,#f0ede8)',
-          border: `1.5px solid ${watchOn ? '#7DD3FC' : 'var(--border-1)'}`,
+          padding: '10px 12px', borderRadius: 12,
+          background: watchOn ? 'var(--sage-wash)' : 'var(--bone-raised)',
+          border: `1px solid ${watchOn ? 'var(--field-green)' : 'var(--border-1)'}`,
         }}>
           <div>
-            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 14, color: watchOn ? '#0369A1' : 'var(--ink)' }}>
+            <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 13, color: 'var(--ink)' }}>
               Watch List
             </div>
             <div style={{ fontSize: 12, color: 'var(--stone-500)', marginTop: 2 }}>
-              {savingWatch ? 'Saving…' : watchOn ? 'Shown light blue on the map' : 'Keep an eye on it, not urgent'}
+              {savingWatch ? 'Saving…' : watchOn ? 'Pinned on the map' : 'Keep an eye on it'}
             </div>
           </div>
           <button
@@ -431,16 +429,16 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap, onWatchChanged }: {
             disabled={savingWatch}
             aria-pressed={watchOn}
             style={{
-              width: 52, height: 30, borderRadius: 15, border: 'none', cursor: 'pointer',
-              background: watchOn ? '#0EA5E9' : '#d1d5db',
+              width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: watchOn ? 'var(--field-green)' : 'var(--stone-100)',
               position: 'relative', transition: 'background 0.2s', flexShrink: 0,
             }}
           >
             <div style={{
-              position: 'absolute', top: 4, left: watchOn ? 26 : 4,
+              position: 'absolute', top: 3, left: watchOn ? 23 : 3,
               width: 22, height: 22, borderRadius: 11,
-              background: '#fff', transition: 'left 0.2s',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+              background: 'var(--bone-raised)', transition: 'left 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             }} />
           </button>
         </div>
@@ -485,17 +483,18 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap, onWatchChanged }: {
           </div>
           <button
             onClick={() => { setProbeReplaced(p => !p); setNewSerial(''); }}
+            aria-pressed={probeReplaced}
             style={{
-              width: 52, height: 30, borderRadius: 15, border: 'none', cursor: 'pointer',
-              background: probeReplaced ? 'var(--field-green)' : '#d1d5db',
+              width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
+              background: probeReplaced ? 'var(--field-green)' : 'var(--stone-100)',
               position: 'relative', transition: 'background 0.2s', flexShrink: 0,
             }}
           >
             <div style={{
-              position: 'absolute', top: 4, left: probeReplaced ? 26 : 4,
+              position: 'absolute', top: 3, left: probeReplaced ? 23 : 3,
               width: 22, height: 22, borderRadius: 11,
-              background: '#fff', transition: 'left 0.2s',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+              background: 'var(--bone-raised)', transition: 'left 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
             }} />
           </button>
         </div>
@@ -521,7 +520,7 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap, onWatchChanged }: {
                       width: '100%', padding: '10px 14px', textAlign: 'left',
                       border: 'none', borderTop: i > 0 ? '1px solid var(--border-1)' : 'none',
                       cursor: 'pointer',
-                      background: newSerial === p.serial ? 'var(--field-green)' : '#fff',
+                      background: newSerial === p.serial ? 'var(--field-green)' : 'var(--bone-raised)',
                       color: newSerial === p.serial ? 'var(--bone)' : 'var(--ink)',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}
@@ -540,28 +539,17 @@ function CloseOutForm({ repair, onBack, onSaved, fromMap, onWatchChanged }: {
         <button
           onClick={handleSubmit}
           disabled={!canSubmit}
-          style={{
-            padding: '16px', borderRadius: 12, border: 'none', cursor: 'pointer',
-            background: 'var(--field-green)', color: 'var(--bone)',
-            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 18,
-            letterSpacing: '0.06em', textTransform: 'uppercase',
-            opacity: canSubmit ? 1 : 0.5,
-          }}
+          className="af-btn af-btn--primary af-btn--block"
+          style={{ opacity: canSubmit ? 1 : 0.5 }}
         >
-          {submitting ? 'Saving…' : 'Mark Repaired ✓'}
+          {submitting ? 'Saving…' : 'Mark Repaired'}
         </button>
 
         <button
           onClick={handleSendReport}
           disabled={!fix.trim()}
-          style={{
-            padding: '14px', borderRadius: 12, cursor: fix.trim() ? 'pointer' : 'default',
-            background: '#fff', color: 'var(--field-green)',
-            border: '1.5px solid var(--field-green)',
-            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16,
-            letterSpacing: '0.06em', textTransform: 'uppercase',
-            opacity: fix.trim() ? 1 : 0.5,
-          }}
+          className="af-btn af-btn--secondary af-btn--block"
+          style={{ color: 'var(--field-green)', opacity: fix.trim() ? 1 : 0.5 }}
         >
           Send Report
         </button>
@@ -802,21 +790,14 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
         </button>
       </div>
 
-      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10, background: '#fff' }}>
-        {/* Open / History tabs */}
-        <div style={{ display: 'flex', gap: 8, padding: '2px 0 6px' }}>
+      <div className="af-body" style={{ padding: '12px 14px 24px', display: 'flex', flexDirection: 'column', gap: 10, background: 'var(--bone)' }}>
+        <div className="af-segmented" style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
           {(['open', 'done'] as const).map(t => (
             <button
               key={t}
+              type="button"
+              aria-pressed={tab === t ? 'true' : 'false'}
               onClick={() => { if (t !== tab) { setTab(t); setRepairs([]); } }}
-              style={{
-                flex: 1, padding: '9px 0', borderRadius: 10, cursor: 'pointer',
-                border: `1.5px solid ${tab === t ? 'var(--field-green)' : 'var(--border-1)'}`,
-                background: tab === t ? 'var(--field-green)' : '#fff',
-                color: tab === t ? 'var(--bone)' : 'var(--stone-500)',
-                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}
             >
               {t === 'open' ? 'Open' : 'History'}
             </button>
@@ -866,26 +847,22 @@ export default function RepairsScreen({ season, onBack, initialRepairId, onClear
                 style={{
                   display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
                   padding: '14px 16px', borderRadius: 12, width: '100%', textAlign: 'left',
-                  background: watch ? REPAIR_COLORS.watchBgSoft : '#fff',
-                  border: `1.5px solid ${watch ? REPAIR_COLORS.watchBorder : 'var(--border-1)'}`,
-                  boxShadow: dragging ? '0 8px 20px rgba(0,0,0,0.18)' : '0 2px 8px rgba(0,0,0,0.06)',
+                  background: 'var(--bone-raised)',
+                  border: `1px solid ${watch ? 'var(--field-green)' : 'var(--border-1)'}`,
+                  boxShadow: dragging ? '0 8px 20px rgba(0,0,0,0.18)' : 'none',
                   cursor: 'pointer',
                   opacity: dragId !== null && !dragging ? 0.85 : 1,
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}>
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: done ? 'var(--field-green)' : repairColor(true, watch), flexShrink: 0 }} />
-                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1, color: 'var(--ink)' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: done ? 'var(--field-green)' : repairColor(true, watch), flexShrink: 0 }} />
+                  <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em', flex: 1, color: 'var(--ink)' }}>
                     {r.fieldName}
                   </div>
                   {watch && (
-                    <div style={{
-                      fontSize: 10, fontWeight: 700, color: REPAIR_COLORS.watchText, letterSpacing: '0.08em',
-                      textTransform: 'uppercase', background: REPAIR_COLORS.watchBg, border: `1px solid ${REPAIR_COLORS.watchBorder}`,
-                      borderRadius: 999, padding: '2px 8px', flexShrink: 0,
-                    }}>
+                    <span className="af-chip" style={{ background: 'var(--sage-wash)', color: 'var(--field-green)', padding: '2px 7px', fontSize: 9 }}>
                       Watch
-                    </div>
+                    </span>
                   )}
                   <div style={{ fontSize: 11, color: 'var(--stone-500)', flexShrink: 0 }}>{fmtDate(done ? r.repairedAt ?? '' : r.reportedAt)}</div>
                   {reorderable && (
