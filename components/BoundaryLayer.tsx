@@ -6,8 +6,8 @@ import L, { type Layer, type PathOptions } from 'leaflet';
 import type { Feature, Geometry } from 'geojson';
 import type { FieldBoundaryCollection } from './useFieldBoundaries';
 
-const baseStyle: PathOptions = { color: '#f8fafc', weight: 2, fillColor: '#1F402A', fillOpacity: 0.22 };
-const selectedStyle: PathOptions = { color: '#F6F2EA', weight: 3, fillColor: '#2F6B45', fillOpacity: 0.4 };
+const baseStyle: PathOptions = { color: '#F6F2EA', weight: 1.25, fillColor: '#1F402A', fillOpacity: 0.1, opacity: 0.7 };
+const selectedStyle: PathOptions = { color: '#F6F2EA', weight: 2.75, fillColor: '#1F402A', fillOpacity: 0.48, opacity: 1 };
 
 type BoundaryProps = { fieldId?: number };
 
