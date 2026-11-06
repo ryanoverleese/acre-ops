@@ -15,7 +15,9 @@ const INSTALLER_ROUTES = [
 ];
 
 // Routes that don't require authentication at all
-const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/removal', '/api/mileage', '/api/probes', '/api/fields', '/api/elevation', '/api/geocode', '/api/repairs', '/pulled', '/api/pulled-today'];
+const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/removal', '/api/mileage', '/api/probes', '/api/fields', '/api/field-boundaries', '/api/elevation', '/api/geocode', '/api/repairs', '/pulled', '/api/pulled-today'];
+// Note: /api/field-boundaries is middleware-public like /api/fields; withApiAuth still
+// requires crew/staff. Without this, PIN login was redirected to /login before the API ran.
 
 const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   const { pathname } = req.nextUrl;
