@@ -50,10 +50,28 @@ interface Props {
   repairPoints?: RepairMapPoint[];
   onSelectRepair?: (id: number) => void;
   boundaries?: FieldBoundaryCollection | null;
+  /** Change this when map mode switches so we re-fit to the new content. */
+  fitKey?: string;
   // When provided, restore this center/zoom on mount instead of fitting to all
   // points (used to return to the exact spot after viewing a repair ticket).
   initialView?: MapView | null;
   onViewChange?: (v: MapView) => void;
+}
+
+/** Walk GeoJSON coordinates ([lng,lat] pairs) into Leaflet [lat,lng] points. */
+function collectBoundaryLatLngs(data: FieldBoundaryCollection | null | undefined): [number, number][] {
+  const out: [number, number][] = [];
+  if (!data?.features?.length) return out;
+  const walk = (coords: unknown): void => {
+    if (!Array.isArray(coords) || coords.length === 0) return;
+    if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+      out.push([coords[1] as number, coords[0] as number]);
+      return;
+    }
+    for (const c of coords) walk(c);
+  };
+  for (const f of data.features) walk(f.geometry?.coordinates);
+  return out;
 }
 
 // Build a numbered "pin" as an inline SVG divIcon.
@@ -176,22 +194,33 @@ function ViewTracker({ onViewChange }: { onViewChange?: (v: MapView) => void }) 
   return null;
 }
 
-// Fit bounds to all points once on mount, or re-fit when points change.
-function FitBounds({ points }: { points: MapPoint[] }) {
+// Fit bounds to pins and/or boundary polygons. Re-fits when fitKey changes.
+function FitBounds({
+  points,
+  boundaries,
+  fitKey = 'default',
+}: {
+  points: MapPoint[];
+  boundaries?: FieldBoundaryCollection | null;
+  fitKey?: string;
+}) {
   const map = useMap();
-  const didFit = useRef(false);
+  const lastKey = useRef<string | null>(null);
   useEffect(() => {
-    if (didFit.current) return;
-    const valid = points.filter(p => p.lat && p.lng);
-    if (valid.length === 0) return;
-    if (valid.length === 1) {
-      map.setView([valid[0].lat, valid[0].lng], 13);
+    if (lastKey.current === fitKey) return;
+    const fromPins = points
+      .filter(p => p.lat && p.lng)
+      .map(p => [p.lat, p.lng] as [number, number]);
+    const fromBoundaries = collectBoundaryLatLngs(boundaries);
+    const all = fromPins.length > 0 ? fromPins : fromBoundaries;
+    if (all.length === 0) return;
+    if (all.length === 1) {
+      map.setView(all[0], 13);
     } else {
-      const bounds = L.latLngBounds(valid.map(p => [p.lat, p.lng] as [number, number]));
-      map.fitBounds(bounds, { padding: [40, 40] });
+      map.fitBounds(L.latLngBounds(all), { padding: [40, 40] });
     }
-    didFit.current = true;
-  }, [map, points]);
+    lastKey.current = fitKey;
+  }, [map, points, boundaries, fitKey]);
   return null;
 }
 
@@ -338,8 +367,9 @@ function TileHealth() {
 }
 
 
-export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, boundaries, initialView, onViewChange }: Props) {
+export default function InstallerMapView({ points, selectedId, onSelect, layer, repairPoints, onSelectRepair, boundaries, fitKey, initialView, onViewChange }: Props) {
   const valid = useMemo(() => points.filter(p => p.lat && p.lng), [points]);
+  const boundarySeed = useMemo(() => collectBoundaryLatLngs(boundaries), [boundaries]);
 
   // Expose current user location through a ref so the recenter listener can read it
   const userPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -353,10 +383,12 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
-  // Default center: restored view, else first point, else Nebraska center.
+  // Default center: restored view, else first pin, else first boundary vertex, else Nebraska.
   const center: [number, number] = initialView
     ? initialView.center
-    : valid[0] ? [valid[0].lat, valid[0].lng] : [41.5, -99.9];
+    : valid[0] ? [valid[0].lat, valid[0].lng]
+    : boundarySeed[0] ? boundarySeed[0]
+    : [41.5, -99.9];
 
   return (
     <MapContainer
@@ -486,7 +518,7 @@ export default function InstallerMapView({ points, selectedId, onSelect, layer, 
       })}
 
       <UserLocation />
-      {!initialView && <FitBounds points={valid} />}
+      {!initialView && <FitBounds points={valid} boundaries={boundaries} fitKey={fitKey} />}
       <ViewTracker onViewChange={onViewChange} />
       <RecenterListener getUserPos={() => userPosRef.current} />
       <ZoomLabelGate threshold={8} />
