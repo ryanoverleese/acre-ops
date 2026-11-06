@@ -6,7 +6,16 @@ import type { Column } from './registry';
 
 export type Row = Record<string, unknown>;
 export interface Filter { field: string; type: 'equal' | 'not_equal' | 'contains' | 'higher_than' | 'lower_than' | 'link_row_has' | 'date_equal'; value: unknown }
-export interface FetchOptions { page?: number; size?: number; search?: string; orderBy?: string; filters?: Record<string, unknown>; baserowFilters?: Filter[] }
+export interface FetchOptions {
+  page?: number;
+  size?: number;
+  search?: string;
+  orderBy?: string;
+  /** Simple equality filters: `{ season: 2026 }` → `season = 2026`. */
+  filters?: Record<string, unknown>;
+  /** Typed filter list (equal / contains / link_row_has / …). */
+  where?: Filter[];
+}
 export type SelectOption = { id: number; value: string; color: string };
 export type TableSelectOptions = Record<string, SelectOption[]>;
 export type TableSelectOptionsWithMeta = Record<string, { fieldId: number; options: SelectOption[] }>;
@@ -64,7 +73,7 @@ export function serialize(table: string, raw: Row, secrets = false): Row {
 export function compileWhere(table: string, options: FetchOptions, start = 0) {
   const meta = sourceTable(table); const values: unknown[] = []; const conditions: string[] = [];
   const param = (v: unknown) => { values.push(v); return `$${values.length + start}`; };
-  const filters = [...(options.baserowFilters || []), ...Object.entries(options.filters || {}).map(([field,value]) => ({field,type:'equal' as const,value}))];
+  const filters = [...(options.where || []), ...Object.entries(options.filters || {}).map(([field,value]) => ({field,type:'equal' as const,value}))];
   for (const f of filters) {
     const field = f.field.replace(/ /g, '_');
     const join = registry.joins.find(j => j.source === table && j.field === field);

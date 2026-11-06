@@ -12,7 +12,7 @@ export default async function MapPage() {
       getCachedRows<Field>('fields', {}, 120),
       getCachedRows<Operation>('operations', {}, 120),
       getCachedRows<Contact>('contacts', {}, 120),
-      getCachedRows<FieldSeason>('field_seasons', { baserowFilters: [{ field: 'season', type: 'equal', value: String(currentYear) }] }, 120),
+      getCachedRows<FieldSeason>('field_seasons', { where: [{ field: 'season', type: 'equal', value: String(currentYear) }] }, 120),
       getCachedRows<ProbeAssignment>('probe_assignments', {}, 120),
       getCachedRows<Repair>('repairs', {}, 120),
     ]);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useCallback, type CSSProperties, type MutableRefObject, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 
 // Leaflet needs window — render only on the client
@@ -27,6 +27,7 @@ import {
   formatTodayPullCounts,
   matchesPlannedRemover,
 } from './todayPullCounts';
+import { ANTENNA_OPTIONS, calcFlags } from '@/lib/antenna';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -155,24 +156,6 @@ function probeBadgeColors(brand: string, antenna = ''): { bg: string; fg: string
   if (/sentek/.test(combined)) return { bg: '#DCFCE7', fg: '#166534' };                                            // muted green
   if (/cropx\s*v\d|cropx\s*v(?!\w)|v4/.test(combined)) return { bg: '#DBEAFE', fg: '#1E40AF' };                    // muted blue
   return { bg: 'var(--sage-wash)', fg: 'var(--field-green)' };                                                      // default sage
-}
-
-const ANTENNA_OPTIONS = [
-  'Sentek Stub',
-  'CropX Stub',
-  'CropX Stub + White Flag',
-  'CropX Stub + No Flag',
-  "Sentek 10'",
-  "CropX 10'",
-];
-
-function calcFlags(antennaType: string, sideDress: string) {
-  const antenna = antennaType.toLowerCase();
-  const sd = sideDress.toLowerCase();
-  const hasCoulter = antenna.includes('coulter') || sd.includes('cultivat') || sd.includes('coulter');
-  const hasStub = antenna.includes('stub');
-  const white = hasStub && !hasCoulter ? 2 : 1;
-  return { pink: 1, blue: 5, white };
 }
 
 const TARGET_SIZE = 800 * 1024; // 800 KB target
@@ -2674,6 +2657,28 @@ function SuccessScreen({ data, onBack }: { data: SuccessData; onBack: () => void
 // ─── Map Screen ───────────────────────────────────────────────────────────────
 
 type RemovalMapRow = RemovalRow;
+type MapMode = 'season' | 'all' | 'install' | 'remove';
+
+const MAP_MODE_KEY = 'af-map-mode';
+const MAP_MODES: { id: MapMode; label: string }[] = [
+  { id: 'season', label: 'Season' },
+  { id: 'all', label: 'All' },
+  { id: 'install', label: 'Install' },
+  { id: 'remove', label: 'Remove' },
+];
+
+function loadMapMode(fallback: MapMode): MapMode {
+  if (typeof window === 'undefined') return fallback;
+  const v = localStorage.getItem(MAP_MODE_KEY);
+  if (v === 'season' || v === 'all' || v === 'install' || v === 'remove') return v;
+  return fallback;
+}
+
+function saveMapMode(mode: MapMode) {
+  try { localStorage.setItem(MAP_MODE_KEY, mode); } catch { /* private mode */ }
+}
+
+type MapFieldRow = { id: number; name: string; lat: number | null; lng: number | null };
 
 function MapScreen({
   assignments,
@@ -2693,15 +2698,12 @@ function MapScreen({
   season: number;
   installer?: string;
   workflowMode?: WorkflowMode;
-  savedViewRef?: React.MutableRefObject<{ center: [number, number]; zoom: number } | null>;
+  savedViewRef?: MutableRefObject<{ center: [number, number]; zoom: number } | null>;
   onSelectRepair?: (id: number) => void;
 }) {
-  const isRemove = workflowMode === 'remove';
-
-  // Install: preselect next stop. Remove: no preselect (tap opens PullForm).
-  const [selectedId, setSelectedId] = useState<number | null>(
-    isRemove ? null : (assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null)
-  );
+  const defaultMode: MapMode = workflowMode === 'remove' ? 'remove' : 'install';
+  const [mapMode, setMapMode] = useState<MapMode>(() => loadMapMode(defaultMode));
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [layer, setLayer] = useState<'street' | 'satellite'>('satellite');
   const [showInstalled, setShowInstalled] = useState(false);
   const [repairPoints, setRepairPoints] = useState<{ id: number; lat: number; lng: number; fieldName: string; operation: string; problem: string; watchList?: boolean }[]>([]);
@@ -2710,14 +2712,34 @@ function MapScreen({
   const [showAllRemovals, setShowAllRemovals] = useState(false);
   const [routeFilter, setRouteFilter] = useState<RemovalsRouteFilter>('all');
   const [routeFilterReady, setRouteFilterReady] = useState(false);
-  const boundaries = useFieldBoundaries([...assignments.map(a => a.fieldId), ...removalRows.map(row => row.fieldId)]);
+  const [refFields, setRefFields] = useState<MapFieldRow[]>([]);
+  const [refLoading, setRefLoading] = useState(false);
+  const [tileWarmHint, setTileWarmHint] = useState<string | null>(null);
+
+  const isRemove = mapMode === 'remove';
+  const isInstall = mapMode === 'install';
+  const isReference = mapMode === 'season' || mapMode === 'all';
+
+  // Boundary field IDs for the active mode (reference-only polygons).
+  const boundaryFieldIds = (() => {
+    if (isReference) return refFields.map(f => f.id);
+    if (isInstall) return assignments.map(a => a.fieldId);
+    return removalRows.map(r => r.fieldId);
+  })();
+  const boundaries = useFieldBoundaries(boundaryFieldIds);
 
   useEffect(() => {
-    if (isRemove) return; // repairs clutter the pull map
+    // Preselect next install stop once when entering Install mode.
+    if (!isInstall) { setSelectedId(null); return; }
+    setSelectedId(assignments.find(a => a.status.toLowerCase() !== 'installed')?.id ?? null);
+  }, [isInstall]); // eslint-disable-line react-hooks/exhaustive-deps -- only on mode enter
+
+  useEffect(() => {
+    if (!isInstall) { setRepairPoints([]); return; }
     fetch(`/api/installer/repairs?season=${season}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setRepairPoints((d.repairs ?? []).filter((r: { lat: number; lng: number }) => r.lat && r.lng)));
-  }, [season, isRemove]);
+  }, [season, isInstall]);
 
   useEffect(() => {
     if (!isRemove || !installer) return;
@@ -2737,7 +2759,6 @@ function MapScreen({
     (async () => {
       setRemovalsLoading(true);
       try {
-        // Fleet fetch so today Ryan/Brandon/Carter counts stay accurate under Mine.
         const qs = new URLSearchParams({ season: String(season), installer, all: '1' });
         const res = await fetch(`/api/installer/removals?${qs}`, { cache: 'no-store' });
         const data = await res.json();
@@ -2751,10 +2772,29 @@ function MapScreen({
     return () => { cancelled = true; };
   }, [isRemove, installer, season]);
 
-  const [tileWarmHint, setTileWarmHint] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isReference) { setRefFields([]); return; }
+    let cancelled = false;
+    (async () => {
+      setRefLoading(true);
+      try {
+        const qs = new URLSearchParams({
+          scope: mapMode === 'all' ? 'all' : 'season',
+          season: String(season),
+        });
+        const res = await fetch(`/api/installer/map-fields?${qs}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (!cancelled) setRefFields(data.fields ?? []);
+      } catch {
+        if (!cancelled) setRefFields([]);
+      } finally {
+        if (!cancelled) setRefLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isReference, mapMode, season]);
 
-  // Dead-zone mode: while Removals/pull map has signal, warm-fetch tiles around
-  // still-out stops (Cache Storage via installer SW + browser Image cache).
+  // Warm tiles for still-out pull stops while signal is available.
   useEffect(() => {
     if (!isRemove) return;
     const scoped = showAllRemovals
@@ -2782,13 +2822,6 @@ function MapScreen({
     return () => { cancelled = true; };
   }, [isRemove, removalRows, layer, routeFilter, showAllRemovals, installer]);
 
-  const toggleShowAllRemovals = () => {
-    const next = !showAllRemovals;
-    setShowAllRemovals(next);
-    try { localStorage.setItem(REMOVALS_SHOW_ALL_KEY, next ? '1' : '0'); } catch { /* private mode */ }
-  };
-
-  // Default A/B/All once removal rows arrive when nothing persisted yet.
   useEffect(() => {
     if (!isRemove || routeFilterReady || removalsLoading) return;
     const stored = loadRouteFilter();
@@ -2806,266 +2839,128 @@ function MapScreen({
     setRouteFilterReady(true);
   }, [isRemove, removalRows, removalsLoading, routeFilterReady, showAllRemovals, installer]);
 
+  const handleMapMode = (next: MapMode) => {
+    setMapMode(next);
+    saveMapMode(next);
+    setSelectedId(null);
+    if (savedViewRef) savedViewRef.current = null; // re-fit for the new mode
+  };
+
+  const toggleShowAllRemovals = () => {
+    const next = !showAllRemovals;
+    setShowAllRemovals(next);
+    try { localStorage.setItem(REMOVALS_SHOW_ALL_KEY, next ? '1' : '0'); } catch { /* private mode */ }
+  };
+
   const handleRouteFilter = (next: RemovalsRouteFilter) => {
     setRouteFilter(next);
     saveRouteFilter(next);
     setRouteFilterReady(true);
   };
 
-  // ── Remove-mode map ────────────────────────────────────────────────────────
-  if (isRemove) {
-    const todayCounts = countTodayPulls(removalRows);
-    const scopedRows = showAllRemovals
-      ? removalRows
-      : removalRows.filter(r => matchesPlannedRemover(r.plannedRemover, installer || ''));
-    const stillOut = scopedRows.filter(
-      r => !r.removed && r.lat && r.lng && matchesRouteFilter(r.routeOrder, routeFilter),
-    );
-    const selectedRemoval = removalRows.find(r => r.id === selectedId) ?? null;
-    const mapPoints = stillOut.map(r => ({
-      id: r.id,
-      lat: r.lat,
-      lng: r.lng,
-      // route_order is install-only — plain dots on the pull map
-      routeOrder: '',
-      status: 'Assigned', // still out — not installed checkmark styling
-      fieldName: r.fieldName,
-      operation: r.grower || r.plannedRemover || '',
-      probeSerial: r.probeSerial,
-      antennaType: r.antennaType,
-      crop: r.crop,
-      priority: r.removalPriority === 'Priority',
+  // ── Derived pin sets ───────────────────────────────────────────────────────
+  const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
+  const scopedRemovals = showAllRemovals
+    ? removalRows
+    : removalRows.filter(r => matchesPlannedRemover(r.plannedRemover, installer || ''));
+  const stillOut = scopedRemovals.filter(
+    r => !r.removed && r.lat && r.lng && matchesRouteFilter(r.routeOrder, routeFilter),
+  );
+  const todayCounts = countTodayPulls(removalRows);
+
+  const installPoints = (showInstalled ? assignments : assignments.filter(a => a.status.toLowerCase() !== 'installed'))
+    .filter(a => a.lat && a.lng)
+    .map(a => ({
+      id: a.id,
+      lat: a.lat,
+      lng: a.lng,
+      routeOrder: a.routeOrder,
+      status: a.status,
+      fieldName: a.fieldName,
+      operation: a.operation,
+      probeSerial: a.probeSerial,
+      antennaType: a.antennaType,
+      crop: a.crop,
+      placementNotes: a.fieldNotes,
+      probeRack: a.probeRack,
+      probeRackSlot: a.probeRackSlot,
     }));
 
-    // Pin tap opens the same PullForm as the Removals list — Navigate stays on that form.
-    const handleSelectRemoval = (id: number) => {
-      setSelectedId(id);
-    };
+  const removePoints = stillOut.map(r => ({
+    id: r.id,
+    lat: r.lat,
+    lng: r.lng,
+    routeOrder: '',
+    status: 'Assigned',
+    fieldName: r.fieldName,
+    operation: r.grower || r.plannedRemover || '',
+    probeSerial: r.probeSerial,
+    antennaType: r.antennaType,
+    crop: r.crop,
+    priority: r.removalPriority === 'Priority',
+  }));
 
-    if (selectedRemoval && !selectedRemoval.removed && installer) {
-      return (
-        <PullForm
-          row={selectedRemoval}
-          installer={installer}
-          onBack={() => setSelectedId(null)}
-          onSaved={(id, removedBy) => {
-            const today = chicagoToday();
-            setRemovalRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true, removedOn: today, removedBy } : r)));
-            setSelectedId(null);
-          }}
-        />
-      );
-    }
+  // Season/All: no pins — boundaries are the map. Fit via polygons.
+  const mapPoints = isInstall ? installPoints : isRemove ? removePoints : [];
+  const hasBoundaries = (boundaries.features?.length ?? 0) > 0;
+  const showMap = isReference
+    ? hasBoundaries || refLoading || refFields.length > 0
+    : isInstall
+      ? mapPoints.length > 0 || repairPoints.length > 0
+      : mapPoints.length > 0 || hasBoundaries;
 
+  const selected = isInstall ? (assignments.find(a => a.id === selectedId) ?? null) : null;
+  const selectedRemoval = isRemove ? (removalRows.find(r => r.id === selectedId) ?? null) : null;
+
+  if (selectedRemoval && !selectedRemoval.removed && installer) {
     return (
-      <div className="af-screen">
-        <div className="af-topbar">
-          <button
-            onClick={onBack}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--field-green)', fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)', letterSpacing: '0.08em', textTransform: 'uppercase', background: 'none', border: 'none', cursor: 'pointer' }}
-          >
-            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
-            Removals
-          </button>
-          <div style={{ textAlign: 'center' }}>
-            <div className="af-topbar-title">Pull map</div>
-            <div className="af-topbar-sub">
-              {removalsLoading
-                ? '…'
-                : `${stillOut.length} still out · ${showAllRemovals ? 'all' : 'mine'} · ${routeFilterLabel(routeFilter)}`}
-            </div>
-          </div>
-          <div style={{ width: 60 }} />
-        </div>
-
-        <div style={{ flex: 1, position: 'relative', background: '#dde5d0' }}>
-          {stillOut.length === 0 ? (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
-              <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
-              </svg>
-              <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {removalsLoading ? 'Loading map…' : 'No pull stops with coords'}
-              </div>
-              {!removalsLoading && routeFilter !== 'all' && (
-                <div style={{ fontSize: 13, marginTop: 6 }}>Try All, or another route</div>
-              )}
-              {!removalsLoading && routeFilter === 'all' && !showAllRemovals && (
-                <div style={{ fontSize: 13, marginTop: 6 }}>Tap Show all, or check Removals list</div>
-              )}
-            </div>
-          ) : (
-            <InstallerMapView
-              points={mapPoints}
-              selectedId={selectedId}
-              onSelect={handleSelectRemoval}
-              layer={layer}
-              boundaries={boundaries}
-              initialView={savedViewRef?.current ?? null}
-              onViewChange={(v) => { if (savedViewRef) savedViewRef.current = v; }}
-            />
-          )}
-
-          {tileWarmHint && stillOut.length > 0 && (
-            <div
-              style={{
-                position: 'absolute', top: 14, left: 14, right: 120, zIndex: 400,
-                background: 'rgba(31,64,42,0.92)', color: 'var(--bone)',
-                borderRadius: 'var(--r-pill)', padding: '8px 12px',
-                fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                letterSpacing: '0.06em', textTransform: 'uppercase',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
-                pointerEvents: 'none',
-              }}
-            >
-              {tileWarmHint}
-            </div>
-          )}
-
-          {(removalRows.length > 0 || removalsLoading || stillOut.length > 0) && (
-            <>
-              <div style={{
-                position: 'absolute', top: 14, right: 14, zIndex: 400,
-                background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
-                border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
-                padding: 3, display: 'flex', gap: 2,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-              }}>
-                {(['street', 'satellite'] as const).map(lyr => (
-                  <button
-                    key={lyr}
-                    onClick={() => setLayer(lyr)}
-                    aria-pressed={layer === lyr ? 'true' : 'false'}
-                    style={{
-                      minHeight: 32, padding: '0 12px', borderRadius: 999,
-                      fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                      letterSpacing: '0.1em', textTransform: 'uppercase',
-                      background: layer === lyr ? 'var(--field-green)' : 'transparent',
-                      color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
-                      border: 'none', cursor: 'pointer',
-                    }}
-                  >
-                    {lyr === 'street' ? 'Map' : 'Satellite'}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={toggleShowAllRemovals}
-                style={{
-                  position: 'absolute', top: 58, right: 14, zIndex: 400,
-                  background: showAllRemovals ? 'var(--field-green)' : 'rgba(246,242,234,0.94)',
-                  backdropFilter: 'blur(10px)',
-                  border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
-                  padding: '0 12px', minHeight: 32,
-                  fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  color: showAllRemovals ? 'var(--bone)' : 'var(--stone-700)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                  cursor: 'pointer',
-                }}
-              >
-                {showAllRemovals ? 'Show all: On' : 'Show all: Off'}
-              </button>
-              <div
-                role="group"
-                aria-label="Removal route filter"
-                style={{
-                  position: 'absolute', top: 98, left: 14, right: 14, zIndex: 400,
-                  display: 'flex', gap: 4, padding: 3, borderRadius: 12,
-                  background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
-                  border: '1px solid var(--border-1)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                }}
-              >
-                {([
-                  { id: 'A' as const, label: 'A' },
-                  { id: 'B' as const, label: 'B' },
-                  { id: 'all' as const, label: 'All' },
-                ]).map(opt => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
-                    onClick={() => handleRouteFilter(opt.id)}
-                    style={{
-                      flex: 1, minHeight: 32, padding: '6px 0', borderRadius: 10, cursor: 'pointer',
-                      border: 'none',
-                      background: routeFilter === opt.id ? 'var(--field-green)' : 'transparent',
-                      color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-700)',
-                      fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
-                      letterSpacing: '0.06em', textTransform: 'uppercase',
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-
-          {stillOut.length > 0 && (
-            <button
-              onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-me'))}
-              aria-label="Recenter on my location"
-              style={{
-                position: 'absolute', bottom: 14, right: 14, zIndex: 400,
-                width: 48, height: 48, borderRadius: '50%',
-                background: 'var(--bone-raised)', color: 'var(--field-green)',
-                border: '1px solid var(--border-1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.18)', cursor: 'pointer',
-              }}
-            >
-              <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="3" />
-                <path d="M12 2v2M12 20v2M2 12h2M20 12h2" />
-                <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
-              </svg>
-            </button>
-          )}
-        </div>
-
-        {/* Today pulls — above field tile / bottom nav, never over Navigate */}
-        <div
-          aria-label="Today's pulls"
-          style={{
-            flexShrink: 0,
-            textAlign: 'center',
-            padding: '5px 12px 6px',
-            fontSize: 11,
-            lineHeight: 1.2,
-            color: 'var(--stone-500)',
-            background: 'var(--bone)',
-            borderTop: '1px solid var(--border-1)',
-          }}
-        >
-          {removalsLoading ? '…' : formatTodayPullCounts(todayCounts)}
-        </div>
-      </div>
+      <PullForm
+        row={selectedRemoval}
+        installer={installer}
+        onBack={() => setSelectedId(null)}
+        onSaved={(id, removedBy) => {
+          const today = chicagoToday();
+          setRemovalRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true, removedOn: today, removedBy } : r)));
+          setSelectedId(null);
+        }}
+      />
     );
   }
 
-  // ── Install-mode map (unchanged) ───────────────────────────────────────────
-  const todo = assignments.filter(a => a.status.toLowerCase() !== 'installed');
-  const mapAssignments = showInstalled ? assignments : assignments.filter(a => a.status.toLowerCase() !== 'installed');
-  const withCoords = mapAssignments.filter(a => a.lat && a.lng);
-  const selected = assignments.find(a => a.id === selectedId) ?? null;
+  const subtitle = (() => {
+    if (isInstall) {
+      if (loading) return '…';
+      return `${todo.length} stop${todo.length !== 1 ? 's' : ''} remaining`;
+    }
+    if (isRemove) {
+      if (removalsLoading) return '…';
+      return `${stillOut.length} still out · ${showAllRemovals ? 'all' : 'mine'} · ${routeFilterLabel(routeFilter)}`;
+    }
+    if (refLoading) return 'Loading fields…';
+    const n = refFields.length;
+    const b = boundaries.features?.length ?? 0;
+    if (mapMode === 'season') return `${n} field${n !== 1 ? 's' : ''} · ${b} boundar${b !== 1 ? 'ies' : 'y'}`;
+    return `${b} boundar${b !== 1 ? 'ies' : 'y'}`;
+  })();
 
-  const mapPoints = withCoords.map(a => ({
-    id: a.id,
-    lat: a.lat,
-    lng: a.lng,
-    routeOrder: a.routeOrder,
-    status: a.status,
-    fieldName: a.fieldName,
-    operation: a.operation,
-    probeSerial: a.probeSerial,
-    antennaType: a.antennaType,
-    crop: a.crop,
-    placementNotes: a.fieldNotes,
-    probeRack: a.probeRack,
-    probeRackSlot: a.probeRackSlot,
-  }));
+  const emptyMessage = (() => {
+    if (isInstall) return loading ? 'Loading map…' : 'No coordinates available';
+    if (isRemove) {
+      if (removalsLoading) return 'Loading map…';
+      if (routeFilter !== 'all') return 'No pull stops — try All or another route';
+      if (!showAllRemovals) return 'No pull stops — tap Show all, or check Removals';
+      return 'No pull stops with coords';
+    }
+    if (refLoading) return 'Loading fields…';
+    return mapMode === 'season' ? 'No season fields yet' : 'No field boundaries yet';
+  })();
+
+  const glass: CSSProperties = {
+    background: 'rgba(246,242,234,0.94)',
+    backdropFilter: 'blur(10px)',
+    border: '1px solid var(--border-1)',
+    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+  };
 
   return (
     <div className="af-screen">
@@ -3075,95 +2970,216 @@ function MapScreen({
           style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--field-green)', fontWeight: 600, fontSize: 14, fontFamily: 'var(--font-display)', letterSpacing: '0.08em', textTransform: 'uppercase', background: 'none', border: 'none', cursor: 'pointer' }}
         >
           <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6" /></svg>
-          Route
+          {isRemove ? 'Removals' : isInstall ? 'Route' : 'Back'}
         </button>
         <div style={{ textAlign: 'center' }}>
-          <div className="af-topbar-title">Today&apos;s map</div>
-          <div className="af-topbar-sub">{todo.length} stop{todo.length !== 1 ? 's' : ''} remaining</div>
+          <div className="af-topbar-title">Map</div>
+          <div className="af-topbar-sub">{subtitle}</div>
         </div>
         <div style={{ width: 60 }} />
       </div>
 
-      {/* Map area */}
       <div style={{ flex: 1, position: 'relative', background: '#dde5d0' }}>
-        {withCoords.length === 0 && repairPoints.length === 0 ? (
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)' }}>
+        {!showMap ? (
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--stone-500)', padding: 24, textAlign: 'center' }}>
             <svg width="36" height="36" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" /><line x1="9" y1="3" x2="9" y2="18" /><line x1="15" y1="6" x2="15" y2="21" />
             </svg>
             <div style={{ fontFamily: 'var(--font-display)', fontSize: 16, marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              {loading ? 'Loading map…' : 'No coordinates available'}
+              {emptyMessage}
             </div>
           </div>
         ) : (
           <InstallerMapView
+            key={mapMode}
             points={mapPoints}
             selectedId={selectedId}
             onSelect={setSelectedId}
             layer={layer}
             boundaries={boundaries}
-            repairPoints={repairPoints}
-            onSelectRepair={onSelectRepair}
+            fitKey={`${mapMode}-${isRemove ? routeFilter : showInstalled ? 'inst' : 'todo'}-${boundaryFieldIds.length}-${boundaries.features?.length ?? 0}-${mapPoints.length}`}
+            repairPoints={isInstall ? repairPoints : undefined}
+            onSelectRepair={isInstall ? onSelectRepair : undefined}
             initialView={savedViewRef?.current ?? null}
             onViewChange={(v) => { if (savedViewRef) savedViewRef.current = v; }}
           />
         )}
 
-        {/* Layer toggle */}
-        {(withCoords.length > 0 || repairPoints.length > 0) && (
-          <>
-            <div style={{
-              position: 'absolute', top: 14, right: 14, zIndex: 400,
-              background: 'rgba(246,242,234,0.94)', backdropFilter: 'blur(10px)',
-              border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
-              padding: 3, display: 'flex', gap: 2,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            }}>
-              {(['street', 'satellite'] as const).map(lyr => (
+        {/* Map / Satellite */}
+        {showMap && (
+          <div style={{
+            position: 'absolute', top: 14, right: 14, zIndex: 400,
+            ...glass, borderRadius: 'var(--r-pill)', padding: 3, display: 'flex', gap: 2,
+          }}>
+            {(['street', 'satellite'] as const).map(lyr => (
+              <button
+                key={lyr}
+                onClick={() => setLayer(lyr)}
+                aria-pressed={layer === lyr ? 'true' : 'false'}
+                style={{
+                  minHeight: 32, padding: '0 12px', borderRadius: 999,
+                  fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  background: layer === lyr ? 'var(--field-green)' : 'transparent',
+                  color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
+                  border: 'none', cursor: 'pointer',
+                }}
+              >
+                {lyr === 'street' ? 'Map' : 'Satellite'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Install: show installed pins */}
+        {isInstall && showMap && (
+          <button
+            onClick={() => setShowInstalled(v => !v)}
+            style={{
+              position: 'absolute', top: 58, right: 14, zIndex: 400,
+              ...glass,
+              background: showInstalled ? 'var(--field-green)' : glass.background,
+              borderRadius: 'var(--r-pill)',
+              padding: '0 12px', minHeight: 32,
+              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: showInstalled ? 'var(--bone)' : 'var(--stone-700)',
+              cursor: 'pointer',
+            }}
+          >
+            {showInstalled ? 'Installed: On' : 'Installed: Off'}
+          </button>
+        )}
+
+        {/* Remove: show all removers */}
+        {isRemove && (
+          <button
+            onClick={toggleShowAllRemovals}
+            style={{
+              position: 'absolute', top: 58, right: 14, zIndex: 400,
+              ...glass,
+              background: showAllRemovals ? 'var(--field-green)' : glass.background,
+              borderRadius: 'var(--r-pill)',
+              padding: '0 12px', minHeight: 32,
+              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: showAllRemovals ? 'var(--bone)' : 'var(--stone-700)',
+              cursor: 'pointer',
+            }}
+          >
+            {showAllRemovals ? 'Show all: On' : 'Show all: Off'}
+          </button>
+        )}
+
+        {tileWarmHint && isRemove && stillOut.length > 0 && (
+          <div
+            style={{
+              position: 'absolute', top: 14, left: 14, right: 120, zIndex: 400,
+              background: 'rgba(31,64,42,0.92)', color: 'var(--bone)',
+              borderRadius: 'var(--r-pill)', padding: '8px 12px',
+              fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
+              letterSpacing: '0.06em', textTransform: 'uppercase',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+              pointerEvents: 'none',
+            }}
+          >
+            {tileWarmHint}
+          </div>
+        )}
+
+        {/* Mode picker + A/B (Remove only) — docked above the bottom edge */}
+        <div
+          style={{
+            position: 'absolute', left: 12, right: 12, bottom: 14, zIndex: 450,
+            display: 'flex', flexDirection: 'column', gap: 8,
+            pointerEvents: 'none',
+          }}
+        >
+          {isRemove && (
+            <div
+              role="group"
+              aria-label="Removal route"
+              style={{
+                ...glass, borderRadius: 14, padding: 3, display: 'flex', gap: 3,
+                pointerEvents: 'auto',
+                alignSelf: 'center',
+                width: 'min(220px, 100%)',
+              }}
+            >
+              {([
+                { id: 'A' as const, label: 'A' },
+                { id: 'B' as const, label: 'B' },
+                { id: 'all' as const, label: 'All' },
+              ]).map(opt => (
                 <button
-                  key={lyr}
-                  onClick={() => setLayer(lyr)}
-                  aria-pressed={layer === lyr ? 'true' : 'false'}
+                  key={opt.id}
+                  type="button"
+                  aria-pressed={routeFilter === opt.id ? 'true' : 'false'}
+                  onClick={() => handleRouteFilter(opt.id)}
                   style={{
-                    minHeight: 32, padding: '0 12px', borderRadius: 999,
-                    fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                    letterSpacing: '0.1em', textTransform: 'uppercase',
-                    background: layer === lyr ? 'var(--field-green)' : 'transparent',
-                    color: layer === lyr ? 'var(--bone)' : 'var(--stone-700)',
-                    border: 'none', cursor: 'pointer',
+                    flex: 1, minHeight: 36, borderRadius: 11, cursor: 'pointer', border: 'none',
+                    background: routeFilter === opt.id ? 'var(--field-green)' : 'transparent',
+                    color: routeFilter === opt.id ? 'var(--bone)' : 'var(--stone-700)',
+                    fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 13,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
                   }}
                 >
-                  {lyr === 'street' ? 'Map' : 'Satellite'}
+                  {opt.label}
                 </button>
               ))}
             </div>
-            <button
-              onClick={() => setShowInstalled(v => !v)}
-              style={{
-                position: 'absolute', top: 58, right: 14, zIndex: 400,
-                background: showInstalled ? 'var(--field-green)' : 'rgba(246,242,234,0.94)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid var(--border-1)', borderRadius: 'var(--r-pill)',
-                padding: '0 12px', minHeight: 32,
-                fontSize: 11, fontFamily: 'var(--font-display)', fontWeight: 700,
-                letterSpacing: '0.1em', textTransform: 'uppercase',
-                color: showInstalled ? 'var(--bone)' : 'var(--stone-700)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                cursor: 'pointer',
-              }}
-            >
-              {showInstalled ? 'Installed: On' : 'Installed: Off'}
-            </button>
-          </>
-        )}
+          )}
 
-        {/* Recenter on me */}
-        {withCoords.length > 0 && (
+          <div
+            role="tablist"
+            aria-label="Map mode"
+            style={{
+              ...glass,
+              borderRadius: 16,
+              padding: 4,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 3,
+              pointerEvents: 'auto',
+            }}
+          >
+            {MAP_MODES.map(m => {
+              const active = mapMode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => handleMapMode(m.id)}
+                  style={{
+                    minHeight: 44,
+                    borderRadius: 12,
+                    border: 'none',
+                    cursor: 'pointer',
+                    background: active ? 'var(--field-green)' : 'transparent',
+                    color: active ? 'var(--bone)' : 'var(--stone-700)',
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    transition: 'background 120ms ease, color 120ms ease',
+                  }}
+                >
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {showMap && (
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('af-recenter-me'))}
             aria-label="Recenter on my location"
             style={{
-              position: 'absolute', bottom: 14, right: 14, zIndex: 400,
+              position: 'absolute', bottom: isRemove ? 118 : 72, right: 14, zIndex: 400,
               width: 48, height: 48, borderRadius: '50%',
               background: 'var(--bone-raised)', color: 'var(--field-green)',
               border: '1px solid var(--border-1)',
@@ -3180,8 +3196,27 @@ function MapScreen({
         )}
       </div>
 
-      {/* Selected stop card */}
-      {selected && (
+      {/* Remove: today counts */}
+      {isRemove && (
+        <div
+          aria-label="Today's pulls"
+          style={{
+            flexShrink: 0,
+            textAlign: 'center',
+            padding: '5px 12px 6px',
+            fontSize: 11,
+            lineHeight: 1.2,
+            color: 'var(--stone-500)',
+            background: 'var(--bone)',
+            borderTop: '1px solid var(--border-1)',
+          }}
+        >
+          {removalsLoading ? '…' : formatTodayPullCounts(todayCounts)}
+        </div>
+      )}
+
+      {/* Install: selected stop card */}
+      {isInstall && selected && (
         <div style={{ padding: '14px 14px 16px', background: 'var(--bone)', borderTop: '1px solid var(--border-1)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
@@ -3219,6 +3254,27 @@ function MapScreen({
               <NotesThread thread={selected.notesThread} compact />
             </div>
           )}
+        </div>
+      )}
+
+      {/* Season / All: quiet reference hint */}
+      {isReference && !selected && (
+        <div
+          style={{
+            flexShrink: 0,
+            textAlign: 'center',
+            padding: '8px 14px 10px',
+            fontSize: 11,
+            letterSpacing: '0.04em',
+            textTransform: 'uppercase',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 600,
+            color: 'var(--stone-500)',
+            background: 'var(--bone)',
+            borderTop: '1px solid var(--border-1)',
+          }}
+        >
+          Boundaries for reference
         </div>
       )}
     </div>
@@ -3987,14 +4043,14 @@ function MileageScreen({ session, onBack }: { session: Session; onBack: () => vo
     } finally { setSaving(false); }
   };
 
-  const inputStyle: React.CSSProperties = {
+  const inputStyle: CSSProperties = {
     width: '100%', boxSizing: 'border-box',
     background: 'var(--bone)', border: '1px solid var(--border-1)',
     borderRadius: 'var(--r-sm)', padding: '9px 12px',
     fontSize: 15, color: 'var(--ink)', outline: 'none',
     fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
   };
-  const labelStyle: React.CSSProperties = {
+  const labelStyle: CSSProperties = {
     fontSize: 10, letterSpacing: '0.14em', fontFamily: 'var(--font-display)',
     fontWeight: 600, textTransform: 'uppercase', color: 'var(--ink-2)', marginBottom: 4,
   };
