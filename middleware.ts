@@ -118,9 +118,9 @@ function applyRobots(response: Response) {
 export default async function middleware(request: NextRequest, event: NextFetchEvent) {
   const { pathname } = request.nextUrl;
 
-  // Unknown URLs must 404. Treating them as private pages redirected to login
-  // with HTTP 200 and hid the missing page. Known routes keep the auth checks
-  // below, so a missed route cannot become public.
+  // Unknown URLs have no page. Sending them through the login redirect made
+  // a missing address return 200. They skip auth and render not-found.
+  // Every known page and API still uses the auth middleware below, unchanged.
   if (!isKnownAppRoute(pathname)) {
     return applyRobots(NextResponse.next());
   }

@@ -38,6 +38,7 @@ function walk(dir, out = []) {
 
 const routes = loadTs('lib/known-routes.ts');
 const site = loadTs('lib/site-metadata.ts');
+const callback = loadTs('lib/safe-callback.ts');
 
 test('every page and API root is a known route, and unknown URLs are not', () => {
   const pages = walk(path.join(root, 'app')).filter((file) => file.endsWith(`${path.sep}page.tsx`));
@@ -111,6 +112,45 @@ test('content images have alt text', () => {
     }
   }
   assert.deepEqual(missing, []);
+});
+
+test('login callback accepts one safe path and does not throw on repeated params', () => {
+  const { safeCallbackUrl } = callback;
+  assert.equal(safeCallbackUrl(undefined), '/');
+  assert.equal(safeCallbackUrl(''), '/');
+  assert.equal(safeCallbackUrl('/fields'), '/fields');
+  assert.equal(safeCallbackUrl('/install'), '/install');
+  assert.equal(safeCallbackUrl('https://evil.example'), '/');
+  assert.equal(safeCallbackUrl('http://evil.example/phish'), '/');
+  assert.equal(safeCallbackUrl('//evil.example'), '/');
+  assert.equal(safeCallbackUrl(['/fields', '/install']), '/fields');
+  assert.equal(safeCallbackUrl(['/install', '/fields']), '/install');
+  assert.equal(safeCallbackUrl(['https://evil.example', '/install']), '/');
+  assert.equal(safeCallbackUrl(['//evil.example', '/fields']), '/');
+  assert.equal(safeCallbackUrl(['/fields', 'https://evil.example']), '/fields');
+  assert.equal(safeCallbackUrl([]), '/');
+
+  const page = fs.readFileSync(path.join(root, 'app/login/page.tsx'), 'utf8');
+  assert.match(page, /safeCallbackUrl\(params\.callbackUrl\)/);
+  assert.doesNotMatch(page, /callbackUrl\?\.startsWith|callbackUrl\.startsWith/);
+});
+
+test('known routes still enter auth; only unknown paths skip it for a 404', () => {
+  const middleware = fs.readFileSync(path.join(root, 'middleware.ts'), 'utf8');
+  const exported = middleware.slice(middleware.indexOf('export default async function middleware'));
+  const unknown = exported.indexOf('if (!isKnownAppRoute(pathname))');
+  const authCall = exported.indexOf('await authenticatedMiddleware(request, event)');
+  assert.ok(unknown > 0 && unknown < authCall);
+  assert.match(middleware, /if \(!req\.auth\?\.user\?\.id\)/);
+  assert.match(middleware, /loginUrl\.searchParams\.set\('callbackUrl', pathname\)/);
+  assert.match(middleware, /const PUBLIC_ROUTES = \[/);
+
+  for (const pathName of ['/', '/login', '/fields', '/install', '/api/ping', '/api/fields', '/installer', '/approve/token/2026']) {
+    assert.equal(routes.isKnownAppRoute(pathName), true, pathName);
+  }
+  for (const pathName of ['/this-page-does-not-exist', '/api/not-a-real-root', '/fields/extra']) {
+    assert.equal(routes.isKnownAppRoute(pathName), false, pathName);
+  }
 });
 
 test('custom 404 is a real not-found page with a sign-in action', () => {
