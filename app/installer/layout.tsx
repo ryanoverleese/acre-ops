@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import InstallerSwRegister from './InstallerSwRegister';
+import { staffMetadata } from '@/lib/site-metadata';
 
 export const metadata: Metadata = {
-  title: 'Probe Installer',
+  ...staffMetadata('installer'),
   manifest: '/installer-manifest.json',
   appleWebApp: {
     title: 'Probe Installer',

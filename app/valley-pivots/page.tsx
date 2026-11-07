@@ -6,6 +6,10 @@ import { readingFreshness } from '@/lib/valley/types';
 import PivotStatusIcon from '../water-recs/PivotStatusIcon';
 import styles from './page.module.css';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('valleyPivots');
+
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 

@@ -1,6 +1,10 @@
 import { getDocuments } from '@/lib/data';
 import DocumentsClient from './DocumentsClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('documents');
+
 export const dynamic = 'force-dynamic';
 
 export interface ProcessedDocument {

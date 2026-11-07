@@ -75,11 +75,14 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
   const [bookingSortCol, setBookingSortCol] = useState<BookingSortColumn>('status');
   const [bookingSortDir, setBookingSortDir] = useState<'asc' | 'desc'>('asc');
   const [dismissLoading, setDismissLoading] = useState<Record<number, boolean>>({});
+  const [bookingsLoading, setBookingsLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/bookings')
       .then(res => res.json())
       .then((data) => {
+        if (cancelled) return;
         const list = Array.isArray(data) ? data : data.bookings;
         const remaining = Array.isArray(data) ? 0 : data.remainingFields || 0;
         if (data.currentYear) setCurrentYear(data.currentYear);
@@ -87,7 +90,13 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
         if (list?.length) setBookings(list);
         setRemainingFields(remaining);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setBookingsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleDismiss = async (booking: DashboardBooking) => {
@@ -138,10 +147,16 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
 
   return (
     <>
-      <header className="header">
+      <header className="header" style={{ flexWrap: 'wrap', gap: 8 }}>
         <div className="header-left">
           <h2>Dashboard</h2>
           <span className="season-badge">{currentYear} Season</span>
+        </div>
+        <div className="header-right" style={{ flexWrap: 'wrap' }}>
+          <Link href="/install" className="btn btn-primary btn-sm">Open installs</Link>
+          {openRepairs.length > 0 && (
+            <Link href="/repairs" className="btn btn-secondary btn-sm">Review repairs</Link>
+          )}
         </div>
       </header>
 
@@ -216,8 +231,16 @@ export default function DashboardClient({ stats, openRepairs, recentOrders, inst
           )}
         </div>
 
+        {bookingsLoading && (
+          <div className="dashboard-section" role="status" aria-live="polite" aria-busy="true">
+            <h3 className="section-label">Booking Tracker</h3>
+            <div className="skeleton" style={{ height: 88, width: '100%' }} />
+            <p className="stat-footnote">Loading booking tracker…</p>
+          </div>
+        )}
+
         {/* Booking Tracker */}
-        {bookings.length > 0 && (() => {
+        {!bookingsLoading && bookings.length > 0 && (() => {
           const stillToGo = bookings.filter(b => b.status === 'still-to-go').length;
           const notReturning = bookings.filter(b => b.status === 'not-returning').length;
           const newOps = bookings.filter(b => b.status === 'new').length;

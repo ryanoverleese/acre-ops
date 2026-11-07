@@ -1,10 +1,12 @@
 import { fieldBilling } from '@/lib/data-mappings';
-import type { Metadata } from 'next';
 import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import { getCachedAllSelectOptions } from '@/lib/supabase/adapter';
 import type { TableSelectOptions } from '@/lib/types';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ReviewClient from './ReviewClient';
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('review');
 
 interface PageProps {
   params: Promise<{
@@ -12,16 +14,6 @@ interface PageProps {
     season: string;
   }>;
   searchParams: Promise<{ q?: string }>;
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { token, season } = await params;
-  const operations = await getCachedOperations();
-  const operation = operations.find((op) => op.approval_token === token);
-  const title = operation
-    ? `Field Info & Approvals — ${operation.name}`
-    : 'Field Info & Approvals';
-  return { title };
 }
 
 export interface ReviewFieldInfoItem {

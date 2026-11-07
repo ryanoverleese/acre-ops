@@ -6,7 +6,7 @@
 export default function PageSkeleton({ title, rows = 12 }: { title: string; rows?: number }) {
   return (
     <>
-      <header className="header">
+      <header className="header" role="status" aria-live="polite" aria-busy="true">
         <div className="header-left">
           <h2>{title}</h2>
         </div>

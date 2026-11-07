@@ -2,6 +2,10 @@ import { getCachedRows } from '@/lib/supabase/adapter';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import MapClient from './MapClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('map');
+
 export const dynamic = 'force-dynamic';
 
 export default async function MapPage() {

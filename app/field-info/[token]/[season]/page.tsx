@@ -1,9 +1,11 @@
 import { fieldBilling } from '@/lib/data-mappings';
-import type { Metadata } from 'next';
 import { getOperations, getFields, getFieldSeasons, getContacts } from '@/lib/data';
 import { getAllSelectOptions } from '@/lib/supabase/adapter';
 import type { TableSelectOptions } from '@/lib/types';
 import FieldInfoClient from './FieldInfoClient';
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('fieldInfo');
 
 interface PageProps {
   params: Promise<{
@@ -11,16 +13,6 @@ interface PageProps {
     season: string;
   }>;
   searchParams: Promise<{ q?: string }>;
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { token } = await params;
-  const operations = await getOperations();
-  const operation = operations.find((op) => op.approval_token === token);
-  const title = operation
-    ? `Field Info — ${operation.name}`
-    : 'Field Info';
-  return { title };
 }
 
 export interface BillingEntityOption {

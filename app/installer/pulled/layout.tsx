@@ -1,10 +1,7 @@
 import type { Metadata, Viewport } from 'next';
+import { staffMetadata } from '@/lib/site-metadata';
 
-export const metadata: Metadata = {
-  title: 'Probes Pulled Today',
-  description: 'Live count of probes pulled today (America/Chicago)',
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = staffMetadata('installerPulled');
 
 export const viewport: Viewport = {
   width: 'device-width',

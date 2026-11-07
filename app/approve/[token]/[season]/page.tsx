@@ -1,7 +1,9 @@
-import type { Metadata } from 'next';
 import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import { fetchElevation, fetchSoilType } from '@/lib/geo';
 import ApprovalClient from './ApprovalClient';
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('approve');
 
 interface PageProps {
   params: Promise<{
@@ -9,16 +11,6 @@ interface PageProps {
     season: string;
   }>;
   searchParams: Promise<Record<string, never>>;
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { token } = await params;
-  const operations = await getCachedOperations();
-  const operation = operations.find((op) => op.approval_token === token);
-  const title = operation
-    ? `Probe Approvals — ${operation.name}`
-    : 'Probe Approvals';
-  return { title };
 }
 
 export interface ApprovalProbeAssignment {

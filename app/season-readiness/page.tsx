@@ -1,6 +1,10 @@
 import { getFieldsData } from '@/lib/fields-data';
 import SeasonReadinessClient from './SeasonReadinessClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('seasonReadiness');
+
 export const dynamic = 'force-dynamic';
 
 export interface ReadinessRow {

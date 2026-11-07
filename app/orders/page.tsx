@@ -2,6 +2,10 @@ import { getOrders, getOrderItems, getBillingEntities, getProductsServices } fro
 import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import OrdersClient from './OrdersClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('orders');
+
 export const dynamic = 'force-dynamic';
 
 export interface ProcessedOrder {

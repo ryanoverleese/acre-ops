@@ -3228,7 +3228,7 @@ export default function FieldsClient({
                                 <a href={selectedField.installPhotoFieldEndUrl} target="_blank" rel="noopener noreferrer">
                                   <img
                                     src={selectedField.installPhotoFieldEndUrl}
-                                    alt="Field End"
+                                    alt={`Field-end install photo for ${selectedField.name}`}
                                     className="fields-photo-thumb"
                                   />
                                 </a>
@@ -3237,7 +3237,7 @@ export default function FieldsClient({
                                 <a href={selectedField.installPhotoExtraUrl} target="_blank" rel="noopener noreferrer">
                                   <img
                                     src={selectedField.installPhotoExtraUrl}
-                                    alt="Extra"
+                                    alt={`Additional install photo for ${selectedField.name}`}
                                     className="fields-photo-thumb"
                                   />
                                 </a>

@@ -4,6 +4,10 @@ import type { Probe, BillingEntity, FieldSeason, Field, Contact, Operation, Prob
 import { buildOperationMap, buildBillingEntityMap, buildContactToOperationMaps, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import ProbesClient, { ProcessedProbe, BillingEntityOption, ContactOption, ProbeFieldAssignment } from './ProbesClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('probes');
+
 export const dynamic = 'force-dynamic';
 
 async function getProbesData(): Promise<{

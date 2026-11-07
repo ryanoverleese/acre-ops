@@ -4,6 +4,10 @@ import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappi
 import WaterRecsClient from './WaterRecsClient';
 import { valleyEnabled } from '@/lib/valley/client';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('waterRecs');
+
 export const dynamic = 'force-dynamic';
 
 export interface ReportField {

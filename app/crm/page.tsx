@@ -7,6 +7,10 @@ import type { ProcessedOperation, ContactOption as OpContactOption, LinkedContac
 import type { ProcessedContact, OperationOption, BillingEntityOption } from '@/app/contacts/page';
 import type { ProcessedBillingEntity, ContactOption as BEContactOption } from '@/app/billing-entities/page';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('crm');
+
 export type { ProcessedOperation, OpContactOption, LinkedContact };
 export type { ProcessedContact, OperationOption, BillingEntityOption };
 export type { ProcessedBillingEntity, BEContactOption };

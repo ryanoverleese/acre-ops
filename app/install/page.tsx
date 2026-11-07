@@ -6,6 +6,10 @@ import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappi
 import InstallClient, { InstallableProbeAssignment, InstalledProbeData } from './InstallClient';
 
 // Force dynamic rendering - probe assignments need to be fresh
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('install');
+
 export const dynamic = 'force-dynamic';
 
 export interface ProbeOption {

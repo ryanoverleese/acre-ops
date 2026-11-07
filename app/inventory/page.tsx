@@ -1,8 +1,11 @@
 import { getInventory, getCachedFieldSeasons, getCachedProbeAssignments } from '@/lib/data';
+import InventoryClient from './InventoryClient';
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('inventory');
 
 // Force dynamic rendering to always get fresh data
 export const dynamic = 'force-dynamic';
-import InventoryClient from './InventoryClient';
 
 export interface ProcessedInventoryItem {
   id: number;
