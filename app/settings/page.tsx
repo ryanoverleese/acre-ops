@@ -3,6 +3,10 @@ import { getAllSelectOptionsWithMeta } from '@/lib/supabase/adapter';
 import type { TableSelectOptionsWithMeta } from '@/lib/types';
 import SettingsClient, { ProcessedProductService } from './SettingsClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('settings');
+
 export const dynamic = 'force-dynamic';
 
 export interface SerializedSelectOptionsWithMeta {

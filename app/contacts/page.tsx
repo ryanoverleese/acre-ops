@@ -3,6 +3,10 @@ import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import { buildOperationMap, buildBillingEntityMap } from '@/lib/data-mappings';
 import ContactsClient from './ContactsClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('contacts');
+
 export interface ProcessedContact {
   id: number;
   name: string;

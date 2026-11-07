@@ -3,6 +3,10 @@ import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappi
 import { allocateFieldCharge, fieldChargeBasis, type SavedFieldCharge } from '@/lib/billing-allocation';
 import BillingClient, { ProcessedBillingEntity, OnOrderLine } from './BillingClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('billing');
+
 interface BillingData {
   billingEntities: ProcessedBillingEntity[];
   availableSeasons: number[];

@@ -1,14 +1,16 @@
-import { Suspense } from 'react';
 import LoginForm from './LoginForm';
+import { staffMetadata } from '@/lib/site-metadata';
 
-export const metadata = {
-  title: 'Login - Acre Insights',
-};
+export const metadata = staffMetadata('login');
 
-export default function LoginPage() {
-  return (
-    <Suspense>
-      <LoginForm />
-    </Suspense>
-  );
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ callbackUrl?: string }>;
+}) {
+  const params = await searchParams;
+  const callbackUrl = params.callbackUrl?.startsWith('/') && !params.callbackUrl.startsWith('//')
+    ? params.callbackUrl
+    : '/';
+  return <LoginForm callbackUrl={callbackUrl} />;
 }

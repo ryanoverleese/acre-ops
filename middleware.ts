@@ -4,6 +4,7 @@ const { auth } = NextAuth(authConfig);
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { LEGACY_EQUIPMENT_ROUTES } from '@/lib/equipment-navigation';
 import { CREW_COOKIE, readCrewSession } from '@/lib/crew-session';
+import { isKnownAppRoute } from '@/lib/known-routes';
 
 // Routes that installers can access
 const INSTALLER_ROUTES = [
@@ -109,7 +110,21 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   return NextResponse.next();
 });
 
+function applyRobots(response: Response) {
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
+}
+
 export default async function middleware(request: NextRequest, event: NextFetchEvent) {
+  const { pathname } = request.nextUrl;
+
+  // Unknown URLs must 404. Treating them as private pages redirected to login
+  // with HTTP 200 and hid the missing page. Known routes keep the auth checks
+  // below, so a missed route cannot become public.
+  if (!isKnownAppRoute(pathname)) {
+    return applyRobots(NextResponse.next());
+  }
+
   const response = await authenticatedMiddleware(request, event);
   if (!response) return response;
 
@@ -125,7 +140,7 @@ export default async function middleware(request: NextRequest, event: NextFetchE
       response.headers.append('set-cookie', cookie);
     }
   }
-  return response;
+  return applyRobots(response);
 }
 
 export const config = {
@@ -133,6 +148,7 @@ export const config = {
     // Auth.js owns its endpoints, including CSRF and cookie expiration. Running
     // auth() here renews the session after sign-out has already cleared it.
     // Exclude only /api/auth and its children, not similarly named app routes.
-    '/((?!api/auth(?:/|$)|_next/static|_next/image|favicon.ico|manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // robots.txt and sitemap.xml stay public and list no private routes.
+    '/((?!api/auth(?:/|$)|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest\\.json|installer-manifest\\.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
   ],
 };

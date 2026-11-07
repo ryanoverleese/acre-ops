@@ -4,6 +4,10 @@ import { buildOperationMap, buildBillingToOperationMaps, getOperationNameForBill
 import RepairsClient, { ProcessedRepair, FieldSeasonOption, ProbeAssignmentOption } from './RepairsClient';
 
 // Data comes from cached Baserow reads; render per-request (don't prerender at build).
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('repairs');
+
 export const dynamic = 'force-dynamic';
 
 async function getRepairsData(): Promise<{

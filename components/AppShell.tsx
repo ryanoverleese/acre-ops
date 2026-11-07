@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import NotificationBell from './NotificationBell';
+import { isKnownAppRoute } from '@/lib/known-routes';
 
 interface NavItem {
   name: string;
@@ -204,8 +205,9 @@ export default function AppShell({ children }: AppShellProps) {
     localStorage.setItem('sidebar-collapsed', String(next));
   };
 
-  // Don't show navigation on public approval pages, login page, or installer app
-  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer');
+  // Don't show navigation on public approval pages, login page, installer app,
+  // or unknown URLs. A 404 must not print the private nav.
+  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer') || (pathname ? !isKnownAppRoute(pathname) : false);
 
   if (isPublicPage) {
     return <>{children}</>;

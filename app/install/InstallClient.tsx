@@ -881,7 +881,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                           {probe.photoFieldEndUrl ? (
                             <img
                               src={probe.photoFieldEndUrl}
-                              alt="Install photo"
+                              alt={`Field-end install photo for ${probe.fieldName}`}
                               onClick={() => setLightboxUrl(probe.photoFieldEndUrl)}
                               style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block', cursor: 'zoom-in' }}
                             />
@@ -986,7 +986,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                     <td>
                       {probe.photoFieldEndUrl ? (
                         <a href={probe.photoFieldEndUrl} target="_blank" rel="noopener noreferrer">
-                          <img src={probe.photoFieldEndUrl} alt="Install photo" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
+                          <img src={probe.photoFieldEndUrl} alt={`Field-end install photo for ${probe.fieldName}`} style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 4, display: 'block' }} />
                         </a>
                       ) : '—'}
                     </td>
@@ -1085,7 +1085,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
         >
           <img
             src={lightboxUrl}
-            alt="Install photo"
+            alt="Enlarged field-end install photo"
             onClick={(e) => e.stopPropagation()}
             style={{ maxWidth: '92vw', maxHeight: '92vh', objectFit: 'contain', borderRadius: 8 }}
           />

@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
 import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import CropXClient from './CropXClient';
+import { staffMetadata } from '@/lib/site-metadata';
 
-export const metadata: Metadata = { title: 'CropX Order Summary' };
+export const metadata = staffMetadata('cropx');
 
 // Data comes from cached Baserow reads; render per-request (don't prerender at build).
 export const dynamic = 'force-dynamic';

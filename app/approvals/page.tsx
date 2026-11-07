@@ -1,6 +1,10 @@
 import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import ApprovalsClient from './ApprovalsClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('approvals');
+
 export const dynamic = 'force-dynamic';
 
 export interface ApprovalItem {

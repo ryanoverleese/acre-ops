@@ -2,6 +2,10 @@ import { getWeatherStations, getBillingEntities } from '@/lib/data';
 import { getTableFieldOptions } from '@/lib/supabase/adapter';
 import WeatherStationsClient from './WeatherStationsClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('weatherStations');
+
 export const dynamic = 'force-dynamic';
 
 export interface ProcessedWeatherStation {

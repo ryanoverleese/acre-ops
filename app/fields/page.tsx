@@ -2,6 +2,10 @@ import { getFieldsData } from '@/lib/fields-data';
 import FieldsClient from './FieldsClient';
 
 // Re-export types so existing imports from this file still work
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('fields');
+
 export type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 
 // Force dynamic rendering to always get fresh data

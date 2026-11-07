@@ -4,6 +4,10 @@ import { getCachedProbeAssignments } from '@/lib/data';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
 import RacksClient from './RacksClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('racks');
+
 export const dynamic = 'force-dynamic';
 
 export default async function RacksPage() {

@@ -3,6 +3,10 @@ import type { Repair, FieldSeason, ProbeAssignment, Order, BillingEntity, Probe 
 import DashboardClient, { DashboardStats, DashboardRepair, DashboardOrder, DashboardInstalledProbe } from './DashboardClient';
 
 // Revalidate dashboard data every 2 minutes instead of force-dynamic
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('dashboard');
+
 export const revalidate = 120;
 
 async function getDashboardData(): Promise<{ stats: DashboardStats; openRepairs: DashboardRepair[]; recentOrders: DashboardOrder[]; installedProbes: DashboardInstalledProbe[] }> {

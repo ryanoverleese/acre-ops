@@ -2,6 +2,10 @@ import { getOperations, getContacts, getBillingEntities, getFields, getProbes } 
 import { buildOperationMap, buildBillingEntityMap, buildBillingToOperationMaps, buildOperationToBillingEntityMap } from '@/lib/data-mappings';
 import OperationsClient, { ProcessedOperation, ContactOption, LinkedContact } from './OperationsClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('operations');
+
 async function getOperationsData(): Promise<{
   operations: ProcessedOperation[];
   allContacts: ContactOption[];

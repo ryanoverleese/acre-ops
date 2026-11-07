@@ -2,6 +2,10 @@ import { unstable_cache } from 'next/cache';
 import { getFieldsData } from '@/lib/fields-data';
 import PlantingClient from './PlantingClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('planting');
+
 export const dynamic = 'force-dynamic';
 
 const GDU_LAT = 40.591112;

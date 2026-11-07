@@ -1,6 +1,10 @@
 import { getBillingEntities, getOperations, getContacts } from '@/lib/data';
 import BillingEntitiesClient from './BillingEntitiesClient';
 
+import { staffMetadata } from '@/lib/site-metadata';
+
+export const metadata = staffMetadata('billingEntities');
+
 export interface ProcessedBillingEntity {
   id: number;
   name: string;

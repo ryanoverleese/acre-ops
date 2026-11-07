@@ -59,9 +59,15 @@ Module._load = function (specifier, parent, isMain) {
   if (specifier === 'next/navigation') return { usePathname: () => pathname };
   if (specifier === 'next-auth/react') return { useSession: () => ({ data: session }), signOut() {} };
   if (specifier === './NotificationBell') return { __esModule: true, default: () => null };
+  if (specifier.startsWith('@/')) {
+    const base = path.join(root, specifier.slice(2));
+    const file = ['.ts', '.tsx', '.js'].map((ext) => base + ext).find((candidate) => fs.existsSync(candidate));
+    if (!file) throw new Error(`Cannot resolve ${specifier}`);
+    return originalLoad.call(this, file, parent, isMain);
+  }
   return originalLoad.call(this, specifier, parent, isMain);
 };
-require.extensions['.tsx'] = (module, filename) => {
+function compile(module, filename) {
   const compiled = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
     compilerOptions: {
       target: ts.ScriptTarget.ES2022,
@@ -71,7 +77,9 @@ require.extensions['.tsx'] = (module, filename) => {
     },
   }).outputText;
   module._compile(compiled, filename);
-};
+}
+require.extensions['.ts'] = compile;
+require.extensions['.tsx'] = compile;
 
 const AppShell = require(shellPath).default;
 
