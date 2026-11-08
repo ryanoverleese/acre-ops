@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import ElevationOverlay, { type TerrainMode, TERRAIN_MODE_LABELS } from '@/components/ElevationOverlay';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+
+const TERRAIN_OPTIONS: TerrainMode[] = ['off', 'color', 'shade', 'contours'];
 
 interface Props {
   // Fall-back center when GPS hasn't returned yet (usually the field_season coords)
@@ -44,6 +47,7 @@ function FollowUser({ pos }: { pos: { lat: number; lng: number } | null }) {
 
 export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, userPos }: Props) {
   const [ready, setReady] = useState(false);
+  const [terrainMode, setTerrainMode] = useState<TerrainMode>('color');
   const mapRef = useRef<L.Map | null>(null);
   const handleMap = useCallback((m: L.Map) => { mapRef.current = m; }, []);
   useEffect(() => { setReady(true); }, []);
@@ -123,11 +127,48 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
         keyboard={false}
       >
         <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
+        <ElevationOverlay mode={terrainMode} />
         <FollowUser pos={userPos} />
         <MapRef onMap={handleMap} />
         {userPos && userIcon && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} interactive={false} />}
         {captured && capturedIcon && <Marker position={[captured.lat, captured.lng]} icon={capturedIcon} interactive={false} />}
       </MapContainer>
+      <label
+        style={{
+          position: 'absolute', top: 8, left: 8, zIndex: 1000,
+          display: 'flex', alignItems: 'center', gap: 4,
+          background: 'rgba(246,242,234,0.95)',
+          border: '1px solid rgba(0,0,0,0.12)',
+          borderRadius: 8,
+          padding: '4px 6px',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          color: '#1F402A',
+        }}
+      >
+        Terrain
+        <select
+          value={terrainMode}
+          onChange={(e) => setTerrainMode(e.target.value as TerrainMode)}
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: 0,
+            textTransform: 'none',
+            border: '1px solid rgba(0,0,0,0.12)',
+            borderRadius: 5,
+            padding: '2px 4px',
+            background: '#fff',
+            maxWidth: 118,
+          }}
+        >
+          {TERRAIN_OPTIONS.map((mode) => (
+            <option key={mode} value={mode}>{TERRAIN_MODE_LABELS[mode]}</option>
+          ))}
+        </select>
+      </label>
       <button style={{ ...btnStyle, top: 8 }} onPointerDown={(e) => { e.preventDefault(); mapRef.current?.zoomIn(); }}>+</button>
       <button style={{ ...btnStyle, top: 52 }} onPointerDown={(e) => { e.preventDefault(); mapRef.current?.zoomOut(); }}>−</button>
     </div>
