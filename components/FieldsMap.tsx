@@ -147,7 +147,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
-  const [showElevation, setShowElevation] = useState(false);
+  const [terrainMode, setTerrainMode] = useState<'off' | 'contours' | 'shade' | 'color'>('off');
   const [measureMode, setMeasureMode] = useState<MeasureMode>(null);
   const [showMeasureMenu, setShowMeasureMenu] = useState(false);
   const [clearMeasureCounter, setClearMeasureCounter] = useState(0);
@@ -416,15 +416,27 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           )}
         </div>
 
-        {/* Elevation overlay toggle */}
-        <label style={{ ...controlStyle, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={showElevation}
-            onChange={(e) => setShowElevation(e.target.checked)}
-            style={{ cursor: 'pointer' }}
-          />
-          Elevation
+        {/* Terrain (USGS 3DEP) — spike: compare contours / shade / color */}
+        <label style={{ ...controlStyle, cursor: 'pointer', gap: 8 }}>
+          <span>Terrain</span>
+          <select
+            value={terrainMode}
+            onChange={(e) => setTerrainMode(e.target.value as typeof terrainMode)}
+            style={{
+              fontSize: 12,
+              border: '1px solid var(--border-1, #d6d3d1)',
+              borderRadius: 6,
+              padding: '2px 6px',
+              background: 'var(--bg-primary, #fff)',
+              color: 'var(--text-primary, #1c1917)',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="off">Off</option>
+            <option value="contours">Contours (2ft)</option>
+            <option value="shade">Gray shade</option>
+            <option value="color">Color + shade</option>
+          </select>
         </label>
 
         {/* PLSS Grid toggle */}
@@ -502,7 +514,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           attribution='&copy; Google'
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
-        <ElevationOverlay show={showElevation} />
+        <ElevationOverlay mode={terrainMode} />
         <PLSSOverlay show={showPLSS} />
         <MeasureTool mode={measureMode} onModeChange={setMeasureMode} clearSignal={clearMeasureCounter} />
         <BoundaryLayer data={boundaries} />

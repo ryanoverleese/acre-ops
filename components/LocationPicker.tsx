@@ -72,7 +72,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
   const [plssLoading, setPlssLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
-  const [showElevation, setShowElevation] = useState(false);
+  const [terrainMode, setTerrainMode] = useState<'off' | 'contours' | 'shade' | 'color'>('off');
   const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
@@ -190,12 +190,17 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
               Soil Map
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showElevation}
-                onChange={(e) => setShowElevation(e.target.checked)}
-              />
-              Elevation
+              Terrain
+              <select
+                value={terrainMode}
+                onChange={(e) => setTerrainMode(e.target.value as typeof terrainMode)}
+                style={{ fontSize: 12, padding: '2px 4px', borderRadius: 4 }}
+              >
+                <option value="off">Off</option>
+                <option value="contours">Contours (2ft)</option>
+                <option value="shade">Gray shade</option>
+                <option value="color">Color + shade</option>
+              </select>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
               <input
@@ -213,7 +218,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
             onPositionChange={handlePositionChange}
             showSoilLayer={showSoilLayer}
             showPLSS={showPLSS}
-            showElevation={showElevation}
+            terrainMode={terrainMode}
             brightness={brightness}
             initialCenter={initialCenter}
             initialZoom={initialZoom}

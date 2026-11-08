@@ -5,7 +5,7 @@ import { MapContainer, TileLayer, Marker, CircleMarker, Tooltip, useMapEvents, W
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PLSSOverlay from './PLSSOverlay';
-import ElevationOverlay from './ElevationOverlay';
+import ElevationOverlay, { type TerrainMode } from './ElevationOverlay';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -30,7 +30,9 @@ interface LocationPickerMapProps {
   onPositionChange: (lat: number, lng: number) => void;
   showSoilLayer?: boolean;
   showPLSS?: boolean;
+  /** @deprecated Prefer terrainMode */
   showElevation?: boolean;
+  terrainMode?: TerrainMode;
   brightness?: number;
   initialCenter?: [number, number];
   initialZoom?: number;
@@ -64,7 +66,20 @@ function MapClickHandler({ onPositionChange }: { onPositionChange: (lat: number,
   return null;
 }
 
-export default function LocationPickerMap({ position, onPositionChange, showSoilLayer = false, showPLSS = false, showElevation = false, brightness = 1.2, initialCenter, initialZoom, referenceMarkers = [] }: LocationPickerMapProps) {
+export default function LocationPickerMap({
+  position,
+  onPositionChange,
+  showSoilLayer = false,
+  showPLSS = false,
+  showElevation = false,
+  terrainMode,
+  brightness = 1.2,
+  initialCenter,
+  initialZoom,
+  referenceMarkers = [],
+}: LocationPickerMapProps) {
+  const resolvedTerrain: TerrainMode = terrainMode ?? (showElevation ? 'contours' : 'off');
+
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -112,7 +127,7 @@ export default function LocationPickerMap({ position, onPositionChange, showSoil
           />
         </>
       )}
-      <ElevationOverlay show={showElevation} />
+      <ElevationOverlay mode={resolvedTerrain} />
       <PLSSOverlay show={showPLSS} />
       <MapClickHandler onPositionChange={onPositionChange} />
       {referenceMarkers.map((m, i) => {
