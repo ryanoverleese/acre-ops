@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import BoundaryLayer from '@/components/BoundaryLayer';
+import ElevationOverlay, { type TerrainMode, TERRAIN_MODE_LABELS } from '@/components/ElevationOverlay';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
+
+const TERRAIN_OPTIONS: TerrainMode[] = ['off', 'color', 'shade', 'contours'];
 
 function pin() {
   return L.divIcon({
@@ -106,6 +109,7 @@ interface Props {
 
 export default function FieldMiniMap({ lat, lng, boundary }: Props) {
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
+  const [terrainMode, setTerrainMode] = useState<TerrainMode>('color');
 
   if (!lat || !lng) return null;
 
@@ -119,12 +123,54 @@ export default function FieldMiniMap({ lat, lng, boundary }: Props) {
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
+        <ElevationOverlay mode={terrainMode} />
         <BoundaryLayer data={boundary} />
         <Marker position={[lat, lng]} icon={pin()} interactive={false} />
         <UserLocation posRef={posRef} />
         <RecenterListener posRef={posRef} />
         <CenterOn lat={lat} lng={lng} />
       </MapContainer>
+
+      {/* Terrain — same 3DEP modes as Fields / LocationPicker */}
+      <label
+        style={{
+          position: 'absolute', top: 12, left: 12, zIndex: 1000,
+          display: 'flex', alignItems: 'center', gap: 6,
+          background: 'var(--bone-raised,#f5f1e8)',
+          border: '1px solid var(--border-1,#e0ddd6)',
+          borderRadius: 10,
+          padding: '6px 8px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.14)',
+          fontSize: 11,
+          fontFamily: 'var(--font-display, system-ui)',
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          color: 'var(--field-green,#1F402A)',
+        }}
+      >
+        Terrain
+        <select
+          value={terrainMode}
+          onChange={(e) => setTerrainMode(e.target.value as TerrainMode)}
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            letterSpacing: 0,
+            textTransform: 'none',
+            border: '1px solid var(--border-1,#e0ddd6)',
+            borderRadius: 6,
+            padding: '3px 6px',
+            background: 'var(--bone,#F6F2EA)',
+            color: 'var(--ink,#1c1917)',
+            maxWidth: 130,
+          }}
+        >
+          {TERRAIN_OPTIONS.map((mode) => (
+            <option key={mode} value={mode}>{TERRAIN_MODE_LABELS[mode]}</option>
+          ))}
+        </select>
+      </label>
 
       {/* Recenter — bottom-right, matches main map button */}
       <button

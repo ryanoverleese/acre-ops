@@ -72,7 +72,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
   const [plssLoading, setPlssLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
-  const [terrainMode, setTerrainMode] = useState<'off' | 'contours' | 'shade' | 'color'>('off');
+  const [terrainMode, setTerrainMode] = useState<'off' | 'contours' | 'shade' | 'color'>('color');
   const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
