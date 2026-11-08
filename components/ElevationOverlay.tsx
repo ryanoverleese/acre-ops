@@ -4,7 +4,8 @@ import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import * as esriLeaflet from 'esri-leaflet';
 
-const ELEVATION_URL = 'https://elevation.nationalmap.gov/arcgis/rest/services/3DEPElevation/ImageServer';
+// Same-origin proxy — direct USGS ImageServer calls fail CORS from localhost / some clients.
+const ELEVATION_URL = '/api/usgs-elevation';
 
 /**
  * Terrain overlay modes for placement maps (USGS 3DEP ImageServer).
