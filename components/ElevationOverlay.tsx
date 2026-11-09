@@ -31,9 +31,15 @@ export const TERRAIN_RAMP_CSS = elevationCssGradient();
 const MODE_OPACITY: Record<Exclude<TerrainMode, 'off'>, number> = {
   colorshade: 0.72,
   color: 0.7,
-  shade: 0.55,
+  // Solid hillshade — no see-through satellite under gray relief
+  shade: 1,
   contours: 0.8,
 };
+
+/** Color modes multiply over imagery; gray shade covers it fully. */
+function blendForMode(mode: TerrainMode): string {
+  return mode === 'shade' ? 'normal' : 'multiply';
+}
 
 function walkRings(coords: unknown, out: number[][][]): void {
   if (!Array.isArray(coords) || coords.length === 0) return;
@@ -99,10 +105,15 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
     if (!map.getPane(ELEVATION_PANE)) {
       const pane = map.createPane(ELEVATION_PANE);
       pane.style.zIndex = '350';
-      // Soft multiply over satellite — closer to CutSheetRX lidar-on-imagery look
-      pane.style.mixBlendMode = 'multiply';
     }
   }, [map]);
+
+  // Pane blend: multiply for tinted color modes, normal (opaque) for gray shade
+  useEffect(() => {
+    const pane = map.getPane(ELEVATION_PANE);
+    if (!pane) return;
+    pane.style.mixBlendMode = blendForMode(resolved);
+  }, [map, resolved]);
 
   const hasClip = Boolean(clipTo?.features?.length);
 
