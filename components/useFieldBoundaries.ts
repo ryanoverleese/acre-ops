@@ -8,7 +8,7 @@ export interface FieldBoundaryCollection {
     type: 'Feature';
     id: number;
     geometry: { type: string; coordinates: unknown };
-    properties: { fieldId: number; source?: string; edited?: boolean; crs?: string };
+    properties: { fieldId: number; source?: string; edited?: boolean; crs?: string; cropxFieldUuid?: string | null };
   }>;
 }
 
