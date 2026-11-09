@@ -2260,6 +2260,14 @@ export default function FieldsClient({
                               return false;
                             });
 
+                            // Prefer probe placement pins; fall back to field lat/lng
+                            const placementPins = fieldSeasonProbeAssignments
+                              .filter((pa) => pa.placementLat && pa.placementLng)
+                              .map((pa) => ({ lat: Number(pa.placementLat), lng: Number(pa.placementLng) }));
+                            const mapPins = placementPins.length
+                              ? placementPins
+                              : (field.lat && field.lng ? [{ lat: Number(field.lat), lng: Number(field.lng) }] : []);
+
                             const renderCell = (colKey: FieldColumnKey) => (
                               <FieldCell
                                 key={colKey}
@@ -2288,6 +2296,7 @@ export default function FieldsClient({
                                 onInlineFieldSave={handleInlineFieldSave}
                                 onToggleExpand={toggleFieldSeasonExpand}
                                 boundaryFeature={boundaryByFieldId.get(field.id) ?? null}
+                                mapPins={mapPins}
                               />
                             );
 
