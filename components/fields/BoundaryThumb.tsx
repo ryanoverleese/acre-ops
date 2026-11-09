@@ -16,6 +16,20 @@ function collectRings(coords: unknown, out: Ring[]): void {
   for (const part of coords) collectRings(part, out);
 }
 
+function geometryOf(feature?: BoundaryFeature | null): { type?: string; coordinates?: unknown } | null {
+  const raw = feature?.geometry;
+  if (!raw) return null;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw) as { type?: string; coordinates?: unknown };
+      return parsed && typeof parsed === 'object' ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return raw;
+}
+
 function bboxOfRings(rings: Ring[]): BBox | null {
   let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity;
   for (const ring of rings) {
@@ -106,7 +120,7 @@ function ringsToSvgPath(rings: Ring[], view: BBox): string {
 }
 
 export type BoundaryFeature = {
-  geometry?: { type?: string; coordinates?: unknown } | null;
+  geometry?: { type?: string; coordinates?: unknown } | string | null;
 };
 
 interface Props {
@@ -122,7 +136,8 @@ interface Props {
 export default function BoundaryThumb({ feature, pins = [], size = 56, title, onClick }: Props) {
   const model = useMemo(() => {
     const rings: Ring[] = [];
-    if (feature?.geometry?.coordinates) collectRings(feature.geometry.coordinates, rings);
+    const geometry = geometryOf(feature);
+    if (geometry?.coordinates) collectRings(geometry.coordinates, rings);
     const ringBox = rings.length ? bboxOfRings(rings) : null;
     const validPins = pins.filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng) && p.lat !== 0 && p.lng !== 0);
     const box = expandBBox(ringBox, validPins);
@@ -151,11 +166,26 @@ export default function BoundaryThumb({ feature, pins = [], size = 56, title, on
       <img src={model.src} alt="" className="boundary-thumb-img" loading="lazy" decoding="async" />
       <svg className="boundary-thumb-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
         {model.path ? (
-          <path d={model.path} fill="rgba(31,64,42,0.35)" stroke="#F6F2EA" strokeWidth="1.75" vectorEffect="non-scaling-stroke" />
+          <>
+            {/* Dark halo so the outline reads on bright pivot pads */}
+            <path
+              d={model.path}
+              fill="rgba(31,64,42,0.42)"
+              stroke="#1A2E1F"
+              strokeWidth="4"
+              vectorEffect="non-scaling-stroke"
+            />
+            <path
+              d={model.path}
+              fill="none"
+              stroke="#F6F2EA"
+              strokeWidth="1.75"
+              vectorEffect="non-scaling-stroke"
+            />
+          </>
         ) : null}
         {model.pinPcts.map((p, i) => (
           <g key={i} transform={`translate(${p.x} ${p.y})`}>
-            {/* Drop pin — field green with white rim so it reads on satellite */}
             <circle r="5.2" fill="#1F402A" stroke="#F6F2EA" strokeWidth="1.6" vectorEffect="non-scaling-stroke" />
             <circle r="2" fill="#F6F2EA" />
           </g>
