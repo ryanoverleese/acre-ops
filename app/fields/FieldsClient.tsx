@@ -22,6 +22,11 @@ const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   loading: () => <div className="fields-map fields-map-loading"><div className="loading"><div className="loading-spinner"></div>Loading map...</div></div>,
 });
 
+const FieldDetailMap = dynamic(() => import('@/components/fields/FieldDetailMap'), {
+  ssr: false,
+  loading: () => <div className="field-detail-map field-detail-map-loading">Loading map…</div>,
+});
+
 const LocationPicker = dynamic(() => import('@/components/LocationPicker'), {
   ssr: false,
   loading: () => <div className="location-picker-overlay"><div className="location-picker-modal"><div className="loading">Loading map...</div></div></div>,
@@ -221,6 +226,7 @@ export default function FieldsClient({
   const [colorBy, setColorBy] = useState<ColorByMode>('none');
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [showMoreFieldDetails, setShowMoreFieldDetails] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
   const [currentTab, setCurrentTab] = useState<TabView>(() => {
     // Restore tab from sessionStorage if available
@@ -1026,6 +1032,7 @@ export default function FieldsClient({
 
   const handleRowClick = (field: ProcessedField) => {
     setSelectedField(field);
+    setShowMoreFieldDetails(false);
     setEditForm({
       name: field.name,
       acres: field.acres,
@@ -1066,11 +1073,24 @@ export default function FieldsClient({
   const handleClosePanel = () => {
     setSelectedField(null);
     setIsEditing(false);
+    setShowMoreFieldDetails(false);
     setEditForm({});
     setShowProbeAssign(false);
     setShowSeasonFieldsEdit(false);
     setSelectedProbeId('');
     setSelectedProbe2Id('');
+  };
+
+  const handlePlacePinFromMap = () => {
+    if (!selectedField) return;
+    setIsEditing(true);
+    setLocationPickerTarget('edit');
+    setLocationPickerTitle(`${selectedField.name} — Place pin`);
+    if (selectedField.lat && selectedField.lng) {
+      setLocationPickerInitialCenter([selectedField.lat, selectedField.lng]);
+      setLocationPickerInitialZoom(15);
+    }
+    setShowLocationPicker(true);
   };
 
   const handleEdit = () => {
@@ -2764,7 +2784,7 @@ export default function FieldsClient({
                   </svg>
                 </button>
               </div>
-              <div className="detail-panel-content">
+              <div className={`detail-panel-content${isEditing ? '' : ' detail-panel-content-map-first'}`}>
                 {isEditing ? (
                   <div className="edit-form">
                     <div className="form-group">
@@ -2975,292 +2995,307 @@ export default function FieldsClient({
                     </div>
                   </div>
                 ) : (
-                  <div className="detail-info">
-                    <div className="detail-row">
-                      <span className="detail-label">Operation</span>
-                      <span className="detail-value">{selectedField.operation}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Billing Entity</span>
-                      <span className="detail-value">{selectedField.billingEntityName || '—'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Season</span>
-                      <span className="detail-value">{selectedField.season || '—'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Acres</span>
-                      <span className="detail-value">{selectedField.acres}</span>
-                    </div>
-                    {selectedField.pivotAcres && (
+                  <>
+                    <FieldDetailMap
+                      fieldId={selectedField.id}
+                      lat={selectedField.lat || null}
+                      lng={selectedField.lng || null}
+                      onPlacePin={handlePlacePinFromMap}
+                    />
+                    <div className="detail-info detail-info-map-first">
                       <div className="detail-row">
-                        <span className="detail-label">Pivot Acres</span>
-                        <span className="detail-value">{selectedField.pivotAcres}</span>
+                        <span className="detail-label">Operation</span>
+                        <span className="detail-value">{selectedField.operation}</span>
                       </div>
-                    )}
-                    <div className="detail-row">
-                      <span className="detail-label">Crop</span>
-                      <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Service Type</span>
-                      <span className="detail-value">{selectedField.serviceType || '—'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Antenna Type</span>
-                      <span className="detail-value">{selectedField.antennaType || '—'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Probe</span>
-                      <span className="detail-value">{selectedField.probe || '—'}</span>
-                    </div>
-                    <div className="detail-row">
-                      <span className="detail-label">Status</span>
-                      <span className="detail-value">{getStatusBadge(selectedField.probeStatus)}</span>
-                    </div>
-                    {selectedField.lat && selectedField.lng && (
                       <div className="detail-row">
-                        <span className="detail-label">Location</span>
-                        <span className="detail-value">{Number(selectedField.lat).toFixed(4)}, {Number(selectedField.lng).toFixed(4)}</span>
+                        <span className="detail-label">Season</span>
+                        <span className="detail-value">{selectedField.season || '—'}</span>
                       </div>
-                    )}
-                    {selectedField.waterSource && (
                       <div className="detail-row">
-                        <span className="detail-label">Water Source</span>
-                        <span className="detail-value">{selectedField.waterSource}</span>
+                        <span className="detail-label">Acres</span>
+                        <span className="detail-value">
+                          {selectedField.acres}
+                          {selectedField.pivotAcres ? ` · pivot ${selectedField.pivotAcres}` : ''}
+                        </span>
                       </div>
-                    )}
-                    {selectedField.fuelSource && (
                       <div className="detail-row">
-                        <span className="detail-label">Fuel Source</span>
-                        <span className="detail-value">{selectedField.fuelSource}</span>
+                        <span className="detail-label">Crop</span>
+                        <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
                       </div>
-                    )}
-                    {selectedField.notes && (
                       <div className="detail-row">
-                        <span className="detail-label">Notes</span>
-                        <span className="detail-value">{selectedField.notes}</span>
+                        <span className="detail-label">Probe</span>
+                        <span className="detail-value">{selectedField.probe || '—'}</span>
                       </div>
-                    )}
-
-                    {/* Irrigation Details Section */}
-                    {(selectedField.irrigationType || selectedField.rowDirection || selectedField.fieldDirections) && (
-                      <div className="fields-section-divider">
-                        <div className="detail-row fields-section-title">
-                          <span className="detail-label">Irrigation Details</span>
-                        </div>
-                        {selectedField.fieldDirections && (
-                          <div className="detail-row">
-                            <span className="detail-label">Field Directions</span>
-                            <span className="detail-value">{selectedField.fieldDirections}</span>
-                          </div>
-                        )}
-                        {selectedField.irrigationType && (
-                          <div className="detail-row">
-                            <span className="detail-label">Irrigation Type</span>
-                            <span className="detail-value">{selectedField.irrigationType}</span>
-                          </div>
-                        )}
-                        {selectedField.rowDirection && (
-                          <div className="detail-row">
-                            <span className="detail-label">Row Direction</span>
-                            <span className="detail-value">{selectedField.rowDirection}</span>
-                          </div>
-                        )}
-                        {/* Drip-specific fields - only show when irrigation type is Drip */}
-                        {selectedField.irrigationType === 'Drip' && (
-                          <>
-                            {selectedField.dripTubingDirection && (
-                              <div className="detail-row">
-                                <span className="detail-label">Tubing Direction</span>
-                                <span className="detail-value">{selectedField.dripTubingDirection}</span>
-                              </div>
-                            )}
-                            {selectedField.dripTubingSpacing && (
-                              <div className="detail-row">
-                                <span className="detail-label">Tubing Spacing</span>
-                                <span className="detail-value">{selectedField.dripTubingSpacing}"</span>
-                              </div>
-                            )}
-                            {selectedField.dripEmitterSpacing && (
-                              <div className="detail-row">
-                                <span className="detail-label">Emitter Spacing</span>
-                                <span className="detail-value">{selectedField.dripEmitterSpacing}"</span>
-                              </div>
-                            )}
-                            {selectedField.dripZones && (
-                              <div className="detail-row">
-                                <span className="detail-label">Zones</span>
-                                <span className="detail-value">{selectedField.dripZones}</span>
-                              </div>
-                            )}
-                            {selectedField.dripGpm && (
-                              <div className="detail-row">
-                                <span className="detail-label">GPM</span>
-                                <span className="detail-value">{selectedField.dripGpm}</span>
-                              </div>
-                            )}
-                            {selectedField.dripDepth && (
-                              <div className="detail-row">
-                                <span className="detail-label">Tubing Depth</span>
-                                <span className="detail-value">{selectedField.dripDepth}"</span>
-                              </div>
-                            )}
-                          </>
-                        )}
+                      <div className="detail-row">
+                        <span className="detail-label">Status</span>
+                        <span className="detail-value">{getStatusBadge(selectedField.probeStatus)}</span>
                       </div>
-                    )}
-
-                    {/* Location Data Section */}
-                    {(selectedField.plssTownship || selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
-                      <div className="fields-section-divider">
-                        <div className="detail-row fields-section-title">
-                          <span className="detail-label">Location Data</span>
-                        </div>
-                        {selectedField.plssTownship && (
-                          <div className="detail-row">
-                            <span className="detail-label">PLSS Location</span>
-                            <span className="detail-value">
-                              T{selectedField.plssTownship}N R{selectedField.plssRange}W Sec {selectedField.plssSection}
-                              {selectedField.plssDescription ? ` — ${selectedField.plssDescription}` : ''}
-                            </span>
-                          </div>
-                        )}
-                        {selectedField.elevation && (
-                          <div className="detail-row">
-                            <span className="detail-label">Elevation</span>
-                            <span className="detail-value">{selectedField.elevation} ft</span>
-                          </div>
-                        )}
-                        {selectedField.soilType && (
-                          <div className="detail-row">
-                            <span className="detail-label">Soil Type</span>
-                            <span className="detail-value">{selectedField.soilType}</span>
-                          </div>
-                        )}
-                        {selectedField.placementNotes && (
-                          <div className="detail-row">
-                            <span className="detail-label">Placement Notes</span>
-                            <span className="detail-value">{selectedField.placementNotes}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Install Planning Section */}
-                    {(selectedField.routeOrder || selectedField.plannedInstaller || selectedField.readyToInstall || selectedField.plantingDate) && (
-                      <div className="fields-section-divider">
-                        <div className="detail-row fields-section-title">
-                          <span className="detail-label">Install Planning</span>
-                        </div>
-                        {selectedField.plantingDate && (
-                          <div className="detail-row">
-                            <span className="detail-label">Days Since Planting</span>
-                            <span className="detail-value fields-days-planted">
-                              {Math.floor((Date.now() - new Date(selectedField.plantingDate).getTime()) / 86400000)} days
-                              <span className="fields-planted-date">
-                                (planted {selectedField.plantingDate})
-                              </span>
-                            </span>
-                          </div>
-                        )}
-                        {selectedField.routeOrder && (
-                          <div className="detail-row">
-                            <span className="detail-label">Route Order</span>
-                            <span className="detail-value">#{selectedField.routeOrder}</span>
-                          </div>
-                        )}
-                        {selectedField.plannedInstaller && (
-                          <div className="detail-row">
-                            <span className="detail-label">Planned Installer</span>
-                            <span className="detail-value">{selectedField.plannedInstaller}</span>
-                          </div>
-                        )}
+                      {selectedField.notes && (
                         <div className="detail-row">
-                          <span className="detail-label">Ready to Install</span>
-                          <span className="detail-value">
-                            {selectedField.readyToInstall ? (
-                              <span className="fields-ready-yes">Yes</span>
-                            ) : (
-                              <span className="fields-ready-no">No</span>
-                            )}
-                          </span>
+                          <span className="detail-label">Notes</span>
+                          <span className="detail-value">{selectedField.notes}</span>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {/* Install Details Section - shown when installed */}
-                    {selectedField.probeStatus === 'Installed' && (selectedField.installer || selectedField.installDate || selectedField.installLat) && (
-                      <div className="fields-section-divider">
-                        <div className="detail-row fields-section-title fields-section-title-accent">
-                          <span className="detail-label">Install Details</span>
+                      {/* Install Details — keep visible when installed */}
+                      {selectedField.probeStatus === 'Installed' && (selectedField.installer || selectedField.installDate || selectedField.installLat) && (
+                        <div className="fields-section-divider">
+                          <div className="detail-row fields-section-title fields-section-title-accent">
+                            <span className="detail-label">Install Details</span>
+                          </div>
+                          {selectedField.installer && (
+                            <div className="detail-row">
+                              <span className="detail-label">Installer</span>
+                              <span className="detail-value">{selectedField.installer}</span>
+                            </div>
+                          )}
+                          {selectedField.installDate && (
+                            <div className="detail-row">
+                              <span className="detail-label">Install Date</span>
+                              <span className="detail-value">{selectedField.installDate}</span>
+                            </div>
+                          )}
+                          {selectedField.installLat && selectedField.installLng && (
+                            <div className="detail-row">
+                              <span className="detail-label">Install Location</span>
+                              <span className="detail-value">
+                                <a
+                                  href={`https://www.google.com/maps?q=${selectedField.installLat},${selectedField.installLng}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="fields-install-link"
+                                >
+                                  {Number(selectedField.installLat).toFixed(5)}, {Number(selectedField.installLng).toFixed(5)}
+                                </a>
+                              </span>
+                            </div>
+                          )}
+                          {selectedField.notesThread && selectedField.notesThread.length > 0 ? (
+                            <div className="detail-row">
+                              <span className="detail-label">Notes</span>
+                              <span className="detail-value"><NotesThread thread={selectedField.notesThread} /></span>
+                            </div>
+                          ) : selectedField.installNotes && (
+                            <div className="detail-row">
+                              <span className="detail-label">Install Notes</span>
+                              <span className="detail-value">{selectedField.installNotes}</span>
+                            </div>
+                          )}
+                          {(selectedField.installPhotoFieldEndUrl || selectedField.installPhotoExtraUrl) && (
+                            <div className="fields-photos">
+                              <span className="detail-label fields-photos-label">Install Photos</span>
+                              <div className="fields-photos-grid">
+                                {selectedField.installPhotoFieldEndUrl && (
+                                  <a href={selectedField.installPhotoFieldEndUrl} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                      src={selectedField.installPhotoFieldEndUrl}
+                                      alt={`Field-end install photo for ${selectedField.name}`}
+                                      className="fields-photo-thumb"
+                                    />
+                                  </a>
+                                )}
+                                {selectedField.installPhotoExtraUrl && (
+                                  <a href={selectedField.installPhotoExtraUrl} target="_blank" rel="noopener noreferrer">
+                                    <img
+                                      src={selectedField.installPhotoExtraUrl}
+                                      alt={`Additional install photo for ${selectedField.name}`}
+                                      className="fields-photo-thumb"
+                                    />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        {selectedField.installer && (
+                      )}
+
+                      <button
+                        type="button"
+                        className="field-detail-more-toggle"
+                        aria-expanded={showMoreFieldDetails}
+                        onClick={() => setShowMoreFieldDetails(v => !v)}
+                      >
+                        {showMoreFieldDetails ? 'Hide details' : 'More details'}
+                      </button>
+
+                      {showMoreFieldDetails && (
+                        <div className="field-detail-more">
                           <div className="detail-row">
-                            <span className="detail-label">Installer</span>
-                            <span className="detail-value">{selectedField.installer}</span>
+                            <span className="detail-label">Billing Entity</span>
+                            <span className="detail-value">{selectedField.billingEntityName || '—'}</span>
                           </div>
-                        )}
-                        {selectedField.installDate && (
                           <div className="detail-row">
-                            <span className="detail-label">Install Date</span>
-                            <span className="detail-value">{selectedField.installDate}</span>
+                            <span className="detail-label">Service Type</span>
+                            <span className="detail-value">{selectedField.serviceType || '—'}</span>
                           </div>
-                        )}
-                        {selectedField.installLat && selectedField.installLng && (
                           <div className="detail-row">
-                            <span className="detail-label">Install Location</span>
-                            <span className="detail-value">
-                              <a
-                                href={`https://www.google.com/maps?q=${selectedField.installLat},${selectedField.installLng}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="fields-install-link"
-                              >
-                                {Number(selectedField.installLat).toFixed(5)}, {Number(selectedField.installLng).toFixed(5)}
-                              </a>
-                            </span>
+                            <span className="detail-label">Antenna Type</span>
+                            <span className="detail-value">{selectedField.antennaType || '—'}</span>
                           </div>
-                        )}
-                        {selectedField.notesThread && selectedField.notesThread.length > 0 ? (
-                          <div className="detail-row">
-                            <span className="detail-label">Notes</span>
-                            <span className="detail-value"><NotesThread thread={selectedField.notesThread} /></span>
-                          </div>
-                        ) : selectedField.installNotes && (
-                          <div className="detail-row">
-                            <span className="detail-label">Install Notes</span>
-                            <span className="detail-value">{selectedField.installNotes}</span>
-                          </div>
-                        )}
-                        {(selectedField.installPhotoFieldEndUrl || selectedField.installPhotoExtraUrl) && (
-                          <div className="fields-photos">
-                            <span className="detail-label fields-photos-label">Install Photos</span>
-                            <div className="fields-photos-grid">
-                              {selectedField.installPhotoFieldEndUrl && (
-                                <a href={selectedField.installPhotoFieldEndUrl} target="_blank" rel="noopener noreferrer">
-                                  <img
-                                    src={selectedField.installPhotoFieldEndUrl}
-                                    alt={`Field-end install photo for ${selectedField.name}`}
-                                    className="fields-photo-thumb"
-                                  />
-                                </a>
+                          {selectedField.lat && selectedField.lng && (
+                            <div className="detail-row">
+                              <span className="detail-label">Pin</span>
+                              <span className="detail-value">{Number(selectedField.lat).toFixed(4)}, {Number(selectedField.lng).toFixed(4)}</span>
+                            </div>
+                          )}
+                          {selectedField.waterSource && (
+                            <div className="detail-row">
+                              <span className="detail-label">Water Source</span>
+                              <span className="detail-value">{selectedField.waterSource}</span>
+                            </div>
+                          )}
+                          {selectedField.fuelSource && (
+                            <div className="detail-row">
+                              <span className="detail-label">Fuel Source</span>
+                              <span className="detail-value">{selectedField.fuelSource}</span>
+                            </div>
+                          )}
+
+                          {(selectedField.irrigationType || selectedField.rowDirection || selectedField.fieldDirections) && (
+                            <div className="fields-section-divider">
+                              <div className="detail-row fields-section-title">
+                                <span className="detail-label">Irrigation</span>
+                              </div>
+                              {selectedField.fieldDirections && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Field Directions</span>
+                                  <span className="detail-value">{selectedField.fieldDirections}</span>
+                                </div>
                               )}
-                              {selectedField.installPhotoExtraUrl && (
-                                <a href={selectedField.installPhotoExtraUrl} target="_blank" rel="noopener noreferrer">
-                                  <img
-                                    src={selectedField.installPhotoExtraUrl}
-                                    alt={`Additional install photo for ${selectedField.name}`}
-                                    className="fields-photo-thumb"
-                                  />
-                                </a>
+                              {selectedField.irrigationType && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Irrigation Type</span>
+                                  <span className="detail-value">{selectedField.irrigationType}</span>
+                                </div>
+                              )}
+                              {selectedField.rowDirection && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Row Direction</span>
+                                  <span className="detail-value">{selectedField.rowDirection}</span>
+                                </div>
+                              )}
+                              {selectedField.irrigationType === 'Drip' && (
+                                <>
+                                  {selectedField.dripTubingDirection && (
+                                    <div className="detail-row">
+                                      <span className="detail-label">Tubing Direction</span>
+                                      <span className="detail-value">{selectedField.dripTubingDirection}</span>
+                                    </div>
+                                  )}
+                                  {selectedField.dripTubingSpacing && (
+                                    <div className="detail-row">
+                                      <span className="detail-label">Tubing Spacing</span>
+                                      <span className="detail-value">{selectedField.dripTubingSpacing}&quot;</span>
+                                    </div>
+                                  )}
+                                  {selectedField.dripEmitterSpacing && (
+                                    <div className="detail-row">
+                                      <span className="detail-label">Emitter Spacing</span>
+                                      <span className="detail-value">{selectedField.dripEmitterSpacing}&quot;</span>
+                                    </div>
+                                  )}
+                                  {selectedField.dripZones && (
+                                    <div className="detail-row">
+                                      <span className="detail-label">Zones</span>
+                                      <span className="detail-value">{selectedField.dripZones}</span>
+                                    </div>
+                                  )}
+                                  {selectedField.dripGpm && (
+                                    <div className="detail-row">
+                                      <span className="detail-label">GPM</span>
+                                      <span className="detail-value">{selectedField.dripGpm}</span>
+                                    </div>
+                                  )}
+                                  {selectedField.dripDepth && (
+                                    <div className="detail-row">
+                                      <span className="detail-label">Tubing Depth</span>
+                                      <span className="detail-value">{selectedField.dripDepth}&quot;</span>
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                          )}
+
+                          {(selectedField.plssTownship || selectedField.elevation || selectedField.soilType || selectedField.placementNotes) && (
+                            <div className="fields-section-divider">
+                              <div className="detail-row fields-section-title">
+                                <span className="detail-label">Location Data</span>
+                              </div>
+                              {selectedField.plssTownship && (
+                                <div className="detail-row">
+                                  <span className="detail-label">PLSS Location</span>
+                                  <span className="detail-value">
+                                    T{selectedField.plssTownship}N R{selectedField.plssRange}W Sec {selectedField.plssSection}
+                                    {selectedField.plssDescription ? ` — ${selectedField.plssDescription}` : ''}
+                                  </span>
+                                </div>
+                              )}
+                              {selectedField.elevation && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Elevation</span>
+                                  <span className="detail-value">{selectedField.elevation} ft</span>
+                                </div>
+                              )}
+                              {selectedField.soilType && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Soil Type</span>
+                                  <span className="detail-value">{selectedField.soilType}</span>
+                                </div>
+                              )}
+                              {selectedField.placementNotes && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Placement Notes</span>
+                                  <span className="detail-value">{selectedField.placementNotes}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {(selectedField.routeOrder || selectedField.plannedInstaller || selectedField.readyToInstall || selectedField.plantingDate) && (
+                            <div className="fields-section-divider">
+                              <div className="detail-row fields-section-title">
+                                <span className="detail-label">Install Planning</span>
+                              </div>
+                              {selectedField.plantingDate && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Days Since Planting</span>
+                                  <span className="detail-value fields-days-planted">
+                                    {Math.floor((Date.now() - new Date(selectedField.plantingDate).getTime()) / 86400000)} days
+                                    <span className="fields-planted-date">
+                                      (planted {selectedField.plantingDate})
+                                    </span>
+                                  </span>
+                                </div>
+                              )}
+                              {selectedField.routeOrder && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Route Order</span>
+                                  <span className="detail-value">#{selectedField.routeOrder}</span>
+                                </div>
+                              )}
+                              {selectedField.plannedInstaller && (
+                                <div className="detail-row">
+                                  <span className="detail-label">Planned Installer</span>
+                                  <span className="detail-value">{selectedField.plannedInstaller}</span>
+                                </div>
+                              )}
+                              <div className="detail-row">
+                                <span className="detail-label">Ready to Install</span>
+                                <span className="detail-value">
+                                  {selectedField.readyToInstall ? (
+                                    <span className="fields-ready-yes">Yes</span>
+                                  ) : (
+                                    <span className="fields-ready-no">No</span>
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
               <div className="detail-panel-footer">
