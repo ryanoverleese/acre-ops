@@ -456,8 +456,9 @@ test('file-source migration keeps an existing cropx boundary valid', async () =>
   const dir = path.join(root, 'supabase/migrations');
   const files = fs.readdirSync(dir).filter(name => name.endsWith('.sql')).sort();
   const added = '20261109184500_field_boundary_file_source.sql';
+  // Later migrations assume the file-source lineage constraint already exists.
   for (const name of files) {
-    if (name === added) continue;
+    if (name >= added) continue;
     await db.exec(fs.readFileSync(path.join(dir, name), 'utf8'));
   }
   const migration = fs.readFileSync(path.join(dir, added), 'utf8');
@@ -618,4 +619,36 @@ test('a file boundary is keyed by fields.id and re-applying the same file change
   const cropxAfter = (await f.db.query('SELECT cropx_field_uuid, source, geometry_sha256, updated_at FROM public.field_boundaries WHERE field_id = $1', [other.id])).rows[0];
   assert.deepEqual(cropxAfter, cropxBefore);
   block();
+});
+
+test('hand-drawn PATCH creates a boundary when the field has none', async () => {
+  const a = f.load('lib/supabase/adapter.ts');
+  const blank = await a.createRow('fields', { name: 'No Boundary Yet', lat: 40.5, lng: -99.2 });
+  const read = f.load('app/api/field-boundaries/route.ts');
+  const { NextRequest } = require('next/server');
+  function patch(body) {
+    return new NextRequest('http://localhost/api/field-boundaries', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+  f.session = { user: { id: String(admin.id) } };
+  const geometry = square(-99.25);
+  const created = await read.PATCH(patch({ fieldId: blank.id, geometry }));
+  assert.equal(created.status, 200);
+  const body = await created.json();
+  assert.equal(body.created, true);
+  const row = (await f.db.query(
+    `SELECT source, cropx_field_uuid, source_file_name, source_feature_name, edited_at, geometry_sha256
+       FROM public.field_boundaries WHERE field_id = $1`, [blank.id])).rows[0];
+  assert.equal(row.source, 'edited');
+  assert.equal(row.cropx_field_uuid, null);
+  assert.equal(row.source_file_name, null);
+  assert.equal(row.source_feature_name, null);
+  assert.ok(row.edited_at);
+  assert.equal(row.geometry_sha256, engine.geometrySha256(geometry));
+  const again = await read.PATCH(patch({ fieldId: blank.id, geometry: square(-99.26) }));
+  assert.equal(again.status, 200);
+  assert.equal((await again.json()).created, false);
 });

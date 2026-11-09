@@ -2498,11 +2498,16 @@ a.notification-item {
   max-width: 120px;
 }
 
-.field-detail-map-place {
+.field-detail-map-actions {
   position: absolute;
   bottom: 12px;
   right: 12px;
   z-index: 1000;
+  display: flex;
+  gap: 8px;
+}
+
+.field-detail-map-place {
   border: 1px solid var(--border-1, #e0ddd6);
   border-radius: 10px;
   padding: 8px 12px;
@@ -2516,6 +2521,62 @@ a.notification-item {
 
 .field-detail-map-place:hover {
   background: var(--bg-card, #fff);
+}
+
+.field-detail-map-drawing .leaflet-container {
+  cursor: crosshair;
+}
+
+.field-detail-map-draw-bar {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1000;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-1, #e0ddd6);
+  background: rgba(246, 242, 234, 0.96);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+}
+
+.field-detail-map-draw-hint {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--field-green, #1F402A);
+}
+
+.field-detail-map-draw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.field-detail-map-draw-actions button {
+  border: 1px solid var(--border-1, #e0ddd6);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--bone, #F6F2EA);
+  color: var(--ink, #1c1917);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.field-detail-map-draw-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.field-detail-map-draw-save {
+  background: var(--field-green, #1F402A) !important;
+  color: #F6F2EA !important;
+  border-color: var(--field-green, #1F402A) !important;
 }
 
 .field-detail-more-toggle {
