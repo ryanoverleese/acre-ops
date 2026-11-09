@@ -12,6 +12,7 @@ import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
 import SearchableSelect from '@/components/SearchableSelect';
 import NotesThread from '@/components/NotesThread';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
+import { useFieldBoundaries } from '@/components/useFieldBoundaries';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
@@ -53,7 +54,7 @@ function toOptions(opts: { id: number; value: string; color: string }[] | undefi
 
 // Column definitions for all tabs
 type FieldColumnKey =
-  | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
+  | 'boundary' | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
   | 'hybrid' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
@@ -70,6 +71,7 @@ interface FieldColumnDefinition {
 
 // All available columns
 const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
+  { key: 'boundary', label: 'Map' },
   { key: 'field', label: 'Field', alwaysVisible: true },
   { key: 'acres', label: 'Acres' },
   { key: 'approvalStatus', label: 'Approval Status' },
@@ -107,13 +109,13 @@ const ALL_COLUMN_DEFINITIONS: FieldColumnDefinition[] = [
 
 // Default columns for each tab
 const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
-  fieldData: ['field', 'operation', 'acres', 'pivotAcres', 'irrigationType', 'waterSource', 'fuelSource', 'soilType', 'elevation'],
-  signup: ['field', 'operation', 'billingEntity', 'crop', 'service'],
-  seasonSetup: ['field', 'crop', 'hybrid', 'sideDress', 'earlyInstall', 'loggerId', 'probes'],
-  installPlanning: ['field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
-  activeSeason: ['field', 'operation', 'probes', 'probeStatus', 'installDate', 'approvalStatus'],
-  removal: ['field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
-  allSeasons: ['field', 'operation', 'billingEntity', 'acres', 'pivotAcres', 'irrigationType', 'rowDirection', 'waterSource', 'fuelSource', 'soilType', 'elevation', 'fieldDirections'],
+  fieldData: ['boundary', 'field', 'operation', 'acres', 'pivotAcres', 'irrigationType', 'waterSource', 'fuelSource', 'soilType', 'elevation'],
+  signup: ['boundary', 'field', 'operation', 'billingEntity', 'crop', 'service'],
+  seasonSetup: ['boundary', 'field', 'crop', 'hybrid', 'sideDress', 'earlyInstall', 'loggerId', 'probes'],
+  installPlanning: ['boundary', 'field', 'probes', 'routeOrder', 'plannedInstaller', 'readyToInstall'],
+  activeSeason: ['boundary', 'field', 'operation', 'probes', 'probeStatus', 'installDate', 'approvalStatus'],
+  removal: ['boundary', 'field', 'removalDate', 'removalNotes', 'readyToRemove', 'earlyRemoval'],
+  allSeasons: ['boundary', 'field', 'operation', 'billingEntity', 'acres', 'pivotAcres', 'irrigationType', 'rowDirection', 'waterSource', 'fuelSource', 'soilType', 'elevation', 'fieldDirections'],
 };
 
 // Season modes — short labels like the installer map chrome
@@ -131,7 +133,7 @@ const FIELD_COLUMN_WIDTHS_STORAGE_KEY = 'fields-column-widths';
 
 // Convert string px widths to numeric defaults for resizable columns
 const DEFAULT_FIELD_COLUMN_WIDTHS: Record<string, number> = {
-  field: 140, operation: 100, billingEntity: 120, crop: 90,
+  boundary: 72, field: 140, operation: 100, billingEntity: 120, crop: 90,
   service: 90, cropConfirmed: 60, hybrid: 100,
   sideDress: 80, loggerId: 80, probes: 100,
   routeOrder: 60, plannedInstaller: 110, readyToInstall: 60, nrcsField: 60,
@@ -356,6 +358,13 @@ export default function FieldsClient({
         for (const tab of TAB_INFO.map(t => t.key)) {
           validated[tab] = validated[tab].filter(col => (col as string) !== 'antenna' && (col as string) !== 'battery');
         }
+        // Migration: prepend Map (boundary photo) column when missing
+        for (const tab of [...TAB_INFO.map(t => t.key), 'allSeasons' as TabView]) {
+          if (!validated[tab]?.includes('boundary')) {
+            const without = validated[tab].filter((col) => col !== 'field');
+            validated[tab] = ['boundary', 'field', ...without];
+          }
+        }
         setTabColumns(validated);
       }
     } catch (e) {
@@ -386,6 +395,7 @@ export default function FieldsClient({
   // Get display value for a column key from a field (for mobile cards)
   const getMobileCardValue = (field: ProcessedField, key: FieldColumnKey): string => {
     switch (key) {
+      case 'boundary': return boundaryByFieldId.has(field.id) ? 'Yes' : '—';
       case 'field': return field.name;
       case 'operation': return field.operation || '—';
       case 'billingEntity': return field.billingEntityName || '—';
@@ -672,6 +682,21 @@ export default function FieldsClient({
 
     return filtered;
   }, [seasonFields, searchQuery, effectiveOperation, currentIrrigationType, sortColumn, sortDirection, sortAlertsToTop, probeAssignments, localProbes]);
+
+  // Boundary outlines for the Map column (and detail panel)
+  const boundaryFieldIds = useMemo(
+    () => [...new Set(seasonFields.map((f) => f.id).filter((id) => Number.isSafeInteger(id) && id > 0))],
+    [seasonFields],
+  );
+  const fieldBoundaries = useFieldBoundaries(boundaryFieldIds);
+  const boundaryByFieldId = useMemo(() => {
+    const map = new Map<number, (typeof fieldBoundaries.features)[number]>();
+    for (const feature of fieldBoundaries.features) {
+      const id = feature.properties?.fieldId ?? feature.id;
+      if (Number.isSafeInteger(id) && id > 0) map.set(id, feature);
+    }
+    return map;
+  }, [fieldBoundaries]);
 
   // Fields eligible for inline enrollment (on All Seasons view, not already in target season)
   const inlineEnrollEligibleIds = useMemo(() => {
@@ -2262,6 +2287,7 @@ export default function FieldsClient({
                                 onInlineSave={handleInlineSave}
                                 onInlineFieldSave={handleInlineFieldSave}
                                 onToggleExpand={toggleFieldSeasonExpand}
+                                boundaryFeature={boundaryByFieldId.get(field.id) ?? null}
                               />
                             );
 
@@ -2297,12 +2323,13 @@ export default function FieldsClient({
                                   )}
                                   {needsSeasonStart ? (
                                     <>
+                                      {visibleColumns.includes('boundary') && renderCell('boundary')}
                                       {visibleColumns.includes('field') && (
                                         <td className="fields-no-season-name" title="Click to view details" onClick={() => handleRowClick(field)}>
                                           {field.name}
                                         </td>
                                       )}
-                                      <td colSpan={visibleColumns.length - (visibleColumns.includes('field') ? 1 : 0)} className="fields-no-season-cell">
+                                      <td colSpan={visibleColumns.length - (visibleColumns.includes('field') ? 1 : 0) - (visibleColumns.includes('boundary') ? 1 : 0)} className="fields-no-season-cell">
                                         <div className="fields-no-season-content">
                                           <span className="fields-no-season-text">No {currentSeason} season configured</span>
                                           <button onClick={(e) => { e.stopPropagation(); handleQuickStartSeason(field.id, currentSeason); }}

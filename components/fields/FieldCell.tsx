@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineCell from '@/components/InlineCell';
 import SearchableSelect from '@/components/SearchableSelect';
+import BoundaryThumb, { type BoundaryFeature } from '@/components/fields/BoundaryThumb';
 import type { ProcessedField } from '@/app/fields/page';
 
 // Inline editable cell for field-level (not season-level) data
@@ -69,7 +70,7 @@ function InlineFieldNumber({ fieldId, apiField, value, savingFields, savedFields
 }
 
 type FieldColumnKey =
-  | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
+  | 'boundary' | 'field' | 'operation' | 'billingEntity' | 'crop' | 'service' | 'cropConfirmed'
   | 'hybrid' | 'antenna' | 'battery' | 'sideDress' | 'loggerId' | 'probes'
   | 'routeOrder' | 'plannedInstaller' | 'readyToInstall' | 'nrcsField'
   | 'probeStatus' | 'installDate' | 'installer' | 'approvalStatus'
@@ -79,7 +80,7 @@ type FieldColumnKey =
   | 'plantingDate';
 
 export const COLUMN_MIN_WIDTHS: Record<FieldColumnKey, string> = {
-  field: '140px', operation: '100px', billingEntity: '120px', crop: '90px',
+  boundary: '72px', field: '140px', operation: '100px', billingEntity: '120px', crop: '90px',
   service: '90px', cropConfirmed: '60px', hybrid: '100px', antenna: '90px',
   battery: '90px', sideDress: '80px', loggerId: '80px', probes: '100px',
   routeOrder: '60px', plannedInstaller: '110px', readyToInstall: '60px', nrcsField: '60px',
@@ -128,6 +129,7 @@ interface RenderCellProps {
   onInlineSave: (fieldSeasonId: number, field: string, value: unknown) => Promise<void>;
   onInlineFieldSave: (fieldId: number, field: string, value: unknown) => void;
   onToggleExpand: (fieldSeasonId: number) => void;
+  boundaryFeature?: BoundaryFeature | null;
 }
 
 export function FieldCell({
@@ -149,8 +151,20 @@ export function FieldCell({
   onInlineSave,
   onInlineFieldSave,
   onToggleExpand,
+  boundaryFeature = null,
 }: RenderCellProps) {
   switch (colKey) {
+    case 'boundary':
+      return (
+        <td key={colKey} className="fields-boundary-cell" onClick={(e) => e.stopPropagation()}>
+          <BoundaryThumb
+            feature={boundaryFeature}
+            size={56}
+            title={boundaryFeature ? `${field.name} boundary` : `${field.name} — no boundary`}
+            onClick={() => onRowClick(field)}
+          />
+        </td>
+      );
     case 'field':
       return (
         <td key={colKey} style={{ fontWeight: 500, cursor: 'pointer' }} title="Click to view details" onClick={() => onRowClick(field)}>
