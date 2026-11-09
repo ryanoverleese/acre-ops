@@ -12,7 +12,7 @@ import { FieldCell, COLUMN_MIN_WIDTHS } from '@/components/fields/FieldCell';
 import SearchableSelect from '@/components/SearchableSelect';
 import NotesThread from '@/components/NotesThread';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
-import { useFieldBoundaries } from '@/components/useFieldBoundaries';
+import { useFieldBoundaries, type FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import type { ProcessedField, ProcessedProbeAssignment, OperationOption, BillingEntityOption, ProbeOption, ProductServiceOption, SerializedSelectOptions } from '@/lib/fields-data';
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
@@ -44,6 +44,8 @@ interface FieldsClientProps {
   initialProbeAssignments: ProcessedProbeAssignment[];
   productsServices: ProductServiceOption[];
   selectOptions: SerializedSelectOptions;
+  /** SSR boundary geometries so Map thumbs don't wait on a client refetch. */
+  initialBoundaries?: FieldBoundaryCollection;
 }
 
 // Convert Baserow select_options to the {value, label}[] format used by components
@@ -154,6 +156,7 @@ export default function FieldsClient({
   initialProbeAssignments,
   productsServices,
   selectOptions,
+  initialBoundaries = { type: 'FeatureCollection', features: [] },
 }: FieldsClientProps) {
   const { focusedOperation } = useOperationFocus();
   const [fields, setFields] = useState(initialFields);
@@ -688,7 +691,7 @@ export default function FieldsClient({
     () => [...new Set(seasonFields.map((f) => f.id).filter((id) => Number.isSafeInteger(id) && id > 0))],
     [seasonFields],
   );
-  const fieldBoundaries = useFieldBoundaries(boundaryFieldIds);
+  const fieldBoundaries = useFieldBoundaries(boundaryFieldIds, initialBoundaries);
   const boundaryByFieldId = useMemo(() => {
     const map = new Map<number, (typeof fieldBoundaries.features)[number]>();
     for (const feature of fieldBoundaries.features) {

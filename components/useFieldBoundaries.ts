@@ -13,24 +13,44 @@ export interface FieldBoundaryCollection {
 }
 
 const empty: FieldBoundaryCollection = { type: 'FeatureCollection', features: [] };
+const CHUNK = 500;
 
-export function useFieldBoundaries(ids: number[]): FieldBoundaryCollection {
+export function useFieldBoundaries(
+  ids: number[],
+  initial: FieldBoundaryCollection = empty,
+): FieldBoundaryCollection {
   const key = [...new Set(ids.filter(id => Number.isSafeInteger(id) && id > 0))].sort((a, b) => a - b).join(',');
-  const [data, setData] = useState<FieldBoundaryCollection>(empty);
+  const [data, setData] = useState<FieldBoundaryCollection>(() =>
+    key && initial.features.length ? initial : empty,
+  );
+
   useEffect(() => {
-    if (!key) { setData(empty); return; }
+    if (!key) {
+      setData(empty);
+      return;
+    }
     let cancelled = false;
     const parts = key.split(',');
     const chunks: string[][] = [];
-    for (let i = 0; i < parts.length; i += 100) chunks.push(parts.slice(i, i + 100));
+    for (let i = 0; i < parts.length; i += CHUNK) chunks.push(parts.slice(i, i + CHUNK));
+
     Promise.all(chunks.map(async chunk => {
-      const response = await fetch(`/api/field-boundaries?fields=${chunk.join(',')}`, { cache: 'no-store' });
-      if (!response.ok) return empty;
+      const response = await fetch(`/api/field-boundaries?fields=${chunk.join(',')}`, {
+        cache: 'no-store',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error(`field-boundaries ${response.status}`);
       return response.json() as Promise<FieldBoundaryCollection>;
     })).then(groups => {
-      if (!cancelled) setData({ type: 'FeatureCollection', features: groups.flatMap(group => group.features ?? []) });
-    }).catch(() => { if (!cancelled) setData(empty); });
+      if (!cancelled) {
+        setData({ type: 'FeatureCollection', features: groups.flatMap(group => group.features ?? []) });
+      }
+    }).catch(() => {
+      // Keep SSR / prior features — silent empty made Map thumbs look pin-only.
+    });
+
     return () => { cancelled = true; };
   }, [key]);
+
   return data;
 }

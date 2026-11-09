@@ -18,8 +18,8 @@ function fail(error: unknown): never {
 
 export const GET = withApiAuth(async (request: NextRequest) => {
   const parts = (request.nextUrl.searchParams.get('fields') || '').split(',').filter(Boolean);
-  if (!parts.length || parts.length > 100 || parts.some(value => !/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)))) {
-    return NextResponse.json({ error: 'Request between 1 and 100 field IDs' }, { status: 400, headers });
+  if (!parts.length || parts.length > 500 || parts.some(value => !/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(Number(value)))) {
+    return NextResponse.json({ error: 'Request between 1 and 500 field IDs' }, { status: 400, headers });
   }
   return NextResponse.json(await readBoundaryFeatures(sql, [...new Set(parts.map(Number))]), { headers });
 });
