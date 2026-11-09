@@ -25,7 +25,7 @@ test('CSS gradient includes CutSheetRX endpoints', () => {
   assert.match(css, /rgb\(165,0,38\)/);
 });
 
-test('default terrain mode is colorshade', () => {
+test('picker is Off + Color + shade + Gray shade', () => {
   assert.equal(modes.DEFAULT_TERRAIN_MODE, 'colorshade');
-  assert.ok(modes.TERRAIN_OPTIONS.includes('colorshade'));
+  assert.deepEqual(modes.TERRAIN_OPTIONS, ['off', 'colorshade', 'shade']);
 });
