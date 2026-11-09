@@ -6,6 +6,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PLSSOverlay from './PLSSOverlay';
 import ElevationOverlay, { type TerrainMode } from './ElevationOverlay';
+import BoundaryLayer from './BoundaryLayer';
+import type { FieldBoundaryCollection } from './useFieldBoundaries';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -37,6 +39,8 @@ interface LocationPickerMapProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   referenceMarkers?: ReferenceMarker[];
+  /** When set, terrain only paints inside these field outlines. */
+  clipTo?: FieldBoundaryCollection | null;
 }
 
 // Component to apply brightness filter to the satellite tile layer
@@ -77,6 +81,7 @@ export default function LocationPickerMap({
   initialCenter,
   initialZoom,
   referenceMarkers = [],
+  clipTo = null,
 }: LocationPickerMapProps) {
   const resolvedTerrain: TerrainMode = terrainMode ?? (showElevation ? 'contours' : 'off');
 
@@ -127,7 +132,8 @@ export default function LocationPickerMap({
           />
         </>
       )}
-      <ElevationOverlay mode={resolvedTerrain} />
+      <ElevationOverlay mode={resolvedTerrain} clipTo={clipTo} />
+      <BoundaryLayer data={clipTo} />
       <PLSSOverlay show={showPLSS} />
       <MapClickHandler onPositionChange={onPositionChange} />
       {referenceMarkers.map((m, i) => {

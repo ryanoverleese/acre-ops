@@ -123,7 +123,7 @@ export default function FieldMiniMap({ lat, lng, boundary }: Props) {
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-        <ElevationOverlay mode={terrainMode} />
+        <ElevationOverlay mode={terrainMode} clipTo={boundary} />
         <BoundaryLayer data={boundary} />
         <Marker position={[lat, lng]} icon={pin()} interactive={false} />
         <UserLocation posRef={posRef} />

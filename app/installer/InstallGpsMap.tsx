@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import ElevationOverlay, { type TerrainMode, TERRAIN_MODE_LABELS } from '@/components/ElevationOverlay';
+import BoundaryLayer from '@/components/BoundaryLayer';
+import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -16,6 +18,8 @@ interface Props {
   captured: { lat: number; lng: number } | null;
   // Live user position (updates continuously). null until first fix.
   userPos: { lat: number; lng: number; acc?: number } | null;
+  /** Field outline — terrain only paints inside this. */
+  boundary?: FieldBoundaryCollection | null;
 }
 
 // Google hybrid tiles — same source used elsewhere in Acre Ops
@@ -45,7 +49,7 @@ function FollowUser({ pos }: { pos: { lat: number; lng: number } | null }) {
   return null;
 }
 
-export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, userPos }: Props) {
+export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, userPos, boundary }: Props) {
   const [ready, setReady] = useState(false);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>('color');
   const mapRef = useRef<L.Map | null>(null);
@@ -127,7 +131,8 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
         keyboard={false}
       >
         <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
-        <ElevationOverlay mode={terrainMode} />
+        <ElevationOverlay mode={terrainMode} clipTo={boundary} />
+        <BoundaryLayer data={boundary} />
         <FollowUser pos={userPos} />
         <MapRef onMap={handleMap} />
         {userPos && userIcon && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} interactive={false} />}

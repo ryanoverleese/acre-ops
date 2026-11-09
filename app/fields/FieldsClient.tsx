@@ -3614,6 +3614,13 @@ export default function FieldsClient({
             }}
             initialCenter={locationPickerInitialCenter}
             initialZoom={locationPickerInitialZoom}
+            fieldId={
+              locationPickerTarget === 'edit' && selectedField
+                ? selectedField.id
+                : locationPickerTarget === 'probeAssignment' && editingProbeAssignmentLocation
+                  ? (fields.find(f => f.fieldSeasonId === editingProbeAssignmentLocation.fieldSeasonId)?.id ?? null)
+                  : null
+            }
             referenceMarkers={locationPickerTarget === 'probeAssignment' && editingProbeAssignmentLocation ? (() => {
               const fsIdToName = new Map(fields.map(f => f.fieldSeasonId ? [f.fieldSeasonId, f.name] : null).filter(Boolean) as [number, string][]);
               const editingField = fields.find(f => f.fieldSeasonId === editingProbeAssignmentLocation.fieldSeasonId);
