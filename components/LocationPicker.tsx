@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { ReferenceMarker } from './LocationPickerMap';
+import { useFieldBoundaries } from './useFieldBoundaries';
 
 // Dynamically import the map component with SSR disabled
 const LocationPickerMap = dynamic(() => import('./LocationPickerMap'), {
@@ -31,6 +32,8 @@ interface LocationPickerProps {
   initialCenter?: [number, number];
   initialZoom?: number;
   referenceMarkers?: ReferenceMarker[];
+  /** Field to clip terrain into (LiDAR only inside the outline). */
+  fieldId?: number | null;
 }
 
 // Fetch elevation via our API proxy (avoids CORS issues with USGS)
@@ -60,7 +63,8 @@ async function fetchSoilType(lat: number, lng: number): Promise<string | null> {
   }
 }
 
-export default function LocationPicker({ lat, lng, onLocationChange, onClose, title, probeLabel, onProbeLabelChange, initialCenter, initialZoom, referenceMarkers }: LocationPickerProps) {
+export default function LocationPicker({ lat, lng, onLocationChange, onClose, title, probeLabel, onProbeLabelChange, initialCenter, initialZoom, referenceMarkers, fieldId }: LocationPickerProps) {
+  const clipTo = useFieldBoundaries(fieldId ? [fieldId] : []);
   const [isClient, setIsClient] = useState(false);
   const [position, setPosition] = useState<[number, number] | null>(null);
   const hasInitialized = useRef(false);
@@ -223,6 +227,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
             initialCenter={initialCenter}
             initialZoom={initialZoom}
             referenceMarkers={referenceMarkers}
+            clipTo={clipTo}
           />
         </div>
         <div className="location-picker-coords">

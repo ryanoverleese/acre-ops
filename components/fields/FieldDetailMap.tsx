@@ -102,7 +102,7 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin }: Props)
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-        <ElevationOverlay mode={terrainMode} />
+        <ElevationOverlay mode={terrainMode} clipTo={boundaries} />
         <BoundaryLayer data={boundaries} selectedId={fieldId} />
         {hasPin && <Marker position={[lat as number, lng as number]} icon={pinIcon()} interactive={false} />}
         <FitField lat={lat} lng={lng} boundaries={boundaries} />

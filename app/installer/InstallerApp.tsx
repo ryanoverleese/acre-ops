@@ -1658,6 +1658,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
   assignment: InstallerAssignment; installer: string;
   onBack: () => void; onSuccess: (data: SuccessData, assignmentId: number) => void;
 }) {
+  const fieldBoundary = useFieldBoundaries([a.fieldId]);
   const [probeSerial, setProbeSerial] = useState(a.probeSerial);
   const [serialConfirmed, setSerialConfirmed] = useState<null | 'confirmed' | 'override'>(null);
   const [gps, setGps] = useState<{ lat: number; lng: number; acc?: number } | null>(null);
@@ -1925,6 +1926,7 @@ function InstallScreen({ assignment: a, installer, onBack, onSuccess }: {
                 fallbackLng={a.lng}
                 captured={gps}
                 userPos={livePos}
+                boundary={fieldBoundary}
               />
               {/* Accuracy badge overlay */}
               {livePos && livePos.acc != null && (
