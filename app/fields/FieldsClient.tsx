@@ -116,14 +116,14 @@ const TAB_DEFAULT_COLUMNS: Record<TabView, FieldColumnKey[]> = {
   allSeasons: ['field', 'operation', 'billingEntity', 'acres', 'pivotAcres', 'irrigationType', 'rowDirection', 'waterSource', 'fuelSource', 'soilType', 'elevation', 'fieldDirections'],
 };
 
-// Tab display info
-const TAB_INFO: { key: TabView; label: string }[] = [
-  { key: 'fieldData', label: 'Field Data' },
-  { key: 'signup', label: 'Signup' },
-  { key: 'seasonSetup', label: 'Season Setup' },
-  { key: 'installPlanning', label: 'Install Planning' },
-  { key: 'activeSeason', label: 'Active Season' },
-  { key: 'removal', label: 'Removal' },
+// Season modes — short labels like the installer map chrome
+const TAB_INFO: { key: TabView; label: string; hint: string }[] = [
+  { key: 'signup', label: 'Signup', hint: 'Enroll fields for the season' },
+  { key: 'seasonSetup', label: 'Setup', hint: 'Crop, probes, and season details' },
+  { key: 'installPlanning', label: 'Install', hint: 'Who installs, what day, ready flags' },
+  { key: 'activeSeason', label: 'Active', hint: 'Installed probes and approvals' },
+  { key: 'removal', label: 'Remove', hint: 'End-of-season pull list' },
+  { key: 'fieldData', label: 'Field', hint: 'Permanent field facts (acres, irrigation)' },
 ];
 
 const FIELD_COLUMNS_STORAGE_KEY = 'fields-tab-columns';
@@ -1922,16 +1922,24 @@ export default function FieldsClient({
         {/* Tab Navigation - hidden on All Seasons */}
         {currentSeason !== 'all' && (
           <div className="fields-filter-row">
-            <div className="fields-tabs">
-              {TAB_INFO.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setCurrentTab(tab.key)}
-                  className={currentTab === tab.key ? 'active' : ''}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            <div className="fields-mode-block">
+              <div className="fields-tabs" role="tablist" aria-label="Season mode">
+                {TAB_INFO.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={currentTab === tab.key}
+                    onClick={() => setCurrentTab(tab.key)}
+                    className={currentTab === tab.key ? 'active' : ''}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+              <p className="fields-mode-hint">
+                {TAB_INFO.find((t) => t.key === currentTab)?.hint}
+              </p>
             </div>
           </div>
         )}
@@ -2031,11 +2039,16 @@ export default function FieldsClient({
                     </svg>
                     {expandedFieldSeasons.size > 0 ? 'Collapse' : 'Expand'}
                   </button>
-                  <button className={`map-toggle ${mapVisible ? 'active' : ''}`} onClick={() => setMapVisible(!mapVisible)}>
+                  <button
+                    type="button"
+                    className={`map-toggle ${mapVisible ? 'active' : ''}`}
+                    onClick={() => setMapVisible(!mapVisible)}
+                    title={mapVisible ? 'Hide map' : 'Show map beside the list'}
+                  >
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
-                    Map View
+                    Map
                   </button>
                   {mapVisible && (
                     <SearchableSelect

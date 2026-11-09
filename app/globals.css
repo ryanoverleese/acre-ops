@@ -905,45 +905,70 @@ body::before {
   margin-top: var(--space-2);
 }
 
-/* Fields Filter Row */
+/* Fields Filter Row — installer-style season modes */
 .fields-filter-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
+  align-items: flex-start;
+  margin-bottom: 12px;
   gap: 12px;
   flex-wrap: wrap;
 }
 
-.fields-tabs {
+.fields-mode-block {
   display: flex;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  padding: 4px;
-  gap: 4px;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fields-mode-hint {
+  margin: 0;
+  padding-left: 4px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+.fields-tabs {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  width: min(640px, 100%);
+  background: var(--bone-raised, var(--bg-card));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 3px;
+  gap: 0;
   flex-shrink: 0;
   overflow-x: auto;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .fields-tabs button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px 16px;
-  border-radius: var(--radius-xs);
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 11px;
   border: none;
-  font-size: 13px;
-  font-weight: 500;
+  font-family: var(--font-display, 'General Sans', sans-serif);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   cursor: pointer;
   background: transparent;
   color: var(--text-secondary);
-  transition: all var(--ease-slow);
+  transition: background 140ms ease, color 140ms ease;
   white-space: nowrap;
 }
 
 .fields-tabs button.active {
-  background: var(--accent-primary);
-  color: white;
+  background: var(--field-green, var(--accent-primary));
+  color: var(--bone, #F6F2EA);
+  box-shadow: 0 1px 4px rgba(31, 64, 42, 0.28);
 }
 
 
@@ -2727,6 +2752,19 @@ tr.selected {
   .fields-filter-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .fields-tabs {
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .fields-tabs button {
+    flex: 1 0 auto;
+    min-width: 4.5rem;
+    padding: 6px 10px;
   }
 
 
