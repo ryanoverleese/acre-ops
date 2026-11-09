@@ -514,7 +514,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           attribution='&copy; Google'
           url="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}"
         />
-        <ElevationOverlay mode={terrainMode} />
+        <ElevationOverlay mode={terrainMode} clipTo={boundaries} />
         <PLSSOverlay show={showPLSS} />
         <MeasureTool mode={measureMode} onModeChange={setMeasureMode} clearSignal={clearMeasureCounter} />
         <BoundaryLayer data={boundaries} />
