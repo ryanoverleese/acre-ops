@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { ReferenceMarker } from './LocationPickerMap';
 import { useFieldBoundaries } from './useFieldBoundaries';
+import {
+  DEFAULT_TERRAIN_MODE,
+  TERRAIN_MODE_LABELS,
+  TERRAIN_OPTIONS,
+  type TerrainMode,
+} from '@/lib/terrain/modes';
 
 // Dynamically import the map component with SSR disabled
 const LocationPickerMap = dynamic(() => import('./LocationPickerMap'), {
@@ -76,7 +82,7 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
   const [plssLoading, setPlssLoading] = useState(false);
   const [showSoilLayer, setShowSoilLayer] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
-  const [terrainMode, setTerrainMode] = useState<'off' | 'contours' | 'shade' | 'color'>('color');
+  const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
   const [brightness, setBrightness] = useState(1.2);
 
   useEffect(() => {
@@ -197,13 +203,12 @@ export default function LocationPicker({ lat, lng, onLocationChange, onClose, ti
               Terrain
               <select
                 value={terrainMode}
-                onChange={(e) => setTerrainMode(e.target.value as typeof terrainMode)}
+                onChange={(e) => setTerrainMode(e.target.value as TerrainMode)}
                 style={{ fontSize: 12, padding: '2px 4px', borderRadius: 4 }}
               >
-                <option value="off">Off</option>
-                <option value="contours">Contours (2ft)</option>
-                <option value="shade">Gray shade</option>
-                <option value="color">Color + shade</option>
+                {TERRAIN_OPTIONS.map((mode) => (
+                  <option key={mode} value={mode}>{TERRAIN_MODE_LABELS[mode]}</option>
+                ))}
               </select>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>

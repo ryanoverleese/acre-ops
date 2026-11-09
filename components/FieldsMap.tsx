@@ -7,6 +7,12 @@ import 'leaflet/dist/leaflet.css';
 import type { MeasureMode } from './MeasureTool';
 import BoundaryLayer from './BoundaryLayer';
 import { useFieldBoundaries } from './useFieldBoundaries';
+import {
+  DEFAULT_TERRAIN_MODE,
+  TERRAIN_MODE_LABELS,
+  TERRAIN_OPTIONS,
+  type TerrainMode,
+} from '@/lib/terrain/modes';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
@@ -147,7 +153,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
-  const [terrainMode, setTerrainMode] = useState<'off' | 'contours' | 'shade' | 'color'>('off');
+  const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
   const [measureMode, setMeasureMode] = useState<MeasureMode>(null);
   const [showMeasureMenu, setShowMeasureMenu] = useState(false);
   const [clearMeasureCounter, setClearMeasureCounter] = useState(0);
@@ -416,12 +422,12 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           )}
         </div>
 
-        {/* Terrain (USGS 3DEP) — spike: compare contours / shade / color */}
+        {/* Terrain — CutSheetRX blue→red ramp (client LERC) + contours */}
         <label style={{ ...controlStyle, cursor: 'pointer', gap: 8 }}>
           <span>Terrain</span>
           <select
             value={terrainMode}
-            onChange={(e) => setTerrainMode(e.target.value as typeof terrainMode)}
+            onChange={(e) => setTerrainMode(e.target.value as TerrainMode)}
             style={{
               fontSize: 12,
               border: '1px solid var(--border-1, #d6d3d1)',
@@ -432,10 +438,9 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
               cursor: 'pointer',
             }}
           >
-            <option value="off">Off</option>
-            <option value="contours">Contours (2ft)</option>
-            <option value="shade">Gray shade</option>
-            <option value="color">Color + shade</option>
+            {TERRAIN_OPTIONS.map((mode) => (
+              <option key={mode} value={mode}>{TERRAIN_MODE_LABELS[mode]}</option>
+            ))}
           </select>
         </label>
 
