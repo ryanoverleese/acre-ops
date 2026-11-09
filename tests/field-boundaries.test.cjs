@@ -652,3 +652,28 @@ test('hand-drawn PATCH creates a boundary when the field has none', async () => 
   assert.equal(again.status, 200);
   assert.equal((await again.json()).created, false);
 });
+
+test('draw helpers load an exterior ring, close polygons, and insert midpoints', () => {
+  const draw = f.load('lib/field-boundaries/draw.ts');
+  const polygon = {
+    type: 'Polygon',
+    coordinates: [[[-99.5, 40.4], [-99.48, 40.4], [-99.48, 40.42], [-99.5, 40.42], [-99.5, 40.4]]],
+  };
+  const multi = {
+    type: 'MultiPolygon',
+    coordinates: [polygon.coordinates, [[[-99.4, 40.4], [-99.38, 40.4], [-99.38, 40.42], [-99.4, 40.42], [-99.4, 40.4]]]],
+  };
+  const ring = draw.exteriorRing(polygon);
+  assert.deepEqual(ring, [[40.4, -99.5], [40.4, -99.48], [40.42, -99.48], [40.42, -99.5]]);
+  assert.equal(draw.isComplexBoundary(polygon), false);
+  assert.equal(draw.isComplexBoundary(multi), true);
+  const closed = draw.ringToPolygon(ring);
+  assert.equal(closed.type, 'Polygon');
+  assert.deepEqual(closed.coordinates[0][0], closed.coordinates[0][closed.coordinates[0].length - 1]);
+  const mids = draw.midpoints(ring);
+  assert.equal(mids.length, 4);
+  assert.equal(mids[0].at[0], 40.4);
+  assert.ok(Math.abs(mids[0].at[1] - (-99.49)) < 1e-9);
+  assert.equal(mids[0].index, 1);
+  assert.equal(draw.ringToPolygon([[40.4, -99.5], [40.4, -99.48]]), null);
+});

@@ -1,19 +1,27 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Polygon, Polyline, CircleMarker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Polygon, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay, { type TerrainMode, TERRAIN_MODE_LABELS } from '@/components/ElevationOverlay';
 import { useFieldBoundaries, type FieldBoundaryCollection } from '@/components/useFieldBoundaries';
+import {
+  exteriorRing,
+  isComplexBoundary,
+  midpoints,
+  ringToPolygon,
+  type LatLng,
+} from '@/lib/field-boundaries/draw';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
 const TERRAIN_OPTIONS: TerrainMode[] = ['off', 'color', 'shade', 'contours'];
 const NEBRASKA_FALLBACK: [number, number] = [41.5, -99.5];
 
-type LatLng = [number, number]; // [lat, lng]
+type Mode = 'idle' | 'create' | 'edit';
+type BoundaryFeature = FieldBoundaryCollection['features'][number];
 
 function pinIcon() {
   return L.divIcon({
@@ -38,6 +46,25 @@ function pinIcon() {
   });
 }
 
+function vertexIcon(selected: boolean) {
+  const size = selected ? 16 : 14;
+  return L.divIcon({
+    className: 'boundary-vertex-icon',
+    html: `<div class="boundary-vertex-dot${selected ? ' is-selected' : ''}"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+function midIcon() {
+  return L.divIcon({
+    className: 'boundary-mid-icon',
+    html: '<div class="boundary-mid-dot"></div>',
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
+  });
+}
+
 function collectBoundaryLatLngs(data: FieldBoundaryCollection | null | undefined): LatLng[] {
   const out: LatLng[] = [];
   if (!data?.features?.length) return out;
@@ -57,19 +84,19 @@ function FitField({
   lat,
   lng,
   boundaries,
-  drawing,
+  editing,
 }: {
   lat: number | null;
   lng: number | null;
   boundaries: FieldBoundaryCollection;
-  drawing: boolean;
+  editing: boolean;
 }) {
   const map = useMap();
   const seed = useMemo(() => collectBoundaryLatLngs(boundaries), [boundaries]);
 
   useEffect(() => {
     map.invalidateSize();
-    if (drawing) return;
+    if (editing) return;
     if (seed.length >= 2) {
       map.fitBounds(L.latLngBounds(seed), { padding: [28, 28], maxZoom: 16 });
       return;
@@ -79,7 +106,7 @@ function FitField({
       return;
     }
     map.setView(NEBRASKA_FALLBACK, 7);
-  }, [map, lat, lng, seed, drawing]);
+  }, [map, lat, lng, seed, editing]);
 
   return null;
 }
@@ -94,57 +121,105 @@ function DrawClicks({ enabled, onAdd }: { enabled: boolean; onAdd: (pt: LatLng) 
   return null;
 }
 
-function ringToPolygon(points: LatLng[]): { type: 'Polygon'; coordinates: number[][][] } | null {
-  if (points.length < 3) return null;
-  const ring = points.map(([lat, lng]) => [lng, lat]);
-  const first = ring[0];
-  const last = ring[ring.length - 1];
-  if (first[0] !== last[0] || first[1] !== last[1]) ring.push([...first]);
-  return { type: 'Polygon', coordinates: [ring] };
-}
-
 interface Props {
   fieldId: number;
   lat: number | null;
   lng: number | null;
   onPlacePin?: () => void;
-  /** Called after a hand-drawn boundary is saved so the Fields table can refresh. */
-  onBoundarySaved?: (feature: FieldBoundaryCollection['features'][number]) => void;
+  /** Called after a boundary is saved so the Fields table can refresh. */
+  onBoundarySaved?: (feature: BoundaryFeature) => void;
 }
 
 export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBoundarySaved }: Props) {
   const [boundaryTick, setBoundaryTick] = useState(0);
   const boundaries = useFieldBoundaries([fieldId], undefined, boundaryTick);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>('off');
-  const [drawing, setDrawing] = useState(false);
+  const [mode, setMode] = useState<Mode>('idle');
   const [points, setPoints] = useState<LatLng[]>([]);
+  const [history, setHistory] = useState<LatLng[][]>([]);
+  const [selected, setSelected] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const hasPin = Boolean(lat && lng);
-  const hasBoundary = boundaries.features.some((f) => (f.properties?.fieldId ?? f.id) === fieldId);
+  const fieldFeature = boundaries.features.find((f) => (f.properties?.fieldId ?? f.id) === fieldId);
+  const hasBoundary = Boolean(fieldFeature);
+  const complex = isComplexBoundary(fieldFeature?.geometry);
   const center: LatLng = hasPin ? [lat as number, lng as number] : NEBRASKA_FALLBACK;
+  const editing = mode !== 'idle';
   const canSave = points.length >= 3 && !saving;
+  const mids = mode === 'edit' ? midpoints(points) : [];
 
-  const startDraw = () => {
-    setError('');
-    setPoints([]);
-    setDrawing(true);
+  const commit = (updater: (prev: LatLng[]) => LatLng[]) => {
+    setPoints((prev) => {
+      const next = updater(prev);
+      setHistory((h) => [...h, prev.map((p) => [...p] as LatLng)]);
+      return next;
+    });
   };
 
-  const cancelDraw = () => {
-    setDrawing(false);
+  const startCreate = () => {
+    setError('');
+    setHistory([]);
+    setSelected(null);
     setPoints([]);
+    setMode('create');
+  };
+
+  const startEdit = () => {
+    const ring = exteriorRing(fieldFeature?.geometry);
+    if (!ring) {
+      setError('Could not read this boundary');
+      return;
+    }
+    setError(complex ? 'Saving replaces with a single outline' : '');
+    setHistory([]);
+    setSelected(null);
+    setPoints(ring);
+    setMode('edit');
+  };
+
+  const cancelEdit = () => {
+    setMode('idle');
+    setPoints([]);
+    setHistory([]);
+    setSelected(null);
     setError('');
   };
 
-  const saveDraw = async () => {
+  const undo = () => {
+    setHistory((h) => {
+      if (!h.length) return h;
+      const prev = h[h.length - 1];
+      setPoints(prev);
+      setSelected(null);
+      return h.slice(0, -1);
+    });
+  };
+
+  const movePoint = (index: number, next: LatLng) => {
+    commit((prev) => prev.map((p, i) => (i === index ? next : p)));
+  };
+
+  const insertAt = (index: number, pt: LatLng) => {
+    commit((prev) => [...prev.slice(0, index), pt, ...prev.slice(index)]);
+    setSelected(index);
+  };
+
+  const removeSelected = () => {
+    if (selected == null || points.length <= 3) return;
+    const removeAt = selected;
+    commit((prev) => prev.filter((_, i) => i !== removeAt));
+    setSelected(null);
+  };
+
+  const saveEdit = async () => {
     const geometry = ringToPolygon(points);
     if (!geometry) {
-      setError('Tap at least 3 corners');
+      setError('Need at least 3 corners');
       return;
     }
     setSaving(true);
-    setError('');
+    if (!error.startsWith('Saving replaces')) setError('');
     try {
       const response = await fetch('/api/field-boundaries', {
         method: 'PATCH',
@@ -157,14 +232,23 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
         setError(typeof body.error === 'string' ? body.error : 'Could not save boundary');
         return;
       }
-      const feature = {
-        type: 'Feature' as const,
+      const feature: BoundaryFeature = {
+        type: 'Feature',
         id: fieldId,
         geometry,
-        properties: { fieldId, source: 'edited', edited: true, crs: 'EPSG:4326', cropxFieldUuid: null },
+        properties: {
+          fieldId,
+          source: 'edited',
+          edited: true,
+          crs: 'EPSG:4326',
+          cropxFieldUuid: fieldFeature?.properties?.cropxFieldUuid ?? null,
+        },
       };
-      setDrawing(false);
+      setMode('idle');
       setPoints([]);
+      setHistory([]);
+      setSelected(null);
+      setError('');
       setBoundaryTick((n) => n + 1);
       onBoundarySaved?.(feature);
     } catch {
@@ -175,7 +259,7 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
   };
 
   return (
-    <div className={`field-detail-map${drawing ? ' field-detail-map-drawing' : ''}`}>
+    <div className={`field-detail-map${editing ? ' field-detail-map-drawing' : ''}`}>
       <MapContainer
         center={center}
         zoom={hasPin ? 15 : 7}
@@ -184,12 +268,13 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-        {!drawing && <ElevationOverlay mode={terrainMode} clipTo={boundaries} />}
-        {!drawing && <BoundaryLayer data={boundaries} selectedId={fieldId} />}
-        {hasPin && !drawing && (
+        {!editing && <ElevationOverlay mode={terrainMode} clipTo={boundaries} />}
+        {!editing && <BoundaryLayer data={boundaries} selectedId={fieldId} />}
+        {hasPin && !editing && (
           <Marker position={[lat as number, lng as number]} icon={pinIcon()} interactive={false} />
         )}
-        {drawing && points.length >= 2 && (
+
+        {editing && points.length >= 2 && (
           points.length >= 3 ? (
             <Polygon
               positions={points}
@@ -199,19 +284,57 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
             <Polyline positions={points} pathOptions={{ color: '#F6F2EA', weight: 2, dashArray: '4 6' }} />
           )
         )}
-        {drawing && points.map((pt, i) => (
-          <CircleMarker
-            key={`${pt[0]}-${pt[1]}-${i}`}
-            center={pt}
-            radius={5}
-            pathOptions={{ color: '#F6F2EA', weight: 2, fillColor: '#1F402A', fillOpacity: 1 }}
+
+        {editing && points.map((pt, i) => (
+          <Marker
+            key={`v-${i}`}
+            position={pt}
+            draggable
+            icon={vertexIcon(selected === i)}
+            eventHandlers={{
+              click: (e) => {
+                L.DomEvent.stopPropagation(e);
+                setSelected(i);
+              },
+              dragstart: (e) => {
+                L.DomEvent.stopPropagation(e);
+              },
+              dragend: (e) => {
+                const ll = (e.target as L.Marker).getLatLng();
+                movePoint(i, [ll.lat, ll.lng]);
+                setSelected(i);
+              },
+            }}
           />
         ))}
-        <DrawClicks enabled={drawing} onAdd={(pt) => setPoints((prev) => [...prev, pt])} />
-        <FitField lat={lat} lng={lng} boundaries={boundaries} drawing={drawing} />
+
+        {mode === 'edit' && mids.map((mid) => (
+          <Marker
+            key={`m-${mid.index}-${mid.at[0]}-${mid.at[1]}`}
+            position={mid.at}
+            icon={midIcon()}
+            eventHandlers={{
+              click: (e) => {
+                L.DomEvent.stopPropagation(e);
+                insertAt(mid.index, mid.at);
+              },
+            }}
+          />
+        ))}
+
+        <DrawClicks
+          enabled={mode === 'create'}
+          onAdd={(pt) => {
+            commit((prev) => {
+              setSelected(prev.length);
+              return [...prev, pt];
+            });
+          }}
+        />
+        <FitField lat={lat} lng={lng} boundaries={boundaries} editing={editing} />
       </MapContainer>
 
-      {!drawing && (
+      {!editing && (
         <label className="field-detail-map-terrain">
           Terrain
           <select
@@ -219,37 +342,56 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
             onChange={(e) => setTerrainMode(e.target.value as TerrainMode)}
             aria-label="Terrain mode"
           >
-            {TERRAIN_OPTIONS.map((mode) => (
-              <option key={mode} value={mode}>{TERRAIN_MODE_LABELS[mode]}</option>
+            {TERRAIN_OPTIONS.map((m) => (
+              <option key={m} value={m}>{TERRAIN_MODE_LABELS[m]}</option>
             ))}
           </select>
         </label>
       )}
 
-      {drawing ? (
+      {editing ? (
         <div className="field-detail-map-draw-bar">
           <span className="field-detail-map-draw-hint">
-            {error || (points.length < 3 ? `Tap corners · ${points.length}/3` : `${points.length} corners · ready`)}
+            {error
+              || (mode === 'create'
+                ? (points.length < 3 ? `Tap corners · ${points.length}/3` : `${points.length} corners · ready`)
+                : 'Drag corners · tap + to add · select to remove')}
           </span>
           <div className="field-detail-map-draw-actions">
-            <button type="button" onClick={() => setPoints((p) => p.slice(0, -1))} disabled={!points.length || saving}>
-              Undo
-            </button>
-            <button type="button" onClick={() => setPoints([])} disabled={!points.length || saving}>
-              Clear
-            </button>
-            <button type="button" onClick={cancelDraw} disabled={saving}>
-              Cancel
-            </button>
-            <button type="button" className="field-detail-map-draw-save" onClick={saveDraw} disabled={!canSave}>
+            <button type="button" onClick={undo} disabled={!history.length || saving}>Undo</button>
+            {mode === 'create' && (
+              <button
+                type="button"
+                onClick={() => { commit(() => []); setSelected(null); }}
+                disabled={!points.length || saving}
+              >
+                Clear
+              </button>
+            )}
+            {mode === 'edit' && (
+              <button
+                type="button"
+                onClick={removeSelected}
+                disabled={selected == null || points.length <= 3 || saving}
+                title={points.length <= 3 ? 'Need at least 3 corners' : 'Remove selected corner'}
+              >
+                Remove
+              </button>
+            )}
+            <button type="button" onClick={cancelEdit} disabled={saving}>Cancel</button>
+            <button type="button" className="field-detail-map-draw-save" onClick={saveEdit} disabled={!canSave}>
               {saving ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
       ) : (
         <div className="field-detail-map-actions">
-          {!hasBoundary && (
-            <button type="button" className="field-detail-map-place" onClick={startDraw}>
+          {hasBoundary ? (
+            <button type="button" className="field-detail-map-place" onClick={startEdit}>
+              Edit boundary
+            </button>
+          ) : (
+            <button type="button" className="field-detail-map-place" onClick={startCreate}>
               Draw boundary
             </button>
           )}

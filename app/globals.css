@@ -2579,6 +2579,40 @@ a.notification-item {
   border-color: var(--field-green, #1F402A) !important;
 }
 
+.boundary-vertex-icon,
+.boundary-mid-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+.boundary-vertex-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1F402A;
+  border: 2px solid #F6F2EA;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+}
+
+.boundary-vertex-dot.is-selected {
+  width: 16px;
+  height: 16px;
+  background: #F6F2EA;
+  border-color: #1F402A;
+  box-shadow: 0 0 0 2px rgba(31, 64, 42, 0.35);
+}
+
+.boundary-mid-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgba(246, 242, 234, 0.92);
+  border: 2px dashed #1F402A;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
 .field-detail-more-toggle {
   align-self: flex-start;
   margin-top: 4px;
