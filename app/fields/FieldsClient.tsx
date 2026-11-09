@@ -691,6 +691,9 @@ export default function FieldsClient({
     () => [...new Set(seasonFields.map((f) => f.id).filter((id) => Number.isSafeInteger(id) && id > 0))],
     [seasonFields],
   );
+  const [boundaryOverrides, setBoundaryOverrides] = useState<Map<number, FieldBoundaryCollection['features'][number]>>(
+    () => new Map(),
+  );
   const fieldBoundaries = useFieldBoundaries(boundaryFieldIds, initialBoundaries);
   const boundaryByFieldId = useMemo(() => {
     const map = new Map<number, (typeof fieldBoundaries.features)[number]>();
@@ -698,8 +701,9 @@ export default function FieldsClient({
       const id = feature.properties?.fieldId ?? feature.id;
       if (Number.isSafeInteger(id) && id > 0) map.set(id, feature);
     }
+    for (const [id, feature] of boundaryOverrides) map.set(id, feature);
     return map;
-  }, [fieldBoundaries]);
+  }, [fieldBoundaries, boundaryOverrides]);
 
   // Fields eligible for inline enrollment (on All Seasons view, not already in target season)
   const inlineEnrollEligibleIds = useMemo(() => {
@@ -3040,6 +3044,11 @@ export default function FieldsClient({
                       lat={selectedField.lat || null}
                       lng={selectedField.lng || null}
                       onPlacePin={handlePlacePinFromMap}
+                      onBoundarySaved={(feature) => {
+                        const id = feature.properties?.fieldId ?? feature.id;
+                        if (!Number.isSafeInteger(id) || id <= 0) return;
+                        setBoundaryOverrides((prev) => new Map(prev).set(id, feature));
+                      }}
                     />
                     <div className="detail-info detail-info-map-first">
                       <div className="detail-row">

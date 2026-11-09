@@ -17,11 +17,13 @@ const CHUNK = 500;
 
 export function useFieldBoundaries(
   ids: number[],
-  initial: FieldBoundaryCollection = empty,
+  initial?: FieldBoundaryCollection | null,
+  refreshKey = 0,
 ): FieldBoundaryCollection {
+  const seed = initial?.features?.length ? initial : empty;
   const key = [...new Set(ids.filter(id => Number.isSafeInteger(id) && id > 0))].sort((a, b) => a - b).join(',');
   const [data, setData] = useState<FieldBoundaryCollection>(() =>
-    key && initial.features.length ? initial : empty,
+    key && seed.features.length ? seed : empty,
   );
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function useFieldBoundaries(
     });
 
     return () => { cancelled = true; };
-  }, [key]);
+  }, [key, refreshKey]);
 
   return data;
 }

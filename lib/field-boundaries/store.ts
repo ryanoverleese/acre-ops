@@ -258,22 +258,34 @@ export async function editFieldBoundary(sql: Sql, fieldId: number, geometryInput
   const geometry = validateGeometry(geometryInput);
   const hash = geometrySha256(geometry);
   return sql.transaction(async () => {
+    const owners = await sql.query<{id: unknown}>(
+      'SELECT id FROM public.fields WHERE id = $1 FOR UPDATE', [fieldId]);
+    if (!owners.length) throw new DataError('Field was not found', 404);
     const rows = await sql.query<{geometry_sha256: unknown}>(
       'SELECT geometry_sha256 FROM public.field_boundaries WHERE field_id = $1 FOR UPDATE', [fieldId]);
-    if (!rows.length) throw new DataError('This field has no boundary to edit', 404);
+    if (!rows.length) {
+      // Hand-drawn create — no CropX/file lineage.
+      await sql.query(
+        `INSERT INTO public.field_boundaries
+          (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, edited_at,
+           source_file_name, source_file_sha256, source_feature_name)
+         VALUES ($1, NULL, $2::jsonb, $3, 'EPSG:4326', 'lonlat', 'edited', now(), NULL, NULL, NULL)`,
+        [fieldId, JSON.stringify(geometry), hash]);
+      return { fieldId, edited: true, created: true, rewritten: true };
+    }
     if (String(rows[0].geometry_sha256) === hash) {
       await sql.query(
         `UPDATE public.field_boundaries
             SET source = 'edited', edited_at = COALESCE(edited_at, now())
           WHERE field_id = $1 AND (source IS DISTINCT FROM 'edited' OR edited_at IS NULL)`, [fieldId]);
-      return { fieldId, edited: true, rewritten: false };
+      return { fieldId, edited: true, created: false, rewritten: false };
     }
     await sql.query(
       `UPDATE public.field_boundaries
           SET geometry = $2::jsonb, geometry_sha256 = $3, source = 'edited', edited_at = now(), updated_at = now()
         WHERE field_id = $1`,
       [fieldId, JSON.stringify(geometry), hash]);
-    return { fieldId, edited: true, rewritten: true };
+    return { fieldId, edited: true, created: false, rewritten: true };
   });
 }
 
