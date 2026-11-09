@@ -5,60 +5,47 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import * as esriLeaflet from 'esri-leaflet';
 import type { FieldBoundaryCollection } from './useFieldBoundaries';
+import { createElevGridLayer, type ElevRenderMode } from '@/lib/terrain/elev-grid';
+import {
+  DEFAULT_TERRAIN_MODE,
+  TERRAIN_MODE_LABELS,
+  TERRAIN_OPTIONS,
+  type TerrainMode,
+} from '@/lib/terrain/modes';
+import { elevationCssGradient } from '@/lib/terrain/ramp';
 
-// Same-origin proxy — direct USGS ImageServer calls fail CORS from localhost / some clients.
+export type { TerrainMode };
+export { DEFAULT_TERRAIN_MODE, TERRAIN_MODE_LABELS, TERRAIN_OPTIONS };
+
 const ELEVATION_URL = '/api/usgs-elevation';
 const ELEVATION_PANE = 'acre-elevation';
 
 /**
- * Terrain overlay modes for placement maps (USGS 3DEP ImageServer).
- * Streamed — no DEM stored in Acre Ops.
- *
- * - contours: existing 2ft contour lines (precision)
- * - shade: gray hillshade (edge texture)
- * - color: tinted hillshade so highs/lows read clearly (spike default candidate)
+ * Terrain modes — color ramps match CutSheetRX (blue low → red high).
+ * DEM is fetched as LERC and colored in-browser for color / colorshade / shade.
+ * Contours stay on the USGS ImageServer preset.
  */
-export type TerrainMode = 'off' | 'contours' | 'shade' | 'color';
 
-const TERRAIN_PRESETS: Record<Exclude<TerrainMode, 'off'>, {
-  rasterFunction: string;
-  opacity: number;
-}> = {
-  contours: {
-    rasterFunction: 'Preset 2ft Contour Interval',
-    opacity: 0.8,
-  },
-  shade: {
-    rasterFunction: 'Hillshade Gray',
-    opacity: 0.48,
-  },
-  color: {
-    // Color elevation fused with soft hillshade — highs/lows + terrace edges.
-    rasterFunction: 'Hillshade Elevation Tinted',
-    opacity: 0.55,
-  },
-};
+export const TERRAIN_RAMP_CSS = elevationCssGradient();
 
-export const TERRAIN_MODE_LABELS: Record<TerrainMode, string> = {
-  off: 'Off',
-  contours: 'Contours (2ft)',
-  shade: 'Gray shade',
-  color: 'Color + shade',
+const MODE_OPACITY: Record<Exclude<TerrainMode, 'off'>, number> = {
+  colorshade: 0.72,
+  color: 0.7,
+  shade: 0.55,
+  contours: 0.8,
 };
 
 function walkRings(coords: unknown, out: number[][][]): void {
   if (!Array.isArray(coords) || coords.length === 0) return;
   const first = coords[0];
-  // Ring: [[lng,lat], ...]
   if (Array.isArray(first) && typeof first[0] === 'number') {
     out.push(coords as number[][]);
     return;
   }
-  // Polygon or MultiPolygon nesting
   for (const part of coords) walkRings(part, out);
 }
 
-/** Build a CSS clip-path (layer pixel space) so terrain only paints inside boundaries. */
+/** CSS clip-path so terrain only paints inside field boundaries. */
 function clipPathForBoundaries(map: L.Map, data: FieldBoundaryCollection | null | undefined): string | null {
   if (!data?.features?.length) return null;
   const rings: number[][][] = [];
@@ -77,12 +64,10 @@ function clipPathForBoundaries(map: L.Map, data: FieldBoundaryCollection | null 
     parts.push(`M${pts[0]}L${pts.slice(1).join('L')}Z`);
   }
   if (!parts.length) return null;
-  // evenodd so polygon holes punch out of the terrain
   return `path(evenodd, "${parts.join('')}")`;
 }
 
 interface ElevationOverlayProps {
-  /** Preferred API — pick a terrain look. */
   mode?: TerrainMode;
   /** Legacy checkbox — maps to contours when true. */
   show?: boolean;
@@ -93,56 +78,119 @@ interface ElevationOverlayProps {
   clipTo?: FieldBoundaryCollection | null;
 }
 
+type ElevLayer = ReturnType<typeof createElevGridLayer>;
+type ContourLayer = ReturnType<typeof esriLeaflet.imageMapLayer>;
+
 /**
  * USGS 3DEP terrain overlay for react-leaflet MapContainer.
- * When `clipTo` is set, the elevation pane is clipped to those polygons.
+ * Color modes use CutSheetRX's blue→red ramp on client-decoded DEM tiles.
  */
 export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverlayProps) {
   const map = useMap();
-  const layerRef = useRef<ReturnType<typeof esriLeaflet.imageMapLayer> | null>(null);
+  const elevRef = useRef<ElevLayer | null>(null);
+  const contourRef = useRef<ContourLayer | null>(null);
+  const rangeRef = useRef({ lo: Infinity, hi: -Infinity });
+  const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resolved: TerrainMode =
     mode ?? (show ? 'contours' : 'off');
 
-  // Ensure dedicated pane (between basemap tiles and vector overlays)
   useEffect(() => {
     if (!map.getPane(ELEVATION_PANE)) {
       const pane = map.createPane(ELEVATION_PANE);
       pane.style.zIndex = '350';
+      // Soft multiply over satellite — closer to CutSheetRX lidar-on-imagery look
+      pane.style.mixBlendMode = 'multiply';
     }
   }, [map]);
 
   const hasClip = Boolean(clipTo?.features?.length);
 
-  // Add / remove ImageServer layer (clip path is synced separately)
+  // DEM / contour layers
   useEffect(() => {
-    const clear = () => {
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-        layerRef.current = null;
+    const clearElev = () => {
+      if (elevRef.current) {
+        map.removeLayer(elevRef.current);
+        elevRef.current = null;
+      }
+    };
+    const clearContour = () => {
+      if (contourRef.current) {
+        map.removeLayer(contourRef.current);
+        contourRef.current = null;
       }
     };
 
     if (resolved === 'off' || !hasClip) {
-      clear();
+      clearElev();
+      clearContour();
       const pane = map.getPane(ELEVATION_PANE);
       if (pane) pane.style.clipPath = '';
-      return clear;
+      return () => { clearElev(); clearContour(); };
     }
 
-    const preset = TERRAIN_PRESETS[resolved];
-    clear();
-    layerRef.current = esriLeaflet.imageMapLayer({
-      url: ELEVATION_URL,
-      renderingRule: { rasterFunction: preset.rasterFunction },
-      opacity: preset.opacity,
-      format: 'png32',
-      pane: ELEVATION_PANE,
-    });
-    layerRef.current.addTo(map);
+    if (resolved === 'contours') {
+      clearElev();
+      clearContour();
+      contourRef.current = esriLeaflet.imageMapLayer({
+        url: ELEVATION_URL,
+        renderingRule: { rasterFunction: 'Preset 2ft Contour Interval' },
+        opacity: MODE_OPACITY.contours,
+        format: 'png32',
+        pane: ELEVATION_PANE,
+      });
+      contourRef.current.addTo(map);
+      return () => { clearContour(); };
+    }
 
-    return clear;
+    // Client-colored DEM (CutSheetRX ramp)
+    clearContour();
+    const elevMode = resolved as ElevRenderMode;
+    if (!elevRef.current) {
+      rangeRef.current = { lo: Infinity, hi: -Infinity };
+      elevRef.current = createElevGridLayer({
+        mode: elevMode,
+        opacity: MODE_OPACITY[elevMode],
+        pane: ELEVATION_PANE,
+        range: { lo: 0, hi: 100 }, // replaced as soon as tiles sample
+        onRangeSample: (lo, hi) => {
+          const cur = rangeRef.current;
+          let changed = false;
+          if (lo < cur.lo) { cur.lo = lo; changed = true; }
+          if (hi > cur.hi) { cur.hi = hi; changed = true; }
+          if (!changed || !(cur.hi > cur.lo)) return;
+          if (rangeTimer.current) clearTimeout(rangeTimer.current);
+          rangeTimer.current = setTimeout(() => {
+            const span = Math.max(cur.hi - cur.lo, 1);
+            elevRef.current?.setElevRange({ lo: cur.lo, hi: cur.lo + span });
+          }, 200);
+        },
+      });
+      elevRef.current.addTo(map);
+    } else {
+      elevRef.current.setElevMode(elevMode);
+      elevRef.current.setOpacity(MODE_OPACITY[elevMode]);
+    }
+
+    return () => {
+      if (rangeTimer.current) clearTimeout(rangeTimer.current);
+      // Keep layer across mode switches between color/shade; full unmount clears below
+    };
   }, [resolved, map, hasClip]);
+
+  // Tear down elev grid when leaving color modes or unmounting
+  useEffect(() => {
+    return () => {
+      if (elevRef.current) {
+        map.removeLayer(elevRef.current);
+        elevRef.current = null;
+      }
+      if (contourRef.current) {
+        map.removeLayer(contourRef.current);
+        contourRef.current = null;
+      }
+    };
+  }, [map]);
 
   // Keep SVG clip aligned with boundaries as the map moves / zooms
   useEffect(() => {
@@ -155,9 +203,7 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
         return;
       }
       const path = clipPathForBoundaries(map, clipTo);
-      pane.style.clipPath = path || '';
-      // Empty clip (no rings) → hide entire pane
-      if (!path) pane.style.clipPath = 'inset(50%)';
+      pane.style.clipPath = path || 'inset(50%)';
     };
 
     apply();

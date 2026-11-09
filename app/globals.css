@@ -2464,13 +2464,15 @@ a.notification-item {
   background: #1a1a1a;
 }
 
-.field-detail-map-terrain {
+.field-detail-map-terrain,
+.terrain-control {
   position: absolute;
   top: 10px;
   left: 10px;
   z-index: 1000;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   background: var(--bone-raised, #f5f1e8);
   border: 1px solid var(--border-1, #e0ddd6);
@@ -2483,9 +2485,11 @@ a.notification-item {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--field-green, #1F402A);
+  max-width: calc(100% - 24px);
 }
 
-.field-detail-map-terrain select {
+.field-detail-map-terrain select,
+.terrain-control select {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0;
@@ -2495,7 +2499,16 @@ a.notification-item {
   padding: 3px 6px;
   background: var(--bone, #F6F2EA);
   color: var(--ink, #1c1917);
-  max-width: 120px;
+  max-width: 140px;
+}
+
+.terrain-control-ramp {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: 3px;
+  border: 1px solid var(--border-1, #e0ddd6);
+  flex-basis: 100%;
 }
 
 .field-detail-map-actions {

@@ -5,7 +5,9 @@ import { MapContainer, TileLayer, Marker, Polygon, Polyline, useMap, useMapEvent
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
-import ElevationOverlay, { type TerrainMode, TERRAIN_MODE_LABELS } from '@/components/ElevationOverlay';
+import ElevationOverlay from '@/components/ElevationOverlay';
+import TerrainControl from '@/components/TerrainControl';
+import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import { useFieldBoundaries, type FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
   exteriorRing,
@@ -17,7 +19,6 @@ import {
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
-const TERRAIN_OPTIONS: TerrainMode[] = ['off', 'color', 'shade', 'contours'];
 const NEBRASKA_FALLBACK: [number, number] = [41.5, -99.5];
 
 type Mode = 'idle' | 'create' | 'edit';
@@ -133,7 +134,7 @@ interface Props {
 export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBoundarySaved }: Props) {
   const [boundaryTick, setBoundaryTick] = useState(0);
   const boundaries = useFieldBoundaries([fieldId], undefined, boundaryTick);
-  const [terrainMode, setTerrainMode] = useState<TerrainMode>('off');
+  const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
   const [mode, setMode] = useState<Mode>('idle');
   const [points, setPoints] = useState<LatLng[]>([]);
   const [history, setHistory] = useState<LatLng[][]>([]);
@@ -335,18 +336,11 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
       </MapContainer>
 
       {!editing && (
-        <label className="field-detail-map-terrain">
-          Terrain
-          <select
-            value={terrainMode}
-            onChange={(e) => setTerrainMode(e.target.value as TerrainMode)}
-            aria-label="Terrain mode"
-          >
-            {TERRAIN_OPTIONS.map((m) => (
-              <option key={m} value={m}>{TERRAIN_MODE_LABELS[m]}</option>
-            ))}
-          </select>
-        </label>
+        <TerrainControl
+          className="field-detail-map-terrain"
+          value={terrainMode}
+          onChange={setTerrainMode}
+        />
       )}
 
       {editing ? (

@@ -5,9 +5,10 @@ import { MapContainer, TileLayer, Marker, CircleMarker, Tooltip, useMapEvents, W
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import PLSSOverlay from './PLSSOverlay';
-import ElevationOverlay, { type TerrainMode } from './ElevationOverlay';
+import ElevationOverlay from './ElevationOverlay';
 import BoundaryLayer from './BoundaryLayer';
 import type { FieldBoundaryCollection } from './useFieldBoundaries';
+import type { TerrainMode } from '@/lib/terrain/modes';
 
 // Fix for default marker icons in Next.js
 const defaultIcon = L.icon({
