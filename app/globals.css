@@ -2351,10 +2351,116 @@ a.notification-item {
   padding: 20px;
 }
 
+.detail-panel-content-map-first {
+  padding: 0;
+}
+
 .detail-info {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.detail-info-map-first {
+  padding: 20px;
+}
+
+.field-detail-map {
+  position: relative;
+  width: 100%;
+  height: 240px;
+  background: var(--bg-tertiary, #e8e4dc);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.field-detail-map-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.field-detail-map .leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+}
+
+.field-detail-map-terrain {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bone-raised, #f5f1e8);
+  border: 1px solid var(--border-1, #e0ddd6);
+  border-radius: 10px;
+  padding: 6px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14);
+  font-size: 11px;
+  font-family: var(--font-display, system-ui);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--field-green, #1F402A);
+}
+
+.field-detail-map-terrain select {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  border: 1px solid var(--border-1, #e0ddd6);
+  border-radius: 6px;
+  padding: 3px 6px;
+  background: var(--bone, #F6F2EA);
+  color: var(--ink, #1c1917);
+  max-width: 120px;
+}
+
+.field-detail-map-place {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 1000;
+  border: 1px solid var(--border-1, #e0ddd6);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--bone-raised, #f5f1e8);
+  color: var(--field-green, #1F402A);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  cursor: pointer;
+}
+
+.field-detail-map-place:hover {
+  background: var(--bg-card, #fff);
+}
+
+.field-detail-more-toggle {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-primary, #1F402A);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.field-detail-more {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
 }
 
 .detail-row {
