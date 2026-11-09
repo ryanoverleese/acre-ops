@@ -361,3 +361,261 @@ test('authenticated import is idempotent and will not overwrite an edit or an am
   assert.equal(features.features[0].geometry.type, 'Polygon');
   block();
 });
+
+test('file candidates keep shapefile lineage and do not invent a CropX uuid', () => {
+  const sha = 'ab'.repeat(32);
+  const geometry = square(-99.123456);
+  const parsed = engine.parseFileCandidates([{
+    field_id: 462,
+    source_file: 'Rapp-Kelly.shp',
+    zip: 'example.zip',
+    zip_sha256: sha.toUpperCase(),
+    FieldName: "Mother's",
+    attrs: { FarmName: 'Kelly Rapp', Area: 1 },
+    acres: 10,
+    valid: true,
+    geometry,
+  }, {
+    field_id: 116,
+    source_file: 'Schneider-Dwight.shp',
+    zip_sha256: sha,
+    FieldName: "Cherie's West",
+    geometry,
+  }], '2026-11-09T18:00:00.000Z');
+  assert.equal(parsed.source, 'file');
+  assert.equal(parsed.items[0].sourceFileSha256, sha);
+  assert.equal(parsed.items[0].sourceFarmName, 'Kelly Rapp');
+  const held = engine.parseFileCandidates([{
+    field_id: 116, source_file: 'Schneider-Dwight.shp', zip_sha256: sha, FieldName: "Cherie's West", valid: false, geometry,
+  }], '2026-11-09T18:00:00.000Z');
+  assert.equal(held.items[0].geometry, null);
+  const catalog = [{ id: 462, cropxFieldUuid: null }, { id: 18, cropxFieldUuid: KNOWN_UUID }];
+  const rows = engine.classifyFileBoundaries(parsed, catalog, []);
+  assert.equal(rows[0].disposition, 'eligible');
+  assert.equal(rows[0].resolvedFieldId, 462);
+  assert.equal(rows[0].cropxFieldUuid, null);
+  assert.equal(rows[1].disposition, 'unmatched');
+  assert.equal(engine.classifyFileBoundaries(held, catalog, [])[0].disposition, 'invalid_geometry');
+  assert.equal(engine.classifyFileBoundaries(held, catalog, [])[0].geometry, null);
+  const again = engine.classifyFileBoundaries(parsed, catalog, [{
+    fieldId: 462, cropxFieldUuid: null, geometrySha256: engine.geometrySha256(geometry), edited: false,
+    sourceFileName: 'Rapp-Kelly.shp', sourceFileSha256: sha, sourceFeatureName: "Mother's",
+  }]);
+  assert.equal(again[0].disposition, 'unchanged');
+  const overCropx = engine.classifyFileBoundaries(engine.parseFileCandidates([{
+    field_id: 18, source_file: 'Rapp-Kelly.shp', zip_sha256: sha, FieldName: 'T & L Pivot', geometry: square(-99.05),
+  }], '2026-11-09T18:00:00.000Z'), catalog, [{ fieldId: 18, cropxFieldUuid: KNOWN_UUID, geometrySha256: engine.geometrySha256(square()), edited: false }]);
+  assert.equal(overCropx[0].disposition, 'conflict_changed');
+  assert.equal(JSON.stringify(engine.reviewOf(rows)).includes('-99.123456'), false);
+  assert.throws(() => engine.parseFileCandidates([
+    { field_id: 462, source_file: 'Rapp-Kelly.shp', zip_sha256: sha, FieldName: 'A', geometry },
+    { field_id: 462, source_file: 'Rapp-Kelly.shp', zip_sha256: sha, FieldName: 'B', geometry },
+  ], '2026-11-09T18:00:00.000Z'), /repeat/);
+  assert.throws(() => engine.parseFileCandidates([
+    { field_id: 462, source_file: 'Rapp-Kelly.shp', zip_sha256: 'nope', FieldName: 'A', geometry },
+  ], '2026-11-09T18:00:00.000Z'), /sha256/);
+});
+
+test('file candidate dry-run writes nothing and does not echo coordinates', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'acre-file-boundaries-'));
+  const candidates = path.join(dir, 'candidates.json');
+  fs.writeFileSync(candidates, JSON.stringify([{
+    field_id: 462, source_file: 'Rapp-Kelly.shp', zip: 'example.zip', zip_sha256: 'ab'.repeat(32),
+    FieldName: 'T & L Pivot', acres: 10, valid: true, geometry: square(-99.123456),
+  }]));
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/import-file-boundaries.cjs'), '--candidates', candidates], {
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: 'postgresql://postgres:super-secret-password@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres', BOUNDARY_IMPORT_APPLY: engine.BOUNDARY_IMPORT_APPLY_VALUE },
+    timeout: 15000,
+  });
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(run.stdout.includes('super-secret-password'), false);
+  assert.equal(run.stdout.includes('-99.123456'), false);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.mode, 'dry-run');
+  assert.equal(report.writes, 0);
+  assert.equal(report.catalogChecked, false);
+  assert.equal(report.validGeometry, 1);
+  assert.deepEqual(report.fieldIds, [462]);
+  const refused = spawnSync(process.execPath, [path.join(root, 'scripts/import-file-boundaries.cjs'), '--apply', '--candidates', candidates], {
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: 'postgresql://postgres:super-secret-password@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres' },
+    timeout: 15000,
+  });
+  assert.equal(refused.status, 1, refused.stderr);
+  assert.match(refused.stderr, /disabled/);
+  assert.equal(refused.stdout.includes('super-secret-password'), false);
+  assert.equal(refused.stderr.includes('super-secret-password'), false);
+});
+
+test('file-source migration keeps an existing cropx boundary valid', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const { pgcrypto } = require('@electric-sql/pglite/contrib/pgcrypto');
+  const db = new PGlite({ extensions: { pgcrypto } });
+  await db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
+  const dir = path.join(root, 'supabase/migrations');
+  const files = fs.readdirSync(dir).filter(name => name.endsWith('.sql')).sort();
+  const added = '20261109184500_field_boundary_file_source.sql';
+  for (const name of files) {
+    if (name === added) continue;
+    await db.exec(fs.readFileSync(path.join(dir, name), 'utf8'));
+  }
+  const migration = fs.readFileSync(path.join(dir, added), 'utf8');
+  assert.equal(/\bUPDATE\b|\bDELETE\b/i.test(migration), false);
+  const geometry = square(-99.2);
+  const hash = engine.geometrySha256(geometry);
+  const field = (await db.query(`INSERT INTO public.fields (name) VALUES ('Kept') RETURNING id`)).rows[0];
+  await db.query(
+    `INSERT INTO public.field_boundaries (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, updated_at)
+     VALUES ($1,$2,$3::jsonb,$4,'EPSG:4326','lonlat','cropx','2020-01-01T00:00:00Z')`,
+    [field.id, KNOWN_UUID, JSON.stringify(geometry), hash]);
+  const job = (await db.query(
+    `INSERT INTO public.field_boundary_imports (source, mode, crs, axis_order, observed_at, dataset_sha256, summary)
+     VALUES ('cropx','stage','EPSG:4326','lonlat','2026-11-05T23:00:00Z',$1,'{}'::jsonb) RETURNING id`,
+    ['cd'.repeat(32)])).rows[0];
+  await db.query(
+    `INSERT INTO public.field_boundary_import_rows (import_id, cropx_field_uuid, disposition, detail) VALUES ($1,$2,'unmatched','kept')`,
+    [job.id, KNOWN_UUID]);
+  const before = (await db.query('SELECT field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, source_observed_at, import_row_id, edited_at, updated_at FROM public.field_boundaries')).rows;
+  await db.exec(migration);
+  const after = (await db.query('SELECT field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, source_observed_at, import_row_id, edited_at, updated_at FROM public.field_boundaries')).rows;
+  assert.deepEqual(after, before);
+  const lineage = (await db.query('SELECT source_file_name, source_file_sha256, source_feature_name FROM public.field_boundaries')).rows[0];
+  assert.deepEqual(lineage, { source_file_name: null, source_file_sha256: null, source_feature_name: null });
+  const staged = (await db.query('SELECT cropx_field_uuid, source, source_file_name, detail FROM public.field_boundary_import_rows')).rows[0];
+  assert.equal(staged.cropx_field_uuid, KNOWN_UUID);
+  assert.equal(staged.source, 'cropx');
+  assert.equal(staged.source_file_name, null);
+  assert.equal(staged.detail, 'kept');
+  const index = (await db.query(`SELECT indexdef FROM pg_indexes WHERE indexname = 'field_boundaries_cropx_field_uuid_key'`)).rows[0].indexdef;
+  assert.match(index, /UNIQUE/);
+  assert.match(index, /cropx_field_uuid IS NOT NULL/);
+  await db.close();
+});
+
+test('a file boundary is keyed by fields.id and re-applying the same file changes nothing', async () => {
+  const { NextRequest } = require('next/server');
+  allow();
+  const a = f.load('lib/supabase/adapter.ts');
+  const store = f.load('lib/field-boundaries/store.ts');
+  const database = f.load('lib/supabase/database.ts');
+  const read = f.load('app/api/field-boundaries/route.ts');
+  const fileField = await a.createRow('fields', { name: 'QA File Boundary', acres: 10, lat: 40.5, lng: -99.2 });
+  const second = await a.createRow('fields', { name: 'QA File Two' });
+  const sha = 'ab'.repeat(32);
+  const observed = '2026-11-09T18:00:00.000Z';
+  const geometry = square(-99.2);
+  const sql = { query: database.query, transaction: database.transaction };
+  const parsed = engine.parseFileCandidates([{
+    field_id: fileField.id,
+    source_file: 'Rapp-Kelly.shp',
+    zip: 'example.zip',
+    zip_sha256: sha.toUpperCase(),
+    FieldName: "Mother's",
+    attrs: { FieldName: "Mother's", FarmName: 'Kelly Rapp', GrowerName: 'Rapp; Kelly', Area: 12 },
+    acres: 157.5,
+    valid: true,
+    geometry,
+  }], observed);
+  const catalog = await store.loadCatalog(sql);
+  const first = engine.classifyFileBoundaries(parsed, catalog, await store.loadCommitted(sql));
+  assert.equal(first[0].disposition, 'eligible');
+  assert.equal(first[0].resolvedFieldId, fileField.id);
+  assert.equal(first[0].cropxFieldUuid, null);
+  const staged = await store.stageReviewedRows(sql, first, sha, observed, 'file');
+  assert.equal((await f.db.query('SELECT count(*)::int AS n FROM public.field_boundaries WHERE field_id = $1', [fileField.id])).rows[0].n, 0);
+  const stagedRow = (await f.db.query('SELECT source, cropx_field_uuid, source_file_name, source_file_sha256, source_feature_name, source_farm_name FROM public.field_boundary_import_rows WHERE import_id = $1', [staged.importId])).rows[0];
+  assert.equal(stagedRow.source, 'file');
+  assert.equal(stagedRow.cropx_field_uuid, null);
+  assert.equal(stagedRow.source_file_name, 'Rapp-Kelly.shp');
+  assert.equal(stagedRow.source_file_sha256, sha);
+  assert.equal(stagedRow.source_feature_name, "Mother's");
+  assert.equal(stagedRow.source_farm_name, 'Kelly Rapp');
+  assert.deepEqual((await store.applyBoundaryImport(sql, staged.importId)).results, { inserted: 1, replaced: 0, skipped_unchanged: 0, blocked: 0 });
+  const stored = (await f.db.query('SELECT cropx_field_uuid, source, source_file_name, source_file_sha256, source_feature_name, geometry_sha256 FROM public.field_boundaries WHERE field_id = $1', [fileField.id])).rows[0];
+  assert.equal(stored.cropx_field_uuid, null);
+  assert.equal(stored.source, 'file');
+  assert.equal(stored.source_file_name, 'Rapp-Kelly.shp');
+  assert.equal(stored.source_file_sha256, sha);
+  assert.equal(stored.source_feature_name, "Mother's");
+  assert.equal(stored.geometry_sha256, engine.geometrySha256(geometry));
+  assert.equal((await f.db.query('SELECT cropx_field_uuid FROM public.fields WHERE id = $1', [fileField.id])).rows[0].cropx_field_uuid, null);
+
+  await f.db.query(`UPDATE public.field_boundaries SET updated_at = '2020-01-01T00:00:00Z' WHERE field_id = $1`, [fileField.id]);
+  const againRows = engine.classifyFileBoundaries(parsed, catalog, await store.loadCommitted(sql));
+  assert.equal(againRows[0].disposition, 'unchanged');
+  const again = await store.stageReviewedRows(sql, againRows, sha, observed, 'file');
+  const againApply = await store.applyBoundaryImport(sql, again.importId);
+  assert.equal(againApply.results.inserted, 0);
+  assert.equal(againApply.results.skipped_unchanged, 1);
+  const stamp = (await f.db.query('SELECT updated_at FROM public.field_boundaries WHERE field_id = $1', [fileField.id])).rows[0];
+  assert.equal(new Date(stamp.updated_at).toISOString().slice(0, 4), '2020');
+  assert.equal((await f.db.query('SELECT count(*)::int AS n FROM public.field_boundaries WHERE field_id = $1', [fileField.id])).rows[0].n, 1);
+
+  f.session = { user: { id: String(crew.id) } };
+  const visible = await read.GET(new NextRequest(`http://localhost/api/field-boundaries?fields=${fileField.id}`));
+  assert.equal(visible.status, 200);
+  const features = await visible.json();
+  assert.equal(features.type, 'FeatureCollection');
+  assert.equal(features.features.length, 1);
+  assert.equal(features.features[0].id, fileField.id);
+  assert.equal(features.features[0].properties.fieldId, fileField.id);
+  assert.equal(features.features[0].properties.cropxFieldUuid, null);
+  assert.equal(features.features[0].properties.source, 'file');
+  assert.equal(features.features[0].geometry.type, 'Polygon');
+  const cropxVisible = await read.GET(new NextRequest(`http://localhost/api/field-boundaries?fields=${field.id}`));
+  assert.equal((await cropxVisible.json()).features[0].properties.cropxFieldUuid, KNOWN_UUID);
+
+  const otherSha = 'cd'.repeat(32);
+  const secondClass = engine.classifyFileBoundaries(engine.parseFileCandidates([{
+    field_id: second.id, source_file: 'Schneider-Dwight.shp', zip_sha256: otherSha, FieldName: "Cherie's West", geometry: square(-98.4), valid: true,
+  }], observed), await store.loadCatalog(sql), await store.loadCommitted(sql));
+  assert.equal(secondClass[0].disposition, 'eligible');
+  const secondStaged = await store.stageReviewedRows(sql, secondClass, otherSha, observed, 'file');
+  assert.equal((await store.applyBoundaryImport(sql, secondStaged.importId)).results.inserted, 1);
+  assert.equal((await f.db.query('SELECT count(*)::int AS n FROM public.field_boundaries WHERE cropx_field_uuid IS NULL')).rows[0].n, 2);
+
+  const third = await a.createRow('fields', { name: 'QA File Three' });
+  await assert.rejects(f.db.query(
+    `INSERT INTO public.field_boundaries (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source)
+     VALUES ($1, NULL, $2::jsonb, $3, 'EPSG:4326', 'lonlat', 'cropx')`,
+    [third.id, JSON.stringify(geometry), engine.geometrySha256(geometry)]));
+  await assert.rejects(f.db.query(
+    `INSERT INTO public.field_boundaries (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, source_file_name, source_file_sha256, source_feature_name)
+     VALUES ($1, $2, $3::jsonb, $4, 'EPSG:4326', 'lonlat', 'file', 'Rapp-Kelly.shp', $5, 'Name')`,
+    [third.id, '11111111-1111-4111-8111-111111111111', JSON.stringify(geometry), engine.geometrySha256(geometry), sha]));
+  await assert.rejects(f.db.query(
+    `INSERT INTO public.field_boundaries (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source)
+     VALUES ($1, $2, $3::jsonb, $4, 'EPSG:4326', 'lonlat', 'cropx')`,
+    [third.id, KNOWN_UUID, JSON.stringify(geometry), engine.geometrySha256(geometry)]));
+  await assert.rejects(f.db.query(
+    `INSERT INTO public.field_boundary_import_rows (import_id, source, cropx_field_uuid, disposition, detail)
+     VALUES ($1, 'file', NULL, 'unmatched', 'missing lineage')`,
+    [secondStaged.importId]));
+
+  f.session = { user: { id: String(admin.id) } };
+  const editedGeometry = square(-99.11);
+  assert.equal((await read.PATCH(post('/api/field-boundaries', { fieldId: fileField.id, geometry: editedGeometry }))).status, 200);
+  const editedRow = (await f.db.query('SELECT source, cropx_field_uuid, source_file_name, source_feature_name, edited_at FROM public.field_boundaries WHERE field_id = $1', [fileField.id])).rows[0];
+  assert.equal(editedRow.source, 'edited');
+  assert.equal(editedRow.cropx_field_uuid, null);
+  assert.equal(editedRow.source_file_name, 'Rapp-Kelly.shp');
+  assert.equal(editedRow.source_feature_name, "Mother's");
+  assert.ok(editedRow.edited_at);
+  const conflict = engine.classifyFileBoundaries(parsed, catalog, await store.loadCommitted(sql));
+  assert.equal(conflict[0].disposition, 'conflict_edited');
+  const conflictStaged = await store.stageReviewedRows(sql, conflict, sha, observed, 'file');
+  assert.equal((await store.applyBoundaryImport(sql, conflictStaged.importId)).results.blocked, 1);
+  assert.equal((await f.db.query('SELECT geometry_sha256 FROM public.field_boundaries WHERE field_id = $1', [fileField.id])).rows[0].geometry_sha256, engine.geometrySha256(editedGeometry));
+
+  const cropxBefore = (await f.db.query('SELECT cropx_field_uuid, source, geometry_sha256, updated_at FROM public.field_boundaries WHERE field_id = $1', [other.id])).rows[0];
+  const overRows = engine.classifyFileBoundaries(engine.parseFileCandidates([{
+    field_id: other.id, source_file: 'Rapp-Kelly.shp', zip_sha256: sha, FieldName: 'T & L Pivot', geometry: square(-99.05), valid: true,
+  }], observed), catalog, await store.loadCommitted(sql));
+  assert.equal(overRows[0].disposition, 'conflict_changed');
+  const overStaged = await store.stageReviewedRows(sql, overRows, sha, observed, 'file');
+  assert.equal((await store.applyBoundaryImport(sql, overStaged.importId)).results.blocked, 1);
+  const cropxAfter = (await f.db.query('SELECT cropx_field_uuid, source, geometry_sha256, updated_at FROM public.field_boundaries WHERE field_id = $1', [other.id])).rows[0];
+  assert.deepEqual(cropxAfter, cropxBefore);
+  block();
+});

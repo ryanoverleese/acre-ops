@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
 
-// CropX boundary contract. No network, no database, no credentials.
+// Boundary contract. No network, no database, no credentials.
 // Acre field identity is public.fields.id. content.fieldId is CropX's own id.
+// File candidates are a JSON array keyed by fields.id. They are not CropX rows.
 
 export const ACCEPTED_CRS = 'EPSG:4326';
 export const ACCEPTED_AXIS_ORDER = 'lonlat';
@@ -27,7 +28,15 @@ export interface MultiPolygon { type: 'MultiPolygon'; coordinates: Position[][][
 export type BoundaryGeometry = Polygon | MultiPolygon;
 
 export interface CatalogField { id: number; cropxFieldUuid: string | null }
-export interface CommittedBoundary { fieldId: number; cropxFieldUuid: string; geometrySha256: string; edited: boolean }
+export interface CommittedBoundary {
+  fieldId: number;
+  cropxFieldUuid: string | null;
+  geometrySha256: string;
+  edited: boolean;
+  sourceFileName?: string | null;
+  sourceFileSha256?: string | null;
+  sourceFeatureName?: string | null;
+}
 
 export interface BoundaryDataset {
   source: 'cropx';
@@ -66,6 +75,9 @@ export interface ClassifiedBoundary {
   sourceFarmId: string | null;
   sourceFarmName: string | null;
   sourceCropxFieldId: string | null;
+  sourceFileName: string | null;
+  sourceFileSha256: string | null;
+  sourceFeatureName: string | null;
   geometry: BoundaryGeometry | null;
   geometrySha256: string | null;
   sourceObservedAt: string | null;
@@ -296,6 +308,9 @@ export function classifyBoundaries(dataset: BoundaryDataset, catalog: CatalogFie
       sourceFarmId: item.sourceFarmId,
       sourceFarmName: item.sourceFarmName,
       sourceCropxFieldId: item.sourceCropxFieldId,
+      sourceFileName: null,
+      sourceFileSha256: null,
+      sourceFeatureName: null,
       geometry: item.geometry,
       geometrySha256: item.geometry ? geometrySha256(item.geometry) : null,
     };
@@ -337,6 +352,9 @@ export function reviewOf(rows: ClassifiedBoundary[]) {
     acreFieldId: row.acreFieldId,
     resolvedFieldId: row.resolvedFieldId,
     sourceCropxFieldId: row.sourceCropxFieldId,
+    sourceFileName: row.sourceFileName,
+    sourceFileSha256: row.sourceFileSha256,
+    sourceFeatureName: row.sourceFeatureName,
     disposition: row.disposition,
     detail: row.detail,
     legacyBrFieldSeasonId: row.legacyBrFieldSeasonId,
@@ -347,6 +365,126 @@ export function countDispositions(rows: ClassifiedBoundary[]): Record<Dispositio
   const counts = Object.fromEntries(DISPOSITIONS.map(key => [key, 0])) as Record<Disposition, number>;
   for (const row of rows) counts[row.disposition] += 1;
   return counts;
+}
+
+const FILE_SHA_RE = /^[0-9a-f]{64}$/;
+
+export interface FileBoundaryItem {
+  fieldId: number;
+  sourceFileName: string;
+  sourceFileSha256: string;
+  sourceFeatureName: string;
+  sourceFarmName: string | null;
+  geometry: BoundaryGeometry | null;
+  geometryDetail: string | null;
+}
+export interface FileBoundaryDataset {
+  source: 'file';
+  crs: typeof ACCEPTED_CRS;
+  axisOrder: typeof ACCEPTED_AXIS_ORDER;
+  observedAt: string;
+  items: FileBoundaryItem[];
+}
+
+function fileText(value: unknown, label: string): string {
+  if (typeof value !== 'string') throw new BoundaryDatasetError(`${label} must be text`);
+  const text = value.trim();
+  if (!text || text.length > 200) throw new BoundaryDatasetError(`${label} is missing or too long`);
+  return text;
+}
+
+// The approved shapefile export is a JSON array, used as-is.
+// field_id, source_file, zip_sha256, FieldName, and geometry are required.
+// zip, attrs, acres, and valid may be present. valid:false holds the geometry back.
+// Coordinates are already WGS84 longitude/latitude. This does not transform them.
+export function parseFileCandidates(input: unknown, observedAt: string): FileBoundaryDataset {
+  const instant = parseInstant(observedAt);
+  if (!Array.isArray(input)) throw new BoundaryDatasetError('File candidates must be a JSON array');
+  if (input.length < 1 || input.length > 1000) throw new BoundaryDatasetError('Dataset needs between 1 and 1000 fields');
+  const seen = new Set<number>();
+  const items = input.map(value => {
+    const item = record(value, 'Each file candidate');
+    for (const key of ['field_id', 'source_file', 'zip_sha256', 'FieldName', 'geometry']) {
+      if (!Object.hasOwn(item, key)) throw new BoundaryDatasetError('A file candidate is missing field_id, source_file, zip_sha256, FieldName, or geometry');
+    }
+    if (typeof item.field_id !== 'number' || !Number.isSafeInteger(item.field_id) || item.field_id <= 0) throw new BoundaryDatasetError('field_id must be a fields.id');
+    if (seen.has(item.field_id)) throw new BoundaryDatasetError('File candidates repeat a fields.id');
+    seen.add(item.field_id);
+    const sha = typeof item.zip_sha256 === 'string' ? item.zip_sha256.trim().toLowerCase() : '';
+    if (!FILE_SHA_RE.test(sha)) throw new BoundaryDatasetError('zip_sha256 must be a sha256 hex digest');
+    if (item.valid != null && typeof item.valid !== 'boolean') throw new BoundaryDatasetError('valid must be a boolean');
+    let sourceFarmName: string | null = null;
+    if (item.attrs != null) {
+      const attrs = record(item.attrs, 'Candidate attrs');
+      if (attrs.FarmName != null && attrs.FarmName !== '') sourceFarmName = optionalText(attrs.FarmName);
+    }
+    let geometry: BoundaryGeometry | null = null;
+    let geometryDetail: string | null = null;
+    if (item.valid === false) geometryDetail = 'Candidate was not marked valid';
+    else {
+      const inspected = inspectGeometry(item.geometry);
+      if (inspected.ok) geometry = inspected.geometry;
+      else geometryDetail = inspected.detail;
+    }
+    return {
+      fieldId: item.field_id,
+      sourceFileName: fileText(item.source_file, 'source_file'),
+      sourceFileSha256: sha,
+      sourceFeatureName: fileText(item.FieldName, 'FieldName'),
+      sourceFarmName,
+      geometry,
+      geometryDetail,
+    };
+  });
+  return { source: 'file', crs: ACCEPTED_CRS, axisOrder: ACCEPTED_AXIS_ORDER, observedAt: instant, items };
+}
+
+function sameFileLineage(existing: CommittedBoundary, item: FileBoundaryItem): boolean {
+  return (existing.sourceFileName ?? null) === item.sourceFileName
+    && (existing.sourceFileSha256 ?? null) === item.sourceFileSha256
+    && (existing.sourceFeatureName ?? null) === item.sourceFeatureName;
+}
+
+// File rows are keyed by public.fields.id. They do not match or invent a CropX uuid.
+export function classifyFileBoundaries(dataset: FileBoundaryDataset, catalog: CatalogField[], committed: CommittedBoundary[]): ClassifiedBoundary[] {
+  const byId = new Map<number, CatalogField>();
+  for (const field of catalog) {
+    if (byId.has(field.id)) throw new BoundaryDatasetError('Catalog repeats a fields.id');
+    byId.set(field.id, field);
+  }
+  const committedByField = new Map(committed.map(row => [row.fieldId, row]));
+  return dataset.items.map(item => {
+    const hash = item.geometry ? geometrySha256(item.geometry) : null;
+    const base = {
+      cropxFieldUuid: null,
+      acreFieldId: item.fieldId,
+      sourceFieldName: item.sourceFeatureName,
+      sourceFarmId: null,
+      sourceFarmName: item.sourceFarmName,
+      sourceCropxFieldId: null,
+      sourceFileName: item.sourceFileName,
+      sourceFileSha256: item.sourceFileSha256,
+      sourceFeatureName: item.sourceFeatureName,
+      geometry: item.geometry,
+      geometrySha256: hash,
+    };
+    const finish = (disposition: Disposition, detail: string, resolvedFieldId: number | null, keepGeometry = true): ClassifiedBoundary => ({
+      ...base,
+      sourceObservedAt: dataset.observedAt,
+      legacyBrFieldSeasonId: null,
+      sourceFieldSeasonId: null,
+      disposition, detail, resolvedFieldId,
+      geometry: keepGeometry ? base.geometry : null,
+      geometrySha256: keepGeometry ? base.geometrySha256 : null,
+    });
+    if (!item.geometry) return finish('invalid_geometry', item.geometryDetail || 'Boundary geometry is invalid', null, false);
+    if (!byId.has(item.fieldId)) return finish('unmatched', 'No fields row has this id', null);
+    const existing = committedByField.get(item.fieldId);
+    if (!existing) return finish('eligible', 'Unique fields.id match', item.fieldId);
+    if (existing.geometrySha256 === hash && sameFileLineage(existing, item)) return finish('unchanged', 'Stored boundary is unchanged', item.fieldId);
+    if (existing.edited) return finish('conflict_edited', 'Stored boundary was edited', item.fieldId);
+    return finish('conflict_changed', 'Stored boundary differs and was not marked for replacement', item.fieldId);
+  });
 }
 
 export interface SeasonLink { brFsId: number; fieldSeasonId: number; fieldId: number | null }
@@ -384,7 +522,8 @@ function heldRow(partial: {
   return {
     cropxFieldUuid: partial.cropxFieldUuid, acreFieldId: partial.acreFieldId, resolvedFieldId: null,
     sourceFieldName: partial.sourceFieldName ?? null, sourceFarmId: null, sourceFarmName: partial.sourceFarmName ?? null,
-    sourceCropxFieldId: null, geometry: null, geometrySha256: null,
+    sourceCropxFieldId: null, sourceFileName: null, sourceFileSha256: null, sourceFeatureName: null,
+    geometry: null, geometrySha256: null,
     sourceObservedAt: partial.sourceObservedAt ?? null, legacyBrFieldSeasonId: partial.legacyBrFieldSeasonId ?? null,
     sourceFieldSeasonId: partial.sourceFieldSeasonId ?? null, disposition: partial.disposition, detail: partial.detail,
   };
