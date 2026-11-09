@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import InlineCell from '@/components/InlineCell';
 import SearchableSelect from '@/components/SearchableSelect';
-import BoundaryThumb, { type BoundaryFeature } from '@/components/fields/BoundaryThumb';
+import BoundaryThumb, { type BoundaryFeature, type ThumbPin } from '@/components/fields/BoundaryThumb';
 import type { ProcessedField } from '@/app/fields/page';
 
 // Inline editable cell for field-level (not season-level) data
@@ -130,6 +130,8 @@ interface RenderCellProps {
   onInlineFieldSave: (fieldId: number, field: string, value: unknown) => void;
   onToggleExpand: (fieldSeasonId: number) => void;
   boundaryFeature?: BoundaryFeature | null;
+  /** Probe placement pins for the Map thumbnail. */
+  mapPins?: ThumbPin[];
 }
 
 export function FieldCell({
@@ -152,6 +154,7 @@ export function FieldCell({
   onInlineFieldSave,
   onToggleExpand,
   boundaryFeature = null,
+  mapPins = [],
 }: RenderCellProps) {
   switch (colKey) {
     case 'boundary':
@@ -159,8 +162,15 @@ export function FieldCell({
         <td key={colKey} className="fields-boundary-cell" onClick={(e) => e.stopPropagation()}>
           <BoundaryThumb
             feature={boundaryFeature}
+            pins={mapPins}
             size={56}
-            title={boundaryFeature ? `${field.name} boundary` : `${field.name} — no boundary`}
+            title={
+              mapPins.length
+                ? `${field.name} — boundary + probe`
+                : boundaryFeature
+                  ? `${field.name} boundary`
+                  : `${field.name} — no boundary`
+            }
             onClick={() => onRowClick(field)}
           />
         </td>
