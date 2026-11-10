@@ -2,7 +2,16 @@
 
 Checked against the Acre Ops schema and app code on 2026-11-09. Nothing in this document is built yet. The live database was not opened.
 
-A grower signs in and sees only their own farm: fields, field outlines, probes, and water recommendations. Read-only. Plain type, plain labels, no decoration.
+A grower signs in and sees only their own farm: fields, field outlines, elevation on the map, probes, and this year's water recommendations. Read-only. Plain type, plain labels, no decoration.
+
+## Decisions locked in
+
+- **Login:** by farm name (`operations.name`). One farm per session. No per-person grower accounts in v1.
+- **Past customers:** no login at all. A farm with no contact tagged Current Customer is refused, even if someone types the name.
+- **Pilot:** Fishell Farms only (match `operations.name`; confirm the exact spelling when the allow-list is written).
+- **Probe age:** `probes.year_new` (the Probes page column "Year New"). Some probes will be blank — show "Not recorded."
+- **Water recs:** current calendar year only. Field rows with `report_type` `full` and `update`. No farm overview note in v1.
+- **v1 map:** field boundary, elevation picture inside the boundary (reuse the office hillshade), and the most recent probe pin.
 
 ## Build it inside Acre Ops
 
@@ -13,8 +22,6 @@ The map, the gray hillshade, the field outlines, and the farm-to-field link are 
 A second app would not, by itself, keep growers out of other farms' data. This app connects as the database owner (`postgres` only; see `lib/supabase/database.ts`). That login can read every row. Row rules are turned on and then left with no allow-rules (`supabase/migrations/001_init.sql`). The owner skips those rules anyway. Safety is a second, weaker database login used only by the grower pages.
 
 Do not add growers to `users`. That table is the office and installer password list. Anyone who is not an installer is treated as office staff and can open the whole site.
-
-**Login is by farm name.** The grower picks or types `operations.name`. The signed-in session is that one farm (`operations.id`). Anyone who knows the name and the secret for that farm sees the same fields. There is no per-person grower account in v1.
 
 Do not use `operations.approval_token` as the password. That token is one shared link per farm (`/approve`, `/review`, `/field-info`). Those pages can still change the approval answer and the planned pin. Keep them for that seasonal form. The new app does not write. Farm name alone is not a secret (names are guessable). Ryan still picks what proves it is them — a short PIN per farm, a shared password, or something else. That answer is below.
 
@@ -32,7 +39,7 @@ There is no operation column on a field. The link already used by the approval p
 
 A field can have more than one billing name. A billing name can reach more than one farm when two contacts connect them. Both farms then see that field. That is how the approval link works today. With login by farm name, that still means: sign in as farm A, see A's fields; sign in as farm B, see B's fields. Shared fields show for both.
 
-Customer type is a tag on the contact (`contact_customer_types`), not on the farm. The contact screens use the labels Current Customer and Past Customer. For farm-name login, "past customer" means Ryan decides which farms are allowed in (the pilot list in step 3), not a tag on a person.
+Customer type is a tag on the contact (`contact_customer_types`). Labels used in the contact screens: Current Customer and Past Customer. Login requires at least one linked contact tagged Current Customer. Past customers get no login.
 
 `probe_owner_operations` is who owns the probe in inventory. It is not "which probe is in this field."
 
@@ -42,38 +49,35 @@ Farm names are not unique in the schema today. If two farms share a name, refuse
 
 **Fields.** `fields.name`, the pin `fields.lat` / `fields.lng`, and the outline in `field_boundaries`. One outline per field (`field_id`). The shape column is `geometry` (longitude, then latitude). It can come from CropX, a shapefile, or a hand drawing. The map already reads these through `readBoundaryFeatures`.
 
-**Probes, per field.** A probe in a field is a `probe_assignments` row for a `field_seasons` row (that field in one year), pointing at `probes`.
+**Elevation on the map.** Reuse `components/ElevationOverlay.tsx` (USGS 3DEP; pull request #37 made the gray shade solid). Clip to the field outline. Point elevation in feet is also stored: `probe_assignments_calculated.effective_elevation` is `probe_assignments.elevation`, or else `fields.elevation`. Show that number next to the probe. "Not recorded" when empty. Do not look up elevation live on the grower's page.
+
+**Probes, per field.** A probe in a field is a `probe_assignments` row for a `field_seasons` row (that field in one year), pointing at `probes`. Current calendar year only for v1.
 
 | What the grower sees | Where it actually is |
 | --- | --- |
 | Serial number | `probes.serial_number`. The view `probe_assignments_calculated` copies it as `probe_serial_number`. It is not a column on the assignment. |
 | Install date | `probe_assignments.install_date` (date and time). |
-| Map pin | `install_lat` / `install_lng` once it is in the ground. Otherwise `placement_lat` / `placement_lng`. The view's `effective_placement_lat` / `effective_placement_lng` falls back to the field pin and ignores the install pin. Use the install pin first. |
+| Most recent map pin | Prefer `install_lat` / `install_lng`. If those are empty, use `placement_lat` / `placement_lng`. Do not fall back to the field pin for the probe marker. If more than one probe is on the field this year, show each pin. |
 | Status | `probe_status` on that same view (from `probe_status_id`). The app uses Installed, Assigned, Unassigned, and Removed. The shop status on `probes` (rack, in stock) is a different thing. Do not show it. |
 | Which probe on a multi-probe field | `probe_number` and `label` (for example NE). |
+| Year new (age) | `probes.year_new`. Blank is allowed — show "Not recorded." |
 | Year | `field_seasons.season`, copied onto the view as `season`. |
 
-**Probe age.** Nothing is stored as an age. Three different dates exist: `probes.year_new` (the Probes page column "Year New"), `probes.date_created` (when the probe record was added), and the earliest `probe_assignments.install_date` for that probe (first time it went in the ground). Ryan picks which one "age" means before that screen is built.
+**Soil at the probe (number only).** `effective_soil_type` on the same view (assignment, or else field). Saved like `Name (symbol)` by `lib/geo.ts`. No soil map in v1.
 
-**Elevation and soil at the probe.** These are numbers and a name already saved for a point, not a map. `probe_assignments_calculated.effective_elevation` is `probe_assignments.elevation`, or else `fields.elevation`. `effective_soil_type` is the assignment's `soil_type`, or else the field's. Elevation is feet from USGS. Soil text is the USDA map-unit name and symbol, saved like `Name (symbol)` by `lib/geo.ts`. If the cell is empty, say it was not recorded. Do not look it up live on the grower's page.
-
-**Water recommendations.** One table, `water_recs`. Columns that matter: `field_season_id`, `date`, `recommendation`, `suggested_water_day`, `report_type`. The view `water_recs_calculated` adds the field name. Sort by `date`, newest first.
+**Water recommendations.** One table, `water_recs`. Columns that matter: `field_season_id`, `date`, `recommendation`, `suggested_water_day`, `report_type`. The view `water_recs_calculated` adds the field name. Only rows whose field season is the current calendar year. Sort by `date`, newest first.
 
 `report_type` is not all grower-facing. The office screen treats them like this:
 
-- `full` — the real per-field recommendation.
-- `update` — a short water-day change.
-- `overview` — a farm note stored on whichever field happens to be first for that farm. It is not that field's recommendation.
-- `farm_insight` — a draft note, also stored on the first field. The office screen does not treat it as a saved field rec.
-- `full_report` and `water_day_update` — machine suggestions. The office screen hides them from the saved-rec list.
-
-Show `full` and `update` on the field. Show `overview` once, at the farm level, only if Ryan wants it. Leave the other three off.
+- `full` — the real per-field recommendation. Show these.
+- `update` — a short water-day change. Show these.
+- `overview` — a farm note stored on whichever field happens to be first for that farm. Hide in v1.
+- `farm_insight` — a draft note. Hide.
+- `full_report` and `water_day_update` — machine suggestions. Hide.
 
 ## Phase 2
 
-Do not build these until v1 is in growers' hands and Ryan picks an order.
-
-**Elevation map.** Already in the repo. `components/ElevationOverlay.tsx` draws USGS 3DEP inside the field outline (color, gray shade, or 2 ft contours). Pull request #37 made the gray shade solid. The picture is clipped to the outline in the browser. It is not a saved elevation file. Point elevation in feet is already stored, from the USGS point service in `lib/geo.ts`. Reuse the overlay. Open question: is that existing picture what growers should see?
+Do not build these until Fishell is using v1 and Ryan picks an order.
 
 **Soil map.** The repo only has a soil name at one point (USDA Soil Data Access, used by `/api/soil`). It does not download soil shapes or cut them to a field outline. A soil map would be USDA SSURGO map-unit shapes for that field. Open questions: point name versus a colored map, whether to save the shapes, and how the shapes get cut to the outline. Do not pick a method here.
 
@@ -87,34 +91,30 @@ Each step is one pull request. Do not start the next until the previous one is r
 
 1. **The lock, with no screen.** Add a weaker database login that can only read grower views. Row rules on those views allow a row only when it belongs to the signed-in farm through the billing-name join above. Grower code must use this login. Office pages keep the owner login. Tests: farm A cannot read farm B's field, even when the request names B's field id; a field with two billing names is included when one matches; `fields.billing_entity_id` is ignored. Done when those tests pass and the office app still opens.
 
-2. **Login by farm name.** The grower enters `operations.name` plus the secret Ryan picks (see questions). Match the name case-insensitive after trimming spaces. Exactly one farm must match; zero or two-plus means refuse. The session stores that farm's id only. A signed-in grower who opens an office page (`/fields`, `/water-recs`, `/billing`, and the rest) is sent back to the grower home, and those APIs return forbidden. Done when the wrong secret fails, a duplicate farm name fails safely, and the office pages stay closed.
+2. **Login by farm name.** The grower enters `operations.name` plus the secret Ryan picks (see questions). Match the name case-insensitive after trimming spaces. Exactly one farm must match; zero or two-plus means refuse. Refuse if the farm has no contact tagged Current Customer. The session stores that farm's id only. A signed-in grower who opens an office page (`/fields`, `/water-recs`, `/billing`, and the rest) is sent back to the grower home, and those APIs return forbidden. Done when the wrong secret fails, a past-customer-only farm is refused, a duplicate farm name fails safely, and the office pages stay closed.
 
-3. **Turn it on for a short list only.** A list of pilot farm ids (`operations.id`). No other farm can sign in yet. Done when only those farms get in.
+3. **Fishell only.** Allow-list the Fishell Farms operation id. No other farm can sign in yet. Done when only that farm gets in.
 
-4. **My fields.** List the fields for the signed-in farm, for one year (`field_seasons.season`; the office app defaults to the current calendar year). Done when the list matches the fields the approval page would show for that farm and that year, and no others. A farm with no fields for that year sees an empty state.
+4. **My fields.** List the fields for the signed-in farm, for the current calendar year (`field_seasons.season`). Done when the list matches the fields the approval page would show for that farm and that year, and no others. A farm with no fields for that year sees an empty state.
 
-5. **Field map.** Reuse the existing map pieces (`components/FieldsMap.tsx`, `components/fields/FieldDetailMap.tsx`). Load maps with a dynamic import, the way the rest of the app does. Draw `field_boundaries` and the field pin. A field with no outline still shows the pin. Done when another farm's outline never appears.
+5. **Field map: boundary, elevation, probe pin.** Reuse `components/FieldsMap.tsx`, `components/fields/FieldDetailMap.tsx`, and `components/ElevationOverlay.tsx`. Load maps with a dynamic import, the way the rest of the app does. Draw the outline, the elevation picture clipped to it, and each current-year probe pin (install pin, otherwise planned pin — not the field center). A field with no outline still shows the probe pin; elevation picture stays off until there is an outline. Done when another farm's outline never appears, and Fishell's boundary, shade, and probe pins match the office map for that field.
 
-6. **Probes.** On the field: serial, install date, assignment status, probe number, label, and the pin (install pin, otherwise planned pin). Age uses the rule from the questions below. A probe that is only on the shop rack does not appear. Done when the serial and install date match the office field page.
+6. **Probe details.** On the field: serial, install date, status, probe number, label, and year new. "Not recorded" when year new is blank. A probe that is only on the shop rack does not appear. Done when the serial, install date, and year new match the office field page.
 
 7. **Elevation and soil numbers.** Show the stored point values next to the probe. Feet for elevation. "Not recorded" when empty. Done when the numbers match the office field page.
 
-8. **Water recommendations.** Per field, newest first, `full` and `update` only, until Ryan changes that. Farm overview once at the top, only if he says yes. Done when the list matches the office history for that field, and an overview row does not show up as that field's recommendation.
+8. **Water recommendations.** Per field, current year only, newest first, `full` and `update` only. Done when the list matches this year's office history for that field, and overview / suggestion rows do not appear.
 
-9. **Pilot.** Ryan and the pilot growers use it. Fix only what they hit. Done when each grower confirms they see only their own fields.
+9. **Fishell pilot.** Ryan and Fishell use it. Fix only what they hit. Done when Fishell confirms they see only their own fields.
 
-## Questions for Ryan
+## Questions still open
 
-Answer in order. 1 blocks step 2. 2 blocks step 6. 3 blocks step 8. The rest can wait until that step.
+Answer in order. 1 blocks step 2. The rest can wait.
 
 1. Farm name alone is not enough. What proves it is them: a short PIN Ryan sets per farm, a shared password per farm, or something else?
-2. Probe age: year the probe was new, the date the probe record was created, or the first install date?
-3. Water recs: which years, and should the farm overview note be shown?
-4. Which 2 or 3 farms go first? (Use the operation names.)
-5. A field billed to two farms shows for both today. Keep that?
-6. Phase 2 order, after v1: elevation picture, soil map, drainage lines?
-7. Is the hillshade already on the office map the elevation picture growers should see?
+2. A field billed to two farms shows for both today. Keep that?
+3. After Fishell is happy, which comes first: soil map or drainage lines?
 
 ## Not in v1
 
-Invoices and billing. Editing anything. Install photos. Shop rack and probe inventory status. CropX live moisture charts. Valley pivot controls. Drainage, soil shapes, and any new elevation product.
+Invoices and billing. Editing anything. Install photos. Shop rack and probe inventory status. CropX live moisture charts. Valley pivot controls. Soil shapes. Drainage lines. Farm overview water-rec notes. Any year except the current one.
