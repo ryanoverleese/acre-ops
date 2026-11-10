@@ -4,6 +4,7 @@ import { DataError } from '@/lib/supabase/registry';
 import {
   farmHasCurrentCustomer,
   findGrowerFarmByName,
+  isGrowerPilotFarm,
   verifyGrowerPin,
 } from '@/lib/supabase/grower-auth';
 import { createGrowerSession, GROWER_COOKIE } from '@/lib/grower-session';
@@ -36,10 +37,11 @@ export const POST = withApiAuth(async (request) => {
   }
 
   const farm = await findGrowerFarmByName(farmName);
-  // Same message for missing farm, bad PIN, past-only, or duplicate names.
+  // Same message for missing farm, bad PIN, past-only, non-pilot, or duplicate names.
   const current = farm ? await farmHasCurrentCustomer(farm.id) : false;
-  const valid = farm && current && await verifyGrowerPin(farm.grower_pin, pin);
-  if (!farm || !current || !valid) {
+  const pilot = farm ? isGrowerPilotFarm(farm.id, farm.name) : false;
+  const valid = farm && current && pilot && await verifyGrowerPin(farm.grower_pin, pin);
+  if (!farm || !current || !pilot || !valid) {
     throw new DataError('Incorrect farm name or PIN', 401);
   }
 

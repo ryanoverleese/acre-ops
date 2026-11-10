@@ -51,3 +51,19 @@ export async function verifyGrowerPin(
   if (!/^\d{4,6}$/.test(String(pin))) return false;
   return compare(String(pin), stored);
 }
+
+/** Pilot allow-list. Default farm name is Fishell Farms until env expands it. */
+export function isGrowerPilotFarm(operationId: number, name: string): boolean {
+  const ids = (process.env.GROWER_PILOT_OPERATION_IDS || '')
+    .split(',')
+    .map((part) => Number(part.trim()))
+    .filter((id) => Number.isSafeInteger(id) && id > 0);
+  if (ids.includes(operationId)) return true;
+
+  const namesEnv = process.env.GROWER_PILOT_FARM_NAMES;
+  const names = (namesEnv == null ? 'Fishell Farms' : namesEnv)
+    .split(',')
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+  return names.includes(name.trim().toLowerCase());
+}

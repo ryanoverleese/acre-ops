@@ -12,13 +12,14 @@ const {
   findGrowerFarmByName,
   farmHasCurrentCustomer,
   hashGrowerPin,
+  isGrowerPilotFarm,
   verifyGrowerPin,
 } = f.load('lib/supabase/grower-auth.ts');
 const { authorizeActor } = f.load('lib/supabase/api.ts');
 const { DataError } = f.load('lib/supabase/registry.ts');
 const { createGrowerSession, readGrowerSession } = f.load('lib/grower-session.ts');
 
-let currentFarm, pastFarm, dupA, dupB;
+let currentFarm, pastFarm, otherFarm, dupA, dupB;
 
 test.before(async () => {
   await f.initialize();
@@ -35,16 +36,19 @@ test.before(async () => {
 
   currentFarm = await a.createRow('operations', { name: 'Fishell Farms' });
   pastFarm = await a.createRow('operations', { name: 'Past Only Farm' });
+  otherFarm = await a.createRow('operations', { name: 'Other Current Farm' });
   dupA = await a.createRow('operations', { name: 'Twin Farm' });
   dupB = await a.createRow('operations', { name: 'twin farm' });
 
   const pinHash = await hashGrowerPin('4242');
   await a.updateRow('operations', currentFarm.id, { grower_pin: pinHash });
   await a.updateRow('operations', pastFarm.id, { grower_pin: pinHash });
+  await a.updateRow('operations', otherFarm.id, { grower_pin: pinHash });
   await a.updateRow('operations', dupA.id, { grower_pin: pinHash });
   await a.updateRow('operations', dupB.id, { grower_pin: pinHash });
 
   const be = await a.createRow('billing_entities', { name: 'Bill Current' });
+  const beOther = await a.createRow('billing_entities', { name: 'Bill Other' });
   await a.createRow('contacts', {
     name: 'Current Contact',
     email: 'current@example.invalid',
@@ -58,6 +62,13 @@ test.before(async () => {
     operations: [pastFarm.id],
     billing_entity: [be.id],
     customer_type: ['Past Customer'],
+  });
+  await a.createRow('contacts', {
+    name: 'Other Contact',
+    email: 'other@example.invalid',
+    operations: [otherFarm.id],
+    billing_entity: [beOther.id],
+    customer_type: ['Current Customer'],
   });
 
   // Public DTO must not leak the hash.
@@ -109,7 +120,15 @@ test('grower session cookie round-trips; grower cannot call office APIs', async 
   );
 });
 
-test('grower-auth route accepts good PIN and rejects past farm', async () => {
+test('pilot allow-list defaults to Fishell Farms only', () => {
+  assert.equal(isGrowerPilotFarm(currentFarm.id, 'Fishell Farms'), true);
+  assert.equal(isGrowerPilotFarm(otherFarm.id, 'Other Current Farm'), false);
+  process.env.GROWER_PILOT_OPERATION_IDS = String(otherFarm.id);
+  assert.equal(isGrowerPilotFarm(otherFarm.id, 'Other Current Farm'), true);
+  delete process.env.GROWER_PILOT_OPERATION_IDS;
+});
+
+test('grower-auth route accepts Fishell and rejects past or non-pilot farms', async () => {
   const { POST } = f.load('app/api/grower-auth/route.ts');
   const ok = await POST(
     f.request('/api/grower-auth', { farm: 'Fishell Farms', pin: '4242' }),
@@ -124,6 +143,11 @@ test('grower-auth route accepts good PIN and rejects past farm', async () => {
     f.request('/api/grower-auth', { farm: 'Past Only Farm', pin: '4242' }),
   );
   assert.equal(past.status, 401);
+
+  const other = await POST(
+    f.request('/api/grower-auth', { farm: 'Other Current Farm', pin: '4242' }),
+  );
+  assert.equal(other.status, 401);
 
   const bad = await POST(
     f.request('/api/grower-auth', { farm: 'Fishell Farms', pin: '9999' }),
