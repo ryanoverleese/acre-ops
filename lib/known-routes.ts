@@ -37,7 +37,7 @@ const EXACT_PAGES = new Set<string>([
 ]);
 
 /** Exact path and its children. Do not use this for "/" . */
-const PAGE_PREFIXES = ['/equipment', '/installer', '/pulled', '/mobile'];
+const PAGE_PREFIXES = ['/equipment', '/installer', '/pulled', '/mobile', '/grower'];
 
 const DYNAMIC_PAGES = [
   /^\/approve\/[^/]+\/[^/]+$/,
@@ -63,6 +63,7 @@ export const API_ROOTS = new Set<string>([
   'files',
   'gdu',
   'geocode',
+  'grower-auth',
   'install',
   'installer',
   'installer-auth',
@@ -88,6 +89,7 @@ export const API_ROOTS = new Set<string>([
   'repairs',
   'select-options',
   'soil',
+  'usgs-elevation',
   'valley',
   'water-recs',
   'weather-stations',

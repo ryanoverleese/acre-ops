@@ -1466,6 +1466,12 @@
           "type": "text",
           "required": false,
           "identity": false
+        },
+        {
+          "name": "grower_pin",
+          "type": "text",
+          "required": false,
+          "identity": false
         }
       ],
       "read": "operations"

@@ -3,11 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { auth } from '@/auth';
 import { CREW_COOKIE, readCrewSession } from '../crew-session';
+import { GROWER_COOKIE, readGrowerSession } from '../grower-session';
 import { createRow, updateRow, deleteRow, getRow, getRows, type Row, type FetchOptions } from './adapter';
 import { DataError, positiveId } from './registry';
 import { transaction, query } from './database';
 
-export type Actor = {kind:'staff'|'crew';id:number;name:string;role:string} | {kind:'customer';token:string} | {kind:'public'};
+export type Actor =
+  | {kind:'staff'|'crew';id:number;name:string;role:string}
+  | {kind:'grower';operationId:number;name:string}
+  | {kind:'customer';token:string}
+  | {kind:'public'};
 export async function actor(request: Request): Promise<Actor> {
   const session = await auth();
   if (session?.user?.id) {
@@ -16,6 +21,8 @@ export async function actor(request: Request): Promise<Actor> {
   }
   const crew = await readCrewSession((await cookies()).get(CREW_COOKIE)?.value);
   if (crew) return {kind:'crew',id:crew.id,name:crew.name,role:'installer'};
+  const grower = await readGrowerSession((await cookies()).get(GROWER_COOKIE)?.value);
+  if (grower) return {kind:'grower',operationId:grower.operationId,name:grower.name};
   const token = request.headers.get('x-acre-customer-token');
   if (token) return {kind:'customer',token};
   return {kind:'public'};
@@ -26,10 +33,11 @@ const crewReads = ['/api/installer/','/api/select-options','/api/probes','/api/f
 const crewWrites = ['/api/install','/api/removal','/api/repairs','/api/probe-assignments','/api/mileage'];
 function matches(path: string, prefix: string) { return path===prefix || path.startsWith(prefix.endsWith('/')?prefix:prefix+'/'); }
 export function authorizeActor(current: Actor,path: string,method: string) {
-  if (method==='GET' && publicReads.has(path) || path==='/api/installer-auth' || path==='/api/field-info') return;
+  if (method==='GET' && publicReads.has(path) || path==='/api/installer-auth' || path==='/api/field-info' || path==='/api/grower-auth') return;
   if (path==='/api/installer-pins' && method==='GET') return; // names + pinSet only
   if (current.kind==='customer' && /^\/api\/probe-assignments\/\d+$/.test(path) && method==='PATCH') return;
   if (current.kind==='customer' && path==='/api/notifications' && method==='POST') return;
+  if (current.kind==='grower') throw new DataError('Grower access is limited to grower pages',403);
   if (adminOnly.some(p=>matches(path,p)) && !(path==='/api/select-options' && method==='GET')) {
     if(current.kind!=='staff'||current.role!=='admin') throw new DataError('Administrator access required',403);
     return;
