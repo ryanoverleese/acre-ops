@@ -159,11 +159,14 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
   assert.equal(detail.probes[0].elevation, 2200);
   assert.equal(detail.probes[0].soilType, 'Holdrege (Hs)');
   assert.equal(detail.probes[0].lat, 40.5);
+  assert.match(detail.probes[0].installDate, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(typeof detail.probes[0].installDate, 'string');
   assert.deepEqual(
     detail.waterRecs.map((rec) => rec.reportType),
     ['update', 'full'],
   );
   assert.equal(detail.waterRecs[0].recommendation, 'Updated to Friday');
+  assert.match(detail.waterRecs[0].date, /^\d{4}-\d{2}-\d{2}$/);
 
   const denied = await getGrowerFieldDetail(opB.id, fieldA.id, year);
   assert.equal(denied, null);
