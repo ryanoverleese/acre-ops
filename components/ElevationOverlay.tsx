@@ -29,17 +29,14 @@ const ELEVATION_PANE = 'acre-elevation';
 export const TERRAIN_RAMP_CSS = elevationCssGradient();
 
 const MODE_OPACITY: Record<Exclude<TerrainMode, 'off'>, number> = {
-  colorshade: 0.72,
-  color: 0.7,
+  // High opacity + normal blend — multiply+clip-path vanishes on iOS Safari
+  colorshade: 0.9,
+  color: 0.88,
   // Solid hillshade — no see-through satellite under gray relief
   shade: 1,
   contours: 0.8,
 };
 
-/** Color modes multiply over imagery; gray shade covers it fully. */
-function blendForMode(mode: TerrainMode): string {
-  return mode === 'shade' ? 'normal' : 'multiply';
-}
 
 function walkRings(coords: unknown, out: number[][][]): void {
   if (!Array.isArray(coords) || coords.length === 0) return;
@@ -108,11 +105,11 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
     }
   }, [map]);
 
-  // Pane blend: multiply for tinted color modes, normal (opaque) for gray shade
+  // Keep blend normal — multiply + clip-path blanked Color + shade on iOS Safari
   useEffect(() => {
     const pane = map.getPane(ELEVATION_PANE);
     if (!pane) return;
-    pane.style.mixBlendMode = blendForMode(resolved);
+    pane.style.mixBlendMode = 'normal';
   }, [map, resolved]);
 
   const hasClip = Boolean(clipTo?.features?.length);
