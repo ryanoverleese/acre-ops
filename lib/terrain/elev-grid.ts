@@ -95,9 +95,12 @@ function renderCanvas(tile: ElevTile, mode: ElevRenderMode, range: Range) {
   const bright = FIELD_RELIEF.bright / 100;
   let flat = 0;
   for (const s of suns) flat += s.w * s.z;
-  // Color modes: prefer per-tile stretch so a flat field still gets the full
-  // blue→red ramp (global range across dunes washes the field to one mid hue).
-  const stretch = mode === 'shade' ? range : (tile._range ?? range);
+  // Always use the shared map range so adjacent tiles share one blue→red
+  // stretch. Per-tile stretch made Color + shade split abruptly at tile edges
+  // (vertical/horizontal seams across a single field). Fall back to this
+  // tile's sample only until the shared range has been seeded.
+  const sharedOk = Number.isFinite(range.lo) && Number.isFinite(range.hi) && range.hi > range.lo;
+  const stretch = sharedOk ? range : (tile._range ?? range);
   const lo = stretch.lo;
   const span = Math.max(stretch.hi - stretch.lo, 0.5);
 

@@ -160,7 +160,9 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
         mode: elevMode,
         opacity: MODE_OPACITY[elevMode],
         pane: ELEVATION_PANE,
-        range: { lo: 0, hi: 100 }, // replaced as soon as tiles sample
+        // Invalid until tiles sample — renderCanvas falls back to per-tile
+        // sample for the first paint, then shared range keeps tiles seamless.
+        range: { lo: Infinity, hi: -Infinity },
         onRangeSample: (lo, hi) => {
           const cur = rangeRef.current;
           let changed = false;
@@ -171,7 +173,7 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
           rangeTimer.current = setTimeout(() => {
             const span = Math.max(cur.hi - cur.lo, 1);
             elevRef.current?.setElevRange({ lo: cur.lo, hi: cur.lo + span });
-          }, 200);
+          }, 80);
         },
       });
       elevRef.current.addTo(map);
