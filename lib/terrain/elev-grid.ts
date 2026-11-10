@@ -77,6 +77,57 @@ function sampleRange(elev: Float32Array, cols: number, rows: number): Range | nu
   return n ? { lo, hi } : null;
 }
 
+/**
+ * Wide blur of interior elevation. Color uses elevation minus this surface so a
+ * field-wide slope (or a DEM tile step) does not paint one half blue and the
+ * other red. Gray shade does not use this — it is slope-only.
+ */
+function localRelief(elev: Float32Array, cols: number, rows: number): { residual: Float32Array; lo: number; span: number } {
+  const w = cols - 2;
+  const h = rows - 2;
+  const src = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const v = elev[(y + 1) * cols + (x + 1)];
+      src[y * w + x] = v === v ? v : 0;
+    }
+  }
+  const radius = Math.max(28, Math.round(Math.min(w, h) * 0.22));
+  const pw = w + 1;
+  const prefix = new Float32Array(pw * (h + 1));
+  for (let y = 1; y <= h; y++) {
+    let row = 0;
+    for (let x = 1; x <= w; x++) {
+      row += src[(y - 1) * w + (x - 1)];
+      prefix[y * pw + x] = prefix[(y - 1) * pw + x] + row;
+    }
+  }
+  const residual = new Float32Array(w * h);
+  const sample: number[] = [];
+  const step = Math.max(1, Math.floor(Math.sqrt((w * h) / 4000)));
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - radius);
+    const y1 = Math.min(h - 1, y + radius);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - radius);
+      const x1 = Math.min(w - 1, x + radius);
+      const sum = prefix[(y1 + 1) * pw + (x1 + 1)]
+        - prefix[y0 * pw + (x1 + 1)]
+        - prefix[(y1 + 1) * pw + x0]
+        + prefix[y0 * pw + x0];
+      const n = (y1 - y0 + 1) * (x1 - x0 + 1);
+      const rel = src[y * w + x] - sum / n;
+      residual[y * w + x] = rel;
+      if ((x % step) === 0 && (y % step) === 0) sample.push(rel);
+    }
+  }
+  sample.sort((a, b) => a - b);
+  const pick = (p: number) => sample[Math.min(sample.length - 1, Math.max(0, Math.floor(p * (sample.length - 1))))] ?? 0;
+  const lo = pick(0.08);
+  const hi = pick(0.92);
+  return { residual, lo, span: Math.max(hi - lo, 0.25) };
+}
+
 /** Paint DEM into a canvas. elev is (w+2)×(h+2) with a 1px halo. */
 function renderElevCanvas(
   canvas: HTMLCanvasElement,
@@ -100,8 +151,11 @@ function renderElevCanvas(
   const bright = FIELD_RELIEF.bright / 100;
   let flat = 0;
   for (const s of suns) flat += s.w * s.z;
-  const lo = range.lo;
-  const span = Math.max(range.hi - range.lo, 0.5);
+  // Absolute min/max stretch turned a 1–2 m field slope into a hard
+  // blue|red split. Color tracks local relief instead. Shade stays slope-only.
+  const relief = mode === 'shade' ? null : localRelief(elev, cols, h + 2);
+  const lo = relief ? relief.lo : range.lo;
+  const span = relief ? relief.span : Math.max(range.hi - range.lo, 0.5);
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -126,8 +180,9 @@ function renderElevCanvas(
       let r: number;
       let g: number;
       let b: number;
+      const reliefE = relief ? relief.residual[y * w + x] : e;
       if (mode === 'color') {
-        const ti = clamp255(((e - lo) / span) * 255) * 3;
+        const ti = clamp255(((reliefE - lo) / span) * 255) * 3;
         r = ELEVATION_LUT[ti];
         g = ELEVATION_LUT[ti + 1];
         b = ELEVATION_LUT[ti + 2];
@@ -146,7 +201,7 @@ function renderElevCanvas(
           const v = clamp255(light * 225);
           r = g = b = v;
         } else {
-          const ti = clamp255(((e - lo) / span) * 255) * 3;
+          const ti = clamp255(((reliefE - lo) / span) * 255) * 3;
           r = clamp255(ELEVATION_LUT[ti] * light);
           g = clamp255(ELEVATION_LUT[ti + 1] * light);
           b = clamp255(ELEVATION_LUT[ti + 2] * light);
