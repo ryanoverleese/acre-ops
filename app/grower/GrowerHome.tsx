@@ -39,11 +39,13 @@ export default function GrowerHome({
       ) : (
         <ul className="grower-field-list">
           {fields.map((field) => (
-            <li key={field.id} className="grower-field-row">
-              <span className="grower-field-name">{field.name}</span>
-              {field.acres != null && Number.isFinite(field.acres) && (
-                <span className="grower-field-meta">{field.acres} ac</span>
-              )}
+            <li key={field.id}>
+              <a href={`/grower/fields/${field.id}`} className="grower-field-row">
+                <span className="grower-field-name">{field.name}</span>
+                {field.acres != null && Number.isFinite(field.acres) && (
+                  <span className="grower-field-meta">{field.acres} ac</span>
+                )}
+              </a>
             </li>
           ))}
         </ul>

@@ -9,8 +9,10 @@ process.env.DATABASE_URL_GROWER =
 const a = f.load('lib/supabase/adapter.ts');
 const {
   listGrowerFieldsForSeason,
+  getGrowerFieldDetail,
   growerCurrentSeasonYear,
 } = f.load('lib/supabase/grower-fields.ts');
+const { formatProbeAge, probeAgeSeasons } = f.load('lib/grower-display.ts');
 
 let opA, opB, fieldA, fieldB, fieldShared, fieldNoSeason;
 
@@ -62,6 +64,60 @@ test.before(async () => {
   await a.createRow('field_seasons', { field: [fieldB.id], season: year });
   await a.createRow('field_seasons', { field: [fieldShared.id], season: year });
   await a.createRow('field_seasons', { field: [fieldA.id], season: year - 1 });
+
+  await f.db.exec(`INSERT INTO assignment_probe_status_options (value) VALUES ('Installed')`);
+  const probe = await a.createRow('probes', { serial_number: 'SN-ALPHA', year_new: year - 2 });
+  const seasonA = (await f.db.query(
+    'SELECT id FROM public.field_seasons WHERE field_id=$1 AND season=$2',
+    [fieldA.id, year],
+  )).rows[0];
+  await a.createRow('probe_assignments', {
+    field_season: [seasonA.id],
+    probe: [probe.id],
+    probe_number: 1,
+    label: 'NE',
+    probe_status: 'Installed',
+    install_date: `${year}-04-01T12:00:00.000Z`,
+    install_lat: 40.5,
+    install_lng: -99.5,
+    elevation: 2200,
+    soil_type: 'Holdrege (Hs)',
+  });
+  const geom = {
+    type: 'Polygon',
+    coordinates: [[[-99.51, 40.49], [-99.51, 40.51], [-99.49, 40.51], [-99.49, 40.49], [-99.51, 40.49]]],
+  };
+  await f.db.query(
+    `INSERT INTO public.field_boundaries
+      (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, source_observed_at)
+     VALUES ($1, $2, $3::jsonb, $4, 'EPSG:4326', 'lonlat', 'cropx', now())`,
+    [
+      fieldA.id,
+      '11111111-2222-3333-4444-555555555555',
+      JSON.stringify(geom),
+      'a'.repeat(64),
+    ],
+  );
+  await a.createRow('water_recs', {
+    field_season: [seasonA.id],
+    date: `${year}-06-10`,
+    recommendation: 'Hold water',
+    suggested_water_day: 'Wednesday',
+    report_type: 'full',
+  });
+  await a.createRow('water_recs', {
+    field_season: [seasonA.id],
+    date: `${year}-06-12`,
+    recommendation: 'Updated to Friday',
+    suggested_water_day: 'Friday',
+    report_type: 'update',
+  });
+  await a.createRow('water_recs', {
+    field_season: [seasonA.id],
+    date: `${year}-06-11`,
+    recommendation: 'Hidden overview',
+    report_type: 'overview',
+  });
 });
 
 test.after(async () => {
@@ -87,4 +143,28 @@ test('farm B does not see farm A-only fields', async () => {
     rows.map((row) => row.name),
     ['Bravo', 'Shared'],
   );
+});
+
+test('field detail includes boundary, probe pin, age, elevation, and soil', async () => {
+  const year = growerCurrentSeasonYear();
+  assert.equal(probeAgeSeasons(year - 2, year), 3);
+  assert.equal(formatProbeAge(3), '3 seasons');
+
+  const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
+  assert.equal(detail.name, 'Alpha');
+  assert.equal(detail.boundaries.features.length, 1);
+  assert.equal(detail.probes.length, 1);
+  assert.equal(detail.probes[0].serial, 'SN-ALPHA');
+  assert.equal(detail.probes[0].ageSeasons, 3);
+  assert.equal(detail.probes[0].elevation, 2200);
+  assert.equal(detail.probes[0].soilType, 'Holdrege (Hs)');
+  assert.equal(detail.probes[0].lat, 40.5);
+  assert.deepEqual(
+    detail.waterRecs.map((rec) => rec.reportType),
+    ['update', 'full'],
+  );
+  assert.equal(detail.waterRecs[0].recommendation, 'Updated to Friday');
+
+  const denied = await getGrowerFieldDetail(opB.id, fieldA.id, year);
+  assert.equal(denied, null);
 });
