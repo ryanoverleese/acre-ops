@@ -34,6 +34,8 @@ export interface ProcessedProbeAssignment {
   approvalStatus: string;
   approvalNotes?: string;
   approvalDate?: string;
+  removalDate?: string;
+  removalAt?: string;
 }
 
 export interface ProcessedField {
@@ -517,6 +519,8 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
         approvalStatus: pa.approval_status?.value || 'Pending',
         approvalNotes: pa.approval_notes,
         approvalDate: pa.approval_date,
+        removalDate: pa.removal_date || '',
+        removalAt: pa.removal_at || '',
       };
     });
 

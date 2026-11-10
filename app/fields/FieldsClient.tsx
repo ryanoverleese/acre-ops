@@ -17,6 +17,7 @@ import type { ProcessedField, ProcessedProbeAssignment, OperationOption, Billing
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
 import { fieldBilling } from '@/lib/data-mappings';
+import { formatRemovalWhen } from '@/lib/removal-time';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
   ssr: false,
@@ -3078,6 +3079,14 @@ export default function FieldsClient({
                         <span className="detail-label">Status</span>
                         <span className="detail-value">{getStatusBadge(selectedField.probeStatus)}</span>
                       </div>
+                      {probeAssignments
+                        .filter((pa) => pa.fieldSeasonId === selectedField.fieldSeasonId && (pa.removalDate || pa.removalAt))
+                        .map((pa) => (
+                          <div className="detail-row" key={pa.id}>
+                            <span className="detail-label">Pulled{pa.probe ? ` ${pa.probe}` : pa.probeNumber > 1 ? ` P${pa.probeNumber}` : ''}</span>
+                            <span className="detail-value">{formatRemovalWhen(pa.removalDate, pa.removalAt, 'long') || pa.removalDate || '—'}</span>
+                          </div>
+                        ))}
                       {selectedField.notes && (
                         <div className="detail-row">
                           <span className="detail-label">Notes</span>

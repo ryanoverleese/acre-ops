@@ -1,7 +1,10 @@
+import { chicagoCalendarDate } from '@/lib/removal-time';
+
 /**
  * Daily pull scoreboard for the Removals list + pull map.
  * Counts Removed probe assignments with removal_date = America/Chicago today,
  * broken out by removed_by for Ryan / Brandon / Carter.
+ * The clock lives on removal_at; this tally stays a calendar-day count.
  */
 
 export const TODAY_PULL_CREW = ['Ryan', 'Brandon', 'Carter'] as const;
@@ -18,13 +21,8 @@ export type PullCountRow = {
  * YYYY-MM-DD for the current America/Chicago calendar day.
  * Same rule as /api/pulled-today `todayChicago` (shareable /pulled dashboard).
  */
-export function chicagoToday(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date());
+export function chicagoToday(now = new Date()): string {
+  return chicagoCalendarDate(now);
 }
 
 /** Match planned_remover to the logged-in installer (same rules as removals API). */

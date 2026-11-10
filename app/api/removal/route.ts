@@ -116,7 +116,7 @@ export const POST=withApiAuth(async(request,_context,current)=>{
     serial:linkValue(saved.probe),assignment_id:saved.id,
     ...(linkValue(saved.field_season)?{field_name:linkValue(saved.field_season)}:{}),
     ...(linkId(saved.field_season)?{field_season_id:linkId(saved.field_season)}:{}),
-    removed_by:saved.removed_by,removal_date:saved.removal_date,
+    removed_by:saved.removed_by,removal_date:saved.removal_date,removal_at:saved.removal_at??null,
    })),
   }));
   if(result.alreadyRemoved) await discard();

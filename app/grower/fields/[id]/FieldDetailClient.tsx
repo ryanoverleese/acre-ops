@@ -8,6 +8,7 @@ import {
   formatProbeAge,
   summarizeGrowerFieldProbeStatus,
 } from '@/lib/grower-display';
+import { formatRemovalWhen } from '@/lib/removal-time';
 import type { GrowerProbePin, GrowerWaterRec } from '@/lib/supabase/grower-fields';
 
 const GrowerFieldMap = dynamic(() => import('../../GrowerFieldMap'), { ssr: false });
@@ -91,6 +92,12 @@ export default function FieldDetailClient({
                     <dt>Install date</dt>
                     <dd>{fmtDate(probe.installDate)}</dd>
                   </div>
+                  {(probe.status || '').toLowerCase() === 'removed' || probe.removalDate || probe.removalAt ? (
+                    <div>
+                      <dt>Pulled</dt>
+                      <dd>{formatRemovalWhen(probe.removalDate, probe.removalAt, 'long') || 'Not recorded'}</dd>
+                    </div>
+                  ) : null}
                   <div>
                     <dt>Age</dt>
                     <dd>{formatProbeAge(probe.ageSeasons)}</dd>

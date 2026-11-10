@@ -115,6 +115,7 @@ export const GET = withApiAuth(async function GET(request: Request) {
           ].filter(Boolean).join('\n\n'),
           removed,
           removedOn: val(pa.removal_date).slice(0, 10),
+          removedAt: val(pa.removal_at),
           removedBy: val(pa.removed_by),
           removalNotes: val(pa.removal_notes),
           accessNotes: [val(fs.notes), val(probe?.notes)].filter(Boolean).join('\n\n'),

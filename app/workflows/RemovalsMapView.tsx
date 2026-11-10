@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { formatRemovalWhen } from '@/lib/removal-time';
 import type { EarlyRemovalData } from './WorkflowsClient';
 
 interface Props {
@@ -109,6 +110,8 @@ export type ProbeMapPin = {
   lat: number;
   lng: number;
   probeRemoved: boolean;
+  removalDate: string;
+  removalAt: string;
 };
 
 function buildProbePins(rows: EarlyRemovalData[]): ProbeMapPin[] {
@@ -117,6 +120,7 @@ function buildProbePins(rows: EarlyRemovalData[]): ProbeMapPin[] {
     const ids = row.assignmentIds || [];
     if (!ids.length) continue;
     const dates = row.assignmentRemovalDates || [];
+    const ats = row.assignmentRemovalAts || [];
     const lats = row.assignmentLats || [];
     const lngs = row.assignmentLngs || [];
     const labels = row.assignmentLabels || [];
@@ -132,6 +136,8 @@ function buildProbePins(rows: EarlyRemovalData[]): ProbeMapPin[] {
         lat,
         lng,
         probeRemoved: !!(dates[i] || ''),
+        removalDate: dates[i] || '',
+        removalAt: ats[i] || '',
       });
     }
   }
@@ -369,7 +375,12 @@ export default function RemovalsMapView({ rows, selectedId = null, onSelect }: P
           const row = pin.row;
           const statusBits = [
             pin.label,
-            pin.probeRemoved ? 'Removed' : 'In ground',
+            pin.probeRemoved
+              ? (() => {
+                  const when = formatRemovalWhen(pin.removalDate, pin.removalAt);
+                  return when ? `Removed ${when}` : 'Removed';
+                })()
+              : 'In ground',
             row.readyToRemove && !pin.probeRemoved ? 'Ready' : '',
             (row.removalPriority || '').toLowerCase() === 'priority' && !pin.probeRemoved ? 'Priority' : '',
             row.plannedRemover ? `Planned Remover: ${row.plannedRemover}` : '',

@@ -45,6 +45,7 @@ export const PATCH = withApiAuth(async function PATCH(request: NextRequest, { pa
     if (body.installer !== undefined) updateData.installer = body.installer;
     if (body.install_date !== undefined) updateData.install_date = body.install_date;
     if (body.removal_date !== undefined) updateData.removal_date = body.removal_date;
+    if (body.removal_at !== undefined) updateData.removal_at = body.removal_at;
     if (body.removal_notes !== undefined) updateData.removal_notes = body.removal_notes;
     if (body.install_lat !== undefined) updateData.install_lat = body.install_lat;
     if (body.install_lng !== undefined) updateData.install_lng = body.install_lng;

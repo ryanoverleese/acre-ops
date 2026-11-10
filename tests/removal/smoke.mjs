@@ -6,6 +6,7 @@ import { cp, mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promis
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { encode } from 'next-auth/jwt';
+import { chicagoCalendarDate } from '../../lib/removal-time.ts';
 const { chromium } = createRequire(import.meta.url)('playwright');
 const root = fileURLToPath(new URL('../../', import.meta.url)).replace(/\/$/, '');
 const artifacts = await mkdtemp(`${tmpdir()}/acre-removal-qa-`);
@@ -75,6 +76,7 @@ try {
     assert.deepEqual(webhooks, [], 'Workflows must not send the CropX removal webhook');
     const selected = tables.probe_assignments.find(row => row.id === 201), sibling = tables.probe_assignments.find(row => row.id === 202);
     assert.equal(selected.probe_status.value, 'Removed'); assert.equal(selected.removal_date, '2026-10-11'); assert.equal(selected.removed_by, 'Brandon');
+    assert.match(String(selected.removal_at), /^\d{4}-\d{2}-\d{2}T/);
     assert.equal(selected.planned_remover, 'Carter'); assert.equal(tables.field_seasons.find(row=>row.id===101).planned_remover.value, 'Carter');
     assert.equal(sibling.probe_status.value, 'Installed'); assert.equal(sibling.planned_remover, 'Ryan');
     assert.equal(tables.probes[0].status.value, 'In Stock'); assert.equal(tables.probes[1].status.value, 'Installed');
@@ -95,7 +97,10 @@ try {
     assert.deepEqual(tables.probe_assignments[0], before.tables.probe_assignments[0]);
     const crewRow = tables.probe_assignments.find(row=>row.id===202);
     assert.equal(crewRow.probe_status.value, 'Removed'); assert.equal(crewRow.removed_by, 'Ryan');
-    assert.equal(crewRow.removal_date, new Date().toISOString().slice(0, 10));
+    assert.equal(crewRow.removal_date, chicagoCalendarDate());
+    assert.match(String(crewRow.removal_at), /^\d{4}-\d{2}-\d{2}T/);
+    assert.equal(webhooks[0].removal_date, crewRow.removal_date);
+    assert.equal(webhooks[0].removal_at, crewRow.removal_at);
     assert.equal(tables.probes[1].status.value, 'In Stock');
   });
   await check('repeat submission returns original date/remover; no planning writes or browser errors', async () => {

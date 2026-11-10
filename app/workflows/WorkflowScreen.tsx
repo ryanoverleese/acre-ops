@@ -144,6 +144,7 @@ async function getWorkflowData(): Promise<{ earlyRemovals: EarlyRemovalData[]; s
           needsAtv,
           assignmentIds: seasonAssignments.map((pa) => pa.id),
           assignmentRemovalDates: seasonAssignments.map((pa) => pa.removal_date || ''),
+          assignmentRemovalAts: seasonAssignments.map((pa) => pa.removal_at || ''),
           assignmentLats,
           assignmentLngs,
           assignmentLabels,

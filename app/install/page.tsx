@@ -209,6 +209,7 @@ async function getInstallData(): Promise<{ probeAssignments: InstallableProbeAss
           antennaType: pa.antenna_type?.value || '',
           removed: pa.probe_status?.value?.toLowerCase() === 'removed',
           removalDate: pa.removal_date || '',
+          removalAt: pa.removal_at || '',
           removedBy: pa.removed_by || '',
           removalNotes: pa.removal_notes || '',
           removalPhotoUrl: pa.removal_photo?.[0]?.url || '',
