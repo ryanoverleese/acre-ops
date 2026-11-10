@@ -62,9 +62,14 @@ async function getGrowerPool(): Promise<Pool> {
   if (!growerConnecting) {
     growerConnecting = (async () => {
       const raw = process.env.DATABASE_URL_GROWER;
-      // Until DATABASE_URL_GROWER is set on Netlify, demote the office pool with
-      // SET LOCAL ROLE acre_grower inside withGrowerOperation (same as contract tests).
+      // Owner-pool demotion is for fixtures/local only. Production must use acre_grower.
       if (!raw) {
+        if (
+          process.env.NODE_ENV === 'production'
+          && process.env.GROWER_ALLOW_OWNER_FALLBACK !== '1'
+        ) {
+          throw new DataError('Grower database connection is not configured', 503);
+        }
         usingOwnerFallback = true;
         growerPool = await getDatabasePool();
         return growerPool;

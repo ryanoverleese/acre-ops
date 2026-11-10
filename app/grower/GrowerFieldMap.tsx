@@ -58,7 +58,9 @@ function Fit({
     map.invalidateSize();
     const pts: [number, number][] = [
       ...ring,
-      ...probes.map((p) => [p.lat, p.lng] as [number, number]),
+      ...probes
+        .filter((p) => p.lat != null && p.lng != null)
+        .map((p) => [p.lat as number, p.lng as number] as [number, number]),
     ];
     if (fieldLat != null && fieldLng != null) pts.push([fieldLat, fieldLng]);
     if (pts.length >= 2) {
@@ -108,10 +110,12 @@ export default function GrowerFieldMap({
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
         {hasOutline && <ElevationOverlay mode={terrainMode} clipTo={boundaries} />}
         <BoundaryLayer data={boundaries} selectedId={fieldId} />
-        {probes.map((probe) => (
+        {probes
+          .filter((probe) => probe.lat != null && probe.lng != null)
+          .map((probe) => (
           <Marker
             key={probe.id}
-            position={[probe.lat, probe.lng]}
+            position={[probe.lat as number, probe.lng as number]}
             icon={probeIcon(probe.label || String(probe.probeNumber || 'P'))}
             interactive={false}
           />

@@ -91,8 +91,9 @@ export type GrowerProbePin = {
   ageSeasons: number | null;
   elevation: number | null;
   soilType: string | null;
-  lat: number;
-  lng: number;
+  /** Null when neither install nor placement coordinates exist — still list the probe. */
+  lat: number | null;
+  lng: number | null;
 };
 
 export type GrowerWaterRec = {
@@ -218,7 +219,6 @@ export async function getGrowerFieldDetail(
     const probePins: GrowerProbePin[] = [];
     for (const p of probes) {
       const pin = probePinLatLng(p);
-      if (!pin) continue;
       const yearNew = p.probe_year_new == null ? null : Number(p.probe_year_new);
       probePins.push({
         id: positiveId(p.id),
@@ -234,8 +234,8 @@ export async function getGrowerFieldDetail(
         ),
         elevation: p.elevation == null ? null : Number(p.elevation),
         soilType: p.soil_type,
-        lat: pin.lat,
-        lng: pin.lng,
+        lat: pin?.lat ?? null,
+        lng: pin?.lng ?? null,
       });
     }
 

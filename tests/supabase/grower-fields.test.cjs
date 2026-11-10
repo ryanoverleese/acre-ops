@@ -65,7 +65,7 @@ test.before(async () => {
   await a.createRow('field_seasons', { field: [fieldShared.id], season: year });
   await a.createRow('field_seasons', { field: [fieldA.id], season: year - 1 });
 
-  await f.db.exec(`INSERT INTO assignment_probe_status_options (value) VALUES ('Installed')`);
+  await f.db.exec(`INSERT INTO assignment_probe_status_options (value) VALUES ('Installed'), ('Assigned')`);
   const probe = await a.createRow('probes', { serial_number: 'SN-ALPHA', year_new: year - 2 });
   const seasonA = (await f.db.query(
     'SELECT id FROM public.field_seasons WHERE field_id=$1 AND season=$2',
@@ -82,6 +82,16 @@ test.before(async () => {
     install_lng: -99.5,
     elevation: 2200,
     soil_type: 'Holdrege (Hs)',
+  });
+  const pinless = await a.createRow('probes', { serial_number: 'SN-PINLESS', year_new: year });
+  await a.createRow('probe_assignments', {
+    field_season: [seasonA.id],
+    probe: [pinless.id],
+    probe_number: 2,
+    label: 'SW',
+    probe_status: 'Assigned',
+    install_date: `${year}-05-01T12:00:00.000Z`,
+    // No install/placement coords — must still appear in the facts list.
   });
   const geom = {
     type: 'Polygon',
@@ -153,7 +163,7 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
   const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
   assert.equal(detail.name, 'Alpha');
   assert.equal(detail.boundaries.features.length, 1);
-  assert.equal(detail.probes.length, 1);
+  assert.equal(detail.probes.length, 2);
   assert.equal(detail.probes[0].serial, 'SN-ALPHA');
   assert.equal(detail.probes[0].ageSeasons, 3);
   assert.equal(detail.probes[0].elevation, 2200);
@@ -161,6 +171,10 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
   assert.equal(detail.probes[0].lat, 40.5);
   assert.match(detail.probes[0].installDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(typeof detail.probes[0].installDate, 'string');
+  assert.equal(detail.probes[1].serial, 'SN-PINLESS');
+  assert.equal(detail.probes[1].lat, null);
+  assert.equal(detail.probes[1].lng, null);
+  assert.equal(detail.probes[1].ageSeasons, 1);
   assert.deepEqual(
     detail.waterRecs.map((rec) => rec.reportType),
     ['update', 'full'],
