@@ -8,7 +8,6 @@ const NAV = [
 
 export default function GrowerHome({
   farmName,
-  season,
 }: {
   farmName: string;
   season: number;
@@ -20,12 +19,8 @@ export default function GrowerHome({
 
   return (
     <div className="grower-shell">
-      <header className="grower-top">
-        <div>
-          <p className="grower-kicker">Acre Insights</p>
-          <h1 className="grower-title">{farmName}</h1>
-          <p className="grower-sub">{season} season</p>
-        </div>
+      <header className="grower-top grower-top-home">
+        <h1 className="grower-title">{farmName}</h1>
         <button type="button" className="grower-signout" onClick={signOut}>
           Sign out
         </button>

@@ -2,7 +2,6 @@
 
 import { formatProbeAge } from '@/lib/grower-display';
 import type { GrowerHardwareRow } from '@/lib/supabase/grower-fields';
-import { GrowerStatusBadge } from '../GrowerStatus';
 
 function fmtDate(value: string | null): string {
   if (!value) return 'Not recorded';
@@ -17,7 +16,6 @@ function fmtLocation(lat: number | null, lng: number | null): string {
 }
 
 export default function GrowerHardwareList({
-  farmName,
   season,
   items,
 }: {
@@ -29,41 +27,31 @@ export default function GrowerHardwareList({
     <div className="grower-shell">
       <header className="grower-top">
         <div>
-          <p className="grower-kicker">
-            <a href="/grower" className="grower-back">
-              ← {farmName}
-            </a>
+          <p className="grower-navline">
+            <a href="/grower" className="grower-back">Home</a>
           </p>
           <h1 className="grower-title">Hardware</h1>
-          <p className="grower-sub">{season} season · this farm only</p>
+          <p className="grower-sub">{season}</p>
         </div>
       </header>
 
       {items.length === 0 ? (
-        <p className="grower-empty">No hardware placed for {season} yet.</p>
+        <p className="grower-empty">No hardware for {season} yet.</p>
       ) : (
-        <ul className="grower-probe-list">
+        <ul className="grower-list">
           {items.map((probe) => (
-            <li key={probe.id} className="grower-probe-card">
-              <div className="grower-probe-head">
-                <span className="grower-field-name">
+            <li key={probe.id} className="grower-section-block">
+              <div className="grower-list-row grower-list-row-static">
+                <span className="grower-list-primary">
                   {probe.serial ? `#${probe.serial}` : 'Probe'}
                   {probe.label ? ` · ${probe.label}` : ''}
                 </span>
-                <GrowerStatusBadge status={probe.status} />
+                <span className="grower-list-meta">{probe.status || 'Not recorded'}</span>
               </div>
-              <p className="grower-rec-field">
-                <a href={`/grower/fields/${probe.fieldId}`} className="grower-back">
-                  {probe.fieldName}
-                </a>
+              <p className="grower-inline-link">
+                <a href={`/grower/fields/${probe.fieldId}`}>{probe.fieldName}</a>
               </p>
-              <dl className="grower-probe-facts">
-                <div>
-                  <dt>Status</dt>
-                  <dd>
-                    <GrowerStatusBadge status={probe.status} />
-                  </dd>
-                </div>
+              <dl className="grower-facts">
                 <div>
                   <dt>Install date</dt>
                   <dd>{fmtDate(probe.installDate)}</dd>
