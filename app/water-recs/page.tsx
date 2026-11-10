@@ -1,6 +1,7 @@
 import { getRows, getCachedRows, getCachedAllSelectOptions } from '@/lib/supabase/adapter';
 import type { WaterRec, FieldSeason, Field, Operation, Contact, ProbeAssignment } from '@/lib/types';
 import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappings';
+import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 import WaterRecsClient from './WaterRecsClient';
 import { valleyEnabled } from '@/lib/valley/client';
 
@@ -45,7 +46,7 @@ export default async function WaterRecsPage() {
     // notes), so they read uncached — tag revalidation doesn't reliably purge
     // Netlify's cache, and Ryan must see his own saves on return. The other
     // tables aren't edited here and stay cached for speed.
-    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, selectOptions] = await Promise.all([
+    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, selectOptions, boundaryAcres] = await Promise.all([
       getCachedRows<Operation>('operations', undefined, 600),
       getCachedRows<Field>('fields', undefined, 120),
       getRows<FieldSeason>('field_seasons'),
@@ -53,6 +54,7 @@ export default async function WaterRecsPage() {
       getRows<WaterRec>('water_recs'),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
       getCachedAllSelectOptions(['water_recs']),
+      loadBoundaryAcresByFieldId(),
     ]);
 
     // Get water day options from Baserow single_select field
@@ -101,7 +103,7 @@ export default async function WaterRecsPage() {
         fieldId: field.id,
         fieldName: field.name || 'Unknown',
         crop: fs.crop?.value || '',
-        acres: field.acres || 0,
+        acres: effectiveFieldAcresOrZero(field.acres, boundaryAcres.get(field.id)),
         fieldNote: fs.field_note || '',
         hybridVariety: fs.hybrid_variety || '',
         plantingDate: fs.planting_date || '',

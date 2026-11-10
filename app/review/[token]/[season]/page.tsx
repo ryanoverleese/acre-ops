@@ -1,4 +1,5 @@
 import { fieldBilling } from '@/lib/data-mappings';
+import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 import { getCachedOperations, getCachedFields, getCachedFieldSeasons, getCachedBillingEntities, getCachedProbeAssignments, getCachedProbes, getCachedContacts } from '@/lib/data';
 import { getCachedAllSelectOptions } from '@/lib/supabase/adapter';
 import type { TableSelectOptions } from '@/lib/types';
@@ -82,7 +83,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
     : ALL_QUESTION_KEYS;
 
   // Fetch all data in parallel
-  const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes, contacts] = await Promise.all([
+  const [operations, rawFields, fieldSeasons, billingEntities, probeAssignments, probes, contacts, boundaryAcres] = await Promise.all([
     getCachedOperations(),
     getCachedFields(),
     getCachedFieldSeasons(),
@@ -90,6 +91,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
     getCachedProbeAssignments(),
     getCachedProbes(),
     getCachedContacts(),
+    loadBoundaryAcresByFieldId(),
   ]);
 
   const probeMap = new Map(probes.map((p) => [p.id, p.serial_number || 'Unknown']));
@@ -163,7 +165,7 @@ export default async function ReviewPage({ params, searchParams }: PageProps) {
       fieldId: field?.id || 0,
       fieldSeasonId: fs.id,
       name: field?.name || 'Unknown Field',
-      acres: field?.acres || 0,
+      acres: effectiveFieldAcresOrZero(field?.acres, field?.id != null ? boundaryAcres.get(field.id) : undefined),
       billingEntityId: fieldBilling(field).singleId,
       billingEntityNames: fieldBilling(field).names,
       irrigationType: field?.irrigation_type?.value || '',

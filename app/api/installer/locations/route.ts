@@ -1,4 +1,5 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
+import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 import { withApiAuth } from '@/lib/supabase/api';
 import { NextResponse } from 'next/server';
 import { getCachedRows } from '@/lib/supabase/adapter';
@@ -37,12 +38,13 @@ export interface InstallerFieldLocation {
 
 export const GET = withApiAuth(async function GET() {
   try {
-    const [fields, operations, fieldSeasons, probeAssignments, contacts] = await Promise.all([
+    const [fields, operations, fieldSeasons, probeAssignments, contacts, boundaryAcres] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 120),
       getCachedRows<Operation>('operations', undefined, 300),
       getCachedRows<FieldSeason>('field_seasons', undefined, 60),
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 60),
       getCachedRows<Contact>('contacts', undefined, 300),
+      loadBoundaryAcresByFieldId(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -86,7 +88,7 @@ export const GET = withApiAuth(async function GET() {
           id: field.id,
           name: field.name || 'Unnamed Field',
           operation: operationName,
-          acres: field.acres || 0,
+          acres: effectiveFieldAcresOrZero(field.acres, boundaryAcres.get(field.id)),
           lat: field.lat || 0,
           lng: field.lng || 0,
           installLat: installLocation?.lat,

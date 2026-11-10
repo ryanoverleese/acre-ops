@@ -2,6 +2,7 @@ import { getCachedRows, getCachedAllSelectOptions } from '@/lib/supabase/adapter
 import type { TableSelectOptions, DataFilter, Field, Operation, FieldSeason, Probe, BillingEntity, ProbeAssignment, Contact, ProductService } from '@/lib/types';
 import { buildNotesThread, type NoteStage } from '@/lib/notes-thread';
 import { buildOperationMap, buildBillingToOperationMaps, fieldBilling, fieldOperationIds, fieldOperationLabel } from '@/lib/data-mappings';
+import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 
 export interface ProcessedProbeAssignment {
   id: number;
@@ -178,7 +179,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
     // Fetch core data and select options separately so select options failure doesn't kill everything.
     // All reads are cached (unstable_cache) — writes through the API bust the
     // table's cache tag, so app edits still show up immediately.
-    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawProductsServices] = await Promise.all([
+    const [rawFields, operations, fieldSeasons, probes, billingEntities, rawProbeAssignments, contacts, rawProductsServices, boundaryAcres] = await Promise.all([
       getCachedRows<Field>('fields', undefined, 120),
       getCachedRows<Operation>('operations', undefined, 600),
       getCachedRows<FieldSeason>('field_seasons', seasonFilters ? { where: seasonFilters } : undefined, 120),
@@ -187,6 +188,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
       getCachedRows<Contact>('contacts', undefined, 600),
       getCachedRows<ProductService>('products_services', undefined, 600),
+      loadBoundaryAcresByFieldId(),
     ]);
 
     // Select options are nice-to-have; don't let failure wipe the page
@@ -264,7 +266,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
           operationId,
           billingEntityId: billing.singleId,
           billingEntityIds: billing.ids, billingEntityNames: billing.names, operationIds,
-          acres: field.acres || 0,
+          acres: effectiveFieldAcresOrZero(field.acres, boundaryAcres.get(field.id)),
           pivotAcres: field.pivot_acres,
           season: '',
           crop: 'Unknown',
@@ -340,7 +342,7 @@ export async function getFieldsData(season?: number): Promise<FieldsDataResult> 
             operationId,
             billingEntityId: billing.singleId,
             billingEntityIds: billing.ids, billingEntityNames: billing.names, operationIds,
-            acres: field.acres || 0,
+            acres: effectiveFieldAcresOrZero(field.acres, boundaryAcres.get(field.id)),
             pivotAcres: field.pivot_acres,
             season: fs.season ? String(fs.season) : '',
             crop: fs.crop?.value || 'Unknown',

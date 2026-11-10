@@ -1,4 +1,5 @@
 import { fieldOperationLabel } from '@/lib/data-mappings';
+import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 import { getCachedFields, getCachedBillingEntities, getCachedOperations, getCachedFieldSeasons, getCachedProbeAssignments, getCachedContacts } from '@/lib/data';
 import FieldLocationsClient, { FieldLocation } from './RouteClient';
 
@@ -10,13 +11,14 @@ export const dynamic = 'force-dynamic';
 
 async function getFieldLocations(): Promise<FieldLocation[]> {
   try {
-    const [fields, billingEntities, operations, fieldSeasons, probeAssignments, contacts] = await Promise.all([
+    const [fields, billingEntities, operations, fieldSeasons, probeAssignments, contacts, boundaryAcres] = await Promise.all([
       getCachedFields(),
       getCachedBillingEntities(),
       getCachedOperations(),
       getCachedFieldSeasons(),
       getCachedProbeAssignments(),
       getCachedContacts(),
+      loadBoundaryAcresByFieldId(),
     ]);
 
     const operationMap = new Map(operations.map((op) => [op.id, op.name]));
@@ -66,7 +68,7 @@ async function getFieldLocations(): Promise<FieldLocation[]> {
         id: field.id,
         name: field.name || 'Unnamed Field',
         operation: operationName,
-        acres: field.acres || 0,
+        acres: effectiveFieldAcresOrZero(field.acres, boundaryAcres.get(field.id)),
         lat: field.lat || 0,
         lng: field.lng || 0,
         // Installed location (from probe_assignments)

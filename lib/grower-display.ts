@@ -6,7 +6,7 @@ export function formatProbeAge(ageSeasons: number | null | undefined): string {
 }
 
 /**
- * Acres come from fields.acres only (never derived from boundary geometry).
+ * Acres prefer field_boundaries.acres (geometry), else fields.acres.
  * Null/non-positive stored values display as not recorded — do not invent area.
  */
 export function formatGrowerAcres(acres: number | null | undefined): string | null {
