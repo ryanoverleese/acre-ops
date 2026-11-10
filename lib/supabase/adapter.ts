@@ -120,14 +120,27 @@ export async function getRows<T>(table: string, options: FetchOptions = {}): Pro
   for (let offset = 0; ; offset += size) {
     const batch = await query(`SELECT ${readProjection(table)} FROM public.${q(meta.read)} r${where.sql} ORDER BY ${order(table, options.orderBy)} LIMIT $${where.values.length+1} OFFSET $${where.values.length+2}`, [...where.values, size, offset]);
     rows.push(...batch.map(row => serialize(table, row) as T));
-    if (batch.length < size) return rows;
+    if (batch.length < size) {
+      if (table === 'fields') {
+        const { applyBoundaryAcresToFields } = await import('@/lib/field-acres');
+        return (await applyBoundaryAcresToFields(
+          rows as Array<{ id?: number; acres?: number | null }>,
+        )) as T[];
+      }
+      return rows;
+    }
   }
 }
 export async function getRow<T>(table: string, id: number, secrets = false): Promise<T> {
   const meta = sourceTable(table);
   const rows = await query(`SELECT ${readProjection(table)} FROM public.${q(meta.read)} r WHERE r.id = $1`, [positiveId(id)]);
   if (!rows[0]) throw new DataError('Record not found', 404);
-  return serialize(table, rows[0], secrets) as T;
+  const row = serialize(table, rows[0], secrets) as T;
+  if (table === 'fields') {
+    const { applyBoundaryAcresToFields } = await import('@/lib/field-acres');
+    return (await applyBoundaryAcresToFields([row as { id?: number; acres?: number | null }]))[0] as T;
+  }
+  return row;
 }
 export function getCachedRows<T>(table: string, options?: FetchOptions, revalidateSeconds = 120): Promise<T[]> {
   if (table === 'users' || table === 'installers') return getRows<T>(table, options);

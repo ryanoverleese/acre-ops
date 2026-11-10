@@ -1,4 +1,5 @@
 import { fieldBilling } from '@/lib/data-mappings';
+import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 import { getOperations, getFields, getFieldSeasons, getContacts } from '@/lib/data';
 import { getAllSelectOptions } from '@/lib/supabase/adapter';
 import type { TableSelectOptions } from '@/lib/types';
@@ -66,11 +67,12 @@ export default async function FieldInfoPage({ params, searchParams }: PageProps)
     ? q.split(',').filter(k => ALL_QUESTION_KEYS.includes(k))
     : ALL_QUESTION_KEYS;
 
-  const [operations, rawFields, fieldSeasons, contacts] = await Promise.all([
+  const [operations, rawFields, fieldSeasons, contacts, boundaryAcres] = await Promise.all([
     getOperations(),
     getFields(),
     getFieldSeasons(),
     getContacts(),
+    loadBoundaryAcresByFieldId(),
   ]);
 
   // Find operation by approval token (reuse same token)
@@ -141,7 +143,7 @@ export default async function FieldInfoPage({ params, searchParams }: PageProps)
       fieldId: field?.id || 0,
       fieldSeasonId: fs.id,
       name: field?.name || 'Unknown Field',
-      acres: field?.acres || 0,
+      acres: effectiveFieldAcresOrZero(field?.acres, field?.id != null ? boundaryAcres.get(field.id) : undefined),
       billingEntityId: fieldBilling(field).singleId,
       billingEntityNames: fieldBilling(field).names,
       fieldLat: field?.lat ?? null,

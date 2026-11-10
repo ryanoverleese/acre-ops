@@ -9,10 +9,18 @@ process.env.DATABASE_URL_GROWER =
 const a = f.load('lib/supabase/adapter.ts');
 const {
   listGrowerFieldsForSeason,
+  listGrowerHardwareForSeason,
+  listGrowerWaterRecsForSeason,
   getGrowerFieldDetail,
   growerCurrentSeasonYear,
 } = f.load('lib/supabase/grower-fields.ts');
-const { formatProbeAge, probeAgeSeasons } = f.load('lib/grower-display.ts');
+const {
+  formatProbeAge,
+  formatGrowerAcres,
+  formatGrowerProbeStatus,
+  probeAgeSeasons,
+  summarizeGrowerFieldProbeStatus,
+} = f.load('lib/grower-display.ts');
 
 let opA, opB, fieldA, fieldB, fieldShared, fieldNoSeason;
 
@@ -65,7 +73,7 @@ test.before(async () => {
   await a.createRow('field_seasons', { field: [fieldShared.id], season: year });
   await a.createRow('field_seasons', { field: [fieldA.id], season: year - 1 });
 
-  await f.db.exec(`INSERT INTO assignment_probe_status_options (value) VALUES ('Installed')`);
+  await f.db.exec(`INSERT INTO assignment_probe_status_options (value) VALUES ('Installed'), ('Assigned')`);
   const probe = await a.createRow('probes', { serial_number: 'SN-ALPHA', year_new: year - 2 });
   const seasonA = (await f.db.query(
     'SELECT id FROM public.field_seasons WHERE field_id=$1 AND season=$2',
@@ -82,6 +90,16 @@ test.before(async () => {
     install_lng: -99.5,
     elevation: 2200,
     soil_type: 'Holdrege (Hs)',
+  });
+  const pinless = await a.createRow('probes', { serial_number: 'SN-PINLESS', year_new: year });
+  await a.createRow('probe_assignments', {
+    field_season: [seasonA.id],
+    probe: [pinless.id],
+    probe_number: 2,
+    label: 'SW',
+    probe_status: 'Assigned',
+    install_date: `${year}-05-01T12:00:00.000Z`,
+    // No install/placement coords — must still appear in the facts list.
   });
   const geom = {
     type: 'Polygon',
@@ -134,6 +152,19 @@ test('lists only this year’s fields for farm A', async () => {
   assert.ok(rows.every((row) => row.season === year));
   assert.ok(!rows.some((row) => row.id === fieldNoSeason.id));
   assert.ok(!rows.some((row) => row.id === fieldB.id));
+  const alpha = rows.find((row) => row.name === 'Alpha');
+  assert.deepEqual(alpha.probeStatuses, ['Installed', 'Assigned']);
+  assert.equal(summarizeGrowerFieldProbeStatus(alpha.probeStatuses).label, 'Installed');
+  // Alpha has a boundary: acres come from geometry, not the stored 80.
+  assert.equal(alpha.acresFromBoundary, true);
+  assert.notEqual(alpha.acres, 80);
+  assert.ok(alpha.acres > 0);
+  const shared = rows.find((row) => row.name === 'Shared');
+  assert.deepEqual(shared.probeStatuses, []);
+  assert.equal(summarizeGrowerFieldProbeStatus(shared.probeStatuses).label, 'No probes');
+  // Shared has no boundary: fall back to stored acres and mark it.
+  assert.equal(shared.acresFromBoundary, false);
+  assert.equal(shared.acres, 40);
 });
 
 test('farm B does not see farm A-only fields', async () => {
@@ -152,8 +183,10 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
 
   const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
   assert.equal(detail.name, 'Alpha');
+  assert.equal(detail.acresFromBoundary, true);
+  assert.notEqual(detail.acres, 80);
   assert.equal(detail.boundaries.features.length, 1);
-  assert.equal(detail.probes.length, 1);
+  assert.equal(detail.probes.length, 2);
   assert.equal(detail.probes[0].serial, 'SN-ALPHA');
   assert.equal(detail.probes[0].ageSeasons, 3);
   assert.equal(detail.probes[0].elevation, 2200);
@@ -161,6 +194,10 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
   assert.equal(detail.probes[0].lat, 40.5);
   assert.match(detail.probes[0].installDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(typeof detail.probes[0].installDate, 'string');
+  assert.equal(detail.probes[1].serial, 'SN-PINLESS');
+  assert.equal(detail.probes[1].lat, null);
+  assert.equal(detail.probes[1].lng, null);
+  assert.equal(detail.probes[1].ageSeasons, 1);
   assert.deepEqual(
     detail.waterRecs.map((rec) => rec.reportType),
     ['update', 'full'],
@@ -170,4 +207,52 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
 
   const denied = await getGrowerFieldDetail(opB.id, fieldA.id, year);
   assert.equal(denied, null);
+});
+
+test('farm hardware list is scoped and includes pinless probes', async () => {
+  const year = growerCurrentSeasonYear();
+  const rows = await listGrowerHardwareForSeason(opA.id, year);
+  assert.deepEqual(
+    rows.map((row) => row.serial),
+    ['SN-ALPHA', 'SN-PINLESS'],
+  );
+  assert.equal(rows[0].fieldName, 'Alpha');
+  assert.equal(rows[0].ageSeasons, 3);
+  assert.equal(rows[1].lat, null);
+  const other = await listGrowerHardwareForSeason(opB.id, year);
+  assert.ok(!other.some((row) => row.serial === 'SN-ALPHA'));
+});
+
+test('acres display never invents area from null or zero', () => {
+  assert.equal(formatGrowerAcres(130.5), '130.5 ac');
+  assert.equal(formatGrowerAcres(130.5, { fromBoundary: true }), '130.5 ac');
+  assert.equal(formatGrowerAcres(130.5, { fromBoundary: false }), '130.5 ac (stored)');
+  assert.equal(formatGrowerAcres(null), null);
+  assert.equal(formatGrowerAcres(0), null);
+  assert.equal(formatGrowerAcres(-1), null);
+});
+
+test('probe and field status summarize Installed and Removed', () => {
+  assert.equal(formatGrowerProbeStatus('Installed'), 'Installed');
+  assert.equal(formatGrowerProbeStatus('Removed'), 'Removed');
+  assert.equal(formatGrowerProbeStatus(null), 'Not recorded');
+  assert.equal(
+    summarizeGrowerFieldProbeStatus(['Installed', 'Removed']).label,
+    'Installed · Removed',
+  );
+  assert.equal(summarizeGrowerFieldProbeStatus(['Removed', 'Removed']).label, 'Removed');
+  assert.equal(summarizeGrowerFieldProbeStatus([]).label, 'No probes');
+});
+
+test('farm water recommendations hide overview and stay farm-scoped', async () => {
+  const year = growerCurrentSeasonYear();
+  const rows = await listGrowerWaterRecsForSeason(opA.id, year);
+  assert.deepEqual(
+    rows.map((row) => row.reportType),
+    ['update', 'full'],
+  );
+  assert.equal(rows[0].fieldName, 'Alpha');
+  assert.ok(!rows.some((row) => /overview/i.test(row.recommendation || '')));
+  const other = await listGrowerWaterRecsForSeason(opB.id, year);
+  assert.equal(other.length, 0);
 });

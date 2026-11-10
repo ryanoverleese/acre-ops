@@ -1,6 +1,6 @@
 import 'server-only';
 import { compare, hash } from 'bcryptjs';
-import { query } from './database';
+import { withGrowerRole } from './grower';
 import { DataError, positiveId } from './registry';
 
 const BCRYPT = /^\$2[aby]\$(0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}$/;
@@ -11,36 +11,52 @@ export async function hashGrowerPin(pin: unknown): Promise<string | null> {
   return hash(String(pin), 12);
 }
 
-/** Exactly one farm by name (trim, case-insensitive). Never guesses duplicates. */
-export async function findGrowerFarmByName(name: string) {
+export type GrowerLoginFarm = {
+  id: number;
+  name: string;
+  grower_pin: string | null;
+  is_current_customer: boolean;
+};
+
+/**
+ * Resolve farm name → login projection via grower_login_lookup on the grower
+ * connection. Needs DATABASE_URL_GROWER (or owner fallback in non-prod). Does
+ * not use the office DATABASE_URL.
+ */
+export async function lookupGrowerLogin(name: string): Promise<GrowerLoginFarm | null> {
   const trimmed = name.trim();
   if (!trimmed) return null;
-  const rows = await query<{ id: unknown; name: string; grower_pin: string | null }>(
-    `SELECT id, name, grower_pin
-       FROM public.operations
-      WHERE lower(btrim(name)) = lower(btrim($1))`,
-    [trimmed],
-  );
+  const rows = await withGrowerRole(async (client) => {
+    const result = await client.query<{
+      id: unknown;
+      name: string;
+      grower_pin: string | null;
+      is_current_customer: boolean;
+    }>(
+      `SELECT id, name, grower_pin, is_current_customer
+         FROM public.grower_login_lookup($1)`,
+      [trimmed],
+    );
+    return result.rows;
+  });
   if (rows.length !== 1) return null;
   return {
     id: positiveId(rows[0].id),
     name: rows[0].name,
     grower_pin: rows[0].grower_pin,
+    is_current_customer: Boolean(rows[0].is_current_customer),
   };
 }
 
-export async function farmHasCurrentCustomer(operationId: number): Promise<boolean> {
-  const rows = await query(
-    `SELECT 1
-       FROM public.contact_operations AS co
-       JOIN public.contact_customer_types AS cct ON cct.contact_id = co.contact_id
-       JOIN public.contact_customer_type_options AS opt ON opt.id = cct.customer_type_id
-      WHERE co.operation_id = $1
-        AND opt.value = 'Current Customer'
-      LIMIT 1`,
-    [positiveId(operationId)],
-  );
-  return rows.length === 1;
+/** Exactly one farm by name (trim, case-insensitive). Never guesses duplicates. */
+export async function findGrowerFarmByName(name: string) {
+  const farm = await lookupGrowerLogin(name);
+  if (!farm) return null;
+  return {
+    id: farm.id,
+    name: farm.name,
+    grower_pin: farm.grower_pin,
+  };
 }
 
 export async function verifyGrowerPin(

@@ -139,16 +139,45 @@ test.after(async () => {
   await f.db?.close();
 });
 
-test('growerDatabaseConfig accepts only acre_grower on the acre-ops project', () => {
+test('growerDatabaseConfig accepts acre_grower and acre_grower_preview on the acre-ops project', () => {
   const ok = growerDatabaseConfig(
     'postgresql://acre_grower:secret@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres',
   );
   assert.equal(ok.user, 'acre_grower');
+  const preview = growerDatabaseConfig(
+    'postgresql://acre_grower_preview:secret@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres',
+  );
+  assert.equal(preview.user, 'acre_grower_preview');
+  const previewPooler = growerDatabaseConfig(
+    'postgresql://acre_grower_preview.junawlttpyztjlnbmvcb:secret@aws-0-us-east-1.pooler.supabase.com:6543/postgres',
+  );
+  assert.equal(previewPooler.user, 'acre_grower_preview.junawlttpyztjlnbmvcb');
   assert.throws(
     () => growerDatabaseConfig(
       'postgresql://postgres:secret@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres',
     ),
     (err) => err instanceof DataError,
+  );
+});
+
+test('grower role cannot write base tables or grower views', async () => {
+  await assert.rejects(
+    () => withGrowerOperation(opA.id, () =>
+      growerQuery(`INSERT INTO public.operations (name) VALUES ('hacked')`),
+    ),
+    (err) => err instanceof DataError && err.status === 403,
+  );
+  await assert.rejects(
+    () => withGrowerOperation(opA.id, () =>
+      growerQuery(`UPDATE public.operations SET name = 'hacked' WHERE id = $1`, [opA.id]),
+    ),
+    (err) => err instanceof DataError && err.status === 403,
+  );
+  await assert.rejects(
+    () => withGrowerOperation(opA.id, () =>
+      growerQuery(`DELETE FROM public.grower_fields WHERE id = $1`, [fieldA.id]),
+    ),
+    (err) => err instanceof DataError && (err.status === 403 || err.status === 503),
   );
 });
 
