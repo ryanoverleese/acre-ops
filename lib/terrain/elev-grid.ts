@@ -3,9 +3,9 @@ import * as Lerc from 'lerc';
 import { clamp255, ELEVATION_LUT } from './ramp';
 
 const ELEV_PROXY = '/api/usgs-elevation';
-const TILE = 256;
-const N = TILE + 2; // 1px halo for slope neighbors
 const FT = 0.3048;
+const MAX_DIM = 1536;
+const MIN_DIM = 256;
 
 export type ElevRenderMode = 'colorshade' | 'color' | 'shade';
 
@@ -20,18 +20,6 @@ const FIELD_RELIEF = {
 };
 
 type Range = { lo: number; hi: number };
-
-function tileBBox(coords: L.Coords) {
-  const world = 40075016.68557849;
-  const size = world / Math.pow(2, coords.z);
-  const px = size / TILE;
-  const minX = -world / 2 + coords.x * size - px;
-  const maxX = minX + size + 2 * px;
-  const maxY = world / 2 - coords.y * size + px;
-  const minY = maxY - size - 2 * px;
-  const latC = Math.atan(Math.sinh(Math.PI * (1 - 2 * (coords.y + 0.5) / Math.pow(2, coords.z))));
-  return { bbox: [minX, minY, maxX, maxY] as [number, number, number, number], cell: px * Math.cos(latC) };
-}
 
 function val(elev: Float32Array, i: number, fallback: number) {
   const v = elev[i];
@@ -65,29 +53,46 @@ function ensureLerc() {
   return lercReady;
 }
 
-type ElevTile = HTMLCanvasElement & {
-  _elev?: Float32Array;
-  _cell?: number;
-  _range?: Range;
-  _abort?: AbortController | null;
-};
+function latLngBoundsTo3857(b: L.LatLngBounds): [number, number, number, number] {
+  const sw = L.CRS.EPSG3857.project(b.getSouthWest());
+  const ne = L.CRS.EPSG3857.project(b.getNorthEast());
+  return [sw.x, sw.y, ne.x, ne.y];
+}
 
-export type ElevGridOptions = {
-  mode: ElevRenderMode;
-  opacity: number;
-  pane: string;
-  /** Shared elevation stretch (meters). Updated as tiles load. */
-  range: Range;
-  onRangeSample?: (lo: number, hi: number) => void;
-};
+function sampleRange(elev: Float32Array, cols: number, rows: number): Range | null {
+  let lo = Infinity;
+  let hi = -Infinity;
+  let n = 0;
+  // Skip 1px halo
+  for (let y = 1; y < rows - 1; y++) {
+    for (let x = 1; x < cols - 1; x++) {
+      const v = elev[y * cols + x];
+      if (v > -500 && v < 9000) {
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+        n++;
+      }
+    }
+  }
+  return n ? { lo, hi } : null;
+}
 
-function renderCanvas(tile: ElevTile, mode: ElevRenderMode, range: Range) {
-  const elev = tile._elev;
-  const cell = tile._cell;
-  if (!elev || !cell) return;
-  const ctx = tile.getContext('2d');
+/** Paint DEM into a canvas. elev is (w+2)×(h+2) with a 1px halo. */
+function renderElevCanvas(
+  canvas: HTMLCanvasElement,
+  elev: Float32Array,
+  w: number,
+  h: number,
+  cell: number,
+  mode: ElevRenderMode,
+  range: Range,
+) {
+  const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  const img = ctx.createImageData(TILE, TILE);
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
+  const cols = w + 2;
+  const img = ctx.createImageData(w, h);
   const out = img.data;
   const suns = sunVectors();
   const zf = FIELD_RELIEF.exag / (8 * cell);
@@ -95,36 +100,40 @@ function renderCanvas(tile: ElevTile, mode: ElevRenderMode, range: Range) {
   const bright = FIELD_RELIEF.bright / 100;
   let flat = 0;
   for (const s of suns) flat += s.w * s.z;
-  // Always use the shared map range so adjacent tiles share one blue→red
-  // stretch. Per-tile stretch made Color + shade split abruptly at tile edges
-  // (vertical/horizontal seams across a single field). Fall back to this
-  // tile's sample only until the shared range has been seeded.
-  const sharedOk = Number.isFinite(range.lo) && Number.isFinite(range.hi) && range.hi > range.lo;
-  const stretch = sharedOk ? range : (tile._range ?? range);
-  const lo = stretch.lo;
-  const span = Math.max(stretch.hi - stretch.lo, 0.5);
+  const lo = range.lo;
+  const span = Math.max(range.hi - range.lo, 0.5);
 
-  for (let y = 0; y < TILE; y++) {
-    for (let x = 0; x < TILE; x++) {
-      const ci = (y + 1) * N + (x + 1);
-      const o = (y * TILE + x) * 4;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const ci = (y + 1) * cols + (x + 1);
+      const o = (y * w + x) * 4;
       const e = elev[ci];
       if (!(e > -500 && e < 9000)) {
         out[o + 3] = 0;
         continue;
       }
-      const A = val(elev, ci - N - 1, e), B = val(elev, ci - N, e), C = val(elev, ci - N + 1, e);
-      const D = val(elev, ci - 1, e), F = val(elev, ci + 1, e);
-      const G = val(elev, ci + N - 1, e), H = val(elev, ci + N, e), I = val(elev, ci + N + 1, e);
+      const A = val(elev, ci - cols - 1, e);
+      const B = val(elev, ci - cols, e);
+      const C = val(elev, ci - cols + 1, e);
+      const D = val(elev, ci - 1, e);
+      const F = val(elev, ci + 1, e);
+      const G = val(elev, ci + cols - 1, e);
+      const H = val(elev, ci + cols, e);
+      const I = val(elev, ci + cols + 1, e);
       const gx = (C + 2 * F + I) - (A + 2 * D + G);
       const gy = (A + 2 * B + C) - (G + 2 * H + I);
 
-      let r: number, g: number, b: number;
+      let r: number;
+      let g: number;
+      let b: number;
       if (mode === 'color') {
         const ti = clamp255(((e - lo) / span) * 255) * 3;
-        r = ELEVATION_LUT[ti]; g = ELEVATION_LUT[ti + 1]; b = ELEVATION_LUT[ti + 2];
+        r = ELEVATION_LUT[ti];
+        g = ELEVATION_LUT[ti + 1];
+        b = ELEVATION_LUT[ti + 2];
       } else {
-        const nx = -gx * zf, ny = -gy * zf;
+        const nx = -gx * zf;
+        const ny = -gy * zf;
         const len = Math.sqrt(nx * nx + ny * ny + 1);
         let lit = 0;
         for (const L0 of suns) {
@@ -143,94 +152,80 @@ function renderCanvas(tile: ElevTile, mode: ElevRenderMode, range: Range) {
           b = clamp255(ELEVATION_LUT[ti + 2] * light);
         }
       }
-      out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = 255;
+      out[o] = r;
+      out[o + 1] = g;
+      out[o + 2] = b;
+      out[o + 3] = 255;
     }
   }
   ctx.putImageData(img, 0, 0);
 }
 
-function sampleRange(elev: Float32Array): { lo: number; hi: number } | null {
-  let lo = Infinity, hi = -Infinity, n = 0;
-  // Sample interior (skip 1px halo)
-  for (let y = 1; y < N - 1; y++) {
-    for (let x = 1; x < N - 1; x++) {
-      const v = elev[y * N + x];
-      if (v > -500 && v < 9000) {
-        if (v < lo) lo = v;
-        if (v > hi) hi = v;
-        n++;
-      }
-    }
-  }
-  return n ? { lo, hi } : null;
-}
+export type ElevGridOptions = {
+  mode: ElevRenderMode;
+  opacity: number;
+  pane: string;
+  range: Range;
+  onRangeSample?: (lo: number, hi: number) => void;
+};
 
-export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
+type ElevImageLayer = L.Layer & {
   setElevMode: (mode: ElevRenderMode) => void;
   setElevRange: (range: Range) => void;
+  setOpacity: (opacity: number) => ElevImageLayer;
   rerender: () => void;
-} {
+};
+
+/**
+ * One DEM image for the current map view — no Leaflet tile grid.
+ * Color + shade used to split abruptly at 256px tile edges because each tile
+ * got its own DEM sample (and previously its own color stretch). A single
+ * exportImage covers the viewport with one continuous elevation field.
+ */
+export function createElevGridLayer(options: ElevGridOptions): ElevImageLayer {
   const state = {
     mode: options.mode,
+    opacity: options.opacity,
+    pane: options.pane,
     range: { ...options.range },
     onRangeSample: options.onRangeSample,
+    elev: null as Float32Array | null,
+    cols: 0,
+    rows: 0,
+    cell: 1,
+    bounds: null as L.LatLngBounds | null,
+    overlay: null as L.ImageOverlay | null,
+    canvas: document.createElement('canvas'),
+    abort: null as AbortController | null,
+    timer: null as ReturnType<typeof setTimeout> | null,
+    gen: 0,
   };
 
-  const Layer = L.GridLayer.extend({
-    options: {
-      pane: options.pane,
-      opacity: options.opacity,
-      tileSize: TILE,
-      maxZoom: 20,
-      keepBuffer: 2,
-      attribution: 'Elevation: USGS 3DEP',
+  const Layer = L.Layer.extend({
+    onAdd(map: L.Map) {
+      this._map = map;
+      const refresh = () => this._scheduleFetch();
+      map.on('moveend zoomend', refresh);
+      this._onView = refresh;
+      this._scheduleFetch();
     },
-    createTile(coords: L.Coords, done: L.DoneCallback) {
-      const tile = document.createElement('canvas') as ElevTile;
-      tile.width = TILE;
-      tile.height = TILE;
-      const bb = tileBBox(coords);
-      const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      tile._abort = ac;
-
-      const url = `${ELEV_PROXY}/exportImage?f=image&format=lerc&pixelType=F32&bboxSR=3857&imageSR=3857`
-        + `&bbox=${bb.bbox.map((v) => v.toFixed(3)).join(',')}`
-        + `&size=${N},${N}&interpolation=RSP_BilinearInterpolation`;
-
-      ensureLerc()
-        .then(() => fetch(url, { signal: ac?.signal, cache: 'force-cache' }))
-        .then((r) => {
-          if (!r.ok) throw new Error(`elev ${r.status}`);
-          return r.arrayBuffer();
-        })
-        .then((buf) => {
-          tile._abort = null;
-          const d = Lerc.decode(buf);
-          if (d.width !== N || d.height !== N) throw new Error('size');
-          const z = d.pixels[0];
-          const mask = d.mask;
-          const elev = new Float32Array(N * N);
-          for (let p = 0; p < N * N; p++) {
-            const v = z[p];
-            elev[p] = (mask && !mask[p]) || !(v > -500 && v < 9000) ? NaN : v;
-          }
-          tile._elev = elev;
-          tile._cell = bb.cell;
-          const sample = sampleRange(elev);
-          if (sample) {
-            tile._range = sample;
-            state.onRangeSample?.(sample.lo, sample.hi);
-          }
-          renderCanvas(tile, state.mode, state.range);
-          done(undefined, tile);
-        })
-        .catch((err) => {
-          tile._abort = null;
-          if (err?.name === 'AbortError') return;
-          done(undefined, tile);
-        });
-
-      return tile;
+    onRemove(map: L.Map) {
+      if (this._onView) map.off('moveend zoomend', this._onView);
+      this._onView = null;
+      if (state.timer) clearTimeout(state.timer);
+      state.timer = null;
+      state.abort?.abort();
+      state.abort = null;
+      if (state.overlay) {
+        map.removeLayer(state.overlay);
+        state.overlay = null;
+      }
+      this._map = null;
+    },
+    setOpacity(opacity: number) {
+      state.opacity = opacity;
+      state.overlay?.setOpacity(opacity);
+      return this as ElevImageLayer;
     },
     setElevMode(mode: ElevRenderMode) {
       state.mode = mode;
@@ -241,20 +236,124 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
       this.rerender();
     },
     rerender() {
-      // Re-paint loaded canvases without refetch
-      const tiles = (this as unknown as { _tiles: Record<string, { el: ElevTile }> })._tiles || {};
-      for (const key of Object.keys(tiles)) {
-        const el = tiles[key]?.el;
-        if (el?._elev) renderCanvas(el, state.mode, state.range);
+      if (!state.elev || !state.bounds || !this._map) return;
+      const sharedOk = Number.isFinite(state.range.lo)
+        && Number.isFinite(state.range.hi)
+        && state.range.hi > state.range.lo;
+      const stretch = sharedOk
+        ? state.range
+        : (sampleRange(state.elev, state.cols, state.rows) ?? { lo: 0, hi: 1 });
+      const w = state.cols - 2;
+      const h = state.rows - 2;
+      renderElevCanvas(state.canvas, state.elev, w, h, state.cell, state.mode, stretch);
+      const url = state.canvas.toDataURL('image/png');
+      if (state.overlay) {
+        state.overlay.setUrl(url);
+        state.overlay.setBounds(state.bounds);
+        state.overlay.setOpacity(state.opacity);
+      } else {
+        state.overlay = L.imageOverlay(url, state.bounds, {
+          opacity: state.opacity,
+          pane: state.pane,
+          interactive: false,
+          className: 'acre-elev-image',
+        });
+        state.overlay.addTo(this._map);
       }
+    },
+    _scheduleFetch() {
+      if (state.timer) clearTimeout(state.timer);
+      state.timer = setTimeout(() => {
+        state.timer = null;
+        this._fetchView();
+      }, 120);
+    },
+    _fetchView() {
+      const map = this._map as L.Map | null;
+      if (!map) return;
+      const size = map.getSize();
+      if (size.x < 8 || size.y < 8) return;
+
+      // Pad slightly so pan doesn't immediately expose empty edges.
+      const pad = map.containerPointToLatLng([ -24, -24 ]);
+      const pad2 = map.containerPointToLatLng([ size.x + 24, size.y + 24 ]);
+      const view = L.latLngBounds(pad, pad2);
+      const bbox = latLngBoundsTo3857(view);
+      const [minX, minY, maxX, maxY] = bbox;
+      const widthM = Math.max(maxX - minX, 1);
+      const heightM = Math.max(maxY - minY, 1);
+
+      let w = Math.round(size.x * (typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1));
+      let h = Math.round(size.y * (typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, 2) : 1));
+      w = Math.max(MIN_DIM, Math.min(MAX_DIM, w));
+      h = Math.max(MIN_DIM, Math.min(MAX_DIM, h));
+      // Keep geographic aspect so pixels are square-ish in 3857.
+      const aspect = widthM / heightM;
+      if (w / h > aspect) w = Math.max(MIN_DIM, Math.round(h * aspect));
+      else h = Math.max(MIN_DIM, Math.round(w / aspect));
+
+      const halo = 1;
+      const reqW = w + halo * 2;
+      const reqH = h + halo * 2;
+      const px = widthM / w;
+      const py = heightM / h;
+      const fetchBbox = [
+        minX - px * halo,
+        minY - py * halo,
+        maxX + px * halo,
+        maxY + py * halo,
+      ];
+      const latC = view.getCenter().lat * Math.PI / 180;
+      const cell = ((px + py) / 2) * Math.cos(latC);
+
+      state.abort?.abort();
+      const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      state.abort = ac;
+      const gen = ++state.gen;
+
+      const url = `${ELEV_PROXY}/exportImage?f=image&format=lerc&pixelType=F32&bboxSR=3857&imageSR=3857`
+        + `&bbox=${fetchBbox.map((v) => v.toFixed(3)).join(',')}`
+        + `&size=${reqW},${reqH}&interpolation=RSP_BilinearInterpolation`;
+
+      ensureLerc()
+        .then(() => fetch(url, { signal: ac?.signal, cache: 'force-cache' }))
+        .then((r) => {
+          if (!r.ok) throw new Error(`elev ${r.status}`);
+          return r.arrayBuffer();
+        })
+        .then((buf) => {
+          if (gen !== state.gen || !this._map) return;
+          state.abort = null;
+          const d = Lerc.decode(buf);
+          if (d.width !== reqW || d.height !== reqH) throw new Error('size');
+          const z = d.pixels[0];
+          const mask = d.mask;
+          const elev = new Float32Array(reqW * reqH);
+          for (let p = 0; p < elev.length; p++) {
+            const v = z[p];
+            elev[p] = (mask && !mask[p]) || !(v > -500 && v < 9000) ? NaN : v;
+          }
+          state.elev = elev;
+          state.cols = reqW;
+          state.rows = reqH;
+          state.cell = cell;
+          state.bounds = view;
+          const sample = sampleRange(elev, reqW, reqH);
+          if (sample) {
+            state.range = sample;
+            state.onRangeSample?.(sample.lo, sample.hi);
+          }
+          this.rerender();
+        })
+        .catch((err) => {
+          if (gen !== state.gen) return;
+          state.abort = null;
+          if (err?.name === 'AbortError') return;
+        });
     },
   });
 
-  return new Layer() as L.GridLayer & {
-    setElevMode: (mode: ElevRenderMode) => void;
-    setElevRange: (range: Range) => void;
-    rerender: () => void;
-  };
+  return new Layer() as ElevImageLayer;
 }
 
 /** Convert meters ↔ feet helpers for range display. */
