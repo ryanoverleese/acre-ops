@@ -11219,14 +11219,24 @@ body:has(.af-app)::before {
 }
 .af-pin-dot.filled { background: var(--field-green); border-color: var(--field-green); }
 
-/* Grower app — plain list, no office chrome */
+/* Grower app — plain list, no office chrome.
+   Root .app is display:flex; without width:100% the shell shrinks to
+   intrinsic content (~200px) — that was the Axels desktop map-width defect. */
 .grower-shell {
+  box-sizing: border-box;
+  width: 100%;
   min-height: 100vh;
   max-width: 640px;
   margin: 0 auto;
   padding: 28px 20px 48px;
   background: var(--bg-primary);
   color: var(--text-primary);
+  flex: 0 1 auto;
+  align-self: stretch;
+}
+.app:has(.grower-shell),
+.app:has(.login-page) {
+  display: block;
 }
 .grower-top {
   display: flex;
@@ -11262,7 +11272,8 @@ body:has(.af-app)::before {
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
-  padding: 8px 12px;
+  padding: 12px 14px;
+  min-height: 44px;
   border-radius: var(--radius-sm);
   cursor: pointer;
 }
@@ -11273,6 +11284,60 @@ body:has(.af-app)::before {
   margin: 0;
   font-size: 15px;
   color: var(--text-secondary);
+}
+.grower-home-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 100%;
+  margin: 8px 0 0;
+  overflow-x: hidden;
+}
+.grower-home-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 18px 20px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: 'General Sans', 'Source Sans 3', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  text-align: center;
+  line-height: 1.2;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.grower-home-nav-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--text-muted);
+}
+.grower-home-nav-btn:focus-visible {
+  outline: 3px solid var(--accent-primary);
+  outline-offset: 3px;
+}
+.grower-home-nav-btn:active {
+  background: var(--bg-secondary, var(--bg-hover));
+}
+.grower-rec-field {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+@media (max-width: 640px) {
+  .grower-home-nav-btn {
+    min-height: 72px;
+    font-size: 22px;
+    padding: 20px 18px;
+  }
 }
 .grower-field-list {
   list-style: none;
@@ -11291,10 +11356,65 @@ body:has(.af-app)::before {
   font-size: 16px;
   font-weight: 500;
 }
+.grower-field-row-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
 .grower-field-meta {
   font-size: 13px;
   color: var(--text-muted);
   white-space: nowrap;
+}
+.grower-status-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+.grower-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.grower-status-installed {
+  color: var(--field-green, #1f402a);
+  border-color: var(--field-green, #1f402a);
+}
+.grower-status-removed {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+.grower-status-assigned {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.grower-status-muted {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.grower-status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+.grower-status-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 .grower-banner-error {
   margin: 0;
@@ -11305,21 +11425,53 @@ body:has(.af-app)::before {
   text-align: center;
 }
 
-.grower-shell-wide { max-width: 900px; }
-.grower-back { color: inherit; text-decoration: none; }
+.grower-shell-wide {
+  max-width: min(1120px, calc(100vw - 32px));
+}
+.grower-back {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 2px;
+  font-size: 15px;
+  line-height: 1.2;
+  -webkit-tap-highlight-color: transparent;
+}
 .grower-back:hover { text-decoration: underline; }
+.grower-back:focus-visible {
+  outline: 3px solid var(--accent-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .grower-field-row {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 14px 0;
+  padding: 16px 0;
+  min-height: 48px;
   border-bottom: 1px solid var(--border);
   color: inherit;
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 640px) {
+  .grower-shell { padding: 20px 16px 40px; }
+  .grower-title { font-size: 24px; }
+  .grower-map-wrap { height: min(48vh, 360px); min-height: 220px; }
+  .grower-probe-facts { grid-template-columns: 1fr; }
+}
+@media (min-width: 900px) {
+  .grower-shell-wide .grower-map-wrap {
+    height: min(56vh, 560px);
+    min-height: 360px;
+  }
 }
 a.grower-field-row:hover .grower-field-name { text-decoration: underline; }
 .grower-map-wrap {
+  width: 100%;
   height: min(52vh, 420px);
   min-height: 260px;
   border: 1px solid var(--border);
@@ -11328,8 +11480,15 @@ a.grower-field-row:hover .grower-field-name { text-decoration: underline; }
   margin-bottom: 28px;
   position: relative;
 }
-.grower-map { width: 100%; height: 100%; position: relative; }
-.grower-map-terrain { position: absolute; z-index: 500; }
+.grower-map {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+/* Positioning comes from .terrain-control; keep z-index above Leaflet panes. */
+.grower-map-terrain {
+  z-index: 1100;
+}
 .grower-section-title {
   margin: 0 0 12px;
   font-size: 15px;
@@ -11362,6 +11521,13 @@ a.grower-field-row:hover .grower-field-name { text-decoration: underline; }
 .grower-probe-facts dd {
   margin: 2px 0 0;
   font-size: 14px;
+}
+.grower-probe-pin-hit {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .grower-probe-pin-dot {
   width: 28px;

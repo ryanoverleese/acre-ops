@@ -24,12 +24,26 @@ export default async function GrowerFieldPage({
 
   const season = growerCurrentSeasonYear();
   let detail: Awaited<ReturnType<typeof getGrowerFieldDetail>> = null;
+  let loadError = false;
   try {
     detail = await getGrowerFieldDetail(session.operationId, Number(id), season);
   } catch {
-    redirect('/grower');
+    loadError = true;
   }
-  if (!detail) notFound();
+  if (!loadError && !detail) notFound();
+
+  if (loadError || !detail) {
+    return (
+      <div className="grower-shell">
+        <p className="grower-banner-error">
+          Could not load this field. Go back to your field list and try again.
+        </p>
+        <p className="grower-empty">
+          <a href="/grower/fields" className="grower-back">← Back to fields</a>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <FieldDetailClient

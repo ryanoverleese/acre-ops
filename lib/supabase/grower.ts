@@ -23,22 +23,31 @@ export function growerDatabaseConfig(raw: string): PoolConfig {
   const user = decodeURIComponent(u.username);
   const direct = u.hostname === `db.${PROJECT_REF}.supabase.co` && user === GROWER_USER;
   const pooled = /^[a-z0-9-]+\.pooler\.supabase\.com$/.test(u.hostname) && user === `${GROWER_USER}.${PROJECT_REF}`;
-  if (!['postgres:', 'postgresql:'].includes(u.protocol) || !(direct || pooled) || !['', '5432', '6543'].includes(u.port)
+  const localQa = process.env.ACRE_LOCAL_PG === '1'
+    && ['127.0.0.1', 'localhost'].includes(u.hostname)
+    && user === GROWER_USER
+    && ['', '5432'].includes(u.port);
+  if (!['postgres:', 'postgresql:'].includes(u.protocol) || !(direct || pooled || localQa) || !['', '5432', '6543'].includes(u.port)
     || u.pathname !== '/postgres' || !u.password || u.hash) {
     throw new DataError('Grower database must use the acre_grower role on the acre-ops project', 503);
   }
+  // sslmode=disable is only for ephemeral ACRE_LOCAL_PG hosts — never production.
+  const allowedSsl = localQa ? ['require', 'verify-full', 'disable'] : ['require', 'verify-full'];
   for (const [key, value] of u.searchParams) {
-    if (key !== 'sslmode' || !['require', 'verify-full'].includes(value)) {
+    if (key !== 'sslmode' || !allowedSsl.includes(value)) {
       throw new DataError('Unsupported grower database connection option', 503);
     }
   }
+  const ssl = localQa && (u.searchParams.get('sslmode') === 'disable' || !u.searchParams.has('sslmode'))
+    ? false
+    : { ca: SUPABASE_CA, rejectUnauthorized: true };
   return {
     host: u.hostname,
     port: Number(u.port || 5432),
     user,
     password: decodeURIComponent(u.password),
     database: 'postgres',
-    ssl: { ca: SUPABASE_CA, rejectUnauthorized: true },
+    ssl,
     max: 3,
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 8000,
@@ -62,9 +71,14 @@ async function getGrowerPool(): Promise<Pool> {
   if (!growerConnecting) {
     growerConnecting = (async () => {
       const raw = process.env.DATABASE_URL_GROWER;
-      // Until DATABASE_URL_GROWER is set on Netlify, demote the office pool with
-      // SET LOCAL ROLE acre_grower inside withGrowerOperation (same as contract tests).
+      // Owner-pool demotion is for fixtures/local only. Production must use acre_grower.
       if (!raw) {
+        if (
+          process.env.NODE_ENV === 'production'
+          && process.env.GROWER_ALLOW_OWNER_FALLBACK !== '1'
+        ) {
+          throw new DataError('Grower database connection is not configured', 503);
+        }
         usingOwnerFallback = true;
         growerPool = await getDatabasePool();
         return growerPool;

@@ -41,8 +41,9 @@ export default function GrowerLoginForm({ callbackUrl = '/grower' }: { callbackU
         <form onSubmit={handleSubmit} className="login-form">
           {error && <div className="login-error">{error}</div>}
           <div className="login-field">
-            <label className="login-label">Farm name</label>
+            <label className="login-label" htmlFor="grower-farm-name">Farm name</label>
             <input
+              id="grower-farm-name"
               type="text"
               className="login-input"
               value={farm}
@@ -54,8 +55,9 @@ export default function GrowerLoginForm({ callbackUrl = '/grower' }: { callbackU
             />
           </div>
           <div className="login-field">
-            <label className="login-label">PIN</label>
+            <label className="login-label" htmlFor="grower-pin">PIN</label>
             <input
+              id="grower-pin"
               type="password"
               inputMode="numeric"
               pattern="[0-9]{4,6}"

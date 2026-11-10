@@ -17,11 +17,12 @@ const NEBRASKA_FALLBACK: [number, number] = [41.5, -99.5];
 
 function probeIcon(label: string) {
   const text = label.replace(/[<>&"]/g, '');
+  // 44×44 hit target for finger taps; visible dot stays visually smaller via CSS.
   return L.divIcon({
     className: 'grower-probe-pin',
-    html: `<div class="grower-probe-pin-dot">${text}</div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    html: `<div class="grower-probe-pin-hit"><div class="grower-probe-pin-dot">${text}</div></div>`,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
 }
 
@@ -55,24 +56,40 @@ function Fit({
   const ring = useMemo(() => collectLatLngs(boundaries), [boundaries]);
 
   useEffect(() => {
-    map.invalidateSize();
-    const pts: [number, number][] = [
-      ...ring,
-      ...probes.map((p) => [p.lat, p.lng] as [number, number]),
-    ];
-    if (fieldLat != null && fieldLng != null) pts.push([fieldLat, fieldLng]);
-    if (pts.length >= 2) {
-      map.fitBounds(L.latLngBounds(pts.map(([lat, lng]) => L.latLng(lat, lng))), {
-        padding: [28, 28],
-        maxZoom: 16,
-      });
-      return;
-    }
-    if (pts.length === 1) {
-      map.setView(pts[0], 15);
-      return;
-    }
-    map.setView(NEBRASKA_FALLBACK, 7);
+    const fit = () => {
+      map.invalidateSize();
+      const pts: [number, number][] = [
+        ...ring,
+        ...probes
+          .filter((p) => p.lat != null && p.lng != null)
+          .map((p) => [p.lat as number, p.lng as number] as [number, number]),
+      ];
+      if (fieldLat != null && fieldLng != null) pts.push([fieldLat, fieldLng]);
+      if (pts.length >= 2) {
+        map.fitBounds(L.latLngBounds(pts.map(([lat, lng]) => L.latLng(lat, lng))), {
+          padding: [28, 28],
+          maxZoom: 16,
+        });
+        return;
+      }
+      if (pts.length === 1) {
+        map.setView(pts[0], 15);
+        return;
+      }
+      map.setView(NEBRASKA_FALLBACK, 7);
+    };
+    fit();
+    // Leaflet can mount before the wide desktop shell finishes layout.
+    const ro = typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(() => fit())
+      : null;
+    const container = map.getContainer();
+    ro?.observe(container);
+    window.addEventListener('resize', fit);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener('resize', fit);
+    };
   }, [map, ring, probes, fieldLat, fieldLng]);
 
   return null;
@@ -108,10 +125,12 @@ export default function GrowerFieldMap({
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
         {hasOutline && <ElevationOverlay mode={terrainMode} clipTo={boundaries} />}
         <BoundaryLayer data={boundaries} selectedId={fieldId} />
-        {probes.map((probe) => (
+        {probes
+          .filter((probe) => probe.lat != null && probe.lng != null)
+          .map((probe) => (
           <Marker
             key={probe.id}
-            position={[probe.lat, probe.lng]}
+            position={[probe.lat as number, probe.lng as number]}
             icon={probeIcon(probe.label || String(probe.probeNumber || 'P'))}
             interactive={false}
           />
@@ -120,7 +139,10 @@ export default function GrowerFieldMap({
       </MapContainer>
       {hasOutline && (
         <TerrainControl
-          className="grower-map-terrain"
+          // Keep base .terrain-control positioning (top/left). grower-map-terrain
+          // alone omitted those rules, so the control sat below the map and was
+          // clipped by .grower-map-wrap { overflow: hidden }.
+          className="terrain-control grower-map-terrain"
           value={terrainMode}
           onChange={setTerrainMode}
         />
