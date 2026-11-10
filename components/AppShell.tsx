@@ -207,7 +207,7 @@ export default function AppShell({ children }: AppShellProps) {
 
   // Don't show navigation on public approval pages, login page, installer app,
   // or unknown URLs. A 404 must not print the private nav.
-  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer') || (pathname ? !isKnownAppRoute(pathname) : false);
+  const isPublicPage = pathname?.startsWith('/approve') || pathname?.startsWith('/field-info') || pathname?.startsWith('/review') || pathname === '/login' || pathname?.startsWith('/installer') || pathname?.startsWith('/grower') || (pathname ? !isKnownAppRoute(pathname) : false);
 
   if (isPublicPage) {
     return <>{children}</>;

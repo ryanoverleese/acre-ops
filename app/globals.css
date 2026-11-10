@@ -11218,3 +11218,89 @@ body:has(.af-app)::before {
   transition: background 150ms, border-color 150ms;
 }
 .af-pin-dot.filled { background: var(--field-green); border-color: var(--field-green); }
+
+/* Grower app — plain list, no office chrome */
+.grower-shell {
+  min-height: 100vh;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.grower-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.grower-kicker {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.grower-title {
+  margin: 0;
+  font-family: 'General Sans', sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
+}
+.grower-sub {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+.grower-signout {
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.grower-signout:hover {
+  color: var(--text-primary);
+}
+.grower-empty {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-secondary);
+}
+.grower-field-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.grower-field-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.grower-field-name {
+  font-size: 16px;
+  font-weight: 500;
+}
+.grower-field-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.grower-banner-error {
+  margin: 0;
+  padding: 12px 20px;
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+  font-size: 13px;
+  text-align: center;
+}
