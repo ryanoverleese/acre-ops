@@ -6,7 +6,7 @@ export function formatProbeAge(ageSeasons: number | null | undefined): string {
 }
 
 /**
- * Grower acres come from the boundary polygon when available.
+ * Grower acres prefer field_boundaries.acres (geometry-derived column).
  * When falling back to stored fields.acres, mark as (stored).
  * Null/non-positive values display as not recorded — do not invent area.
  */

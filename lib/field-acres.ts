@@ -16,6 +16,22 @@ export function effectiveFieldAcres(
   return null;
 }
 
+/** Overlay field_boundaries.acres onto Field rows (main acres source everywhere). */
+export async function applyBoundaryAcresToFields<T extends { id?: number; acres?: number | null }>(
+  rows: T[],
+): Promise<T[]> {
+  if (!rows.length) return rows;
+  const boundaryAcres = await loadBoundaryAcresByFieldId();
+  if (!boundaryAcres.size) return rows;
+  return rows.map((row) => {
+    const id = Number(row.id);
+    if (!Number.isSafeInteger(id) || id <= 0) return row;
+    const acres = effectiveFieldAcres(row.acres, boundaryAcres.get(id));
+    if (acres == null || acres === row.acres) return row;
+    return { ...row, acres };
+  });
+}
+
 export function effectiveFieldAcresOrZero(
   storedAcres: number | null | undefined,
   boundaryAcres: number | null | undefined,
