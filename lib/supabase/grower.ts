@@ -14,22 +14,30 @@ let growerPool: Pool | undefined;
 let growerConnecting: Promise<Pool> | undefined;
 let usingOwnerFallback = false;
 
-const GROWER_USER = 'acre_grower';
+const GROWER_USERS = new Set(['acre_grower', 'acre_grower_preview']);
+
+export function isAllowedGrowerDbUser(user: string | null | undefined): boolean {
+  return typeof user === 'string' && GROWER_USERS.has(user);
+}
 
 /** Connection config for the weaker grower login only. Never accepts the owner role. */
 export function growerDatabaseConfig(raw: string): PoolConfig {
   let u: URL;
   try { u = new URL(raw); } catch { throw new DataError('Invalid grower database configuration', 503); }
   const user = decodeURIComponent(u.username);
-  const direct = u.hostname === `db.${PROJECT_REF}.supabase.co` && user === GROWER_USER;
-  const pooled = /^[a-z0-9-]+\.pooler\.supabase\.com$/.test(u.hostname) && user === `${GROWER_USER}.${PROJECT_REF}`;
+  const direct = u.hostname === `db.${PROJECT_REF}.supabase.co` && GROWER_USERS.has(user);
+  const pooled = /^[a-z0-9-]+\.pooler\.supabase\.com$/.test(u.hostname)
+    && [...GROWER_USERS].some((role) => user === `${role}.${PROJECT_REF}`);
   const localQa = process.env.ACRE_LOCAL_PG === '1'
     && ['127.0.0.1', 'localhost'].includes(u.hostname)
-    && user === GROWER_USER
+    && GROWER_USERS.has(user)
     && ['', '5432'].includes(u.port);
   if (!['postgres:', 'postgresql:'].includes(u.protocol) || !(direct || pooled || localQa) || !['', '5432', '6543'].includes(u.port)
     || u.pathname !== '/postgres' || !u.password || u.hash) {
-    throw new DataError('Grower database must use the acre_grower role on the acre-ops project', 503);
+    throw new DataError(
+      'Grower database must use acre_grower or acre_grower_preview on the acre-ops project',
+      503,
+    );
   }
   // sslmode=disable is only for ephemeral ACRE_LOCAL_PG hosts — never production.
   const allowedSsl = localQa ? ['require', 'verify-full', 'disable'] : ['require', 'verify-full'];
@@ -93,7 +101,7 @@ async function getGrowerPool(): Promise<Pool> {
         return candidate;
       } catch {
         await candidate.end().catch(() => {});
-        throw new DataError('Could not connect as acre_grower; check DATABASE_URL_GROWER', 503);
+        throw new DataError('Could not connect as grower role; check DATABASE_URL_GROWER', 503);
       }
     })().finally(() => { growerConnecting = undefined; });
   }
@@ -106,6 +114,37 @@ function safeError(error: unknown): DataError {
   if (code === '42501') return new DataError('Grower access denied', 403);
   if (code?.startsWith('22')) return new DataError('A required field or value is invalid', 400);
   return new DataError('Grower database operation failed; no database details are exposed', 503);
+}
+
+/** Ensure the session is a grower role (acre_grower / acre_grower_preview). */
+async function ensureGrowerRole(client: PoolClient): Promise<void> {
+  const who = await client.query<{ current_user: string }>('SELECT current_user');
+  // Owner fallback / non-grower sessions demote to acre_grower. Preview stays preview.
+  if (!isAllowedGrowerDbUser(who.rows[0]?.current_user) || usingOwnerFallback) {
+    await client.query('SET LOCAL ROLE acre_grower');
+  }
+}
+
+/**
+ * Run work as the grower role with no farm session set.
+ * Used by login (farm not known yet) for SECURITY DEFINER grower_login_lookup.
+ */
+export async function withGrowerRole<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  let client: PoolClient;
+  try { client = await (await getGrowerPool()).connect(); }
+  catch (error) { throw safeError(error); }
+  try {
+    await client.query('BEGIN');
+    await ensureGrowerRole(client);
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw safeError(error);
+  } finally {
+    client.release();
+  }
 }
 
 /** Run read-only grower work scoped to one farm. Sets app.grower_operation_id for the transaction. */
@@ -131,10 +170,7 @@ export async function withGrowerOperation<T>(
     );
     // When the connection is the owner (fallback / contract tests), demote for
     // this transaction so base-table grants are enforced like acre_grower login.
-    const who = await client.query<{ current_user: string }>('SELECT current_user');
-    if (who.rows[0]?.current_user !== GROWER_USER || usingOwnerFallback) {
-      await client.query('SET LOCAL ROLE acre_grower');
-    }
+    await ensureGrowerRole(client);
     const result = await scopes.run({ client, operationId: op }, work);
     await client.query('COMMIT');
     return result;
@@ -144,6 +180,13 @@ export async function withGrowerOperation<T>(
   } finally {
     client.release();
   }
+}
+
+/** Test/harness helper — drop cached pool between fixture boots. */
+export function __resetGrowerPoolForTests(): void {
+  growerPool = undefined;
+  growerConnecting = undefined;
+  usingOwnerFallback = false;
 }
 
 export async function growerQuery<T extends QueryResultRow = Record<string, unknown>>(

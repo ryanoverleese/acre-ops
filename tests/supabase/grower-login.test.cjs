@@ -13,11 +13,12 @@ delete process.env.GROWER_PILOT_FARM_NAMES;
 const a = f.load('lib/supabase/adapter.ts');
 const {
   findGrowerFarmByName,
-  farmHasCurrentCustomer,
   hashGrowerPin,
   isGrowerPilotFarm,
+  lookupGrowerLogin,
   verifyGrowerPin,
 } = f.load('lib/supabase/grower-auth.ts');
+const { __resetGrowerPoolForTests } = f.load('lib/supabase/grower.ts');
 const { authorizeActor } = f.load('lib/supabase/api.ts');
 const { DataError } = f.load('lib/supabase/registry.ts');
 const { createGrowerSession, readGrowerSession } = f.load('lib/grower-session.ts');
@@ -85,23 +86,67 @@ test.after(async () => {
 });
 
 test('correct farm name and PIN verify; wrong PIN fails', async () => {
-  const farm = await findGrowerFarmByName('  fishell farms ');
+  const farm = await lookupGrowerLogin('  fishell farms ');
   assert.equal(farm.id, currentFarm.id);
-  assert.equal(await farmHasCurrentCustomer(farm.id), true);
+  assert.equal(farm.is_current_customer, true);
   assert.equal(await verifyGrowerPin(farm.grower_pin, '4242'), true);
   assert.equal(await verifyGrowerPin(farm.grower_pin, '0000'), false);
 });
 
 test('past-customer-only farm is refused even with the right PIN', async () => {
-  const farm = await findGrowerFarmByName('Past Only Farm');
+  const farm = await lookupGrowerLogin('Past Only Farm');
   assert.ok(farm);
-  assert.equal(await farmHasCurrentCustomer(farm.id), false);
+  assert.equal(farm.is_current_customer, false);
   assert.equal(await verifyGrowerPin(farm.grower_pin, '4242'), true);
 });
 
 test('duplicate farm names refuse login lookup', async () => {
   assert.equal(await findGrowerFarmByName('Twin Farm'), null);
   assert.equal(await findGrowerFarmByName('twin farm'), null);
+  assert.equal(await lookupGrowerLogin('Twin Farm'), null);
+});
+
+test('grower-auth login works with only DATABASE_URL_GROWER and AUTH_SECRET', async () => {
+  const prevDb = process.env.DATABASE_URL;
+  const prevAlt = process.env.DATABASE_URL_ALT;
+  const prevGrower = process.env.DATABASE_URL_GROWER;
+  const prevSecret = process.env.AUTH_SECRET;
+  delete process.env.DATABASE_URL;
+  delete process.env.DATABASE_URL_ALT;
+  process.env.DATABASE_URL_GROWER =
+    'postgresql://acre_grower:fixture-only@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres';
+  process.env.AUTH_SECRET = 'fixture-only-not-production';
+  __resetGrowerPoolForTests();
+  // Office pool may still be cached from fixture setup; clear it so login cannot
+  // silently fall back through a stale DATABASE_URL connection.
+  const dbPath = require.resolve('../../lib/supabase/database.ts');
+  delete require.cache[dbPath];
+  const growerPath = require.resolve('../../lib/supabase/grower.ts');
+  delete require.cache[growerPath];
+  const authPath = require.resolve('../../lib/supabase/grower-auth.ts');
+  delete require.cache[authPath];
+  const routePath = require.resolve('../../app/api/grower-auth/route.ts');
+  delete require.cache[routePath];
+
+  const { POST } = f.load('app/api/grower-auth/route.ts');
+  const ok = await POST(
+    f.request('/api/grower-auth', { farm: 'Fishell Farms', pin: '4242' }),
+  );
+  assert.equal(ok.status, 200, JSON.stringify(await ok.clone().json()));
+  const body = await ok.json();
+  assert.equal(body.operationId, currentFarm.id);
+
+  if (prevDb === undefined) delete process.env.DATABASE_URL;
+  else process.env.DATABASE_URL = prevDb;
+  if (prevAlt === undefined) delete process.env.DATABASE_URL_ALT;
+  else process.env.DATABASE_URL_ALT = prevAlt;
+  process.env.DATABASE_URL_GROWER = prevGrower;
+  process.env.AUTH_SECRET = prevSecret;
+  __resetGrowerPoolForTests();
+  delete require.cache[dbPath];
+  delete require.cache[growerPath];
+  delete require.cache[authPath];
+  delete require.cache[routePath];
 });
 
 test('grower session cookie round-trips; grower cannot call office APIs', async () => {

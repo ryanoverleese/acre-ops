@@ -2,9 +2,8 @@ import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/supabase/api';
 import { DataError } from '@/lib/supabase/registry';
 import {
-  farmHasCurrentCustomer,
-  findGrowerFarmByName,
   isGrowerPilotFarm,
+  lookupGrowerLogin,
   verifyGrowerPin,
 } from '@/lib/supabase/grower-auth';
 import { createGrowerSession, GROWER_COOKIE } from '@/lib/grower-session';
@@ -36,9 +35,10 @@ export const POST = withApiAuth(async (request) => {
     for (const [k, v] of attempts) if (v.until < now) attempts.delete(k);
   }
 
-  const farm = await findGrowerFarmByName(farmName);
+  // Grower connection only (DATABASE_URL_GROWER + AUTH_SECRET). No office DATABASE_URL.
+  const farm = await lookupGrowerLogin(farmName);
   // Same message for missing farm, bad PIN, past-only, non-pilot, or duplicate names.
-  const current = farm ? await farmHasCurrentCustomer(farm.id) : false;
+  const current = farm?.is_current_customer === true;
   const pilot = farm ? isGrowerPilotFarm(farm.id, farm.name) : false;
   const valid = farm && current && pilot && await verifyGrowerPin(farm.grower_pin, pin);
   if (!farm || !current || !pilot || !valid) {
