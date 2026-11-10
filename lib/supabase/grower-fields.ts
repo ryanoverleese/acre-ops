@@ -136,6 +136,147 @@ function probePinLatLng(row: {
   return null;
 }
 
+export type GrowerHardwareRow = {
+  id: number;
+  fieldId: number;
+  fieldName: string;
+  serial: string | null;
+  label: string | null;
+  probeNumber: number | null;
+  status: string | null;
+  installDate: string | null;
+  yearNew: number | null;
+  ageSeasons: number | null;
+  elevation: number | null;
+  soilType: string | null;
+  lat: number | null;
+  lng: number | null;
+};
+
+/** All probe assignments for the farm in the given season (grower-scoped). */
+export async function listGrowerHardwareForSeason(
+  operationId: unknown,
+  season: number,
+): Promise<GrowerHardwareRow[]> {
+  const op = positiveId(operationId);
+  if (!Number.isSafeInteger(season)) return [];
+  return withGrowerOperation(op, async () => {
+    const rows = await growerQuery<{
+      id: unknown;
+      field_id: unknown;
+      field_name: string;
+      probe_serial_number: string | null;
+      label: string | null;
+      probe_number: unknown;
+      probe_status: string | null;
+      install_date: Date | string | null;
+      probe_year_new: unknown;
+      elevation: unknown;
+      soil_type: string | null;
+      install_lat: unknown;
+      install_lng: unknown;
+      placement_lat: unknown;
+      placement_lng: unknown;
+    }>(
+      `SELECT p.id,
+              p.field_id,
+              f.name AS field_name,
+              p.probe_serial_number,
+              p.label,
+              p.probe_number,
+              p.probe_status,
+              p.install_date,
+              p.probe_year_new,
+              p.elevation,
+              p.soil_type,
+              p.install_lat,
+              p.install_lng,
+              p.placement_lat,
+              p.placement_lng
+         FROM public.grower_probe_assignments AS p
+         JOIN public.grower_fields AS f ON f.id = p.field_id
+        WHERE p.season = $1
+        ORDER BY f.name, p.probe_number NULLS LAST, p.id`,
+      [season],
+    );
+    return rows.map((p) => {
+      const pin = probePinLatLng(p);
+      const yearNew = p.probe_year_new == null ? null : Number(p.probe_year_new);
+      return {
+        id: positiveId(p.id),
+        fieldId: positiveId(p.field_id),
+        fieldName: p.field_name,
+        serial: p.probe_serial_number,
+        label: p.label,
+        probeNumber: p.probe_number == null ? null : Number(p.probe_number),
+        status: p.probe_status,
+        installDate: growerDayString(p.install_date),
+        yearNew: yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
+        ageSeasons: probeAgeSeasons(
+          yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
+          season,
+        ),
+        elevation: p.elevation == null ? null : Number(p.elevation),
+        soilType: p.soil_type,
+        lat: pin?.lat ?? null,
+        lng: pin?.lng ?? null,
+      };
+    });
+  });
+}
+
+export type GrowerFarmWaterRec = GrowerWaterRec & {
+  fieldId: number;
+  fieldName: string;
+};
+
+/** Current-year full/update water recommendations across the farm. */
+export async function listGrowerWaterRecsForSeason(
+  operationId: unknown,
+  season: number,
+): Promise<GrowerFarmWaterRec[]> {
+  const op = positiveId(operationId);
+  if (!Number.isSafeInteger(season)) return [];
+  return withGrowerOperation(op, async () => {
+    const rows = await growerQuery<{
+      id: unknown;
+      field_id: unknown;
+      field_name: string;
+      date: Date | string;
+      recommendation: string | null;
+      suggested_water_day: string | null;
+      report_type: string | null;
+    }>(
+      `SELECT r.id,
+              r.field_id,
+              f.name AS field_name,
+              r.date,
+              r.recommendation,
+              r.suggested_water_day,
+              r.report_type
+         FROM public.grower_water_recs AS r
+         JOIN public.grower_fields AS f ON f.id = r.field_id
+        WHERE r.season = $1
+          AND r.report_type IN ('full', 'update')
+        ORDER BY r.date DESC, f.name, r.id DESC`,
+      [season],
+    );
+    return rows.flatMap((rec) => {
+      const date = growerDayString(rec.date);
+      if (!date) return [];
+      return [{
+        id: positiveId(rec.id),
+        fieldId: positiveId(rec.field_id),
+        fieldName: rec.field_name,
+        date,
+        recommendation: rec.recommendation,
+        suggestedWaterDay: rec.suggested_water_day,
+        reportType: rec.report_type || 'full',
+      }];
+    });
+  });
+}
+
 /** One field for the signed-in farm: outline, probes, and season row. Null if not visible. */
 export async function getGrowerFieldDetail(
   operationId: unknown,

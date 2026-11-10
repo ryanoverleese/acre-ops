@@ -9,10 +9,12 @@ process.env.DATABASE_URL_GROWER =
 const a = f.load('lib/supabase/adapter.ts');
 const {
   listGrowerFieldsForSeason,
+  listGrowerHardwareForSeason,
+  listGrowerWaterRecsForSeason,
   getGrowerFieldDetail,
   growerCurrentSeasonYear,
 } = f.load('lib/supabase/grower-fields.ts');
-const { formatProbeAge, probeAgeSeasons } = f.load('lib/grower-display.ts');
+const { formatProbeAge, formatGrowerAcres, probeAgeSeasons } = f.load('lib/grower-display.ts');
 
 let opA, opB, fieldA, fieldB, fieldShared, fieldNoSeason;
 
@@ -184,4 +186,38 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
 
   const denied = await getGrowerFieldDetail(opB.id, fieldA.id, year);
   assert.equal(denied, null);
+});
+
+test('farm hardware list is scoped and includes pinless probes', async () => {
+  const year = growerCurrentSeasonYear();
+  const rows = await listGrowerHardwareForSeason(opA.id, year);
+  assert.deepEqual(
+    rows.map((row) => row.serial),
+    ['SN-ALPHA', 'SN-PINLESS'],
+  );
+  assert.equal(rows[0].fieldName, 'Alpha');
+  assert.equal(rows[0].ageSeasons, 3);
+  assert.equal(rows[1].lat, null);
+  const other = await listGrowerHardwareForSeason(opB.id, year);
+  assert.ok(!other.some((row) => row.serial === 'SN-ALPHA'));
+});
+
+test('acres display never invents area from null or zero', () => {
+  assert.equal(formatGrowerAcres(130.5), '130.5 ac');
+  assert.equal(formatGrowerAcres(null), null);
+  assert.equal(formatGrowerAcres(0), null);
+  assert.equal(formatGrowerAcres(-1), null);
+});
+
+test('farm water recommendations hide overview and stay farm-scoped', async () => {
+  const year = growerCurrentSeasonYear();
+  const rows = await listGrowerWaterRecsForSeason(opA.id, year);
+  assert.deepEqual(
+    rows.map((row) => row.reportType),
+    ['update', 'full'],
+  );
+  assert.equal(rows[0].fieldName, 'Alpha');
+  assert.ok(!rows.some((row) => /overview/i.test(row.recommendation || '')));
+  const other = await listGrowerWaterRecsForSeason(opB.id, year);
+  assert.equal(other.length, 0);
 });

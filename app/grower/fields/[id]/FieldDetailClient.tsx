@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
-import { formatProbeAge } from '@/lib/grower-display';
+import { formatGrowerAcres, formatProbeAge } from '@/lib/grower-display';
 import type { GrowerProbePin, GrowerWaterRec } from '@/lib/supabase/grower-fields';
 
 const GrowerFieldMap = dynamic(() => import('../../GrowerFieldMap'), { ssr: false });
@@ -40,14 +40,15 @@ export default function FieldDetailClient({
       <header className="grower-top">
         <div>
           <p className="grower-kicker">
-            <Link href="/grower" className="grower-back">
-              ← {farmName}
+            <Link href="/grower/fields" className="grower-back">
+              ← Fields
             </Link>
           </p>
           <h1 className="grower-title">{field.name}</h1>
           <p className="grower-sub">
             {field.season}
-            {field.acres != null && Number.isFinite(field.acres) ? ` · ${field.acres} ac` : ''}
+            {' · '}
+            {formatGrowerAcres(field.acres) ?? 'Acres not recorded'}
           </p>
         </div>
       </header>

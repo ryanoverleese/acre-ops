@@ -39,7 +39,7 @@ export default async function GrowerFieldPage({
           Could not load this field. Go back to your field list and try again.
         </p>
         <p className="grower-empty">
-          <a href="/grower" className="grower-back">← Back to fields</a>
+          <a href="/grower/fields" className="grower-back">← Back to fields</a>
         </p>
       </div>
     );

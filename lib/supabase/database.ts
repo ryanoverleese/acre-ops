@@ -26,8 +26,12 @@ export function databaseConfig(raw: string): PoolConfig {
     && ['', '5432'].includes(u.port);
   if (!['postgres:', 'postgresql:'].includes(u.protocol) || !(direct || pooled || localQa) || !['', '5432', '6543'].includes(u.port)
     || u.pathname !== '/postgres' || !u.password || u.hash) throw new DataError('Database must point to the acre-ops project', 503);
-  for (const [key, value] of u.searchParams) if (key !== 'sslmode' || !['require', 'verify-full', 'disable'].includes(value)) throw new DataError('Unsupported database connection option', 503);
-  const ssl = localQa || u.searchParams.get('sslmode') === 'disable'
+  // sslmode=disable is only for ephemeral ACRE_LOCAL_PG hosts — never production.
+  const allowedSsl = localQa ? ['require', 'verify-full', 'disable'] : ['require', 'verify-full'];
+  for (const [key, value] of u.searchParams) {
+    if (key !== 'sslmode' || !allowedSsl.includes(value)) throw new DataError('Unsupported database connection option', 503);
+  }
+  const ssl = localQa && (u.searchParams.get('sslmode') === 'disable' || !u.searchParams.has('sslmode'))
     ? false
     : { ca: SUPABASE_CA, rejectUnauthorized: true };
   return { host: u.hostname, port: Number(u.port || 5432), user, password: decodeURIComponent(u.password), database: 'postgres',

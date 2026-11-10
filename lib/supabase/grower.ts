@@ -31,12 +31,14 @@ export function growerDatabaseConfig(raw: string): PoolConfig {
     || u.pathname !== '/postgres' || !u.password || u.hash) {
     throw new DataError('Grower database must use the acre_grower role on the acre-ops project', 503);
   }
+  // sslmode=disable is only for ephemeral ACRE_LOCAL_PG hosts — never production.
+  const allowedSsl = localQa ? ['require', 'verify-full', 'disable'] : ['require', 'verify-full'];
   for (const [key, value] of u.searchParams) {
-    if (key !== 'sslmode' || !['require', 'verify-full', 'disable'].includes(value)) {
+    if (key !== 'sslmode' || !allowedSsl.includes(value)) {
       throw new DataError('Unsupported grower database connection option', 503);
     }
   }
-  const ssl = localQa || u.searchParams.get('sslmode') === 'disable'
+  const ssl = localQa && (u.searchParams.get('sslmode') === 'disable' || !u.searchParams.has('sslmode'))
     ? false
     : { ca: SUPABASE_CA, rejectUnauthorized: true };
   return {

@@ -98,6 +98,35 @@ await q(
   [season.id, `${YEAR}-06-10`, `${YEAR}-06-12`, `${YEAR}-06-11`],
 );
 
+// Edge: current-season field with no boundary, no probes, no water recs.
+// acres=0 mimics production rows that store zero instead of NULL.
+const [bare] = await q(
+  `INSERT INTO fields (name, acres, lat, lng, elevation, soil_type)
+   VALUES ('Bare Field', 0, 40.5, -99.2, NULL, NULL) RETURNING id`,
+);
+await q(`INSERT INTO field_billing_entities (field_id, billing_entity_id) VALUES ($1, $2)`, [bare.id, be.id]);
+await q(`INSERT INTO field_seasons (field_id, season) VALUES ($1, $2)`, [bare.id, YEAR]);
+
+// Edge: field with probes missing year_new / elevation / coords; no water recs; no boundary.
+const [sparse] = await q(
+  `INSERT INTO fields (name, acres, lat, lng)
+   VALUES ('Sparse North', 22.25, NULL, NULL) RETURNING id`,
+);
+await q(`INSERT INTO field_billing_entities (field_id, billing_entity_id) VALUES ($1, $2)`, [sparse.id, be.id]);
+const [sparseSeason] = await q(
+  `INSERT INTO field_seasons (field_id, season) VALUES ($1, $2) RETURNING id`,
+  [sparse.id, YEAR],
+);
+const [probeNoYear] = await q(
+  `INSERT INTO probes (serial_number, year_new) VALUES ('SN-QA-NOYEAR', NULL) RETURNING id`,
+);
+await q(
+  `INSERT INTO probe_assignments
+    (field_season_id, probe_id, probe_number, label, probe_status_id, install_date)
+   VALUES ($1,$2,1,'NW',$3,$4)`,
+  [sparseSeason.id, probeNoYear.id, assigned.id, `${YEAR}-03-15T12:00:00.000Z`],
+);
+
 await client.end();
 
 fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });
@@ -108,10 +137,13 @@ fs.writeFileSync(
     'URL: http://127.0.0.1:3010/grower/login',
     'Farm name: QA Pilot Farm',
     `PIN: ${PIN}`,
-    'Expected field: Home Pivot',
-    `Probe with pin: SN-QA-001 → ${YEAR - (YEAR - 2) + 1} seasons`,
+    'Expected fields: Home Pivot, Bare Field, Sparse North',
+    `Probe with pin: SN-QA-001 → ${YEAR - (YEAR - 2) + 1} seasons (age = season - year_new + 1)`,
     'Probe without pin: SN-QA-PINLESS (listed, no map marker)',
+    'Sparse North: SN-QA-NOYEAR age Not recorded (null year_new); no boundary/recs',
+    'Bare Field: no boundary, probes, or water recs',
     'Water: full + update only (overview hidden)',
+    `Season year: ${YEAR}`,
     `Generated: ${new Date().toISOString()}`,
     '',
   ].join('\n'),

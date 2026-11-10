@@ -34,6 +34,7 @@ require.extensions['.ts'] = (module, filename) => module._compile(ts.transpileMo
 process.env.SUPABASE_URL = 'https://junawlttpyztjlnbmvcb.supabase.co';
 process.env.DATABASE_URL = 'postgresql://postgres:fixture-only@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres';
 delete process.env.DATABASE_URL_ALT;
+delete process.env.ACRE_LOCAL_PG; // never inherit local-QA shell into PGlite fixtures
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'sb_secret_fixture_only';
 process.env.AUTH_SECRET = 'fixture-only-not-production';
 process.env.REMOVAL_WEBHOOK_DRY_RUN = 'true';
