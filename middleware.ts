@@ -4,6 +4,7 @@ const { auth } = NextAuth(authConfig);
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { LEGACY_EQUIPMENT_ROUTES } from '@/lib/equipment-navigation';
 import { CREW_COOKIE, readCrewSession } from '@/lib/crew-session';
+import { GROWER_COOKIE, readGrowerSession } from '@/lib/grower-session';
 import { isKnownAppRoute } from '@/lib/known-routes';
 
 // Routes that installers can access
@@ -16,12 +17,13 @@ const INSTALLER_ROUTES = [
 ];
 
 // Routes that don't require authentication at all
-const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/removal', '/api/mileage', '/api/probes', '/api/fields', '/api/field-boundaries', '/api/elevation', '/api/usgs-elevation', '/api/geocode', '/api/repairs', '/pulled', '/api/pulled-today'];
+const PUBLIC_ROUTES = ['/login', '/approve', '/review', '/field-info', '/api/field-info', '/api/probe-assignments', '/installer', '/api/installer', '/api/installer-auth', '/api/installer-pins', '/api/install', '/api/removal', '/api/mileage', '/api/probes', '/api/fields', '/api/field-boundaries', '/api/elevation', '/api/usgs-elevation', '/api/geocode', '/api/repairs', '/pulled', '/api/pulled-today', '/api/grower-auth'];
 // Note: /api/field-boundaries is middleware-public like /api/fields; withApiAuth still
 // requires crew/staff. Without this, PIN login was redirected to /login before the API ran.
 
 const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   const { pathname } = req.nextUrl;
+  const grower = await readGrowerSession(req.cookies.get(GROWER_COOKIE)?.value);
 
   // The retired general mobile app was replaced by the installer app. Keep
   // old bookmarks and installed home-screen shortcuts working.
@@ -32,6 +34,17 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   // Shareable tally: reuse installer chrome-less shell (AppShell treats /installer as public).
   if (pathname === '/pulled' || pathname.startsWith('/pulled/')) {
     return NextResponse.redirect(new URL('/installer/pulled', req.url));
+  }
+
+  // Grower area: farm-name + PIN session. Office staff auth is separate.
+  if (pathname === '/grower' || pathname.startsWith('/grower/')) {
+    if (pathname.startsWith('/grower/login')) return NextResponse.next();
+    if (!grower) {
+      const loginUrl = new URL('/grower/login', req.url);
+      loginUrl.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
   }
 
   // Allow public routes
@@ -59,6 +72,10 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
 
   // If not authenticated, redirect to login
   if (!req.auth?.user?.id) {
+    // A grower cookie must not open office pages.
+    if (grower) {
+      return NextResponse.redirect(new URL('/grower', req.url));
+    }
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);
     return NextResponse.redirect(loginUrl);

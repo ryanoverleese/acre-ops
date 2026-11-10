@@ -3,7 +3,7 @@
 Run the full isolated suite from the repository root:
 
 ```sh
-node --test tests/supabase/contract.test.cjs tests/supabase/pin-migration.test.cjs tests/removal.test.mjs
+node --test tests/supabase/contract.test.cjs tests/supabase/pin-migration.test.cjs tests/supabase/grower-lock.test.cjs tests/supabase/grower-login.test.cjs tests/removal.test.mjs
 npx tsc --noEmit --incremental false
 env DATABASE_URL='' DATABASE_URL_ALT='' SUPABASE_SERVICE_ROLE_KEY='' NEXT_TELEMETRY_DISABLED=1 npm run build
 node tests/equipment/smoke.mjs

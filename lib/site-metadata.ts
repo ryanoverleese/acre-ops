@@ -25,6 +25,8 @@ export const PRIVATE_ROBOTS: Metadata['robots'] = {
 export const PAGE_COPY = {
   dashboard: ['Dashboard', 'Season install progress, open repairs, and orders for signed-in staff.'],
   login: ['Sign in', 'Sign in to the Acre Insights Operation Center to open assigned field work.'],
+  grower: ['Grower fields', 'Signed-in grower view of fields for one farm.'],
+  growerLogin: ['Grower sign in', 'Sign in with your farm name and PIN to open grower fields.'],
   map: ['Map', 'Staff map of fields, probes, and open repairs.'],
   operations: ['Operations', 'Operations list for signed-in Acre Insights staff.'],
   orders: ['Orders', 'Supply orders and fulfillment for signed-in staff.'],
