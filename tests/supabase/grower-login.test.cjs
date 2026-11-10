@@ -6,6 +6,9 @@ const f = require('./harness.cjs');
 process.env.DATABASE_URL_GROWER =
   'postgresql://acre_grower:fixture-only@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres';
 process.env.AUTH_SECRET = 'fixture-only-not-production';
+// Local QA shells may export GROWER_PILOT_*; keep fixture defaults deterministic.
+delete process.env.GROWER_PILOT_OPERATION_IDS;
+delete process.env.GROWER_PILOT_FARM_NAMES;
 
 const a = f.load('lib/supabase/adapter.ts');
 const {
@@ -121,11 +124,23 @@ test('grower session cookie round-trips; grower cannot call office APIs', async 
 });
 
 test('pilot allow-list defaults to Fishell Farms only', () => {
-  assert.equal(isGrowerPilotFarm(currentFarm.id, 'Fishell Farms'), true);
-  assert.equal(isGrowerPilotFarm(otherFarm.id, 'Other Current Farm'), false);
-  process.env.GROWER_PILOT_OPERATION_IDS = String(otherFarm.id);
-  assert.equal(isGrowerPilotFarm(otherFarm.id, 'Other Current Farm'), true);
+  // Isolate from shell env (local QA may set GROWER_PILOT_*).
+  const prevIds = process.env.GROWER_PILOT_OPERATION_IDS;
+  const prevNames = process.env.GROWER_PILOT_FARM_NAMES;
   delete process.env.GROWER_PILOT_OPERATION_IDS;
+  delete process.env.GROWER_PILOT_FARM_NAMES;
+  try {
+    assert.equal(isGrowerPilotFarm(currentFarm.id, 'Fishell Farms'), true);
+    assert.equal(isGrowerPilotFarm(otherFarm.id, 'Other Current Farm'), false);
+    process.env.GROWER_PILOT_OPERATION_IDS = String(otherFarm.id);
+    assert.equal(isGrowerPilotFarm(otherFarm.id, 'Other Current Farm'), true);
+    delete process.env.GROWER_PILOT_OPERATION_IDS;
+  } finally {
+    if (prevIds === undefined) delete process.env.GROWER_PILOT_OPERATION_IDS;
+    else process.env.GROWER_PILOT_OPERATION_IDS = prevIds;
+    if (prevNames === undefined) delete process.env.GROWER_PILOT_FARM_NAMES;
+    else process.env.GROWER_PILOT_FARM_NAMES = prevNames;
+  }
 });
 
 test('grower-auth route accepts Fishell and rejects past or non-pilot farms', async () => {

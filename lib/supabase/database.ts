@@ -16,13 +16,22 @@ types.setTypeParser(1082, value => value);
 export function databaseConfig(raw: string): PoolConfig {
   let u: URL;
   try { u = new URL(raw); } catch { throw new DataError('Invalid database configuration', 503); }
-  const direct = u.hostname === `db.${PROJECT_REF}.supabase.co` && decodeURIComponent(u.username) === 'postgres';
-  const pooled = /^[a-z0-9-]+\.pooler\.supabase\.com$/.test(u.hostname) && decodeURIComponent(u.username) === `postgres.${PROJECT_REF}`;
-  if (!['postgres:', 'postgresql:'].includes(u.protocol) || !(direct || pooled) || !['', '5432', '6543'].includes(u.port)
+  const user = decodeURIComponent(u.username);
+  const direct = u.hostname === `db.${PROJECT_REF}.supabase.co` && user === 'postgres';
+  const pooled = /^[a-z0-9-]+\.pooler\.supabase\.com$/.test(u.hostname) && user === `postgres.${PROJECT_REF}`;
+  // Ephemeral local Postgres for isolated pilot QA only (never production hosts).
+  const localQa = process.env.ACRE_LOCAL_PG === '1'
+    && ['127.0.0.1', 'localhost'].includes(u.hostname)
+    && (user === 'postgres' || user === 'acre_ops_owner')
+    && ['', '5432'].includes(u.port);
+  if (!['postgres:', 'postgresql:'].includes(u.protocol) || !(direct || pooled || localQa) || !['', '5432', '6543'].includes(u.port)
     || u.pathname !== '/postgres' || !u.password || u.hash) throw new DataError('Database must point to the acre-ops project', 503);
-  for (const [key, value] of u.searchParams) if (key !== 'sslmode' || !['require', 'verify-full'].includes(value)) throw new DataError('Unsupported database connection option', 503);
-  return { host: u.hostname, port: Number(u.port || 5432), user: decodeURIComponent(u.username), password: decodeURIComponent(u.password), database: 'postgres',
-    ssl: { ca: SUPABASE_CA, rejectUnauthorized: true }, max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 8000,
+  for (const [key, value] of u.searchParams) if (key !== 'sslmode' || !['require', 'verify-full', 'disable'].includes(value)) throw new DataError('Unsupported database connection option', 503);
+  const ssl = localQa || u.searchParams.get('sslmode') === 'disable'
+    ? false
+    : { ca: SUPABASE_CA, rejectUnauthorized: true };
+  return { host: u.hostname, port: Number(u.port || 5432), user, password: decodeURIComponent(u.password), database: 'postgres',
+    ssl, max: 3, idleTimeoutMillis: 10000, connectionTimeoutMillis: 8000,
     statement_timeout: 30000, query_timeout: 35000, application_name: 'acre-ops-supabase-branch', allowExitOnIdle: true };
 }
 export function assertProject() {
