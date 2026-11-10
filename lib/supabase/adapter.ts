@@ -19,7 +19,7 @@ export interface FetchOptions {
 export type SelectOption = { id: number; value: string; color: string };
 export type TableSelectOptions = Record<string, SelectOption[]>;
 export type TableSelectOptionsWithMeta = Record<string, { fieldId: number; options: SelectOption[] }>;
-const hidden = new Set(['baserow_id', 'password_hash', 'pin']);
+const hidden = new Set(['baserow_id', 'password_hash', 'pin', 'grower_pin']);
 const blank = (v: unknown) => v == null || (typeof v === 'string' && !v.trim());
 const relationLabel = (table: string) => table.endsWith('_options') ? 'value' : labels[table] || 'name';
 
@@ -68,6 +68,10 @@ export function serialize(table: string, raw: Row, secrets = false): Row {
   if (table === 'notifications') out.changed_field = raw.field_name;
   if (table === 'users' && secrets) out.password_hash = raw.password_hash;
   if (table === 'installers') { out.pinSet = !!raw.pin; if (secrets) out.pin = raw.pin; }
+  if (table === 'operations') {
+    out.growerPinSet = !!raw.grower_pin;
+    if (secrets) out.grower_pin = raw.grower_pin;
+  }
   return out;
 }
 export function compileWhere(table: string, options: FetchOptions, start = 0) {

@@ -1,0 +1,266 @@
+import 'server-only';
+import { probeAgeSeasons } from '../grower-display';
+import { growerQuery, withGrowerOperation } from './grower';
+import { positiveId } from './registry';
+
+export type GrowerFieldRow = {
+  id: number;
+  name: string;
+  acres: number | null;
+  lat: number | null;
+  lng: number | null;
+  fieldSeasonId: number;
+  season: number;
+};
+
+/** Fields for one farm that have a field_season in the given year. */
+export async function listGrowerFieldsForSeason(
+  operationId: unknown,
+  season: number,
+): Promise<GrowerFieldRow[]> {
+  const op = positiveId(operationId);
+  if (!Number.isSafeInteger(season)) return [];
+  return withGrowerOperation(op, async () => {
+    const rows = await growerQuery<{
+      id: unknown;
+      name: string;
+      acres: unknown;
+      lat: unknown;
+      lng: unknown;
+      field_season_id: unknown;
+      season: unknown;
+    }>(
+      `SELECT f.id,
+              f.name,
+              f.acres,
+              f.lat,
+              f.lng,
+              fs.id AS field_season_id,
+              fs.season
+         FROM public.grower_fields AS f
+         JOIN public.grower_field_seasons AS fs ON fs.field_id = f.id
+        WHERE fs.season = $1
+        ORDER BY f.name, f.id`,
+      [season],
+    );
+    return rows.map((row) => ({
+      id: positiveId(row.id),
+      name: row.name,
+      acres: row.acres == null ? null : Number(row.acres),
+      lat: row.lat == null ? null : Number(row.lat),
+      lng: row.lng == null ? null : Number(row.lng),
+      fieldSeasonId: positiveId(row.field_season_id),
+      season: Number(row.season),
+    }));
+  });
+}
+
+export function growerCurrentSeasonYear(now = new Date()): number {
+  return now.getFullYear();
+}
+
+export type GrowerBoundaryCollection = {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    id: number;
+    geometry: { type: string; coordinates: unknown };
+    properties: { fieldId: number; source?: string; crs?: string };
+  }>;
+};
+
+export type GrowerProbePin = {
+  id: number;
+  serial: string | null;
+  label: string | null;
+  probeNumber: number | null;
+  status: string | null;
+  installDate: string | null;
+  yearNew: number | null;
+  ageSeasons: number | null;
+  elevation: number | null;
+  soilType: string | null;
+  lat: number;
+  lng: number;
+};
+
+export type GrowerWaterRec = {
+  id: number;
+  date: string;
+  recommendation: string | null;
+  suggestedWaterDay: string | null;
+  reportType: string;
+};
+
+export type GrowerFieldDetail = {
+  id: number;
+  name: string;
+  acres: number | null;
+  lat: number | null;
+  lng: number | null;
+  fieldSeasonId: number;
+  season: number;
+  boundaries: GrowerBoundaryCollection;
+  probes: GrowerProbePin[];
+  waterRecs: GrowerWaterRec[];
+};
+
+function probePinLatLng(row: {
+  install_lat: unknown;
+  install_lng: unknown;
+  placement_lat: unknown;
+  placement_lng: unknown;
+}): { lat: number; lng: number } | null {
+  const installLat = row.install_lat == null ? null : Number(row.install_lat);
+  const installLng = row.install_lng == null ? null : Number(row.install_lng);
+  if (installLat != null && installLng != null && Number.isFinite(installLat) && Number.isFinite(installLng)) {
+    return { lat: installLat, lng: installLng };
+  }
+  const placeLat = row.placement_lat == null ? null : Number(row.placement_lat);
+  const placeLng = row.placement_lng == null ? null : Number(row.placement_lng);
+  if (placeLat != null && placeLng != null && Number.isFinite(placeLat) && Number.isFinite(placeLng)) {
+    return { lat: placeLat, lng: placeLng };
+  }
+  return null;
+}
+
+/** One field for the signed-in farm: outline, probes, and season row. Null if not visible. */
+export async function getGrowerFieldDetail(
+  operationId: unknown,
+  fieldId: unknown,
+  season: number,
+): Promise<GrowerFieldDetail | null> {
+  const op = positiveId(operationId);
+  const field = positiveId(fieldId);
+  if (!Number.isSafeInteger(season)) return null;
+
+  return withGrowerOperation(op, async () => {
+    const fields = await growerQuery<{
+      id: unknown;
+      name: string;
+      acres: unknown;
+      lat: unknown;
+      lng: unknown;
+      field_season_id: unknown;
+      season: unknown;
+    }>(
+      `SELECT f.id, f.name, f.acres, f.lat, f.lng, fs.id AS field_season_id, fs.season
+         FROM public.grower_fields AS f
+         JOIN public.grower_field_seasons AS fs ON fs.field_id = f.id
+        WHERE f.id = $1 AND fs.season = $2
+        LIMIT 1`,
+      [field, season],
+    );
+    if (!fields.length) return null;
+    const row = fields[0];
+
+    const bounds = await growerQuery<{
+      field_id: unknown;
+      geometry: { type: string; coordinates: unknown };
+      source: string;
+      crs: string;
+    }>(
+      `SELECT field_id, geometry, source, crs
+         FROM public.grower_field_boundaries
+        WHERE field_id = $1`,
+      [field],
+    );
+
+    const probes = await growerQuery<{
+      id: unknown;
+      probe_serial_number: string | null;
+      label: string | null;
+      probe_number: unknown;
+      probe_status: string | null;
+      install_date: string | null;
+      probe_year_new: unknown;
+      elevation: unknown;
+      soil_type: string | null;
+      install_lat: unknown;
+      install_lng: unknown;
+      placement_lat: unknown;
+      placement_lng: unknown;
+    }>(
+      `SELECT id, probe_serial_number, label, probe_number, probe_status, install_date,
+              probe_year_new, elevation, soil_type,
+              install_lat, install_lng, placement_lat, placement_lng
+         FROM public.grower_probe_assignments
+        WHERE field_id = $1 AND season = $2
+        ORDER BY probe_number NULLS LAST, id`,
+      [field, season],
+    );
+
+    const boundaries: GrowerBoundaryCollection = {
+      type: 'FeatureCollection',
+      features: bounds.map((b) => ({
+        type: 'Feature' as const,
+        id: positiveId(b.field_id),
+        geometry: b.geometry,
+        properties: {
+          fieldId: positiveId(b.field_id),
+          source: b.source,
+          crs: b.crs,
+        },
+      })),
+    };
+
+    const probePins: GrowerProbePin[] = [];
+    for (const p of probes) {
+      const pin = probePinLatLng(p);
+      if (!pin) continue;
+      const yearNew = p.probe_year_new == null ? null : Number(p.probe_year_new);
+      probePins.push({
+        id: positiveId(p.id),
+        serial: p.probe_serial_number,
+        label: p.label,
+        probeNumber: p.probe_number == null ? null : Number(p.probe_number),
+        status: p.probe_status,
+        installDate: p.install_date,
+        yearNew: yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
+        ageSeasons: probeAgeSeasons(
+          yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
+          season,
+        ),
+        elevation: p.elevation == null ? null : Number(p.elevation),
+        soilType: p.soil_type,
+        lat: pin.lat,
+        lng: pin.lng,
+      });
+    }
+
+    const recs = await growerQuery<{
+      id: unknown;
+      date: string;
+      recommendation: string | null;
+      suggested_water_day: string | null;
+      report_type: string | null;
+    }>(
+      `SELECT id, date, recommendation, suggested_water_day, report_type
+         FROM public.grower_water_recs
+        WHERE field_season_id = $1
+          AND report_type IN ('full', 'update')
+        ORDER BY date DESC, id DESC`,
+      [positiveId(row.field_season_id)],
+    );
+
+    return {
+      id: positiveId(row.id),
+      name: row.name,
+      acres: row.acres == null ? null : Number(row.acres),
+      lat: row.lat == null ? null : Number(row.lat),
+      lng: row.lng == null ? null : Number(row.lng),
+      fieldSeasonId: positiveId(row.field_season_id),
+      season: Number(row.season),
+      boundaries,
+      probes: probePins,
+      waterRecs: recs.map((rec) => ({
+        id: positiveId(rec.id),
+        date: rec.date,
+        recommendation: rec.recommendation,
+        suggestedWaterDay: rec.suggested_water_day,
+        reportType: rec.report_type || 'full',
+      })),
+    };
+  });
+}
+
