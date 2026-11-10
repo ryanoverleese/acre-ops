@@ -14,26 +14,29 @@ A second app would not, by itself, keep growers out of other farms' data. This a
 
 Do not add growers to `users`. That table is the office and installer password list. Anyone who is not an installer is treated as office staff and can open the whole site.
 
-Do not use `operations.approval_token` as the password. That token is one shared link per farm (`/approve`, `/review`, `/field-info`). It is not tied to a person. Those pages can still change the approval answer and the planned pin. Keep them for that seasonal form. The new app does not write.
+**Login is by farm name.** The grower picks or types `operations.name`. The signed-in session is that one farm (`operations.id`). Anyone who knows the name and the secret for that farm sees the same fields. There is no per-person grower account in v1.
 
-The approval pages load every farm and then hide some. Do not copy that. Grower pages ask only for the signed-in contact's rows, on the server, before the page is sent.
+Do not use `operations.approval_token` as the password. That token is one shared link per farm (`/approve`, `/review`, `/field-info`). Those pages can still change the approval answer and the planned pin. Keep them for that seasonal form. The new app does not write. Farm name alone is not a secret (names are guessable). Ryan still picks what proves it is them — a short PIN per farm, a shared password, or something else. That answer is below.
 
-## How a grower reaches their fields
+The approval pages load every farm and then hide some. Do not copy that. Grower pages ask only for the signed-in farm's rows, on the server, before the page is sent.
+
+## How a farm reaches its fields
 
 There is no operation column on a field. The link already used by the approval pages and by `assertCustomerField` in `lib/supabase/api.ts` is:
 
-1. The person is a row in `contacts` (name, email, phone).
-2. `contact_operations` ties that contact to one or more farms (`operations`).
-3. `contact_billing_entities` ties that same contact to one or more billing names (`billing_entities`).
-4. `field_billing_entities` ties those billing names to fields. This is the real field link.
+1. The grower is signed in as one farm (`operations`).
+2. Contacts linked to that farm (`contact_operations`) carry the billing names (`contact_billing_entities` → `billing_entities`).
+3. `field_billing_entities` ties those billing names to fields. This is the real field link.
 
 `fields.billing_entity_id` is an old column. The migration says to leave it empty and not use it.
 
-A field can have more than one billing name. A billing name can reach more than one farm when two contacts connect them. Both farms then see that field. That is how the approval link works today.
+A field can have more than one billing name. A billing name can reach more than one farm when two contacts connect them. Both farms then see that field. That is how the approval link works today. With login by farm name, that still means: sign in as farm A, see A's fields; sign in as farm B, see B's fields. Shared fields show for both.
 
-Customer type is a tag on the contact (`contact_customer_types`), not a lock on the farm. The contact screens use the labels Current Customer and Past Customer. A contact can have more than one tag. Email is not required to be unique.
+Customer type is a tag on the contact (`contact_customer_types`), not on the farm. The contact screens use the labels Current Customer and Past Customer. For farm-name login, "past customer" means Ryan decides which farms are allowed in (the pilot list in step 3), not a tag on a person.
 
 `probe_owner_operations` is who owns the probe in inventory. It is not "which probe is in this field."
+
+Farm names are not unique in the schema today. If two farms share a name, refuse the login and tell Ryan. Do not guess which one.
 
 ## What v1 shows
 
@@ -82,11 +85,11 @@ The boundary migration files say they were not applied to the live project by th
 
 Each step is one pull request. Do not start the next until the previous one is reviewed. Look: clean sans-serif, no gradients, plain labels, on every screen step.
 
-1. **The lock, with no screen.** Add a weaker database login that can only read grower views. Row rules on those views allow a row only when it belongs to a farm linked to that contact through the billing-name join above. Grower code must use this login. Office pages keep the owner login. Tests: contact A cannot read contact B's field, even when the request names B's field id; a field with two billing names is included when one matches; `fields.billing_entity_id` is ignored. Done when those tests pass and the office app still opens.
+1. **The lock, with no screen.** Add a weaker database login that can only read grower views. Row rules on those views allow a row only when it belongs to the signed-in farm through the billing-name join above. Grower code must use this login. Office pages keep the owner login. Tests: farm A cannot read farm B's field, even when the request names B's field id; a field with two billing names is included when one matches; `fields.billing_entity_id` is ignored. Done when those tests pass and the office app still opens.
 
-2. **Login.** Email link to `contacts.email`. Allow it only for a contact tagged Current Customer who has an email and at least one farm. If two contacts share an email, refuse and tell Ryan. Do not guess. A signed-in grower who opens an office page (`/fields`, `/water-recs`, `/billing`, and the rest) is sent back to the grower home, and those APIs return forbidden. Done when a past-customer email is refused, a current-customer email can sign in, and the office pages stay closed.
+2. **Login by farm name.** The grower enters `operations.name` plus the secret Ryan picks (see questions). Match the name case-insensitive after trimming spaces. Exactly one farm must match; zero or two-plus means refuse. The session stores that farm's id only. A signed-in grower who opens an office page (`/fields`, `/water-recs`, `/billing`, and the rest) is sent back to the grower home, and those APIs return forbidden. Done when the wrong secret fails, a duplicate farm name fails safely, and the office pages stay closed.
 
-3. **Turn it on for a short list only.** A list of pilot contact ids. No other current customer can sign in yet. Done when only those contacts get in.
+3. **Turn it on for a short list only.** A list of pilot farm ids (`operations.id`). No other farm can sign in yet. Done when only those farms get in.
 
 4. **My fields.** List the fields for the signed-in farm, for one year (`field_seasons.season`; the office app defaults to the current calendar year). Done when the list matches the fields the approval page would show for that farm and that year, and no others. A farm with no fields for that year sees an empty state.
 
@@ -104,14 +107,13 @@ Each step is one pull request. Do not start the next until the previous one is r
 
 Answer in order. 1 blocks step 2. 2 blocks step 6. 3 blocks step 8. The rest can wait until that step.
 
-1. Past customers: no login at all? (Recommended. A history mode can come later.)
+1. Farm name alone is not enough. What proves it is them: a short PIN Ryan sets per farm, a shared password per farm, or something else?
 2. Probe age: year the probe was new, the date the probe record was created, or the first install date?
 3. Water recs: which years, and should the farm overview note be shown?
-4. Which 2 or 3 growers go first?
-5. A person on two farms: a farm switcher, or one farm only?
-6. A field billed to two farms shows for both today. Keep that?
-7. Phase 2 order, after v1: elevation picture, soil map, drainage lines?
-8. Is the hillshade already on the office map the elevation picture growers should see?
+4. Which 2 or 3 farms go first? (Use the operation names.)
+5. A field billed to two farms shows for both today. Keep that?
+6. Phase 2 order, after v1: elevation picture, soil map, drainage lines?
+7. Is the hillshade already on the office map the elevation picture growers should see?
 
 ## Not in v1
 
