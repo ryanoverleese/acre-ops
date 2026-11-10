@@ -6,7 +6,7 @@ A grower signs in and sees only their own farm: fields, field outlines, elevatio
 
 ## Decisions locked in
 
-- **Login:** by farm name (`operations.name`). One farm per session. No per-person grower accounts in v1.
+- **Login:** by farm name (`operations.name`) plus a **4–6 digit PIN** Ryan sets per farm. One farm per session. No per-person grower accounts in v1.
 - **Past customers:** no login at all. A farm with no contact tagged Current Customer is refused, even if someone types the name.
 - **Pilot:** Fishell Farms only (match `operations.name`; confirm the exact spelling when the allow-list is written).
 - **Probe age:** calculated from `probes.year_new` (the Probes page column "Year New"). Show as seasons, not the raw year: `(current calendar year − year_new + 1)`. Example: year new 2024 in 2026 → "3 seasons". Year new equal to this year → "1 season". Blank year new → "Not recorded." Do not store the age; compute it when the page loads.
@@ -23,7 +23,7 @@ A second app would not, by itself, keep growers out of other farms' data. This a
 
 Do not add growers to `users`. That table is the office and installer password list. Anyone who is not an installer is treated as office staff and can open the whole site.
 
-Do not use `operations.approval_token` as the password. That token is one shared link per farm (`/approve`, `/review`, `/field-info`). Those pages can still change the approval answer and the planned pin. Keep them for that seasonal form. The new app does not write. Farm name alone is not a secret (names are guessable). Ryan still picks what proves it is them — a short PIN per farm, a shared password, or something else. That answer is below.
+Do not use `operations.approval_token` as the password. That token is one shared link per farm (`/approve`, `/review`, `/field-info`). Those pages can still change the approval answer and the planned pin. Keep them for that seasonal form. The new app does not write. Farm name alone is not a secret (names are guessable). The second factor is a **4–6 digit PIN** per farm (bcrypt-hashed on `operations.grower_pin`), same idea as installer PINs.
 
 The approval pages load every farm and then hide some. Do not copy that. Grower pages ask only for the signed-in farm's rows, on the server, before the page is sent.
 
@@ -91,7 +91,7 @@ Each step is one pull request. Do not start the next until the previous one is r
 
 1. **The lock, with no screen.** Add a weaker database login that can only read grower views. Row rules on those views allow a row only when it belongs to the signed-in farm through the billing-name join above. Grower code must use this login. Office pages keep the owner login. Tests: farm A cannot read farm B's field, even when the request names B's field id; a field with two billing names is included when one matches; `fields.billing_entity_id` is ignored. Done when those tests pass and the office app still opens.
 
-2. **Login by farm name.** The grower enters `operations.name` plus the secret Ryan picks (see questions). Match the name case-insensitive after trimming spaces. Exactly one farm must match; zero or two-plus means refuse. Refuse if the farm has no contact tagged Current Customer. The session stores that farm's id only. A signed-in grower who opens an office page (`/fields`, `/water-recs`, `/billing`, and the rest) is sent back to the grower home, and those APIs return forbidden. Done when the wrong secret fails, a past-customer-only farm is refused, a duplicate farm name fails safely, and the office pages stay closed.
+2. **Login by farm name + PIN.** The grower enters `operations.name` plus the farm PIN. Match the name case-insensitive after trimming spaces. Exactly one farm must match; zero or two-plus means refuse. Refuse if the farm has no contact tagged Current Customer. The session stores that farm's id only. A signed-in grower who opens an office page (`/fields`, `/water-recs`, `/billing`, and the rest) is sent back to the grower home, and those APIs return forbidden. Done when the wrong secret fails, a past-customer-only farm is refused, a duplicate farm name fails safely, and the office pages stay closed.
 
 3. **Fishell only.** Allow-list the Fishell Farms operation id. No other farm can sign in yet. Done when only that farm gets in.
 
@@ -109,11 +109,10 @@ Each step is one pull request. Do not start the next until the previous one is r
 
 ## Questions still open
 
-Answer in order. 1 blocks step 2. The rest can wait.
+The rest can wait.
 
-1. Farm name alone is not enough. What proves it is them: a short PIN Ryan sets per farm, a shared password per farm, or something else?
-2. A field billed to two farms shows for both today. Keep that?
-3. After Fishell is happy, which comes first: soil map or drainage lines?
+1. A field billed to two farms shows for both today. Keep that?
+2. After Fishell is happy, which comes first: soil map or drainage lines?
 
 ## Not in v1
 
