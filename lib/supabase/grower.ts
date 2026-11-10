@@ -1,6 +1,7 @@
 import 'server-only';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { Pool, types, type PoolClient, type PoolConfig, type QueryResultRow } from 'pg';
+import { getDatabasePool } from './database';
 import { SUPABASE_CA } from './trusted-ca';
 import { DataError, PROJECT_REF, PROJECT_URL, positiveId } from './registry';
 
@@ -11,6 +12,7 @@ type GrowerScope = { client: PoolClient; operationId: number };
 const scopes = new AsyncLocalStorage<GrowerScope>();
 let growerPool: Pool | undefined;
 let growerConnecting: Promise<Pool> | undefined;
+let usingOwnerFallback = false;
 
 const GROWER_USER = 'acre_grower';
 
@@ -59,12 +61,19 @@ async function getGrowerPool(): Promise<Pool> {
   if (!growerConnecting) {
     growerConnecting = (async () => {
       const raw = process.env.DATABASE_URL_GROWER;
-      if (!raw) throw new DataError('Grower database connection is not configured', 503);
+      // Until DATABASE_URL_GROWER is set on Netlify, demote the office pool with
+      // SET LOCAL ROLE acre_grower inside withGrowerOperation (same as contract tests).
+      if (!raw) {
+        usingOwnerFallback = true;
+        growerPool = await getDatabasePool();
+        return growerPool;
+      }
       const config = growerDatabaseConfig(raw);
       const candidate = new Pool(config);
       candidate.on('error', () => { /* Do not log driver errors: they can contain credentials or row data. */ });
       try {
         await candidate.query('SELECT 1');
+        usingOwnerFallback = false;
         growerPool = candidate;
         return candidate;
       } catch {
@@ -105,10 +114,10 @@ export async function withGrowerOperation<T>(
       `SELECT set_config('app.grower_operation_id', $1, true)`,
       [String(op)],
     );
-    // When the connection is the owner (contract tests / local fixtures), demote
-    // for this transaction so base-table grants are enforced like production.
+    // When the connection is the owner (fallback / contract tests), demote for
+    // this transaction so base-table grants are enforced like acre_grower login.
     const who = await client.query<{ current_user: string }>('SELECT current_user');
-    if (who.rows[0]?.current_user !== GROWER_USER) {
+    if (who.rows[0]?.current_user !== GROWER_USER || usingOwnerFallback) {
       await client.query('SET LOCAL ROLE acre_grower');
     }
     const result = await scopes.run({ client, operationId: op }, work);

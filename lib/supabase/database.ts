@@ -46,6 +46,11 @@ async function getPool(): Promise<Pool> {
   })().finally(() => { connecting = undefined; });
   return connecting;
 }
+
+/** Office pool for callers that must demote with SET LOCAL ROLE (grower fallback). */
+export async function getDatabasePool(): Promise<Pool> {
+  return getPool();
+}
 function safeError(error: unknown): DataError {
   if (error instanceof DataError) return error;
   if (error instanceof RemovalError) return new DataError(error.message, error.status);
