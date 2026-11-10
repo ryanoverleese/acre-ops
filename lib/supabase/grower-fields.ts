@@ -11,6 +11,8 @@ export type GrowerFieldRow = {
   lng: number | null;
   fieldSeasonId: number;
   season: number;
+  /** Probe assignment statuses for this field/season (Installed, Removed, …). */
+  probeStatuses: string[];
 };
 
 /** Fields for one farm that have a field_season in the given year. */
@@ -43,15 +45,36 @@ export async function listGrowerFieldsForSeason(
         ORDER BY f.name, f.id`,
       [season],
     );
-    return rows.map((row) => ({
-      id: positiveId(row.id),
-      name: row.name,
-      acres: row.acres == null ? null : Number(row.acres),
-      lat: row.lat == null ? null : Number(row.lat),
-      lng: row.lng == null ? null : Number(row.lng),
-      fieldSeasonId: positiveId(row.field_season_id),
-      season: Number(row.season),
-    }));
+    const statusRows = await growerQuery<{
+      field_id: unknown;
+      probe_status: string | null;
+    }>(
+      `SELECT field_id, probe_status
+         FROM public.grower_probe_assignments
+        WHERE season = $1
+        ORDER BY field_id, probe_number NULLS LAST, id`,
+      [season],
+    );
+    const byField = new Map<number, string[]>();
+    for (const row of statusRows) {
+      const fieldId = positiveId(row.field_id);
+      const list = byField.get(fieldId) || [];
+      if (row.probe_status?.trim()) list.push(row.probe_status.trim());
+      byField.set(fieldId, list);
+    }
+    return rows.map((row) => {
+      const id = positiveId(row.id);
+      return {
+        id,
+        name: row.name,
+        acres: row.acres == null ? null : Number(row.acres),
+        lat: row.lat == null ? null : Number(row.lat),
+        lng: row.lng == null ? null : Number(row.lng),
+        fieldSeasonId: positiveId(row.field_season_id),
+        season: Number(row.season),
+        probeStatuses: byField.get(id) || [],
+      };
+    });
   });
 }
 

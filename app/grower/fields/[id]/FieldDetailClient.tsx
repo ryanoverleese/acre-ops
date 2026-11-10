@@ -3,8 +3,13 @@
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
-import { formatGrowerAcres, formatProbeAge } from '@/lib/grower-display';
+import {
+  formatGrowerAcres,
+  formatProbeAge,
+  summarizeGrowerFieldProbeStatus,
+} from '@/lib/grower-display';
 import type { GrowerProbePin, GrowerWaterRec } from '@/lib/supabase/grower-fields';
+import { GrowerFieldStatusBadges, GrowerStatusBadge } from '../../GrowerStatus';
 
 const GrowerFieldMap = dynamic(() => import('../../GrowerFieldMap'), { ssr: false });
 
@@ -35,6 +40,8 @@ export default function FieldDetailClient({
     waterRecs: GrowerWaterRec[];
   };
 }) {
+  const fieldStatus = summarizeGrowerFieldProbeStatus(field.probes.map((p) => p.status));
+
   return (
     <div className="grower-shell grower-shell-wide">
       <header className="grower-top">
@@ -49,6 +56,10 @@ export default function FieldDetailClient({
             {field.season}
             {' · '}
             {formatGrowerAcres(field.acres) ?? 'Acres not recorded'}
+          </p>
+          <p className="grower-status-line">
+            <span className="grower-status-label">Status</span>
+            <GrowerFieldStatusBadges label={fieldStatus.label} />
           </p>
         </div>
       </header>
@@ -75,9 +86,15 @@ export default function FieldDetailClient({
                   {probe.serial ? `#${probe.serial}` : 'Probe'}
                   {probe.label ? ` · ${probe.label}` : ''}
                 </span>
-                {probe.status && <span className="grower-field-meta">{probe.status}</span>}
+                <GrowerStatusBadge status={probe.status} />
               </div>
               <dl className="grower-probe-facts">
+                <div>
+                  <dt>Status</dt>
+                  <dd>
+                    <GrowerStatusBadge status={probe.status} />
+                  </dd>
+                </div>
                 <div>
                   <dt>Install date</dt>
                   <dd>{fmtDate(probe.installDate)}</dd>

@@ -11356,10 +11356,65 @@ body:has(.af-app)::before {
   font-size: 16px;
   font-weight: 500;
 }
+.grower-field-row-main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+}
 .grower-field-meta {
   font-size: 13px;
   color: var(--text-muted);
   white-space: nowrap;
+}
+.grower-status-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 100%;
+}
+.grower-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-card);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.grower-status-installed {
+  color: var(--field-green, #1f402a);
+  border-color: var(--field-green, #1f402a);
+}
+.grower-status-removed {
+  color: var(--text-secondary);
+  border-color: var(--border-strong);
+}
+.grower-status-assigned {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+.grower-status-muted {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.grower-status-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+.grower-status-label {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
 }
 .grower-banner-error {
   margin: 0;

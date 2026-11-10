@@ -1,6 +1,7 @@
 'use client';
 
-import { formatGrowerAcres } from '@/lib/grower-display';
+import { formatGrowerAcres, summarizeGrowerFieldProbeStatus } from '@/lib/grower-display';
+import { GrowerFieldStatusBadges } from '../GrowerStatus';
 
 export default function GrowerFieldsList({
   farmName,
@@ -9,7 +10,12 @@ export default function GrowerFieldsList({
 }: {
   farmName: string;
   season: number;
-  fields: Array<{ id: number; name: string; acres: number | null }>;
+  fields: Array<{
+    id: number;
+    name: string;
+    acres: number | null;
+    probeStatuses: string[];
+  }>;
 }) {
   return (
     <div className="grower-shell">
@@ -31,10 +37,14 @@ export default function GrowerFieldsList({
         <ul className="grower-field-list">
           {fields.map((field) => {
             const acresLabel = formatGrowerAcres(field.acres);
+            const status = summarizeGrowerFieldProbeStatus(field.probeStatuses);
             return (
               <li key={field.id}>
                 <a href={`/grower/fields/${field.id}`} className="grower-field-row">
-                  <span className="grower-field-name">{field.name}</span>
+                  <span className="grower-field-row-main">
+                    <span className="grower-field-name">{field.name}</span>
+                    <GrowerFieldStatusBadges label={status.label} />
+                  </span>
                   <span className="grower-field-meta">
                     {acresLabel ?? 'Acres not recorded'}
                   </span>

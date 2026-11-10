@@ -2,6 +2,7 @@
 
 import { formatProbeAge } from '@/lib/grower-display';
 import type { GrowerHardwareRow } from '@/lib/supabase/grower-fields';
+import { GrowerStatusBadge } from '../GrowerStatus';
 
 function fmtDate(value: string | null): string {
   if (!value) return 'Not recorded';
@@ -49,7 +50,7 @@ export default function GrowerHardwareList({
                   {probe.serial ? `#${probe.serial}` : 'Probe'}
                   {probe.label ? ` · ${probe.label}` : ''}
                 </span>
-                {probe.status && <span className="grower-field-meta">{probe.status}</span>}
+                <GrowerStatusBadge status={probe.status} />
               </div>
               <p className="grower-rec-field">
                 <a href={`/grower/fields/${probe.fieldId}`} className="grower-back">
@@ -57,6 +58,12 @@ export default function GrowerHardwareList({
                 </a>
               </p>
               <dl className="grower-probe-facts">
+                <div>
+                  <dt>Status</dt>
+                  <dd>
+                    <GrowerStatusBadge status={probe.status} />
+                  </dd>
+                </div>
                 <div>
                   <dt>Install date</dt>
                   <dd>{fmtDate(probe.installDate)}</dd>

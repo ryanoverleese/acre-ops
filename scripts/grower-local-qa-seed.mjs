@@ -126,6 +126,19 @@ await q(
    VALUES ($1,$2,1,'NW',$3,$4)`,
   [sparseSeason.id, probeNoYear.id, assigned.id, `${YEAR}-03-15T12:00:00.000Z`],
 );
+const [removedOpt] = await q(
+  `SELECT id FROM assignment_probe_status_options WHERE value = 'Removed' LIMIT 1`,
+);
+const [probeRemoved] = await q(
+  `INSERT INTO probes (serial_number, year_new) VALUES ('SN-QA-REMOVED', $1) RETURNING id`,
+  [YEAR - 1],
+);
+await q(
+  `INSERT INTO probe_assignments
+    (field_season_id, probe_id, probe_number, label, probe_status_id, install_date, install_lat, install_lng)
+   VALUES ($1,$2,3,'SE',$3,$4,40.4705,-99.1505)`,
+  [season.id, probeRemoved.id, removedOpt.id, `${YEAR}-04-20T12:00:00.000Z`],
+);
 
 await client.end();
 
@@ -138,10 +151,11 @@ fs.writeFileSync(
     'Farm name: QA Pilot Farm',
     `PIN: ${PIN}`,
     'Expected fields: Home Pivot, Bare Field, Sparse North',
-    `Probe with pin: SN-QA-001 → ${YEAR - (YEAR - 2) + 1} seasons (age = season - year_new + 1)`,
-    'Probe without pin: SN-QA-PINLESS (listed, no map marker)',
-    'Sparse North: SN-QA-NOYEAR age Not recorded (null year_new); no boundary/recs',
-    'Bare Field: no boundary, probes, or water recs',
+    `Probe Installed: SN-QA-001 → ${YEAR - (YEAR - 2) + 1} seasons`,
+    'Probe Assigned (no pin): SN-QA-PINLESS',
+    'Probe Removed: SN-QA-REMOVED on Home Pivot',
+    'Sparse North: SN-QA-NOYEAR age Not recorded; no boundary/recs',
+    'Bare Field: no probes → field status No probes; acres 0 → Acres not recorded',
     'Water: full + update only (overview hidden)',
     `Season year: ${YEAR}`,
     `Generated: ${new Date().toISOString()}`,

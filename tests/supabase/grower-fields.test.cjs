@@ -14,7 +14,13 @@ const {
   getGrowerFieldDetail,
   growerCurrentSeasonYear,
 } = f.load('lib/supabase/grower-fields.ts');
-const { formatProbeAge, formatGrowerAcres, probeAgeSeasons } = f.load('lib/grower-display.ts');
+const {
+  formatProbeAge,
+  formatGrowerAcres,
+  formatGrowerProbeStatus,
+  probeAgeSeasons,
+  summarizeGrowerFieldProbeStatus,
+} = f.load('lib/grower-display.ts');
 
 let opA, opB, fieldA, fieldB, fieldShared, fieldNoSeason;
 
@@ -146,6 +152,12 @@ test('lists only this year’s fields for farm A', async () => {
   assert.ok(rows.every((row) => row.season === year));
   assert.ok(!rows.some((row) => row.id === fieldNoSeason.id));
   assert.ok(!rows.some((row) => row.id === fieldB.id));
+  const alpha = rows.find((row) => row.name === 'Alpha');
+  assert.deepEqual(alpha.probeStatuses, ['Installed', 'Assigned']);
+  assert.equal(summarizeGrowerFieldProbeStatus(alpha.probeStatuses).label, 'Installed');
+  const shared = rows.find((row) => row.name === 'Shared');
+  assert.deepEqual(shared.probeStatuses, []);
+  assert.equal(summarizeGrowerFieldProbeStatus(shared.probeStatuses).label, 'No probes');
 });
 
 test('farm B does not see farm A-only fields', async () => {
@@ -207,6 +219,18 @@ test('acres display never invents area from null or zero', () => {
   assert.equal(formatGrowerAcres(null), null);
   assert.equal(formatGrowerAcres(0), null);
   assert.equal(formatGrowerAcres(-1), null);
+});
+
+test('probe and field status summarize Installed and Removed', () => {
+  assert.equal(formatGrowerProbeStatus('Installed'), 'Installed');
+  assert.equal(formatGrowerProbeStatus('Removed'), 'Removed');
+  assert.equal(formatGrowerProbeStatus(null), 'Not recorded');
+  assert.equal(
+    summarizeGrowerFieldProbeStatus(['Installed', 'Removed']).label,
+    'Installed · Removed',
+  );
+  assert.equal(summarizeGrowerFieldProbeStatus(['Removed', 'Removed']).label, 'Removed');
+  assert.equal(summarizeGrowerFieldProbeStatus([]).label, 'No probes');
 });
 
 test('farm water recommendations hide overview and stay farm-scoped', async () => {
