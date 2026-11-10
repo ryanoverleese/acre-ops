@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { recordProbeRemoval, RemovalError } from '../lib/probe-removal.ts';
+import { chicagoCalendarDate } from '../lib/removal-time.ts';
 
 const link = id => [{ id, value: String(id) }];
 const today = () => new Date().toISOString().slice(0, 10);
@@ -22,29 +23,47 @@ function fixture() {
   };
   return { assignments, probes, writes, notifications, uploads, store };
 }
-const input = { source: 'crew', assignmentId: 201, removedBy: ' Brandon ', removalDate: '2026-10-11', notes: ' End of season ' };
+const recordedAt = new Date('2026-10-11T18:14:00.000Z');
+const input = { source: 'crew', assignmentId: 201, removedBy: ' Brandon ', removalDate: '2026-10-11', notes: ' End of season ', recordedAt };
 
 test('only the selected assignment and its linked probe change; planned remover and sibling probe stay intact', async () => {
   const f = fixture(); const sibling = structuredClone(f.assignments[1]);
   const result = await recordProbeRemoval(input, f.store);
   assert.deepEqual(f.writes, [
-    ['assignment', 201, { probe_status: 'Removed', removal_date: '2026-10-11', removed_by: 'Brandon', removal_notes: 'End of season' }],
+    ['assignment', 201, { probe_status: 'Removed', removal_date: '2026-10-11', removal_at: '2026-10-11T18:14:00.000Z', removed_by: 'Brandon', removal_notes: 'End of season' }],
     ['probe', 11, { status: 'In Stock' }],
   ]);
   assert.equal(f.assignments[0].planned_remover, 'Carter');
   assert.deepEqual(f.assignments[1], sibling);
   assert.deepEqual(f.probes[1], { id: 12, status: 'Installed' });
   assert.equal(result.removed_by, 'Brandon'); assert.equal(result.removal_date, '2026-10-11');
+  assert.equal(result.removal_at, '2026-10-11T18:14:00.000Z');
   assert.equal(f.notifications.length, 1);
 });
 
 test('crew default date and Workflows explicit date use identical writes', async () => {
+  const at = new Date('2026-11-10T22:30:00.000Z');
+  const day = chicagoCalendarDate(at);
   const crew = fixture(), workflow = fixture();
-  await recordProbeRemoval({ source: 'crew', assignmentId: 201, removedBy: 'Ryan' }, crew.store);
-  await recordProbeRemoval({ source: 'workflows', assignmentId: 201, removedBy: 'Ryan', removalDate: today() }, workflow.store);
+  await recordProbeRemoval({ source: 'crew', assignmentId: 201, removedBy: 'Ryan', recordedAt: at }, crew.store);
+  await recordProbeRemoval({ source: 'workflows', assignmentId: 201, removedBy: 'Ryan', removalDate: day, recordedAt: at }, workflow.store);
   assert.deepEqual(crew.writes, workflow.writes);
+  assert.equal(crew.assignments[0].removal_date, '2026-11-10');
+  assert.equal(crew.assignments[0].removal_at, at.toISOString());
   assert.equal(crew.notifications.length, 1);
   assert.equal(workflow.notifications.length, 0);
+});
+
+test('an evening pull stores the Chicago calendar date, and a backdated office date keeps its date', async () => {
+  const evening = new Date('2026-09-18T03:30:00.000Z');
+  const crew = fixture();
+  await recordProbeRemoval({ source: 'crew', assignmentId: 201, removedBy: 'Brandon', recordedAt: evening }, crew.store);
+  assert.equal(crew.assignments[0].removal_date, '2026-09-17');
+  assert.equal(crew.assignments[0].removal_at, evening.toISOString());
+  const office = fixture();
+  await recordProbeRemoval({ source: 'workflows', assignmentId: 201, removedBy: 'Ryan', removalDate: '2026-09-01', recordedAt: evening }, office.store);
+  assert.equal(office.assignments[0].removal_date, '2026-09-01');
+  assert.equal(office.assignments[0].removal_at, evening.toISOString());
 });
 
 test('Workflows removal sends no webhook, including after an inventory failure and retry', async () => {

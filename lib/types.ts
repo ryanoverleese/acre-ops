@@ -160,6 +160,8 @@ export interface ProbeAssignment {
   installer?: string;
   install_date?: string;
   removal_date?: string;
+  /** Instant the probe was pulled. Null on historical date-only rows. */
+  removal_at?: string | null;
   removal_notes?: string;
   removed_by?: string;
   removal_photo?: { url: string; name: string }[];

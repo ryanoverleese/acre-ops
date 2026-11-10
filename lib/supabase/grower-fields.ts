@@ -1,5 +1,6 @@
 import 'server-only';
 import { probeAgeSeasons } from '../grower-display';
+import { removalInstantIso } from '@/lib/removal-time';
 import { growerQuery, withGrowerOperation } from './grower';
 import { positiveId } from './registry';
 
@@ -115,6 +116,10 @@ export type GrowerProbePin = {
   probeNumber: number | null;
   status: string | null;
   installDate: string | null;
+  /** Calendar date of a pull. Null when the probe is still out. */
+  removalDate: string | null;
+  /** ISO instant when the pull time is known. Null for date-only history. */
+  removalAt: string | null;
   yearNew: number | null;
   ageSeasons: number | null;
   elevation: number | null;
@@ -174,6 +179,10 @@ export type GrowerHardwareRow = {
   probeNumber: number | null;
   status: string | null;
   installDate: string | null;
+  /** Calendar date of a pull. Null when the probe is still out. */
+  removalDate: string | null;
+  /** ISO instant when the pull time is known. Null for date-only history. */
+  removalAt: string | null;
   yearNew: number | null;
   ageSeasons: number | null;
   elevation: number | null;
@@ -199,6 +208,8 @@ export async function listGrowerHardwareForSeason(
       probe_number: unknown;
       probe_status: string | null;
       install_date: Date | string | null;
+      removal_date: Date | string | null;
+      removal_at: Date | string | null;
       probe_year_new: unknown;
       elevation: unknown;
       soil_type: string | null;
@@ -215,6 +226,8 @@ export async function listGrowerHardwareForSeason(
               p.probe_number,
               p.probe_status,
               p.install_date,
+              p.removal_date,
+              p.removal_at,
               p.probe_year_new,
               p.elevation,
               p.soil_type,
@@ -240,6 +253,8 @@ export async function listGrowerHardwareForSeason(
         probeNumber: p.probe_number == null ? null : Number(p.probe_number),
         status: p.probe_status,
         installDate: growerDayString(p.install_date),
+        removalDate: growerDayString(p.removal_date),
+        removalAt: removalInstantIso(p.removal_at),
         yearNew: yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
         ageSeasons: probeAgeSeasons(
           yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
@@ -357,6 +372,8 @@ export async function getGrowerFieldDetail(
       probe_number: unknown;
       probe_status: string | null;
       install_date: Date | string | null;
+      removal_date: Date | string | null;
+      removal_at: Date | string | null;
       probe_year_new: unknown;
       elevation: unknown;
       soil_type: string | null;
@@ -366,6 +383,7 @@ export async function getGrowerFieldDetail(
       placement_lng: unknown;
     }>(
       `SELECT id, probe_serial_number, label, probe_number, probe_status, install_date,
+              removal_date, removal_at,
               probe_year_new, elevation, soil_type,
               install_lat, install_lng, placement_lat, placement_lng
          FROM public.grower_probe_assignments
@@ -399,6 +417,8 @@ export async function getGrowerFieldDetail(
         probeNumber: p.probe_number == null ? null : Number(p.probe_number),
         status: p.probe_status,
         installDate: growerDayString(p.install_date),
+        removalDate: growerDayString(p.removal_date),
+        removalAt: removalInstantIso(p.removal_at),
         yearNew: yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
         ageSeasons: probeAgeSeasons(
           yearNew != null && Number.isFinite(yearNew) ? yearNew : null,

@@ -12,6 +12,7 @@ import {
   saveRouteFilter,
   type RemovalsRouteFilter,
 } from './removalsRouteFilter';
+import { formatRemovalWhen } from '@/lib/removal-time';
 import {
   chicagoToday,
   countTodayPulls,
@@ -44,7 +45,10 @@ export interface RemovalRow {
   rowDirection?: string;
   fieldNotes: string;
   removed: boolean;
+  /** Calendar date YYYY-MM-DD. Today counts use this, not the clock. */
   removedOn: string;
+  /** ISO instant when known. Empty for historical date-only pulls. */
+  removedAt?: string;
   removedBy: string;
   removalNotes: string;
   accessNotes?: string;
@@ -103,7 +107,7 @@ export function PullForm({ row, installer, onBack, onSaved }: {
   row: RemovalRow;
   installer: string;
   onBack: () => void;
-  onSaved: (id: number, removedBy: string, note: string) => void;
+  onSaved: (id: number, removedBy: string, note: string, when?: { removedOn?: string; removedAt?: string }) => void;
 }) {
   const [removedBy, setRemovedBy] = useState(installer);
   const [notes, setNotes] = useState('');
@@ -140,7 +144,7 @@ export function PullForm({ row, installer, onBack, onSaved }: {
       photos.forEach(p => fd.append('photo', p));
       const res = await fetch('/api/removal', { method: 'POST', body: fd });
       const raw = await res.text();
-      let data: { error?: string; alreadyRemoved?: boolean; photoErrors?: string[] } = {};
+      let data: { error?: string; alreadyRemoved?: boolean; photoErrors?: string[]; removal_date?: string; removal_at?: string | null; removed_by?: string } = {};
       try { data = raw ? JSON.parse(raw) : {}; } catch {
         setError(res.redirected || res.status === 307 || res.status === 302
           ? 'Session blocked the save — tell Ryan (auth redirect)'
@@ -156,7 +160,9 @@ export function PullForm({ row, installer, onBack, onSaved }: {
         : data.photoErrors?.length
           ? 'Removal saved — a photo failed to upload'
           : '';
-      onSaved(row.id, removedBy.trim(), note);
+      const removedOn = typeof data.removal_date === 'string' ? data.removal_date.slice(0, 10) : undefined;
+      const removedAt = typeof data.removal_at === 'string' ? data.removal_at : undefined;
+      onSaved(row.id, (typeof data.removed_by === 'string' && data.removed_by) || removedBy.trim(), note, { removedOn, removedAt });
     } catch { setError('Network error — removal NOT saved'); setSubmitting(false); setConfirming(false); }
   };
 
@@ -431,9 +437,14 @@ export default function RemovalsScreen({ season, installer }: {
     setRouteFilterReady(true);
   };
 
-  const handleSaved = (id: number, removedBy: string, note: string) => {
-    const today = chicagoToday();
-    setRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true, removedOn: today, removedBy } : r)));
+  const handleSaved = (id: number, removedBy: string, note: string, when?: { removedOn?: string; removedAt?: string }) => {
+    setRows(rs => rs.map(r => (r.id === id ? {
+      ...r,
+      removed: true,
+      removedOn: when?.removedOn || chicagoToday(),
+      removedAt: when?.removedAt,
+      removedBy,
+    } : r)));
     setSelected(null);
     if (note) {
       setBanner(note);
@@ -642,7 +653,7 @@ export default function RemovalsScreen({ season, installer }: {
               </div>
               <div style={{ fontSize: 12, color: 'var(--stone-500)' }}>
                 {r.removed
-                  ? `Pulled ${fmtDate(r.removedOn)}${r.removedBy ? ` by ${r.removedBy}` : ''}`
+                  ? `Pulled ${formatRemovalWhen(r.removedOn, r.removedAt) || fmtDate(r.removedOn)}${r.removedBy ? ` by ${r.removedBy}` : ''}`
                   : `Installed ${fmtDate(r.installedOn)}${r.installedBy ? ` by ${r.installedBy}` : ''}`}
               </div>
               {r.crop && (

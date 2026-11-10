@@ -2289,6 +2289,12 @@
           "identity": false
         },
         {
+          "name": "removal_at",
+          "type": "timestamptz",
+          "required": false,
+          "identity": false
+        },
+        {
           "name": "removal_notes",
           "type": "text",
           "required": false,

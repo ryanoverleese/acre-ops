@@ -2900,9 +2900,14 @@ function MapScreen({
         row={selectedRemoval}
         installer={installer}
         onBack={() => setSelectedId(null)}
-        onSaved={(id, removedBy) => {
-          const today = chicagoToday();
-          setRemovalRows(rs => rs.map(r => (r.id === id ? { ...r, removed: true, removedOn: today, removedBy } : r)));
+        onSaved={(id, removedBy, _note, when) => {
+          setRemovalRows(rs => rs.map(r => (r.id === id ? {
+            ...r,
+            removed: true,
+            removedOn: when?.removedOn || chicagoToday(),
+            removedAt: when?.removedAt,
+            removedBy,
+          } : r)));
           setSelectedId(null);
         }}
       />

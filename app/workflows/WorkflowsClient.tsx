@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
+import { chicagoCalendarDate, formatRemovalWhen } from '@/lib/removal-time';
 
 const RemovalsMapView = dynamic(() => import('./RemovalsMapView'), { ssr: false });
 
@@ -50,6 +51,8 @@ export interface EarlyRemovalData {
   assignmentIds: number[];
   /** Parallel to assignmentIds: each assignment's removal_date ('' if still in ground) */
   assignmentRemovalDates: string[];
+  /** Parallel to assignmentIds: removal_at ISO instant, or '' when the pull is date-only */
+  assignmentRemovalAts: string[];
   /** Parallel to assignmentIds: install/placement lat (field fallback when missing) */
   assignmentLats: number[];
   /** Parallel to assignmentIds: install/placement lng (field fallback when missing) */
@@ -88,6 +91,14 @@ interface WorkflowsClientProps {
 
 type Step = 'select' | 'confirm' | 'rack-prompt' | 'rack-pick' | 'done';
 
+function formatAssignmentRemovals(row: EarlyRemovalData): string {
+  const dates = row.assignmentRemovalDates ?? [];
+  const ats = row.assignmentRemovalAts ?? [];
+  const labels = dates.map((date, index) => formatRemovalWhen(date, ats[index])).filter(Boolean);
+  if (labels.length) return Array.from(new Set(labels)).join(' · ');
+  return formatRemovalWhen(row.removalDate);
+}
+
 export default function WorkflowsClient({ initialWorkflow, returnToEquipment = false, earlyRemovals, seasonFields, earlyRemovalOptions, plannedRemoverOptions, installedProbes, rmaProbes, brandOptions, onOrderProbes }: WorkflowsClientProps) {
   const router = useRouter();
   const [activeWorkflow, setActiveWorkflow] = useState<'early-removals' | 'uninstall' | 'register' | 'rma' | null>(initialWorkflow ?? null);
@@ -99,7 +110,8 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
   const [step, setStep] = useState<Step>('select');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<UninstallProbeData | null>(null);
-  const [removalDate, setRemovalDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [removalDate, setRemovalDate] = useState(() => chicagoCalendarDate());
+  const [removalAt, setRemovalAt] = useState<string | null>(null);
   const [removedBy, setRemovedBy] = useState('');
   const [removalNotes, setRemovalNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -354,7 +366,8 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
     setStep('select');
     setSearch('');
     setSelected(null);
-    setRemovalDate(new Date().toISOString().split('T')[0]);
+    setRemovalDate(chicagoCalendarDate());
+    setRemovalAt(null);
     setRemovedBy('');
     setRemovalNotes('');
     setError('');
@@ -382,6 +395,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
       if (!response.ok || !result.ok) throw new Error(result.error || 'Could not record removal');
       // On a retry, display the original recorded facts returned by the server.
       setRemovalDate(result.removal_date || removalDate);
+      setRemovalAt(typeof result.removal_at === 'string' ? result.removal_at : null);
       setRemovedBy(result.removed_by || removedBy.trim());
       setStep('done');
       router.refresh();
@@ -720,6 +734,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
           row.plannedRemover,
           row.plantingDate,
           row.removalDate,
+          formatAssignmentRemovals(row),
           row.needsAtv ? 'needs atv' : 'pickup',
           row.readyToRemove ? 'ready' : '',
           row.fieldNotes || '',
@@ -1091,7 +1106,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
                           {row.readyToRemove ? '✓' : ''}
                         </button>
                       </td>
-                      <td style={cellPad}>{row.removalDate ? row.removalDate.slice(0, 10) : '—'}</td>
+                      <td style={cellPad}>{formatAssignmentRemovals(row) || '—'}</td>
                       <td style={{ ...cellPad, minWidth: 150, whiteSpace: 'normal' }}>
                         <select
                           value={row.plannedRemover}
@@ -1908,7 +1923,7 @@ export default function WorkflowsClient({ initialWorkflow, returnToEquipment = f
                 <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>Probe removed</div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
                   <strong>{selected.probeBrand} #{selected.probeSerial}</strong> removed from{' '}
-                  <strong>{selected.fieldName}</strong> on {removalDate} by {removedBy}.
+                  <strong>{selected.fieldName}</strong> on {formatRemovalWhen(removalDate, removalAt, 'long') || removalDate} by {removedBy}.
                   Probe status set to In Stock.
                 </div>
               </div>

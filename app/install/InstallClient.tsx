@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import SearchableSelect from '@/components/SearchableSelect';
 import { ANTENNA_OPTIONS } from '@/lib/antenna';
+import { formatRemovalWhen } from '@/lib/removal-time';
 import type { ProbeOption } from './page';
 
 const InstallsMap = dynamic(() => import('@/components/InstallsMap'), { ssr: false });
@@ -220,6 +221,7 @@ export interface InstalledProbeData {
   antennaType: string;
   removed: boolean;
   removalDate: string;
+  removalAt: string;
   removedBy: string;
   removalNotes: string;
   removalPhotoUrl: string;
@@ -958,7 +960,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                         {probe.fieldName}
                         {probe.removed && (
                           <span className="status-badge removed" style={{ fontSize: 11 }}>
-                            Removed{probe.removalDate ? ` ${new Date(probe.removalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                            Removed{probe.removalDate || probe.removalAt ? ` ${formatRemovalWhen(probe.removalDate, probe.removalAt, 'short')}` : ''}
                           </span>
                         )}
                       </div>
@@ -1139,7 +1141,7 @@ export default function InstallClient({ probeAssignments: initialAssignments, pr
                 )}
                 {viewingInstall.removed && (
                   <>
-                    <div className="detail-row"><span className="detail-label">Removed</span><span className="detail-value">{viewingInstall.removalDate ? new Date(viewingInstall.removalDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span></div>
+                    <div className="detail-row"><span className="detail-label">Removed</span><span className="detail-value">{formatRemovalWhen(viewingInstall.removalDate, viewingInstall.removalAt, 'long') || '—'}</span></div>
                     <div className="detail-row"><span className="detail-label">Removed By</span><span className="detail-value">{viewingInstall.removedBy || '—'}</span></div>
                     {viewingInstall.removalNotes && <div className="detail-row"><span className="detail-label">Removal Notes</span><span className="detail-value">{viewingInstall.removalNotes}</span></div>}
                     {viewingInstall.removalPhotoUrl && (

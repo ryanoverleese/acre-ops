@@ -19,6 +19,25 @@ test.before(async () => {
 });
 test.after(async () => { await f.db?.close(); });
 
+test('removal_at is a nullable timestamptz and removal_date stays a date', async () => {
+  const column=await f.db.query(`SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema='public' AND table_name='probe_assignments' AND column_name='removal_at'`);
+  assert.equal(column.rows[0].data_type,'timestamp with time zone');
+  assert.equal(column.rows[0].is_nullable,'YES');
+  assert.equal(column.rows[0].column_default,null);
+  const date=await f.db.query(`SELECT data_type FROM information_schema.columns WHERE table_schema='public' AND table_name='probe_assignments' AND column_name='removal_date'`);
+  assert.equal(date.rows[0].data_type,'date');
+  const view=await f.db.query(`SELECT a.attname FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='probe_assignments_calculated' AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum`);
+  assert.equal(view.rows.at(-1).attname,'removal_at');
+  const grower=await f.db.query(`SELECT a.attname FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='grower_probe_assignments' AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum`);
+  assert.deepEqual(grower.rows.slice(-2).map(row=>row.attname),['removal_date','removal_at']);
+  const historical=await a.createRow('probe_assignments',{field_season:[season.id],removal_date:'2026-09-17',removed_by:'Brandon'});
+  try {
+    assert.equal(historical.removal_date,'2026-09-17');
+    assert.equal(historical.removal_at,null);
+  } finally {
+    await a.deleteRow('probe_assignments',historical.id);
+  }
+});
 test('all 22 table projections execute against the actual migrations', async () => {
   for (const table of registry.sourceNames) assert.ok(Array.isArray(await a.getRows(table)),table);
 });
@@ -189,8 +208,13 @@ test('Workflows sends no webhook; crew notifies once after commit with native ID
     assert.deepEqual(await a.getRow('probe_assignments',sibling.id),sibling);
     assert.equal((await a.getRow('probe_assignments',assignment.id)).planned_remover,assignment.planned_remover);
     assert.equal((await a.getRow('probes',probe.id)).status.value,'In Stock');
+    const workflowsSaved=await a.getRow('probe_assignments',assignment.id);
+    assert.equal(workflowsSaved.removal_date,'2026-10-11');
+    assert.match(workflowsSaved.removal_at,/^\d{4}-\d{2}-\d{2}T/);
     assert.equal((await POST(request(sibling.id,'crew'))).status,200);
     assert.equal(calls.length,1); assert.equal(calls[0].assignment_id,sibling.id); assert.equal(calls[0].serial,'QA-2'); assert.equal(calls[0].source,'acre-ops'); assert.equal(calls[0].dry_run,true);
+    assert.equal(calls[0].removal_date,'2026-10-11');
+    assert.match(calls[0].removal_at,/^\d{4}-\d{2}-\d{2}T/);
     assert.equal((await POST(request(sibling.id,'crew'))).status,200); assert.equal(calls.length,1);
   } finally {global.fetch=original;}
 });

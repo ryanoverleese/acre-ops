@@ -192,6 +192,8 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
   assert.equal(detail.probes[0].elevation, 2200);
   assert.equal(detail.probes[0].soilType, 'Holdrege (Hs)');
   assert.equal(detail.probes[0].lat, 40.5);
+  assert.equal(detail.probes[0].removalDate, null);
+  assert.equal(detail.probes[0].removalAt, null);
   assert.match(detail.probes[0].installDate, /^\d{4}-\d{2}-\d{2}$/);
   assert.equal(typeof detail.probes[0].installDate, 'string');
   assert.equal(detail.probes[1].serial, 'SN-PINLESS');
@@ -207,6 +209,29 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
 
   const denied = await getGrowerFieldDetail(opB.id, fieldA.id, year);
   assert.equal(denied, null);
+});
+
+test('grower views return a pull instant and leave date-only history without a time', async () => {
+  const year = growerCurrentSeasonYear();
+  const before = await getGrowerFieldDetail(opA.id, fieldA.id, year);
+  const id = before.probes[0].id;
+  await f.db.query(
+    `UPDATE public.probe_assignments SET removal_date = '2026-09-17', removal_at = '2026-09-17 19:14:00+00' WHERE id = $1`,
+    [id],
+  );
+  try {
+    const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
+    const probe = detail.probes.find((row) => row.id === id);
+    assert.equal(probe.removalDate, '2026-09-17');
+    assert.match(probe.removalAt, /^2026-09-17T19:14:00/);
+    const hardware = await listGrowerHardwareForSeason(opA.id, year);
+    assert.match(hardware.find((row) => row.id === id).removalAt, /^2026-09-17T19:14:00/);
+  } finally {
+    await f.db.query(
+      `UPDATE public.probe_assignments SET removal_date = NULL, removal_at = NULL WHERE id = $1`,
+      [id],
+    );
+  }
 });
 
 test('farm hardware list is scoped and includes pinless probes', async () => {

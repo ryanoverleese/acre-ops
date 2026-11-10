@@ -1,5 +1,15 @@
 import type { ProbeAssignment } from './types';
 
+/** America/Chicago YYYY-MM-DD. Same rule as chicagoCalendarDate in lib/removal-time.ts. */
+function chicagoCalendarDate(instant: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Chicago',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant);
+}
+
 export class RemovalError extends Error {
   status: number;
   constructor(message: string, status: number) {
@@ -15,6 +25,8 @@ interface RemovalInput {
   removalDate?: string;
   notes?: string;
   photos?: File[];
+  /** Test clock. HTTP routes omit this and use the server instant. */
+  recordedAt?: Date;
 }
 
 /** Storage adapters are supplied by the route; tests use an in-memory store. */
@@ -41,13 +53,19 @@ export async function recordProbeRemoval(input: RemovalInput, store: RemovalStor
   }
   const removedBy = input.removedBy.trim();
   if (!removedBy) throw new RemovalError('Who pulled it is required', 400);
-  // Crew submissions default to today; Workflows retains its date picker.
-  const removalDate = input.removalDate ?? new Date().toISOString().slice(0, 10);
+  const recordedAt = input.recordedAt ?? new Date();
+  if (!(recordedAt instanceof Date) || !Number.isFinite(recordedAt.getTime())) {
+    throw new RemovalError('A valid removal time is required', 400);
+  }
+  // Crew omits the date and uses the America/Chicago day of this instant.
+  // Workflows can still pass the date picker value. removal_date stays a date.
+  const removalDate = input.removalDate ?? chicagoCalendarDate(recordedAt);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(removalDate)
     || !Number.isFinite(Date.parse(removalDate))
     || new Date(removalDate).toISOString().slice(0, 10) !== removalDate) {
     throw new RemovalError('A valid removal date is required', 400);
   }
+  const removalAt = recordedAt.toISOString();
 
   const existing = await store.getAssignment(input.assignmentId);
   // Resolve the physical device from the server record, never from a client probe ID.
@@ -82,6 +100,7 @@ export async function recordProbeRemoval(input: RemovalInput, store: RemovalStor
     const patch: Record<string, unknown> = {
       probe_status: 'Removed',
       removal_date: removalDate,
+      removal_at: removalAt,
       removed_by: removedBy,
     };
     if (input.notes?.trim()) patch.removal_notes = input.notes.trim();
@@ -107,6 +126,7 @@ export async function recordProbeRemoval(input: RemovalInput, store: RemovalStor
     ok: true,
     alreadyRemoved,
     removal_date: saved.removal_date,
+    removal_at: saved.removal_at ?? null,
     removed_by: saved.removed_by,
     photos: uploaded.length,
     photoErrors: photoErrors.length ? photoErrors : undefined,
