@@ -9,7 +9,7 @@ A grower signs in and sees only their own farm: fields, field outlines, elevatio
 - **Login:** by farm name (`operations.name`). One farm per session. No per-person grower accounts in v1.
 - **Past customers:** no login at all. A farm with no contact tagged Current Customer is refused, even if someone types the name.
 - **Pilot:** Fishell Farms only (match `operations.name`; confirm the exact spelling when the allow-list is written).
-- **Probe age:** `probes.year_new` (the Probes page column "Year New"). Some probes will be blank — show "Not recorded."
+- **Probe age:** calculated from `probes.year_new` (the Probes page column "Year New"). Show as seasons, not the raw year: `(current calendar year − year_new + 1)`. Example: year new 2024 in 2026 → "3 seasons". Year new equal to this year → "1 season". Blank year new → "Not recorded." Do not store the age; compute it when the page loads.
 - **Water recs:** current calendar year only. Field rows with `report_type` `full` and `update`. No farm overview note in v1.
 - **v1 map:** field boundary, elevation picture inside the boundary (reuse the office hillshade), and the most recent probe pin.
 
@@ -60,7 +60,7 @@ Farm names are not unique in the schema today. If two farms share a name, refuse
 | Most recent map pin | Prefer `install_lat` / `install_lng`. If those are empty, use `placement_lat` / `placement_lng`. Do not fall back to the field pin for the probe marker. If more than one probe is on the field this year, show each pin. |
 | Status | `probe_status` on that same view (from `probe_status_id`). The app uses Installed, Assigned, Unassigned, and Removed. The shop status on `probes` (rack, in stock) is a different thing. Do not show it. |
 | Which probe on a multi-probe field | `probe_number` and `label` (for example NE). |
-| Year new (age) | `probes.year_new`. Blank is allowed — show "Not recorded." |
+| Age | Computed from `probes.year_new`: `(current calendar year − year_new + 1)`, shown as "1 season" / "3 seasons" / etc. Blank year new → "Not recorded." |
 | Year | `field_seasons.season`, copied onto the view as `season`. |
 
 **Soil at the probe (number only).** `effective_soil_type` on the same view (assignment, or else field). Saved like `Name (symbol)` by `lib/geo.ts`. No soil map in v1.
@@ -99,7 +99,7 @@ Each step is one pull request. Do not start the next until the previous one is r
 
 5. **Field map: boundary, elevation, probe pin.** Reuse `components/FieldsMap.tsx`, `components/fields/FieldDetailMap.tsx`, and `components/ElevationOverlay.tsx`. Load maps with a dynamic import, the way the rest of the app does. Draw the outline, the elevation picture clipped to it, and each current-year probe pin (install pin, otherwise planned pin — not the field center). A field with no outline still shows the probe pin; elevation picture stays off until there is an outline. Done when another farm's outline never appears, and Fishell's boundary, shade, and probe pins match the office map for that field.
 
-6. **Probe details.** On the field: serial, install date, status, probe number, label, and year new. "Not recorded" when year new is blank. A probe that is only on the shop rack does not appear. Done when the serial, install date, and year new match the office field page.
+6. **Probe details.** On the field: serial, install date, status, probe number, label, and age in seasons from year new. "Not recorded" when year new is blank. A probe that is only on the shop rack does not appear. Done when the serial and install date match the office field page, and a probe with year new 2024 shows "3 seasons" in 2026.
 
 7. **Elevation and soil numbers.** Show the stored point values next to the probe. Feet for elevation. "Not recorded" when empty. Done when the numbers match the office field page.
 
