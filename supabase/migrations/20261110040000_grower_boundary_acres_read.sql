@@ -1,7 +1,8 @@
--- Grower views: use field_boundaries.acres as the primary acres column.
--- Depends on 20261110030000_field_boundary_acres.sql (trigger-maintained column
--- from GeoJSON geometry via ST_Area(geography), 2 decimal places).
+-- Grower views: read field_boundaries.acres (column), not live PostGIS.
+-- Depends on 20261110030000_field_boundary_acres.sql. No ST_* in this file —
+-- safe once the acres column exists even before/after PostGIS is enabled.
 -- Fall back to fields.acres when no boundary acres exist; flag the source.
+-- Grants match prior grower_read_lock SELECT-only grants (no new EXECUTE).
 -- Not applied to production by this commit.
 
 BEGIN;
@@ -22,7 +23,7 @@ LEFT JOIN public.field_boundaries AS fb ON fb.field_id = f.id
 WHERE public.grower_can_see_field(f.id);
 
 COMMENT ON VIEW public.grower_fields IS
-  'Grower-visible fields. acres prefer field_boundaries.acres (geometry-derived); else fields.acres. acres_from_boundary marks the source.';
+  'Grower-visible fields. acres prefer field_boundaries.acres (geometry-derived column); else fields.acres. acres_from_boundary marks the source.';
 
 DROP VIEW IF EXISTS public.grower_field_boundaries;
 CREATE VIEW public.grower_field_boundaries
@@ -43,11 +44,19 @@ COMMENT ON VIEW public.grower_field_boundaries IS
 REVOKE ALL ON TABLE
   public.grower_fields,
   public.grower_field_boundaries
-FROM PUBLIC, anon, authenticated, service_role, acre_grower;
+FROM PUBLIC, anon, authenticated, service_role;
 
-GRANT SELECT ON
-  public.grower_fields,
-  public.grower_field_boundaries
-TO acre_grower;
+-- Same SELECT grants growers already hold — no new privileges (no EXECUTE).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'acre_grower') THEN
+    EXECUTE 'REVOKE ALL ON public.grower_fields, public.grower_field_boundaries FROM acre_grower';
+    EXECUTE 'GRANT SELECT ON public.grower_fields, public.grower_field_boundaries TO acre_grower';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'acre_grower_preview') THEN
+    EXECUTE 'REVOKE ALL ON public.grower_fields, public.grower_field_boundaries FROM acre_grower_preview';
+    EXECUTE 'GRANT SELECT ON public.grower_fields, public.grower_field_boundaries TO acre_grower_preview';
+  END IF;
+END $$;
 
 COMMIT;

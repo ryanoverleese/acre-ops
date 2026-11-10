@@ -1,25 +1,27 @@
 -- Boundary-derived acres on field_boundaries.
 -- geometry is GeoJSON jsonb, CRS EPSG:4326, axis_order lonlat (enforced by checks).
--- Prefer PostGIS geography ST_Area; fall back to spherical excess when PostGIS
--- is unavailable (fixture engines). fields.acres is left in place as fallback
--- for fields with no boundary row.
--- Trigger-maintained column (not GENERATED): jsonb + optional PostGIS cannot be
--- a portable IMMUTABLE generated expression across Supabase and PGlite.
+-- Trigger-maintained column (not GENERATED): jsonb + PostGIS is not a portable
+-- IMMUTABLE generated expression across Supabase and PGlite fixtures.
+-- fields.acres is left in place as fallback when no boundary row exists.
 -- Not applied to production by this commit.
 
 BEGIN;
 
--- Supabase / local Postgres with PostGIS. Fixture engines without the
--- extension continue; field_boundary_geojson_acres falls back to spherical math.
+-- Supabase: PostGIS lives in the extensions schema. Prefer that install path.
+-- Fixture engines without PostGIS continue; field_boundary_geojson_acres falls
+-- back to spherical math.
+CREATE SCHEMA IF NOT EXISTS extensions;
 DO $$
 BEGIN
-  CREATE EXTENSION IF NOT EXISTS postgis;
+  CREATE EXTENSION IF NOT EXISTS postgis WITH SCHEMA extensions;
 EXCEPTION WHEN OTHERS THEN
-  RAISE NOTICE 'postgis not installed; boundary acres will use spherical fallback (%)',
+  RAISE NOTICE 'postgis not available; boundary acres will use spherical fallback (%)',
     SQLERRM;
 END $$;
 
 -- Acres from GeoJSON polygon/multipolygon. SRID 4326 → geography → m² → acres.
+-- PostGIS calls are schema-qualified to whichever schema owns the extension
+-- (extensions on Supabase; public if already installed elsewhere).
 CREATE OR REPLACE FUNCTION public.field_boundary_geojson_acres(geom jsonb)
 RETURNS numeric
 LANGUAGE plpgsql
@@ -30,6 +32,7 @@ SET search_path = public, extensions
 AS $$
 DECLARE
   result numeric;
+  postgis_schema text;
   kind text;
   polys jsonb;
   rings jsonb;
@@ -45,19 +48,30 @@ DECLARE
   area_m2 float8;
   earth_r float8 := 6371008.8;
 BEGIN
+  SELECT n.nspname
+    INTO postgis_schema
+    FROM pg_extension e
+    JOIN pg_namespace n ON n.oid = e.extnamespace
+   WHERE e.extname = 'postgis'
+   LIMIT 1;
+
   -- Production / Supabase path: ellipsoid-aware geography area.
-  -- EXECUTE keeps ::geography out of parse-time resolution so fixture engines
-  -- without PostGIS can still CREATE this function. search_path includes
-  -- extensions because Supabase installs PostGIS there.
-  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
+  -- EXECUTE + schema qualification keeps types/functions resolvable when
+  -- PostGIS is in extensions (or public), and keeps CREATE FUNCTION working
+  -- on fixture engines that lack PostGIS entirely.
+  IF postgis_schema IS NOT NULL THEN
     BEGIN
-      EXECUTE
+      EXECUTE format(
         'SELECT round(
-           (ST_Area(ST_SetSRID(ST_GeomFromGeoJSON($1), 4326)::geography) / 4046.8564224)::numeric,
+           (%1$I.ST_Area(
+              %1$I.ST_SetSRID(%1$I.ST_GeomFromGeoJSON($1), 4326)::%1$I.geography
+            ) / 4046.8564224)::numeric,
            2
-         )'
-        INTO result
-        USING geom::text;
+         )',
+        postgis_schema
+      )
+      INTO result
+      USING geom::text;
       RETURN result;
     EXCEPTION
       WHEN invalid_parameter_value THEN
@@ -110,12 +124,23 @@ BEGIN
 END;
 $$;
 
+-- Owner/service use only. Grower roles never call this; they SELECT the
+-- acres column through grower_* views (no EXECUTE grants for growers).
 REVOKE ALL ON FUNCTION public.field_boundary_geojson_acres(jsonb)
   FROM PUBLIC, anon, authenticated, service_role;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'acre_grower') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.field_boundary_geojson_acres(jsonb) FROM acre_grower';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'acre_grower_preview') THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.field_boundary_geojson_acres(jsonb) FROM acre_grower_preview';
+  END IF;
+END $$;
 GRANT EXECUTE ON FUNCTION public.field_boundary_geojson_acres(jsonb) TO service_role;
 
 COMMENT ON FUNCTION public.field_boundary_geojson_acres(jsonb) IS
-  'Acres from field_boundaries.geometry GeoJSON (EPSG:4326 lonlat). Uses ST_Area(geography) when PostGIS is present.';
+  'Acres from field_boundaries.geometry GeoJSON (EPSG:4326 lonlat). Uses schema-qualified ST_Area(geography) when PostGIS is present.';
 
 -- Views may already reference acres from a partial apply; drop before column swap.
 DROP VIEW IF EXISTS public.grower_fields;
@@ -128,7 +153,7 @@ ALTER TABLE public.field_boundaries
   ADD COLUMN acres numeric(14,2);
 
 COMMENT ON COLUMN public.field_boundaries.acres IS
-  'Area in acres from boundary geometry (EPSG:4326 geography via ST_Area when PostGIS is present). Primary acres source; fields.acres remains as fallback when no boundary exists.';
+  'Area in acres from boundary geometry (EPSG:4326 geography via ST_Area). Primary acres source; fields.acres remains as fallback when no boundary exists.';
 
 CREATE OR REPLACE FUNCTION public.field_boundaries_acres_tg()
 RETURNS trigger
@@ -152,7 +177,8 @@ CREATE TRIGGER field_boundaries_acres_tg
 UPDATE public.field_boundaries
    SET acres = public.field_boundary_geojson_acres(geometry);
 
--- Grower field acres: boundary first, then stored fields.acres.
+-- Interim grower views until 20261110040000 adds acres_from_boundary.
+-- Prefer field_boundaries.acres; fall back to fields.acres. No PostGIS in the view.
 CREATE VIEW public.grower_fields
 WITH (security_barrier = true) AS
 SELECT f.id,
@@ -184,14 +210,23 @@ WHERE public.grower_can_see_field(fb.field_id);
 COMMENT ON VIEW public.grower_field_boundaries IS
   'Grower-visible field outlines for app.grower_operation_id. Includes boundary acres.';
 
+-- Restore the same SELECT grants growers already have (drop/create clears them).
+-- No EXECUTE on field_boundary_geojson_acres — views only read the acres column.
 REVOKE ALL ON TABLE
   public.grower_fields,
   public.grower_field_boundaries
-FROM PUBLIC, anon, authenticated, service_role, acre_grower;
+FROM PUBLIC, anon, authenticated, service_role;
 
-GRANT SELECT ON
-  public.grower_fields,
-  public.grower_field_boundaries
-TO acre_grower;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'acre_grower') THEN
+    EXECUTE 'REVOKE ALL ON public.grower_fields, public.grower_field_boundaries FROM acre_grower';
+    EXECUTE 'GRANT SELECT ON public.grower_fields, public.grower_field_boundaries TO acre_grower';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'acre_grower_preview') THEN
+    EXECUTE 'REVOKE ALL ON public.grower_fields, public.grower_field_boundaries FROM acre_grower_preview';
+    EXECUTE 'GRANT SELECT ON public.grower_fields, public.grower_field_boundaries TO acre_grower_preview';
+  END IF;
+END $$;
 
 COMMIT;

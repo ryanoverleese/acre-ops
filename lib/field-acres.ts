@@ -83,7 +83,13 @@ async function boundaryAcresColumnExists(): Promise<boolean> {
   return rows.length > 0;
 }
 
-/** Map of field_id → boundary acres (column when present, else geometry). */
+/**
+ * Map of field_id → boundary acres.
+ * Single source of truth after migration: read field_boundaries.acres only.
+ * Before the column exists (current Netlify preview / unmigrated DB): compute
+ * from GeoJSON in TypeScript so office/installer acres still work. Grower
+ * views cannot expose boundary acres until the migration is applied.
+ */
 export async function loadBoundaryAcresByFieldId(): Promise<Map<number, number>> {
   const map = new Map<number, number>();
 
@@ -103,7 +109,7 @@ export async function loadBoundaryAcresByFieldId(): Promise<Map<number, number>>
     return map;
   }
 
-  // Migration not applied yet: compute from GeoJSON so previews keep working.
+  // Pre-migration preview only — not used once field_boundaries.acres exists.
   const rows = await query<{ field_id: unknown; geometry: unknown }>(
     `SELECT field_id, geometry
        FROM public.field_boundaries
