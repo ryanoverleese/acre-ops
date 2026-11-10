@@ -8,10 +8,14 @@ import type { GrowerProbePin, GrowerWaterRec } from '@/lib/supabase/grower-field
 
 const GrowerFieldMap = dynamic(() => import('../../GrowerFieldMap'), { ssr: false });
 
-function fmtDate(value: string | null): string {
-  if (!value) return 'Not recorded';
-  const day = value.slice(0, 10);
-  return day || 'Not recorded';
+function fmtDate(value: unknown): string {
+  if (value == null || value === '') return 'Not recorded';
+  if (value instanceof Date) {
+    if (!Number.isFinite(value.getTime())) return 'Not recorded';
+    return value.toISOString().slice(0, 10);
+  }
+  const day = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : 'Not recorded';
 }
 
 export default function FieldDetailClient({

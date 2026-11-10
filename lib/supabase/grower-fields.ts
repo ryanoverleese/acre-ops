@@ -59,6 +59,17 @@ export function growerCurrentSeasonYear(now = new Date()): number {
   return now.getFullYear();
 }
 
+/** Calendar day for grower UI. pg timestamptz arrives as Date; date columns as strings. */
+export function growerDayString(value: unknown): string | null {
+  if (value == null || value === '') return null;
+  if (value instanceof Date) {
+    if (!Number.isFinite(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+  const day = String(value).slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : null;
+}
+
 export type GrowerBoundaryCollection = {
   type: 'FeatureCollection';
   features: Array<{
@@ -172,7 +183,7 @@ export async function getGrowerFieldDetail(
       label: string | null;
       probe_number: unknown;
       probe_status: string | null;
-      install_date: string | null;
+      install_date: Date | string | null;
       probe_year_new: unknown;
       elevation: unknown;
       soil_type: string | null;
@@ -215,7 +226,7 @@ export async function getGrowerFieldDetail(
         label: p.label,
         probeNumber: p.probe_number == null ? null : Number(p.probe_number),
         status: p.probe_status,
-        installDate: p.install_date,
+        installDate: growerDayString(p.install_date),
         yearNew: yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
         ageSeasons: probeAgeSeasons(
           yearNew != null && Number.isFinite(yearNew) ? yearNew : null,
@@ -230,7 +241,7 @@ export async function getGrowerFieldDetail(
 
     const recs = await growerQuery<{
       id: unknown;
-      date: string;
+      date: Date | string;
       recommendation: string | null;
       suggested_water_day: string | null;
       report_type: string | null;
@@ -253,13 +264,17 @@ export async function getGrowerFieldDetail(
       season: Number(row.season),
       boundaries,
       probes: probePins,
-      waterRecs: recs.map((rec) => ({
-        id: positiveId(rec.id),
-        date: rec.date,
-        recommendation: rec.recommendation,
-        suggestedWaterDay: rec.suggested_water_day,
-        reportType: rec.report_type || 'full',
-      })),
+      waterRecs: recs.flatMap((rec) => {
+        const date = growerDayString(rec.date);
+        if (!date) return [];
+        return [{
+          id: positiveId(rec.id),
+          date,
+          recommendation: rec.recommendation,
+          suggestedWaterDay: rec.suggested_water_day,
+          reportType: rec.report_type || 'full',
+        }];
+      }),
     };
   });
 }
