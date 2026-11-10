@@ -68,6 +68,7 @@ function ensureLerc() {
 type ElevTile = HTMLCanvasElement & {
   _elev?: Float32Array;
   _cell?: number;
+  _range?: Range;
   _abort?: AbortController | null;
 };
 
@@ -94,8 +95,11 @@ function renderCanvas(tile: ElevTile, mode: ElevRenderMode, range: Range) {
   const bright = FIELD_RELIEF.bright / 100;
   let flat = 0;
   for (const s of suns) flat += s.w * s.z;
-  const lo = range.lo;
-  const span = Math.max(range.hi - range.lo, 1);
+  // Color modes: prefer per-tile stretch so a flat field still gets the full
+  // blue→red ramp (global range across dunes washes the field to one mid hue).
+  const stretch = mode === 'shade' ? range : (tile._range ?? range);
+  const lo = stretch.lo;
+  const span = Math.max(stretch.hi - stretch.lo, 0.5);
 
   for (let y = 0; y < TILE; y++) {
     for (let x = 0; x < TILE; x++) {
@@ -210,7 +214,10 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           tile._elev = elev;
           tile._cell = bb.cell;
           const sample = sampleRange(elev);
-          if (sample) state.onRangeSample?.(sample.lo, sample.hi);
+          if (sample) {
+            tile._range = sample;
+            state.onRangeSample?.(sample.lo, sample.hi);
+          }
           renderCanvas(tile, state.mode, state.range);
           done(undefined, tile);
         })
