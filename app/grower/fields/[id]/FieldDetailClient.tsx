@@ -30,6 +30,7 @@ export default function FieldDetailClient({
     id: number;
     name: string;
     acres: number | null;
+    acresFromBoundary: boolean;
     lat: number | null;
     lng: number | null;
     season: number;
@@ -51,7 +52,9 @@ export default function FieldDetailClient({
           </p>
           <h1 className="grower-title">{field.name}</h1>
           <p className="grower-sub">
-            {formatGrowerAcres(field.acres) ?? 'Acres not recorded'}
+            {formatGrowerAcres(field.acres, {
+              fromBoundary: field.acresFromBoundary,
+            }) ?? 'Acres not recorded'}
             {' · '}
             {fieldStatus.label}
           </p>

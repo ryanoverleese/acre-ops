@@ -6,12 +6,18 @@ export function formatProbeAge(ageSeasons: number | null | undefined): string {
 }
 
 /**
- * Acres prefer field_boundaries.acres (geometry), else fields.acres.
- * Null/non-positive stored values display as not recorded — do not invent area.
+ * Grower acres come from the boundary polygon when available.
+ * When falling back to stored fields.acres, mark as (stored).
+ * Null/non-positive values display as not recorded — do not invent area.
  */
-export function formatGrowerAcres(acres: number | null | undefined): string | null {
+export function formatGrowerAcres(
+  acres: number | null | undefined,
+  options?: { fromBoundary?: boolean | null },
+): string | null {
   if (acres == null || !Number.isFinite(acres) || acres <= 0) return null;
-  return `${acres} ac`;
+  const label = `${acres} ac`;
+  if (options && options.fromBoundary === false) return `${label} (stored)`;
+  return label;
 }
 
 /** Probe assignment status from assignment_probe_status_options (Installed / Removed / …). */

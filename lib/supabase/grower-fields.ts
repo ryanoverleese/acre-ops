@@ -7,6 +7,8 @@ export type GrowerFieldRow = {
   id: number;
   name: string;
   acres: number | null;
+  /** True when acres were computed from the boundary polygon. */
+  acresFromBoundary: boolean;
   lat: number | null;
   lng: number | null;
   fieldSeasonId: number;
@@ -27,6 +29,7 @@ export async function listGrowerFieldsForSeason(
       id: unknown;
       name: string;
       acres: unknown;
+      acres_from_boundary: unknown;
       lat: unknown;
       lng: unknown;
       field_season_id: unknown;
@@ -35,6 +38,7 @@ export async function listGrowerFieldsForSeason(
       `SELECT f.id,
               f.name,
               f.acres,
+              f.acres_from_boundary,
               f.lat,
               f.lng,
               fs.id AS field_season_id,
@@ -68,6 +72,7 @@ export async function listGrowerFieldsForSeason(
         id,
         name: row.name,
         acres: row.acres == null ? null : Number(row.acres),
+        acresFromBoundary: Boolean(row.acres_from_boundary),
         lat: row.lat == null ? null : Number(row.lat),
         lng: row.lng == null ? null : Number(row.lng),
         fieldSeasonId: positiveId(row.field_season_id),
@@ -131,6 +136,7 @@ export type GrowerFieldDetail = {
   id: number;
   name: string;
   acres: number | null;
+  acresFromBoundary: boolean;
   lat: number | null;
   lng: number | null;
   fieldSeasonId: number;
@@ -315,12 +321,14 @@ export async function getGrowerFieldDetail(
       id: unknown;
       name: string;
       acres: unknown;
+      acres_from_boundary: unknown;
       lat: unknown;
       lng: unknown;
       field_season_id: unknown;
       season: unknown;
     }>(
-      `SELECT f.id, f.name, f.acres, f.lat, f.lng, fs.id AS field_season_id, fs.season
+      `SELECT f.id, f.name, f.acres, f.acres_from_boundary, f.lat, f.lng,
+              fs.id AS field_season_id, fs.season
          FROM public.grower_fields AS f
          JOIN public.grower_field_seasons AS fs ON fs.field_id = f.id
         WHERE f.id = $1 AND fs.season = $2
@@ -422,6 +430,7 @@ export async function getGrowerFieldDetail(
       id: positiveId(row.id),
       name: row.name,
       acres: row.acres == null ? null : Number(row.acres),
+      acresFromBoundary: Boolean(row.acres_from_boundary),
       lat: row.lat == null ? null : Number(row.lat),
       lng: row.lng == null ? null : Number(row.lng),
       fieldSeasonId: positiveId(row.field_season_id),

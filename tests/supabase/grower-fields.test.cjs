@@ -155,9 +155,16 @@ test('lists only this year’s fields for farm A', async () => {
   const alpha = rows.find((row) => row.name === 'Alpha');
   assert.deepEqual(alpha.probeStatuses, ['Installed', 'Assigned']);
   assert.equal(summarizeGrowerFieldProbeStatus(alpha.probeStatuses).label, 'Installed');
+  // Alpha has a boundary: acres come from geometry, not the stored 80.
+  assert.equal(alpha.acresFromBoundary, true);
+  assert.notEqual(alpha.acres, 80);
+  assert.ok(alpha.acres > 0);
   const shared = rows.find((row) => row.name === 'Shared');
   assert.deepEqual(shared.probeStatuses, []);
   assert.equal(summarizeGrowerFieldProbeStatus(shared.probeStatuses).label, 'No probes');
+  // Shared has no boundary: fall back to stored acres and mark it.
+  assert.equal(shared.acresFromBoundary, false);
+  assert.equal(shared.acres, 40);
 });
 
 test('farm B does not see farm A-only fields', async () => {
@@ -176,6 +183,8 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
 
   const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
   assert.equal(detail.name, 'Alpha');
+  assert.equal(detail.acresFromBoundary, true);
+  assert.notEqual(detail.acres, 80);
   assert.equal(detail.boundaries.features.length, 1);
   assert.equal(detail.probes.length, 2);
   assert.equal(detail.probes[0].serial, 'SN-ALPHA');
@@ -216,6 +225,8 @@ test('farm hardware list is scoped and includes pinless probes', async () => {
 
 test('acres display never invents area from null or zero', () => {
   assert.equal(formatGrowerAcres(130.5), '130.5 ac');
+  assert.equal(formatGrowerAcres(130.5, { fromBoundary: true }), '130.5 ac');
+  assert.equal(formatGrowerAcres(130.5, { fromBoundary: false }), '130.5 ac (stored)');
   assert.equal(formatGrowerAcres(null), null);
   assert.equal(formatGrowerAcres(0), null);
   assert.equal(formatGrowerAcres(-1), null);

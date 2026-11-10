@@ -52,6 +52,7 @@ export default async function GrowerFieldPage({
         id: detail.id,
         name: detail.name,
         acres: detail.acres,
+        acresFromBoundary: detail.acresFromBoundary,
         lat: detail.lat,
         lng: detail.lng,
         season: detail.season,

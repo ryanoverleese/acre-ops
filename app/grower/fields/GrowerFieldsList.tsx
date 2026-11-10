@@ -12,6 +12,7 @@ export default function GrowerFieldsList({
     id: number;
     name: string;
     acres: number | null;
+    acresFromBoundary: boolean;
     probeStatuses: string[];
   }>;
 }) {
@@ -38,7 +39,9 @@ export default function GrowerFieldsList({
                 <a href={`/grower/fields/${field.id}`} className="grower-list-row">
                   <span className="grower-list-primary">{field.name}</span>
                   <span className="grower-list-meta">
-                    {formatGrowerAcres(field.acres) ?? 'Acres not recorded'}
+                    {formatGrowerAcres(field.acres, {
+                      fromBoundary: field.acresFromBoundary,
+                    }) ?? 'Acres not recorded'}
                     {' · '}
                     {status.label}
                   </span>
