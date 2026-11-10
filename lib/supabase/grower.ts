@@ -50,7 +50,8 @@ export function growerDatabaseConfig(raw: string): PoolConfig {
 }
 
 function assertProject() {
-  if (process.env.SUPABASE_URL?.replace(/\/$/, '') !== PROJECT_URL) {
+  const configured = process.env.SUPABASE_URL?.replace(/\/$/, '');
+  if (configured && configured !== PROJECT_URL) {
     throw new DataError('SUPABASE_URL must point to acre-ops', 503);
   }
 }

@@ -26,7 +26,12 @@ export function databaseConfig(raw: string): PoolConfig {
     statement_timeout: 30000, query_timeout: 35000, application_name: 'acre-ops-supabase-branch', allowExitOnIdle: true };
 }
 export function assertProject() {
-  if (process.env.SUPABASE_URL?.replace(/\/$/, '') !== PROJECT_URL) throw new DataError('SUPABASE_URL must point to acre-ops', 503);
+  const configured = process.env.SUPABASE_URL?.replace(/\/$/, '');
+  // Deploy previews sometimes omit SUPABASE_URL while still having DATABASE_URL.
+  // Host checks in databaseConfig / growerDatabaseConfig still pin the project.
+  if (configured && configured !== PROJECT_URL) {
+    throw new DataError('SUPABASE_URL must point to acre-ops', 503);
+  }
 }
 async function getPool(): Promise<Pool> {
   assertProject();
