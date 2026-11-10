@@ -151,7 +151,8 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
       return () => { clearContour(); };
     }
 
-    // Client-colored DEM (CutSheetRX ramp)
+    // Client-colored DEM (CutSheetRX ramp) — one image for the view, not a
+    // Leaflet tile grid. Tiled DEM made Color + shade split at tile edges.
     clearContour();
     const elevMode = resolved as ElevRenderMode;
     if (!elevRef.current) {
@@ -160,8 +161,6 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
         mode: elevMode,
         opacity: MODE_OPACITY[elevMode],
         pane: ELEVATION_PANE,
-        // Invalid until tiles sample — renderCanvas falls back to per-tile
-        // sample for the first paint, then shared range keeps tiles seamless.
         range: { lo: Infinity, hi: -Infinity },
         onRangeSample: (lo, hi) => {
           const cur = rangeRef.current;
@@ -171,9 +170,9 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
           if (!changed || !(cur.hi > cur.lo)) return;
           if (rangeTimer.current) clearTimeout(rangeTimer.current);
           rangeTimer.current = setTimeout(() => {
-            const span = Math.max(cur.hi - cur.lo, 1);
+            const span = Math.max(cur.hi - cur.lo, 0.5);
             elevRef.current?.setElevRange({ lo: cur.lo, hi: cur.lo + span });
-          }, 80);
+          }, 40);
         },
       });
       elevRef.current.addTo(map);
