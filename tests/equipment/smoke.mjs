@@ -207,7 +207,8 @@ try {
     const ids=original.billing_entity.map(link=>link.id);
     assert.equal(ids.length,2);
     await page.goto(`${base}/fields`);
-    await page.getByRole('button',{name:'Signup',exact:true}).click();
+    // Season modes use role=tab (fields-tabs tablist), not button.
+    await page.getByRole('tab',{name:'Signup',exact:true}).click();
     const sharedButton=()=>page.locator('table').getByRole('button',{name:'QA Billing / QA Split Partner',exact:true});
     await sharedButton().waitFor();
     await sharedButton().click();

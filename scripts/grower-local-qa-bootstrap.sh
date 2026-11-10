@@ -39,9 +39,11 @@ for f in $(ls "$ROOT/supabase/migrations/"*.sql | sort); do
   psql -h 127.0.0.1 -U acre_ops_owner -d postgres -v ON_ERROR_STOP=1 -f "$f" >/dev/null
 done
 
+# Do NOT set NODE_ENV here. Exporting NODE_ENV=development into the agent shell
+# makes `next build` fail prerendering /_global-error (React resolves null).
+# next dev / next build set NODE_ENV themselves.
 cat > /tmp/grower-local-qa.env <<EOF
 ACRE_LOCAL_PG=1
-NODE_ENV=development
 AUTH_SECRET=local-grower-qa-auth-secret-not-for-prod
 SUPABASE_URL=https://junawlttpyztjlnbmvcb.supabase.co
 DATABASE_URL=postgresql://acre_ops_owner:${OWNER_PASS}@127.0.0.1:5432/postgres?sslmode=disable
