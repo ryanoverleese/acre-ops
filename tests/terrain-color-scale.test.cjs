@@ -42,4 +42,62 @@ test('elevation grid colors tiles with the field scale, not tile._range', () => 
   assert.match(src, /colorScaleForTile\(/);
   assert.equal(src.includes('tile._range'), false);
   assert.equal(src.includes('_range'), false);
+  assert.equal(src.includes('force-cache'), false);
+  assert.equal(src.includes('_adoptSharedFallback'), false);
+  assert.match(src, /elevationRequestPath\(/);
+});
+
+test('a zero or NaN cannot pin the field on the top of the ramp', () => {
+  const field = [];
+  for (let i = 0; i < 100; i++) field.push(674.2 + (i % 5) * 0.8);
+  field.push(0, Number.NaN, -9999, 10000, 500);
+  const range = scale.rangeFromSamples(field);
+  assert.ok(range, 'expected a range');
+  assert.ok(range.lo > 670 && range.lo < 676, `lo ${range.lo}`);
+  assert.ok(range.hi > 676 && range.hi < 680, `hi ${range.hi}`);
+  const mid = scale.elevationColorIndex(676, range);
+  assert.ok(mid > 20 && mid < 250, `676 mapped to ${mid}`);
+});
+
+test('field sample keeps points inside the boundary and ignores a zero outside it', () => {
+  const req = f.load('lib/terrain/elevation-request.ts');
+  const ring = [[-99.160950182, 40.517733809], [-99.151508806, 40.517652248], [-99.151465891, 40.510441846], [-99.160993097, 40.510507102], [-99.160950182, 40.517733809]];
+  assert.equal(req.pointInRings(-99.1562, 40.5141, [ring]), true);
+  assert.equal(req.pointInRings(-99.2, 40.5141, [ring]), false);
+
+  const R = 6378137;
+  const lng = -99.160950182;
+  const lat = 40.510507102;
+  const x = lng * Math.PI / 180 * R;
+  const y = Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360)) * R;
+  const [lng2, lat2] = req.mercatorToLngLat(x, y);
+  assert.ok(Math.abs(lng - lng2) < 1e-8, String(lng2));
+  assert.ok(Math.abs(lat - lat2) < 1e-8, String(lat2));
+
+  const toMerc = (lng0, lat0) => {
+    const mx = lng0 * Math.PI / 180 * R;
+    const my = Math.log(Math.tan(Math.PI / 4 + (lat0 * Math.PI) / 360)) * R;
+    return [mx - 20, my - 20, mx + 20, my + 20];
+  };
+  const inside = req.elevationsInsideField([676.4], 1, 1, toMerc(-99.1562, 40.5141), [ring]);
+  assert.deepEqual(inside, [676.4]);
+  const outside = req.elevationsInsideField([0], 1, 1, toMerc(-99.2, 40.5141), [ring]);
+  assert.deepEqual(outside, []);
+  const range = scale.rangeFromSamples([676.4, 677.2, 0, Number.NaN]);
+  assert.ok(range.lo > 670 && range.hi < 680, JSON.stringify(range));
+});
+
+test('elevation requests are distinct URLs and the proxy does not cache them together', () => {
+  const req = f.load('lib/terrain/elevation-request.ts');
+  const field = req.elevationRequestPath([-11038551.258, 4940397.927, -11037490.694, 4941465.657], 96, 96);
+  const tile = req.elevationRequestPath([-11040000, 4940000, -11038000, 4942000], 258, 258);
+  assert.notEqual(field, tile);
+  assert.match(field, /\/exportImage\/.+\/96x96$/);
+  assert.equal(req.usgsImageSuffix(['exportImage', '-11038551.258,4940397.927,-11037490.694,4941465.657', '96x96']), 'exportImage');
+  assert.equal(req.usgsImageSuffix(['exportImage']), 'exportImage');
+
+  const route = fs.readFileSync(path.join(__dirname, '../app/api/usgs-elevation/[[...path]]/route.ts'), 'utf8');
+  assert.equal(route.includes("'public, max-age=900'"), false);
+  assert.match(route, /private, max-age=900/);
+  assert.match(route, /Netlify-CDN-Cache-Control', 'no-store'/);
 });
