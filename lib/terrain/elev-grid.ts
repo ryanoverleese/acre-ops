@@ -6,11 +6,17 @@ import {
   rangeFromSamples,
   type ElevRange,
 } from './color-scale';
+import {
+  elevationRequestPath,
+  elevationsInsideField,
+  type LngLatRing,
+} from './elevation-request';
 import { clamp255, ELEVATION_LUT } from './ramp';
 
-const ELEV_PROXY = '/api/usgs-elevation';
 const TILE = 256;
 const N = TILE + 2; // 1px halo for slope neighbors
+/** Fixed grid for the field sample. Independent of the map zoom. */
+const FIELD_SAMPLE = 96;
 const FT = 0.3048;
 
 export type ElevRenderMode = 'colorshade' | 'color' | 'shade';
@@ -43,6 +49,21 @@ function latLngBoundsTo3857(b: L.LatLngBounds): [number, number, number, number]
   const sw = L.CRS.EPSG3857.project(b.getSouthWest());
   const ne = L.CRS.EPSG3857.project(b.getNorthEast());
   return [sw.x, sw.y, ne.x, ne.y];
+}
+
+function exportUrl(bbox: number[], width: number, height: number): string {
+  const box = bbox.map((v) => v.toFixed(3)).join(',');
+  const query = 'f=image&format=lerc&pixelType=F32&bboxSR=3857&imageSR=3857'
+    + `&bbox=${box}&size=${width},${height}&interpolation=RSP_BilinearInterpolation`;
+  return `${elevationRequestPath(bbox, width, height)}?${query}`;
+}
+
+function boundsIdentity(bounds: L.LatLngBounds | null, rings: LngLatRing[] | null): string {
+  const box = bounds && bounds.isValid() ? bounds.toBBoxString() : '';
+  const ringKey = (rings ?? [])
+    .map((ring) => ring.map(([lng, lat]) => `${lng.toFixed(5)},${lat.toFixed(5)}`).join(';'))
+    .join('|');
+  return `${box}#${ringKey}`;
 }
 
 function val(elev: Float32Array, i: number, fallback: number) {
@@ -80,7 +101,7 @@ function ensureLerc() {
 type ElevTile = HTMLCanvasElement & {
   _elev?: Float32Array;
   _cell?: number;
-  _sample?: Range | null;
+  _dead?: boolean;
   _abort?: AbortController | null;
 };
 
@@ -90,15 +111,17 @@ export type ElevGridOptions = {
   pane: string;
   /** Whole-field elevation min/max. Tiles never substitute their own. */
   range?: Range;
-  /** Boundary envelope. One sample of this box is the color scale for every tile. */
+  /** Boundary envelope. One fixed sample of this box is the color scale for every tile. */
   fieldBounds?: L.LatLngBounds | null;
+  /** [lng, lat] rings. Samples outside these rings do not affect the color scale. */
+  fieldRings?: LngLatRing[] | null;
 };
 
 function renderCanvas(tile: ElevTile, mode: ElevRenderMode, fieldScale: Range | null) {
   const elev = tile._elev;
   const cell = tile._cell;
   if (!elev || !cell) return;
-  const scale = mode === 'shade' ? null : (fieldScale ? colorScaleForTile(tile._sample ?? null, fieldScale) : null);
+  const scale = mode === 'shade' ? null : (fieldScale ? colorScaleForTile(null, fieldScale) : null);
   if (mode !== 'shade' && !scale) return;
   const ctx = tile.getContext('2d');
   if (!ctx) return;
@@ -156,28 +179,20 @@ function renderCanvas(tile: ElevTile, mode: ElevRenderMode, fieldScale: Range | 
   ctx.putImageData(img, 0, 0);
 }
 
-function interiorRange(elev: Float32Array): Range | null {
-  const vals = new Float32Array((N - 2) * (N - 2));
-  let p = 0;
-  for (let y = 1; y < N - 1; y++) {
-    for (let x = 1; x < N - 1; x++) vals[p++] = elev[y * N + x];
-  }
-  return rangeFromSamples(vals);
-}
-
 export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
   setElevMode: (mode: ElevRenderMode) => void;
-  setFieldBounds: (bounds: L.LatLngBounds | null) => void;
+  setFieldBounds: (bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) => void;
   rerender: () => void;
 } {
+  const owned = new Set<ElevTile>();
   const state = {
     mode: options.mode,
-    fieldScale: null as Range | null,
+    fieldScale: options.range && options.range.hi > options.range.lo ? options.range : null as Range | null,
     fieldBounds: options.fieldBounds ?? null,
+    fieldRings: options.fieldRings ?? null,
     boundsKey: '',
     fieldAbort: null as AbortController | null,
     fieldGen: 0,
-    fieldFailed: false,
   };
 
   const Layer = L.GridLayer.extend({
@@ -196,58 +211,41 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     onRemove(map: L.Map) {
       state.fieldAbort?.abort();
       state.fieldAbort = null;
+      owned.clear();
       L.GridLayer.prototype.onRemove.call(this, map);
     },
-    _loadedTiles(): ElevTile[] {
+    _removeTile(key: string) {
       const tiles = (this as unknown as { _tiles: Record<string, { el: ElevTile }> })._tiles || {};
-      const out: ElevTile[] = [];
-      for (const key of Object.keys(tiles)) {
-        const el = tiles[key]?.el;
-        if (el?._elev) out.push(el);
+      const el = tiles[key]?.el;
+      if (el) {
+        el._dead = true;
+        el._abort?.abort();
+        owned.delete(el);
       }
-      return out;
+      (L.GridLayer.prototype as unknown as { _removeTile(this: unknown, key: string): void })._removeTile.call(this, key);
     },
+    // Leaflet's _tiles map drops canvases during zoom animation. This set is
+    // every canvas we still own, so a late field scale repaints all of them.
     _paintLoaded() {
-      for (const el of this._loadedTiles()) renderCanvas(el, state.mode, state.fieldScale);
-    },
-    // One scale for every loaded tile. Used only when the field sample failed,
-    // and every tile is repainted together so they cannot diverge.
-    _adoptSharedFallback() {
-      let lo = Infinity;
-      let hi = -Infinity;
-      let n = 0;
-      for (const el of this._loadedTiles()) {
-        const sample = el._sample;
-        if (!sample) continue;
-        if (sample.lo < lo) lo = sample.lo;
-        if (sample.hi > hi) hi = sample.hi;
-        n++;
+      for (const el of owned) {
+        if (el._dead || !el._elev) continue;
+        renderCanvas(el, state.mode, state.fieldScale);
       }
-      if (!n || !(hi > lo)) return;
-      state.fieldScale = colorScaleForTile(null, { lo, hi });
-      this._paintLoaded();
     },
     _loadFieldScale() {
       const bounds = state.fieldBounds;
-      state.boundsKey = bounds && bounds.isValid() ? bounds.toBBoxString() : '';
+      state.boundsKey = boundsIdentity(bounds, state.fieldRings);
       state.fieldAbort?.abort();
       const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
       state.fieldAbort = ac;
       const gen = ++state.fieldGen;
-      if (!bounds || !bounds.isValid()) {
-        state.fieldFailed = true;
-        this._adoptSharedFallback();
-        return;
-      }
-      state.fieldFailed = false;
+      if (!bounds || !bounds.isValid()) return;
 
       const bbox = latLngBoundsTo3857(bounds);
-      const url = `${ELEV_PROXY}/exportImage?f=image&format=lerc&pixelType=F32&bboxSR=3857&imageSR=3857`
-        + `&bbox=${bbox.map((v) => v.toFixed(3)).join(',')}`
-        + `&size=96,96&interpolation=RSP_BilinearInterpolation`;
+      const url = exportUrl(bbox, FIELD_SAMPLE, FIELD_SAMPLE);
 
       ensureLerc()
-        .then(() => fetch(url, { signal: ac?.signal, cache: 'force-cache' }))
+        .then(() => fetch(url, { signal: ac?.signal }))
         .then((r) => {
           if (!r.ok) throw new Error(`elev ${r.status}`);
           return r.arrayBuffer();
@@ -256,20 +254,21 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           if (gen !== state.fieldGen) return;
           state.fieldAbort = null;
           const d = Lerc.decode(buf);
+          if (d.width !== FIELD_SAMPLE || d.height !== FIELD_SAMPLE) throw new Error('field sample size');
           const z = d.pixels[0];
           const mask = d.mask;
           const elev = new Float32Array(d.width * d.height);
           for (let p = 0; p < elev.length; p++) {
             const v = z[p];
-            elev[p] = (mask && !mask[p]) || !(v > -500 && v < 9000) ? NaN : v;
+            elev[p] = (mask && !mask[p]) || !(v > 0 && v < 9000) ? NaN : v;
           }
-          const sample = rangeFromSamples(elev);
-          if (!sample) {
-            state.fieldFailed = true;
-            this._adoptSharedFallback();
-            return;
+          let values = elevationsInsideField(elev, d.width, d.height, bbox, state.fieldRings);
+          if (values.length < 8) {
+            values = elevationsInsideField(elev, d.width, d.height, bbox, null);
           }
-          state.fieldFailed = false;
+          const sample = rangeFromSamples(values);
+          if (!sample) return;
+          // One scale for every tile at every zoom. Tile min/max is never used.
           state.fieldScale = colorScaleForTile(null, sample);
           this._paintLoaded();
         })
@@ -277,30 +276,29 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           if (gen !== state.fieldGen) return;
           state.fieldAbort = null;
           if (err?.name === 'AbortError') return;
-          state.fieldFailed = true;
-          this._adoptSharedFallback();
+          // Leave the previous field scale in place. Do not color from a tile.
         });
     },
     createTile(coords: L.Coords, done: L.DoneCallback) {
       const tile = document.createElement('canvas') as ElevTile;
       tile.width = TILE;
       tile.height = TILE;
+      owned.add(tile);
       const bb = tileBBox(coords);
       const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
       tile._abort = ac;
 
-      const url = `${ELEV_PROXY}/exportImage?f=image&format=lerc&pixelType=F32&bboxSR=3857&imageSR=3857`
-        + `&bbox=${bb.bbox.map((v) => v.toFixed(3)).join(',')}`
-        + `&size=${N},${N}&interpolation=RSP_BilinearInterpolation`;
+      const url = exportUrl(bb.bbox, N, N);
 
       ensureLerc()
-        .then(() => fetch(url, { signal: ac?.signal, cache: 'force-cache' }))
+        .then(() => fetch(url, { signal: ac?.signal }))
         .then((r) => {
           if (!r.ok) throw new Error(`elev ${r.status}`);
           return r.arrayBuffer();
         })
         .then((buf) => {
           tile._abort = null;
+          if (tile._dead) return;
           const d = Lerc.decode(buf);
           if (d.width !== N || d.height !== N) throw new Error('size');
           const z = d.pixels[0];
@@ -308,15 +306,12 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           const elev = new Float32Array(N * N);
           for (let p = 0; p < N * N; p++) {
             const v = z[p];
-            elev[p] = (mask && !mask[p]) || !(v > -500 && v < 9000) ? NaN : v;
+            elev[p] = (mask && !mask[p]) || !(v > 0 && v < 9000) ? NaN : v;
           }
           tile._elev = elev;
           tile._cell = bb.cell;
-          tile._sample = interiorRange(elev);
-          // Color waits for one shared scale. Painting with tile._sample here
-          // is what drew the straight bands.
+          // Same field scale at every zoom. A tile never stretches its own min/max.
           if (state.fieldScale) renderCanvas(tile, state.mode, state.fieldScale);
-          else if (state.fieldFailed) this._adoptSharedFallback();
           done(undefined, tile);
         })
         .catch((err) => {
@@ -331,11 +326,14 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
       state.mode = mode;
       this.rerender();
     },
-    setFieldBounds(bounds: L.LatLngBounds | null) {
-      const key = bounds && bounds.isValid() ? bounds.toBBoxString() : '';
-      if (key === state.boundsKey) return;
+    setFieldBounds(bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) {
+      const nextRings = rings === undefined ? state.fieldRings : rings;
+      const key = boundsIdentity(bounds, nextRings);
+      if (key === state.boundsKey && state.fieldScale) return;
       state.fieldBounds = bounds;
-      state.fieldScale = null;
+      state.fieldRings = nextRings;
+      // Keep the current scale until the new sample arrives so a zoom
+      // cannot clear it and leave tiles to invent their own.
       this._loadFieldScale();
     },
     rerender() {
@@ -345,7 +343,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
 
   return new Layer() as L.GridLayer & {
     setElevMode: (mode: ElevRenderMode) => void;
-    setFieldBounds: (bounds: L.LatLngBounds | null) => void;
+    setFieldBounds: (bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) => void;
     rerender: () => void;
   };
 }

@@ -6,6 +6,7 @@ import L from 'leaflet';
 import * as esriLeaflet from 'esri-leaflet';
 import type { FieldBoundaryCollection } from './useFieldBoundaries';
 import { createElevGridLayer, type ElevRenderMode } from '@/lib/terrain/elev-grid';
+import type { LngLatRing } from '@/lib/terrain/elevation-request';
 import {
   DEFAULT_TERRAIN_MODE,
   TERRAIN_MODE_LABELS,
@@ -83,6 +84,23 @@ interface ElevationOverlayProps {
 
 type ElevLayer = ReturnType<typeof createElevGridLayer>;
 type ContourLayer = ReturnType<typeof esriLeaflet.imageMapLayer>;
+
+function ringsForClip(data: FieldBoundaryCollection | null | undefined): LngLatRing[] | null {
+  if (!data?.features?.length) return null;
+  const rings: number[][][] = [];
+  for (const feature of data.features) walkRings(feature.geometry?.coordinates, rings);
+  const out: LngLatRing[] = [];
+  for (const ring of rings) {
+    const pts: LngLatRing = [];
+    for (const pair of ring) {
+      const lng = pair[0];
+      const lat = pair[1];
+      if (Number.isFinite(lng) && Number.isFinite(lat)) pts.push([lng, lat]);
+    }
+    if (pts.length >= 3) out.push(pts);
+  }
+  return out.length ? out : null;
+}
 
 function boundsForClip(data: FieldBoundaryCollection | null | undefined): L.LatLngBounds | null {
   if (!data?.features?.length) return null;
@@ -171,18 +189,20 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
     clearContour();
     const elevMode = resolved as ElevRenderMode;
     const fieldBounds = boundsForClip(clipTo);
+    const fieldRings = ringsForClip(clipTo);
     if (!elevRef.current) {
       elevRef.current = createElevGridLayer({
         mode: elevMode,
         opacity: MODE_OPACITY[elevMode],
         pane: ELEVATION_PANE,
         fieldBounds,
+        fieldRings,
       });
       elevRef.current.addTo(map);
     } else {
       elevRef.current.setElevMode(elevMode);
       elevRef.current.setOpacity(MODE_OPACITY[elevMode]);
-      elevRef.current.setFieldBounds(fieldBounds);
+      elevRef.current.setFieldBounds(fieldBounds, fieldRings);
     }
 
     return () => {
