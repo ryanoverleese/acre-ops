@@ -84,16 +84,31 @@ interface ElevationOverlayProps {
 type ElevLayer = ReturnType<typeof createElevGridLayer>;
 type ContourLayer = ReturnType<typeof esriLeaflet.imageMapLayer>;
 
+function boundsForClip(data: FieldBoundaryCollection | null | undefined): L.LatLngBounds | null {
+  if (!data?.features?.length) return null;
+  const rings: number[][][] = [];
+  for (const feature of data.features) walkRings(feature.geometry?.coordinates, rings);
+  const pts: L.LatLngExpression[] = [];
+  for (const ring of rings) {
+    for (const pair of ring) {
+      const lng = pair[0];
+      const lat = pair[1];
+      if (Number.isFinite(lng) && Number.isFinite(lat)) pts.push([lat, lng]);
+    }
+  }
+  if (!pts.length) return null;
+  return L.latLngBounds(pts);
+}
+
 /**
  * USGS 3DEP terrain overlay for react-leaflet MapContainer.
  * Color modes use CutSheetRX's blue→red ramp on client-decoded DEM tiles.
+ * One elevation min/max is taken from the field boundary and applied to every tile.
  */
 export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverlayProps) {
   const map = useMap();
   const elevRef = useRef<ElevLayer | null>(null);
   const contourRef = useRef<ContourLayer | null>(null);
-  const rangeRef = useRef({ lo: Infinity, hi: -Infinity });
-  const rangeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resolved: TerrainMode =
     mode ?? (show ? 'contours' : 'off');
@@ -151,41 +166,29 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
       return () => { clearContour(); };
     }
 
-    // Client-colored DEM (CutSheetRX ramp) — one image for the view, not a
-    // Leaflet tile grid. Tiled DEM made Color + shade split at tile edges.
+    // Client-colored DEM. Color uses one min/max from the field boundary on
+    // every tile. A per-tile min/max painted the straight color bands.
     clearContour();
     const elevMode = resolved as ElevRenderMode;
+    const fieldBounds = boundsForClip(clipTo);
     if (!elevRef.current) {
-      rangeRef.current = { lo: Infinity, hi: -Infinity };
       elevRef.current = createElevGridLayer({
         mode: elevMode,
         opacity: MODE_OPACITY[elevMode],
         pane: ELEVATION_PANE,
-        range: { lo: Infinity, hi: -Infinity },
-        onRangeSample: (lo, hi) => {
-          const cur = rangeRef.current;
-          let changed = false;
-          if (lo < cur.lo) { cur.lo = lo; changed = true; }
-          if (hi > cur.hi) { cur.hi = hi; changed = true; }
-          if (!changed || !(cur.hi > cur.lo)) return;
-          if (rangeTimer.current) clearTimeout(rangeTimer.current);
-          rangeTimer.current = setTimeout(() => {
-            const span = Math.max(cur.hi - cur.lo, 0.5);
-            elevRef.current?.setElevRange({ lo: cur.lo, hi: cur.lo + span });
-          }, 40);
-        },
+        fieldBounds,
       });
       elevRef.current.addTo(map);
     } else {
       elevRef.current.setElevMode(elevMode);
       elevRef.current.setOpacity(MODE_OPACITY[elevMode]);
+      elevRef.current.setFieldBounds(fieldBounds);
     }
 
     return () => {
-      if (rangeTimer.current) clearTimeout(rangeTimer.current);
       // Keep layer across mode switches between color/shade; full unmount clears below
     };
-  }, [resolved, map, hasClip]);
+  }, [resolved, map, hasClip, clipTo]);
 
   // Tear down elev grid when leaving color modes or unmounting
   useEffect(() => {
