@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useResizableColumns } from '@/hooks/useResizableColumns';
 import SearchableSelect from '@/components/SearchableSelect';
 
@@ -33,6 +34,7 @@ interface OperationsClientProps {
   operations: ProcessedOperation[];
   allContacts: ContactOption[];
   embedded?: boolean;
+  children?: ReactNode;
 }
 
 const DEFAULT_COLUMN_WIDTHS: Record<string, number> = {
@@ -47,7 +49,7 @@ const COLUMN_WIDTHS_STORAGE_KEY = 'operations-column-widths';
 
 const initialAddForm = { name: '', notes: '' };
 
-export default function OperationsClient({ operations: initialOperations, allContacts, embedded }: OperationsClientProps) {
+export default function OperationsClient({ operations: initialOperations, allContacts, embedded, children }: OperationsClientProps) {
   const { columnWidths, resizingColumn, handleResizeStart, handleResetColumnWidth } = useResizableColumns({
     defaultWidths: DEFAULT_COLUMN_WIDTHS,
     storageKey: COLUMN_WIDTHS_STORAGE_KEY,
@@ -275,6 +277,7 @@ export default function OperationsClient({ operations: initialOperations, allCon
       )}
 
       <div className={embedded ? undefined : 'content'}>
+        {children}
         <div className="table-container">
           <div className="table-header">
             <h3 className="table-title">
@@ -292,6 +295,9 @@ export default function OperationsClient({ operations: initialOperations, allCon
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
+              <Link className="btn btn-secondary grower-activity-jump" href="/operations/grower-activity">
+                Grower activity
+              </Link>
               <button className="btn btn-primary" onClick={() => setShowAddModal(true)}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" width="16" height="16">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { withApiAuth } from '@/lib/supabase/api';
 import { DataError } from '@/lib/supabase/registry';
@@ -6,7 +7,8 @@ import {
   lookupGrowerLogin,
   verifyGrowerPin,
 } from '@/lib/supabase/grower-auth';
-import { createGrowerSession, GROWER_COOKIE } from '@/lib/grower-session';
+import { createGrowerSession, GROWER_COOKIE, readGrowerSession } from '@/lib/grower-session';
+import { recordGrowerActivity } from '@/lib/supabase/grower-activity';
 
 const attempts = new Map<string, { count: number; until: number }>();
 
@@ -46,6 +48,7 @@ export const POST = withApiAuth(async (request) => {
   }
 
   attempts.delete(key);
+  await recordGrowerActivity(farm.id, 'login', '/grower/login');
   const response = NextResponse.json({ ok: true, operationId: farm.id, name: farm.name });
   response.cookies.set(
     GROWER_COOKIE,
@@ -62,6 +65,8 @@ export const POST = withApiAuth(async (request) => {
 });
 
 export const DELETE = withApiAuth(async () => {
+  const session = await readGrowerSession((await cookies()).get(GROWER_COOKIE)?.value);
+  if (session) await recordGrowerActivity(session.operationId, 'logout', null);
   const response = NextResponse.json({ ok: true });
   response.cookies.delete(GROWER_COOKIE);
   return response;

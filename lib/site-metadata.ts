@@ -29,6 +29,7 @@ export const PAGE_COPY = {
   growerLogin: ['Grower sign in', 'Sign in with your farm name and PIN to open grower fields.'],
   map: ['Map', 'Staff map of fields, probes, and open repairs.'],
   operations: ['Operations', 'Operations list for signed-in Acre Insights staff.'],
+  growerActivity: ['Grower activity', 'Grower sign-ins and pages opened, for signed-in Acre Insights staff.'],
   orders: ['Orders', 'Supply orders and fulfillment for signed-in staff.'],
   install: ['Installs', 'Assigned probe installs for the current season.'],
   installer: ['Probe Installer', 'Crew sign-in for assigned Acre Insights probe installs.'],
