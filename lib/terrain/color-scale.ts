@@ -85,12 +85,11 @@ export function formatLegendRange(loMeters: number, hiMeters: number): string {
 }
 
 /**
- * Real max minus min inside the field, in meters.
- * Uses the same sample filter as rangeFromSamples and does not add the
- * half-meter pad that function applies so a flat field can still be colored.
- * Null when no ground sample exists. Zero is a real flat field, not missing data.
+ * Real min and max inside the field, in meters.
+ * Same sample filter as rangeFromSamples, without the half-meter pad that
+ * function adds so a flat field can still be colored.
  */
-export function fieldReliefMeters(values: ArrayLike<number>): number | null {
+export function fieldElevationBounds(values: ArrayLike<number>): ElevRange | null {
   const kept: number[] = [];
   for (let i = 0; i < values.length; i++) {
     const v = values[i];
@@ -109,22 +108,31 @@ export function fieldReliefMeters(values: ArrayLike<number>): number | null {
     n++;
   }
   if (!n) return null;
-  return hi - lo;
+  return { lo, hi };
+}
+
+/** Real max minus min. Null when no ground sample exists. Zero is a flat field. */
+export function fieldReliefMeters(values: ArrayLike<number>): number | null {
+  const bounds = fieldElevationBounds(values);
+  if (!bounds) return null;
+  return bounds.hi - bounds.lo;
 }
 
 /**
- * Relief for the legend strip. Under 10 ft, nearest tenth; otherwise nearest foot.
- * Empty when the span is missing.
+ * Strip phrase. Change leads, and ft is said once: "14 ft change · 2212–2226".
+ * The change is the difference of the whole-foot endpoints, so it matches the range.
+ * Empty when either endpoint is missing.
  */
-export function formatReliefFeet(meters: number): string {
-  if (!Number.isFinite(meters) || meters < 0) return '';
-  const feet = meters * METERS_TO_FEET;
-  if (feet < 10) {
-    const tenths = Math.round(feet * 10) / 10;
-    const text = Number.isInteger(tenths) ? String(tenths) : tenths.toFixed(1);
-    return `${text} ft change`;
-  }
-  return `${Math.round(feet)} ft change`;
+export function formatElevationStrip(loMeters: number, hiMeters: number): string {
+  const loText = formatElevationFeet(loMeters).replace(/ ft$/, '');
+  const hiText = formatElevationFeet(hiMeters).replace(/ ft$/, '');
+  if (!loText || !hiText) return '';
+  const lo = Number(loText);
+  const hi = Number(hiText);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return '';
+  const low = Math.min(lo, hi);
+  const high = Math.max(lo, hi);
+  return `${high - low} ft change · ${low}–${high}`;
 }
 
 /** 0–255 index into the elevation LUT. Same meters and same scale → same index. */

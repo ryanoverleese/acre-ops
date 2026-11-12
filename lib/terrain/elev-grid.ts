@@ -3,6 +3,7 @@ import * as Lerc from 'lerc';
 import {
   colorScaleForTile,
   elevationColorIndex,
+  fieldElevationBounds,
   fieldReliefMeters,
   rangeFromSamples,
   type ElevRange,
@@ -173,7 +174,7 @@ function renderCanvas(tile: ElevTile, mode: ElevRenderMode, fieldScale: Range | 
         const shade = lit / flat * 0.82;
         const light = (ambient + (1 - ambient) * shade) * bright;
         if (mode === 'shade') {
-          const v = clamp255(light * 225);
+          const v = Math.max(70, Math.min(225, light * 225));
           r = g = b = v;
         } else {
           const ti = elevationColorIndex(e, scale!) * 3;
@@ -278,10 +279,12 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
             values = elevationsInsideField(elev, d.width, d.height, bbox, null);
           }
           const sample = rangeFromSamples(values);
-          if (!sample) return;
+          const display = fieldElevationBounds(values);
+          if (!sample || !display) return;
           // One scale for every tile at every zoom. Tile min/max is never used.
+          // The legend uses the unpadded field min/max, not a tile extent.
           state.fieldScale = colorScaleForTile(null, sample);
-          state.onFieldScale?.(state.fieldScale);
+          state.onFieldScale?.(display);
           state.onFieldRelief?.(fieldReliefMeters(values));
           this._paintLoaded();
         })

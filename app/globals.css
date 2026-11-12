@@ -11935,6 +11935,7 @@ a.grower-list-row:hover .grower-list-primary {
   cursor: pointer;
 }
 .map-seg button + button { border-left: 1px solid #D8D5CE; }
+.map-seg button.map-seg-sat { min-width: 88px; }
 .map-seg button[aria-pressed="true"] { background: #1A1A1A; color: #fff; }
 .map-seg button[aria-pressed="false"]:active { background: #EFEDE6; }
 .map-controls-right {
@@ -12004,7 +12005,7 @@ a.grower-list-row:hover .grower-list-primary {
 .map-legend-kind {
   font-size: 12px;
   font-weight: 500;
-  color: #5A5A5A;
+  color: #1A1A1A;
   white-space: nowrap;
 }
 .map-legend-range,
@@ -12020,6 +12021,12 @@ a.grower-list-row:hover .grower-list-primary {
   font-weight: 400;
   color: #5A5A5A;
   white-space: nowrap;
+}
+@media (max-width: 1023px) {
+  .field-map-frame .map-legend.is-color:not(.is-source-open) .map-legend-source { display: none; }
+  .field-map-frame .map-legend.is-color.is-source-open .map-legend-ramp,
+  .field-map-frame .map-legend.is-color.is-source-open .map-legend-range { display: none; }
+  .field-map-frame .map-legend.is-color { cursor: pointer; }
 }
 .field-pin-icon { background: transparent; border: 0; }
 .field-pin-hit {
@@ -12086,7 +12093,7 @@ a.grower-list-row:hover .grower-list-primary {
 .field-map-frame.is-map-expanded .map-legend,
 .field-map-frame:fullscreen .map-legend {
   flex: 0 0 auto;
-  height: 40px;
+  height: 36px;
   border-radius: 0;
   margin-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -12250,12 +12257,6 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
 @media (min-width: 1024px) {
   .map-zoom-btn { display: flex; }
   .map-fs-btn { border-left: 1px solid #D8D5CE; }
-  .field-map-frame .map-legend { height: 40px; }
-  .map-legend-ramp { flex-basis: 96px; }
-  .map-legend-kind { font-size: 13px; }
-  .map-legend-range,
-  .map-legend-relief { font-size: 13px; }
-  .map-legend-source { font-size: 12px; }
   .grower-pill-wrap { display: none; }
   .grower-tabs {
     display: flex;

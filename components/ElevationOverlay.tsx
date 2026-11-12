@@ -31,11 +31,11 @@ const ELEVATION_PANE = 'acre-elevation';
 export const TERRAIN_RAMP_CSS = elevationCssGradient();
 
 const MODE_OPACITY: Record<Exclude<TerrainMode, 'off'>, number> = {
-  // High opacity + normal blend — multiply+clip-path vanishes on iOS Safari
-  colorshade: 0.9,
-  color: 0.88,
-  // Solid hillshade — no see-through satellite under gray relief
-  shade: 1,
+  // Normal blend, clipped to the field. 0.65 keeps the aerial readable.
+  colorshade: 0.65,
+  color: 0.65,
+  // Mid-light hillshade over satellite, still clipped to the field.
+  shade: 0.75,
   contours: 0.8,
 };
 
