@@ -2,18 +2,17 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import ProbeRows from '@/components/fields/ProbeRows';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
   formatGrowerAcres,
-  formatProbeAge,
   summarizeGrowerFieldProbeStatus,
 } from '@/lib/grower-display';
-import { compareProbePinOrder, probeListTitle } from '@/lib/probe-pin-label';
-import { formatRemovalWhen } from '@/lib/removal-time';
+import { compareProbePinOrder } from '@/lib/probe-pin-label';
 import type { GrowerProbePin, GrowerWaterRec } from '@/lib/supabase/grower-fields';
 
-const GrowerFieldMap = dynamic(() => import('../../GrowerFieldMap'), { ssr: false });
+const FieldMapBlock = dynamic(() => import('@/components/fields/FieldMapBlock'), { ssr: false });
 
 function fmtDate(value: unknown): string {
   if (value == null || value === '') return 'Not recorded';
@@ -47,86 +46,39 @@ export default function FieldDetailClient({
     () => field.probes.slice().sort(compareProbePinOrder),
     [field.probes],
   );
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   return (
-    <div className="grower-shell">
-      <header className="grower-top">
-        <div>
-          <p className="grower-navline">
-            <Link href="/grower/fields" className="grower-back">
-              Fields
-            </Link>
-          </p>
-          <h1 className="grower-title">{field.name}</h1>
-          <p className="grower-sub">
-            {formatGrowerAcres(field.acres, {
-              fromBoundary: field.acresFromBoundary,
-            }) ?? 'Acres not recorded'}
-            {' · '}
-            {fieldStatus.label}
-          </p>
-        </div>
+    <div className="grower-shell grower-field-page">
+      <header className="field-page-header">
+        <Link href="/grower/fields" className="field-page-back" aria-label="Back">
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" aria-hidden="true">
+            <path d="M10.5 1.5L2 10l8.5 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+        <h1 className="field-page-title">{field.name}</h1>
+        <p className="field-page-sub">
+          {formatGrowerAcres(field.acres, {
+            fromBoundary: field.acresFromBoundary,
+          }) ?? 'Acres not recorded'}
+          {' · '}
+          {fieldStatus.label}
+        </p>
       </header>
 
-      <div className="grower-map-wrap">
-        <GrowerFieldMap
+      <div className="grower-field-layout">
+        <FieldMapBlock
           fieldId={field.id}
           lat={field.lat}
           lng={field.lng}
           boundaries={field.boundaries}
           probes={probes}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
         />
-      </div>
-
-      <section className="grower-section">
-        <h2 className="grower-section-title">Probes</h2>
-        {probes.length === 0 ? (
-          <p className="grower-empty">No probes for {field.season}.</p>
-        ) : (
-          <ul className="grower-list">
-            {probes.map((probe) => (
-              <li key={probe.id} className="grower-section-block">
-                <div className="grower-list-row grower-list-row-static">
-                  <span className="grower-list-primary">
-                    {probeListTitle(probe)}
-                    {probe.serial ? ` · #${probe.serial}` : ''}
-                    {probe.label ? ` · ${probe.label}` : ''}
-                  </span>
-                  <span className="grower-list-meta">{probe.status || 'Not recorded'}</span>
-                </div>
-                <dl className="grower-facts">
-                  <div>
-                    <dt>Install date</dt>
-                    <dd>{fmtDate(probe.installDate)}</dd>
-                  </div>
-                  {(probe.status || '').toLowerCase() === 'removed' || probe.removalDate || probe.removalAt ? (
-                    <div>
-                      <dt>Pulled</dt>
-                      <dd>{formatRemovalWhen(probe.removalDate, probe.removalAt, 'long') || 'Not recorded'}</dd>
-                    </div>
-                  ) : null}
-                  <div>
-                    <dt>Age</dt>
-                    <dd>{formatProbeAge(probe.ageSeasons)}</dd>
-                  </div>
-                  <div>
-                    <dt>Elevation</dt>
-                    <dd>
-                      {probe.elevation != null && Number.isFinite(probe.elevation)
-                        ? `${probe.elevation} ft`
-                        : 'Not recorded'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Soil</dt>
-                    <dd>{probe.soilType?.trim() || 'Not recorded'}</dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+        <div>
+          <ProbeRows probes={probes} selectedId={selectedId} onSelect={setSelectedId} />
+          {probes.length === 0 ? <p className="grower-empty">No probes for {field.season}.</p> : null}
 
       <section className="grower-section">
         <h2 className="grower-section-title">Water recommendations</h2>
@@ -149,6 +101,8 @@ export default function FieldDetailClient({
           </ul>
         )}
       </section>
+        </div>
+      </div>
     </div>
   );
 }

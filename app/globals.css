@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600&family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Inter+Tight:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
   --bg-primary: #f6f5f4;
@@ -11445,7 +11445,7 @@ body:has(.af-app)::before {
   padding: 16px 16px 32px;
   background: var(--grower-bg);
   color: var(--grower-ink);
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 15px;
   line-height: 1.4;
   flex: 0 1 auto;
@@ -11894,4 +11894,392 @@ a.grower-list-row:hover .grower-list-primary {
   .grower-facts {
     grid-template-columns: 1fr;
   }
+}
+
+/* Field map block — controls and legend sit outside the map. */
+.field-map-frame,
+.probe-rows,
+.field-page-header,
+.grower-tabs,
+.grower-pill,
+.field-map-office-actions {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.field-map-frame {
+  width: 100%;
+  min-width: 0;
+  background: #fff;
+  border-radius: 4px;
+}
+.map-controls {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  background: #fff;
+  border: 1px solid #D8D5CE;
+  border-bottom: 0;
+  border-radius: 4px 4px 0 0;
+}
+.map-seg { display: flex; height: 44px; }
+.map-seg button {
+  min-width: 64px;
+  height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: #fff;
+  color: #1A1A1A;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.map-seg button + button { border-left: 1px solid #D8D5CE; }
+.map-seg button[aria-pressed="true"] { background: #1A1A1A; color: #fff; }
+.map-seg button[aria-pressed="false"]:active { background: #EFEDE6; }
+.map-controls-right {
+  margin-left: auto;
+  display: flex;
+  height: 44px;
+  border-left: 1px solid #D8D5CE;
+}
+.map-zoom-btn,
+.map-fs-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: #fff;
+  color: #1A1A1A;
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.map-zoom-btn + .map-zoom-btn { border-left: 1px solid #D8D5CE; }
+.map-zoom-btn { display: none; }
+.map-zoom-btn:active,
+.map-fs-btn:active { background: #EFEDE6; }
+.field-map-canvas {
+  position: relative;
+  height: 273px;
+  border-left: 1px solid #D8D5CE;
+  border-right: 1px solid #D8D5CE;
+  background: #e8e4dc;
+  overflow: hidden;
+}
+.field-map-canvas .leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #1a1a1a;
+  font-family: inherit;
+}
+.field-map-frame .map-legend {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  max-height: none;
+  padding: 0 12px;
+  overflow: visible;
+  background: #fff;
+  border: 1px solid #D8D5CE;
+  border-top: 0;
+  border-radius: 0 0 4px 4px;
+  box-shadow: none;
+  font-size: inherit;
+}
+.map-legend-ramp {
+  flex: 0 0 72px;
+  height: 8px;
+  border: 1px solid #D8D5CE;
+  border-radius: 2px;
+}
+.map-legend-range {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1A1A1A;
+  white-space: nowrap;
+}
+.map-legend-source {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 400;
+  color: #5A5A5A;
+  white-space: nowrap;
+}
+.field-pin-icon { background: transparent; border: 0; }
+.field-pin-hit {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.field-pin-dot {
+  width: 28px;
+  height: 28px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid #2F5D3A;
+  color: #2F5D3A;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+}
+.field-pin-dot.is-selected {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+  font-size: 14px;
+  line-height: 26px;
+}
+.field-map-frame.is-map-expanded,
+.field-map-frame.is-map-css-fullscreen,
+.field-map-frame:fullscreen,
+.field-map-frame:-webkit-full-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  width: auto;
+  height: auto;
+  max-width: none;
+  border-radius: 0;
+  background: #fff;
+}
+.field-map-frame.is-map-expanded .map-seg,
+.field-map-frame.is-map-expanded .map-zoom-btn,
+.field-map-frame:fullscreen .map-seg,
+.field-map-frame:fullscreen .map-zoom-btn {
+  display: none;
+}
+.field-map-frame.is-map-expanded .field-map-canvas,
+.field-map-frame:fullscreen .field-map-canvas {
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+  border: 0;
+}
+.field-map-frame.is-map-expanded .field-map-canvas .leaflet-container,
+.field-map-frame:fullscreen .field-map-canvas .leaflet-container {
+  width: 100%;
+  height: 100% !important;
+}
+.field-map-frame.is-map-expanded .map-legend,
+.field-map-frame:fullscreen .map-legend {
+  flex: 0 0 auto;
+  height: 40px;
+  border-radius: 0;
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+.field-map-frame.is-map-expanded .map-controls,
+.field-map-frame:fullscreen .map-controls {
+  border-radius: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(44px + env(safe-area-inset-top, 0px));
+}
+html.map-fullscreen-fallback .grower-pill-wrap,
+html.map-fullscreen-fallback .grower-tabs { display: none; }
+
+.probe-rows { margin-top: 16px; }
+.probe-rows-label {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5A5A5A;
+}
+.probe-rows-list { list-style: none; margin: 0; padding: 0; }
+.probe-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid #E6E2DA;
+  background: transparent;
+  color: #1A1A1A;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.probe-row.is-selected {
+  background: #F4F1EA;
+  box-shadow: inset 3px 0 0 #2F5D3A;
+  margin-left: -16px;
+  margin-right: -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  width: calc(100% + 32px);
+}
+.probe-badge {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid #2F5D3A;
+  background: #fff;
+  color: #2F5D3A;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 24px;
+  text-align: center;
+}
+.probe-row.is-selected .probe-badge { border-width: 3px; line-height: 22px; }
+.probe-badge-empty { border-color: transparent; }
+.probe-row-body { flex: 1; min-width: 0; }
+.probe-row-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.probe-row-serial { font-size: 15px; font-weight: 600; }
+.probe-row-status { font-size: 13px; font-weight: 400; color: #5A5A5A; }
+.probe-row-dates { display: block; margin-top: 2px; font-size: 13px; font-weight: 400; color: #5A5A5A; }
+.probe-row-extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #5A5A5A;
+}
+.field-map-office-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0 0;
+}
+.field-map-office-actions button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #D8D5CE;
+  border-radius: 4px;
+  background: #fff;
+  color: #1A1A1A;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.field-page-back {
+  display: inline-flex;
+  align-items: center;
+  width: 44px;
+  height: 32px;
+  margin-left: -10px;
+  color: #1A1A1A;
+}
+.field-page-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.field-page-sub {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  font-weight: 400;
+  color: #5A5A5A;
+}
+.grower-tabs { display: none; }
+.grower-pill-wrap {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.grower-pill {
+  pointer-events: auto;
+  width: min(358px, 100%);
+  height: 52px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #D8D5CE;
+  border-radius: 26px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+}
+.grower-pill a {
+  flex: 1;
+  height: 44px;
+  border-radius: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #1A1A1A;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+}
+.grower-pill a.is-active { background: #1A1A1A; color: #fff; }
+.grower-pill a:not(.is-active):active { background: #EFEDE6; }
+@media (max-width: 1023px) {
+  .grower-shell {
+    padding-bottom: calc(12px + 52px + 12px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (min-width: 1024px) {
+  .map-zoom-btn { display: flex; }
+  .map-fs-btn { border-left: 1px solid #D8D5CE; }
+  .field-map-frame .map-legend { height: 40px; }
+  .map-legend-ramp { flex-basis: 96px; }
+  .map-legend-range { font-size: 13px; }
+  .map-legend-source { font-size: 12px; }
+  .grower-pill-wrap { display: none; }
+  .grower-tabs {
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    height: 56px;
+    margin: 0 0 16px;
+    padding: 0 48px;
+    border-bottom: 1px solid #D8D5CE;
+  }
+  .grower-tabs a {
+    color: #5A5A5A;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 56px;
+  }
+  .grower-tabs a.is-active {
+    color: #1A1A1A;
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 #1A1A1A;
+  }
+  .grower-shell {
+    max-width: none;
+    padding: 0 48px 40px;
+  }
+  .field-page-back { display: none; }
+  .field-page-title { font-size: 28px; }
+  .field-page-sub { font-size: 14px; }
+  .grower-field-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 400px;
+    gap: 32px;
+    align-items: start;
+  }
+  .grower-field-layout .field-map-canvas { height: max(420px, calc(100vh - 274px)); }
 }

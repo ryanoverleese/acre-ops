@@ -118,12 +118,12 @@ test('field map pinch snap is a tenth of a level and button steps divide evenly'
   assert.equal(zoom.FIELD_MAP_ZOOM.zoomDelta, 0.5);
   assert.equal(zoom.FIELD_MAP_ZOOM.wheelPxPerZoomLevel, 120);
   assert.equal(Math.round(zoom.FIELD_MAP_ZOOM.zoomDelta / zoom.FIELD_MAP_ZOOM.zoomSnap), 5);
-  for (const file of ['app/grower/GrowerFieldMap.tsx', 'components/fields/FieldDetailMap.tsx']) {
-    const src = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
-    assert.match(src, /zoomSnap=\{FIELD_MAP_ZOOM\.zoomSnap\}/);
-    assert.match(src, /zoomDelta=\{FIELD_MAP_ZOOM\.zoomDelta\}/);
-    assert.match(src, /wheelPxPerZoomLevel=\{FIELD_MAP_ZOOM\.wheelPxPerZoomLevel\}/);
-    assert.match(src, /field-map-frame/);
-    assert.match(src, /terrain-control terrain-strip/);
-  }
+  const map = fs.readFileSync(path.join(__dirname, '../components/fields/FieldMapBlock.tsx'), 'utf8');
+  assert.match(map, /zoomSnap=\{FIELD_MAP_ZOOM\.zoomSnap\}/);
+  assert.match(map, /zoomDelta=\{FIELD_MAP_ZOOM\.zoomDelta\}/);
+  assert.match(map, /wheelPxPerZoomLevel=\{FIELD_MAP_ZOOM\.wheelPxPerZoomLevel\}/);
+  const office = fs.readFileSync(path.join(__dirname, '../components/fields/FieldDetailMap.tsx'), 'utf8');
+  const grower = fs.readFileSync(path.join(__dirname, '../app/grower/fields/[id]/FieldDetailClient.tsx'), 'utf8');
+  assert.match(office, /FieldMapBlock/);
+  assert.match(grower, /FieldMapBlock/);
 });

@@ -6,12 +6,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
+import FieldMapBlock from '@/components/fields/FieldMapBlock';
+import ProbeRows, { type ProbeRowData } from '@/components/fields/ProbeRows';
 import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
-import TerrainControl from '@/components/TerrainControl';
-import { useLidarLabel } from '@/components/useLidarLabel';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
-import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import { useFieldBoundaries, type FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
@@ -134,9 +133,10 @@ interface Props {
   onPlacePin?: () => void;
   /** Called after a boundary is saved so the Fields table can refresh. */
   onBoundarySaved?: (feature: BoundaryFeature) => void;
+  probes?: ProbeRowData[];
 }
 
-export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBoundarySaved }: Props) {
+export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBoundarySaved, probes = [] }: Props) {
   const [boundaryTick, setBoundaryTick] = useState(0);
   const boundaries = useFieldBoundaries([fieldId], undefined, boundaryTick);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
@@ -149,15 +149,7 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const hasPin = Boolean(lat && lng);
-  const sourcePoint = useMemo(
-    () => fieldInteriorPoint(
-      boundaries.features.map((feature) => feature.geometry?.coordinates),
-      hasPin ? lat : null,
-      hasPin ? lng : null,
-    ),
-    [boundaries, hasPin, lat, lng],
-  );
-  const lidarLabel = useLidarLabel(sourcePoint?.lat ?? null, sourcePoint?.lng ?? null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const fieldFeature = boundaries.features.find((f) => (f.properties?.fieldId ?? f.id) === fieldId);
   const hasBoundary = Boolean(fieldFeature);
   const complex = isComplexBoundary(fieldFeature?.geometry);
@@ -274,6 +266,33 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
       setSaving(false);
     }
   };
+
+  if (!editing) {
+    return (
+      <div className="field-office-map">
+        <FieldMapBlock
+          fieldId={fieldId}
+          lat={lat}
+          lng={lng}
+          boundaries={boundaries}
+          probes={probes}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+        />
+        <div className="field-map-office-actions">
+          {hasBoundary ? (
+            <button type="button" onClick={startEdit}>Edit boundary</button>
+          ) : (
+            <button type="button" onClick={startCreate}>Draw boundary</button>
+          )}
+          {onPlacePin && (
+            <button type="button" onClick={onPlacePin}>{hasPin ? 'Move pin' : 'Place pin'}</button>
+          )}
+        </div>
+        <ProbeRows probes={probes} selectedId={selectedId} onSelect={setSelectedId} />
+      </div>
+    );
+  }
 
   return (
     <div
@@ -417,15 +436,6 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
         </div>
       )}
     </div>
-    {!editing && (
-      <TerrainControl
-        className="terrain-control terrain-strip"
-        value={terrainMode}
-        onChange={setTerrainMode}
-        range={elevRange}
-        sourceLabel={lidarLabel}
-      />
-    )}
     </div>
   );
 }

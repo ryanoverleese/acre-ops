@@ -17,7 +17,7 @@ import type { ProcessedField, ProcessedProbeAssignment, OperationOption, Billing
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
 import { fieldBilling } from '@/lib/data-mappings';
-import { compareProbePinOrder, probeListTitle } from '@/lib/probe-pin-label';
+import { compareProbePinOrder } from '@/lib/probe-pin-label';
 import { formatRemovalWhen } from '@/lib/removal-time';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -3059,6 +3059,18 @@ export default function FieldsClient({
                         if (!Number.isSafeInteger(id) || id <= 0) return;
                         setBoundaryOverrides((prev) => new Map(prev).set(id, feature));
                       }}
+                      probes={selectedFieldProbes.map((pa) => ({
+                        id: pa.id,
+                        probeNumber: pa.probeNumber,
+                        serial: pa.probe,
+                        status: pa.probeStatus,
+                        installDate: pa.installDate || null,
+                        removalDate: pa.removalDate || null,
+                        lat: pa.placementLat ?? pa.installLat ?? null,
+                        lng: pa.placementLng ?? pa.installLng ?? null,
+                        elevation: pa.elevation ?? null,
+                        soilType: pa.soilType ?? null,
+                      }))}
                     />
                     <div className="detail-info detail-info-map-first">
                       <div className="detail-row">
@@ -3080,34 +3092,10 @@ export default function FieldsClient({
                         <span className="detail-label">Crop</span>
                         <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
                       </div>
-                      {selectedFieldProbes.length === 0 ? (
-                        <div className="detail-row">
-                          <span className="detail-label">Probe</span>
-                          <span className="detail-value">{selectedField.probe || '—'}</span>
-                        </div>
-                      ) : (
-                        selectedFieldProbes.map((pa) => (
-                          <div className="detail-row" key={pa.id}>
-                            <span className="detail-label">{probeListTitle(pa)}</span>
-                            <span className="detail-value">
-                              {pa.probe || '—'}
-                              {pa.label ? ` · ${pa.label}` : ''}
-                            </span>
-                          </div>
-                        ))
-                      )}
                       <div className="detail-row">
                         <span className="detail-label">Status</span>
                         <span className="detail-value">{getStatusBadge(selectedField.probeStatus)}</span>
                       </div>
-                      {selectedFieldProbes
-                        .filter((pa) => pa.removalDate || pa.removalAt)
-                        .map((pa) => (
-                          <div className="detail-row" key={`pulled-${pa.id}`}>
-                            <span className="detail-label">Pulled · {probeListTitle(pa)}</span>
-                            <span className="detail-value">{formatRemovalWhen(pa.removalDate, pa.removalAt, 'long') || pa.removalDate || '—'}</span>
-                          </div>
-                        ))}
                       {selectedField.notes && (
                         <div className="detail-row">
                           <span className="detail-label">Notes</span>
