@@ -9,7 +9,8 @@ export type ProbeListItem = {
   installDate: string | null;
   removalDate: string | null;
   ageSeasons: number | null;
-  elevation: number | null;
+  brand: string | null;
+  ownerName: string | null;
   lat: number | null;
   lng: number | null;
 };
