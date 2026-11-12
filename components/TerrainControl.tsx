@@ -20,6 +20,8 @@ interface Props {
   style?: CSSProperties;
   /** Field color scale in meters. Shown as whole feet. Color math is unchanged. */
   range?: ElevRange | null;
+  /** Short source line, e.g. "Lidar 2019 (USGS)". Omitted when unknown. */
+  sourceLabel?: string | null;
 }
 
 /** Shared Terrain picker — CutSheetRX blue→red ramp swatch + mode select. */
@@ -29,11 +31,13 @@ export default function TerrainControl({
   className = 'terrain-control',
   style,
   range,
+  sourceLabel,
 }: Props) {
   const showRamp = value === 'color' || value === 'colorshade';
   const lo = range && Number.isFinite(range.lo) ? formatElevationFeet(range.lo) : '';
   const hi = range && Number.isFinite(range.hi) ? formatElevationFeet(range.hi) : '';
-  const legendLabel = lo && hi
+  const feet = lo && hi ? `${lo}–${hi}` : '';
+  const legendLabel = feet
     ? `Elevation from ${lo} to ${hi}`
     : 'Elevation color scale, low blue to high red';
   return (
@@ -49,14 +53,12 @@ export default function TerrainControl({
         ))}
       </select>
       {showRamp && (
-        <span className="terrain-control-scale" role="img" aria-label={legendLabel}>
-          {lo ? <span className="terrain-control-scale-value">{lo}</span> : null}
-          <span
-            className="terrain-control-ramp"
-            title={lo && hi ? legendLabel : 'Low (blue) → High (red)'}
-            style={{ background: TERRAIN_RAMP_CSS }}
-          />
-          {hi ? <span className="terrain-control-scale-value">{hi}</span> : null}
+        <span className="terrain-control-legend">
+          <span className="terrain-control-scale" role="img" aria-label={legendLabel}>
+            <span className="terrain-control-ramp" style={{ background: TERRAIN_RAMP_CSS }} />
+            {feet ? <span className="terrain-control-scale-value">{feet}</span> : null}
+          </span>
+          {sourceLabel ? <span className="terrain-control-source">{sourceLabel}</span> : null}
         </span>
       )}
     </label>

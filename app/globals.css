@@ -2511,19 +2511,29 @@ a.notification-item {
   flex-basis: 100%;
 }
 
-.terrain-control-scale {
+.terrain-control-legend {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 1 0 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 100%;
+}
+
+.terrain-control-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  max-width: 100%;
 }
 
 .terrain-control-scale .terrain-control-ramp {
-  flex: 1 1 auto;
-  width: auto;
+  width: 36px;
   min-width: 36px;
-  flex-basis: auto;
+  height: 6px;
+  flex: 0 0 36px;
 }
 
 .terrain-control-scale-value {
@@ -2533,6 +2543,17 @@ a.notification-item {
   letter-spacing: 0;
   text-transform: none;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.terrain-control-source {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: none;
+  color: var(--text-secondary, #5c564e);
   white-space: nowrap;
 }
 
@@ -11664,6 +11685,11 @@ a.grower-list-row:hover .grower-list-primary {
   font-size: 11px;
   font-weight: 600;
   color: var(--grower-ink);
+}
+.grower-map .terrain-control-source,
+.grower-map-terrain .terrain-control-source {
+  color: var(--grower-muted, #666);
+  font-weight: 500;
 }
 .grower-probe-pin-hit {
   width: 44px;

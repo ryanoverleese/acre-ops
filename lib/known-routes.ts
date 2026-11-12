@@ -90,6 +90,7 @@ export const API_ROOTS = new Set<string>([
   'select-options',
   'soil',
   'usgs-elevation',
+  'usgs-lidar',
   'valley',
   'water-recs',
   'weather-stations',
