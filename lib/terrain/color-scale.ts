@@ -84,6 +84,57 @@ export function formatLegendRange(loMeters: number, hiMeters: number): string {
   return `${lo}–${hi} ft`;
 }
 
+/**
+ * Real min and max inside the field, in meters.
+ * Same sample filter as rangeFromSamples, without the half-meter pad that
+ * function adds so a flat field can still be colored.
+ */
+export function fieldElevationBounds(values: ArrayLike<number>): ElevRange | null {
+  const kept: number[] = [];
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v > 0 && v < 9000) kept.push(v);
+  }
+  if (!kept.length) return null;
+  kept.sort((a, b) => a - b);
+  const mid = kept[kept.length >> 1];
+  let lo = Infinity;
+  let hi = -Infinity;
+  let n = 0;
+  for (const v of kept) {
+    if (Math.abs(v - mid) > OUTLIER_RADIUS_M) continue;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+    n++;
+  }
+  if (!n) return null;
+  return { lo, hi };
+}
+
+/** Real max minus min. Null when no ground sample exists. Zero is a flat field. */
+export function fieldReliefMeters(values: ArrayLike<number>): number | null {
+  const bounds = fieldElevationBounds(values);
+  if (!bounds) return null;
+  return bounds.hi - bounds.lo;
+}
+
+/**
+ * Strip phrase. Change leads, and ft is said once: "14 ft change · 2212–2226".
+ * The change is the difference of the whole-foot endpoints, so it matches the range.
+ * Empty when either endpoint is missing.
+ */
+export function formatElevationStrip(loMeters: number, hiMeters: number): string {
+  const loText = formatElevationFeet(loMeters).replace(/ ft$/, '');
+  const hiText = formatElevationFeet(hiMeters).replace(/ ft$/, '');
+  if (!loText || !hiText) return '';
+  const lo = Number(loText);
+  const hi = Number(hiText);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return '';
+  const low = Math.min(lo, hi);
+  const high = Math.max(lo, hi);
+  return `${high - low} ft change · ${low}–${high}`;
+}
+
 /** 0–255 index into the elevation LUT. Same meters and same scale → same index. */
 export function elevationColorIndex(meters: number, scale: ElevRange): number {
   const span = Math.max(scale.hi - scale.lo, 0.5);

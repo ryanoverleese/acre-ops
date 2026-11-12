@@ -1,19 +1,33 @@
 'use client';
 
+import { useState } from 'react';
 import { formatProbeAge } from '@/lib/grower-display';
-import { formatRemovalWhen } from '@/lib/removal-time';
-import type { GrowerHardwareRow } from '@/lib/supabase/grower-fields';
+import {
+  canCollapseRemoved,
+  formatProbeListDates,
+  groupProbes,
+  mapsSearchUrl,
+  probesSubline,
+  probeStatusesMixed,
+  removedCount,
+  uniformStatusLabel,
+  type ProbeListItem,
+} from '@/lib/grower-probes';
+import { formatProbeSerial } from '@/lib/probe-row';
 
-function fmtDate(value: string | null): string {
-  if (!value) return 'Not recorded';
-  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : 'Not recorded';
+function Chevron() {
+  return (
+    <svg width="8" height="14" viewBox="0 0 8 14" fill="none" aria-hidden="true">
+      <path d="M1 1.5L6.5 7 1 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
-function fmtLocation(lat: number | null, lng: number | null): string {
-  if (lat == null || lng == null || !Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return 'Not recorded';
-  }
-  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+function chipClass(status: string): string {
+  const value = status.trim().toLowerCase();
+  if (value === 'installed') return 'probe-chip probe-chip-installed';
+  if (value === 'removed') return 'probe-chip probe-chip-removed';
+  return 'probe-chip probe-chip-other';
 }
 
 export default function GrowerHardwareList({
@@ -22,67 +36,113 @@ export default function GrowerHardwareList({
 }: {
   farmName: string;
   season: number;
-  items: GrowerHardwareRow[];
+  items: ProbeListItem[];
 }) {
-  return (
-    <div className="grower-shell">
-      <header className="grower-top">
-        <div>
-          <p className="grower-navline">
-            <a href="/grower" className="grower-back">Home</a>
+  const [showRemoved, setShowRemoved] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const mixed = probeStatusesMixed(items);
+  const uniform = uniformStatusLabel(items);
+  const collapse = canCollapseRemoved(items);
+  const hiddenRemoved = removedCount(items);
+  const groups = groupProbes(items, showRemoved);
+  const selected = items.find((item) => item.id === selectedId) || null;
+
+  if (selected) {
+    const serial = formatProbeSerial(selected.serial);
+    const dates = formatProbeListDates(selected.installDate, selected.removalDate);
+    const age = selected.ageSeasons != null ? formatProbeAge(selected.ageSeasons) : null;
+    const elevation = selected.elevation != null && Number.isFinite(selected.elevation)
+      ? `${selected.elevation} ft`
+      : null;
+    const maps = mapsSearchUrl(selected.lat, selected.lng);
+    return (
+      <div className="grower-shell probes-page">
+        <button type="button" className="field-page-back" aria-label="Back" onClick={() => setSelectedId(null)}>
+          <svg width="12" height="20" viewBox="0 0 12 20" fill="none" aria-hidden="true">
+            <path d="M10.5 1.5L2 10l8.5 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <h1 className="grower-title">{serial || 'Probe'}</h1>
+        {selected.status?.trim() ? <p className="probe-detail-line">{selected.status.trim()}</p> : null}
+        <p className="probe-detail-line">
+          <a href={`/grower/fields/${selected.fieldId}`}>{selected.fieldName}</a>
+        </p>
+        {dates ? <p className="probe-detail-muted">{dates}</p> : null}
+        {age ? <p className="probe-detail-muted">{age}</p> : null}
+        {elevation ? <p className="probe-detail-muted">{elevation}</p> : null}
+        {maps ? (
+          <p className="probe-detail-line">
+            <a href={maps} target="_blank" rel="noopener noreferrer">Open in Maps</a>
           </p>
-          <h1 className="grower-title">Hardware</h1>
-          <p className="grower-sub">{season}</p>
+        ) : null}
+      </div>
+    );
+  }
+
+  const toggleLabel = showRemoved ? 'Hide removed' : `Show ${hiddenRemoved} removed`;
+
+  return (
+    <div className="grower-shell probes-page">
+      <header className="probes-head">
+        <div>
+          <h1 className="grower-title">Probes</h1>
+          <p className="grower-sub">{probesSubline(season, items.length, uniform)}</p>
         </div>
+        {collapse ? (
+          <button type="button" className="probes-toggle probes-toggle-desk" onClick={() => setShowRemoved((open) => !open)}>
+            {toggleLabel}
+          </button>
+        ) : null}
       </header>
 
       {items.length === 0 ? (
-        <p className="grower-empty">No hardware for {season} yet.</p>
+        <p className="probes-empty">No probes this season.</p>
       ) : (
-        <ul className="grower-list">
-          {items.map((probe) => (
-            <li key={probe.id} className="grower-section-block">
-              <div className="grower-list-row grower-list-row-static">
-                <span className="grower-list-primary">
-                  {probe.serial ? `#${probe.serial}` : 'Probe'}
-                  {probe.label ? ` · ${probe.label}` : ''}
-                </span>
-                <span className="grower-list-meta">{probe.status || 'Not recorded'}</span>
-              </div>
-              <p className="grower-inline-link">
-                <a href={`/grower/fields/${probe.fieldId}`}>{probe.fieldName}</a>
-              </p>
-              <dl className="grower-facts">
-                <div>
-                  <dt>Install date</dt>
-                  <dd>{fmtDate(probe.installDate)}</dd>
-                </div>
-                {(probe.status || '').toLowerCase() === 'removed' || probe.removalDate || probe.removalAt ? (
-                  <div>
-                    <dt>Pulled</dt>
-                    <dd>{formatRemovalWhen(probe.removalDate, probe.removalAt, 'long') || 'Not recorded'}</dd>
-                  </div>
-                ) : null}
-                <div>
-                  <dt>Age</dt>
-                  <dd>{formatProbeAge(probe.ageSeasons)}</dd>
-                </div>
-                <div>
-                  <dt>Elevation</dt>
-                  <dd>
-                    {probe.elevation != null && Number.isFinite(probe.elevation)
-                      ? `${probe.elevation} ft`
-                      : 'Not recorded'}
-                  </dd>
-                </div>
-                <div>
-                  <dt>Location</dt>
-                  <dd>{fmtLocation(probe.lat, probe.lng)}</dd>
-                </div>
-              </dl>
-            </li>
+        <>
+          <div className={`probe-cols${mixed ? '' : ' is-plain'}`} aria-hidden="true">
+            <span>Serial</span>
+            {mixed ? <span>Status</span> : null}
+            <span>Dates</span>
+            <span>Age</span>
+            <span />
+          </div>
+          {groups.map((group) => (
+            <section key={group.fieldId} className="probe-group">
+              <a className="probe-field-head" href={`/grower/fields/${group.fieldId}`}>
+                {group.fieldName}
+                <span className="probe-field-count">{` · ${group.probes.length}`}</span>
+              </a>
+              <ul className="probe-group-list">
+                {group.probes.map((probe) => {
+                  const serial = formatProbeSerial(probe.serial);
+                  const dates = formatProbeListDates(probe.installDate, probe.removalDate);
+                  const age = probe.ageSeasons != null ? formatProbeAge(probe.ageSeasons) : null;
+                  const status = probe.status?.trim() || '';
+                  return (
+                    <li key={probe.id}>
+                      <button
+                        type="button"
+                        className={`probe-line${mixed ? '' : ' is-plain'}`}
+                        onClick={() => setSelectedId(probe.id)}
+                      >
+                        <span className="probe-serial">{serial || 'Probe'}</span>
+                        {mixed && status ? <span className={chipClass(status)}>{status}</span> : null}
+                        <span className="probe-dates">{dates || ''}</span>
+                        <span className="probe-age">{age || ''}</span>
+                        <span className="probe-chev"><Chevron /></span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           ))}
-        </ul>
+          {collapse ? (
+            <button type="button" className="probes-toggle probes-toggle-phone" onClick={() => setShowRemoved((open) => !open)}>
+              {toggleLabel}
+            </button>
+          ) : null}
+        </>
       )}
     </div>
   );

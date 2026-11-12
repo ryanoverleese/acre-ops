@@ -31,11 +31,11 @@ const ELEVATION_PANE = 'acre-elevation';
 export const TERRAIN_RAMP_CSS = elevationCssGradient();
 
 const MODE_OPACITY: Record<Exclude<TerrainMode, 'off'>, number> = {
-  // High opacity + normal blend — multiply+clip-path vanishes on iOS Safari
-  colorshade: 0.9,
-  color: 0.88,
-  // Solid hillshade — no see-through satellite under gray relief
-  shade: 1,
+  // Normal blend, clipped to the field. 0.65 keeps the aerial readable.
+  colorshade: 0.65,
+  color: 0.65,
+  // Mid-light hillshade over satellite, still clipped to the field.
+  shade: 0.75,
   contours: 0.8,
 };
 
@@ -86,6 +86,8 @@ interface ElevationOverlayProps {
    * Null when terrain is off. Display only.
    */
   onFieldRange?: (range: ElevRange | null) => void;
+  /** Max minus min of the clipped lidar sample, in meters. Null when missing. */
+  onFieldRelief?: (meters: number | null) => void;
 }
 
 type ElevLayer = ReturnType<typeof createElevGridLayer>;
@@ -129,12 +131,14 @@ function boundsForClip(data: FieldBoundaryCollection | null | undefined): L.LatL
  * Color modes use CutSheetRX's blue→red ramp on client-decoded DEM tiles.
  * One elevation min/max is taken from the field boundary and applied to every tile.
  */
-export default function ElevationOverlay({ mode, show, clipTo, onFieldRange }: ElevationOverlayProps) {
+export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onFieldRelief }: ElevationOverlayProps) {
   const map = useMap();
   const elevRef = useRef<ElevLayer | null>(null);
   const contourRef = useRef<ContourLayer | null>(null);
   const onFieldRangeRef = useRef(onFieldRange);
+  const onFieldReliefRef = useRef(onFieldRelief);
   onFieldRangeRef.current = onFieldRange;
+  onFieldReliefRef.current = onFieldRelief;
 
   const resolved: TerrainMode =
     mode ?? (show ? 'contours' : 'off');
@@ -176,6 +180,7 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange }: E
       const pane = map.getPane(ELEVATION_PANE);
       if (pane) pane.style.clipPath = '';
       onFieldRangeRef.current?.(null);
+      onFieldReliefRef.current?.(null);
       return () => { clearElev(); clearContour(); };
     }
 
@@ -207,6 +212,7 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange }: E
         fieldBounds,
         fieldRings,
         onFieldScale: (range) => onFieldRangeRef.current?.(range),
+        onFieldRelief: (meters) => onFieldReliefRef.current?.(meters),
       });
       elevRef.current.addTo(map);
     } else {

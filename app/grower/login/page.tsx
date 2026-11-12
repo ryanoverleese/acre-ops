@@ -11,5 +11,6 @@ export default async function GrowerLoginPage({
 }) {
   const params = await searchParams;
   const callback = safeCallbackUrl(params.callbackUrl);
-  return <GrowerLoginForm callbackUrl={callback.startsWith('/grower') ? callback : '/grower'} />;
+  const next = callback === '/grower' || !callback.startsWith('/grower') ? '/grower/fields' : callback;
+  return <GrowerLoginForm callbackUrl={next} />;
 }

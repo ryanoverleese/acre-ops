@@ -10,7 +10,7 @@ import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import { probeHasPin, type ProbeRowData } from '@/components/fields/ProbeRows';
-import { formatLegendRange, type ElevRange } from '@/lib/terrain/color-scale';
+import { formatElevationStrip, type ElevRange } from '@/lib/terrain/color-scale';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -149,6 +149,7 @@ export default function FieldMapBlock({
 }) {
   const [mode, setMode] = useState<TerrainMode>('colorshade');
   const [range, setRange] = useState<ElevRange | null>(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const onMap = useCallback((map: L.Map) => { mapRef.current = map; }, []);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
@@ -158,9 +159,7 @@ export default function FieldMapBlock({
     [boundaries, lat, lng],
   );
   const lidar = useLidarLabel(sourcePoint?.lat ?? null, sourcePoint?.lng ?? null);
-  const feet = range && Number.isFinite(range.lo) && Number.isFinite(range.hi)
-    ? formatLegendRange(range.lo, range.hi)
-    : '';
+  const phrase = mode !== 'off' && range ? formatElevationStrip(range.lo, range.hi) : '';
   const center: [number, number] = lat != null && lng != null ? [lat, lng] : NEBRASKA_FALLBACK;
   const pins = probes.filter(probeHasPin);
 
@@ -174,15 +173,23 @@ export default function FieldMapBlock({
           <div className="map-seg" role="group" aria-label="Terrain">
             <button
               type="button"
+              className="map-seg-sat"
+              aria-pressed={mode === 'off'}
+              onClick={() => { setSourceOpen(false); setMode('off'); }}
+            >
+              Satellite
+            </button>
+            <button
+              type="button"
               aria-pressed={mode === 'colorshade'}
-              onClick={() => setMode('colorshade')}
+              onClick={() => { setSourceOpen(false); setMode('colorshade'); }}
             >
               Color
             </button>
             <button
               type="button"
               aria-pressed={mode === 'shade'}
-              onClick={() => setMode('shade')}
+              onClick={() => { setSourceOpen(false); setMode('shade'); }}
             >
               Gray
             </button>
@@ -219,7 +226,11 @@ export default function FieldMapBlock({
         >
           <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
           {hasOutline && (
-            <ElevationOverlay mode={mode} clipTo={boundaries} onFieldRange={setRange} />
+            <ElevationOverlay
+              mode={mode}
+              clipTo={boundaries}
+              onFieldRange={setRange}
+            />
           )}
           <BoundaryLayer data={boundaries} selectedId={fieldId} />
           {pins.map((probe) => (
@@ -241,10 +252,25 @@ export default function FieldMapBlock({
           <MapSizeSync expanded={expanded} />
         </MapContainer>
       </div>
-      <div className="map-legend">
-        {mode !== 'shade' ? <span className="map-legend-ramp" style={{ background: RAMP }} aria-hidden="true" /> : null}
-        {feet ? <span className="map-legend-range">{feet}</span> : null}
-        {lidar ? <span className="map-legend-source">{lidar}</span> : null}
+      <div
+        className={`map-legend${mode === 'off' ? ' is-satellite' : ''}${mode === 'colorshade' ? ' is-color' : ''}${sourceOpen ? ' is-source-open' : ''}`}
+        role={mode === 'colorshade' && lidar && phrase ? 'button' : undefined}
+        tabIndex={mode === 'colorshade' && lidar && phrase ? 0 : undefined}
+        onClick={() => {
+          if (mode === 'colorshade' && lidar && phrase) setSourceOpen((open) => !open);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          if (mode !== 'colorshade' || !lidar || !phrase) return;
+          event.preventDefault();
+          setSourceOpen((open) => !open);
+        }}
+      >
+        {mode === 'off' ? <span className="map-legend-kind">Imagery · Google</span> : null}
+        {phrase ? <span className="map-legend-kind">Elevation</span> : null}
+        {mode === 'colorshade' && phrase ? <span className="map-legend-ramp" style={{ background: RAMP }} aria-hidden="true" /> : null}
+        {phrase ? <span className="map-legend-range">{phrase}</span> : null}
+        {mode !== 'off' && lidar ? <span className="map-legend-source">{lidar}</span> : null}
       </div>
     </div>
   );

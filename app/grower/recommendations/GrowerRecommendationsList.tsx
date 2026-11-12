@@ -14,9 +14,6 @@ export default function GrowerRecommendationsList({
     <div className="grower-shell">
       <header className="grower-top">
         <div>
-          <p className="grower-navline">
-            <a href="/grower" className="grower-back">Home</a>
-          </p>
           <h1 className="grower-title">Recommendations</h1>
           <p className="grower-sub">{season}</p>
         </div>

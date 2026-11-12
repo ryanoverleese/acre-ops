@@ -28,7 +28,7 @@ export default async function GrowerHardwarePage() {
     <>
       {loadError && (
         <p className="grower-banner-error">
-          Could not load hardware. Check grower database setup and try again.
+          Could not load probes. Check grower database setup and try again.
         </p>
       )}
       <GrowerHardwareList farmName={session.name} season={season} items={items} />
