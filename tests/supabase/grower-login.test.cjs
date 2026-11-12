@@ -331,7 +331,7 @@ test('username migration targets Fishell Farms by id or name and keeps grants', 
   const fs = require('node:fs');
   const path = require('node:path');
   const sql = fs.readFileSync(
-    path.join(__dirname, '../../supabase/migrations/20261112233000_grower_username.sql'),
+    path.join(__dirname, '../../supabase/migrations/20261112234500_grower_username.sql'),
     'utf8',
   );
   assert.match(
