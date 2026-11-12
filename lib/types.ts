@@ -28,6 +28,8 @@ export interface Operation {
   name: string;
   notes?: string;
   approval_token?: string;
+  /** Sign-in name when set. operations.name stays the farm name. */
+  grower_username?: string | null;
 }
 
 export interface BillingEntity {

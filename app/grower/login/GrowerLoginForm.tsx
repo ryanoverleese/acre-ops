@@ -20,7 +20,7 @@ export default function GrowerLoginForm({ callbackUrl = '/grower/fields' }: { ca
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(typeof data.error === 'string' ? data.error : 'Incorrect farm name or PIN');
+        setError(typeof data.error === 'string' ? data.error : 'Incorrect farm name, username, or PIN');
         return;
       }
       const next = callbackUrl === '/grower' || !callbackUrl.startsWith('/grower')
@@ -42,7 +42,7 @@ export default function GrowerLoginForm({ callbackUrl = '/grower/fields' }: { ca
       <form onSubmit={handleSubmit} className="grower-login-form">
         {error && <p className="grower-login-error" role="alert">{error}</p>}
         <div className="grower-login-field">
-          <label className="grower-login-label" htmlFor="grower-farm-name">Farm name</label>
+          <label className="grower-login-label" htmlFor="grower-farm-name">Farm or username</label>
           <input
             id="grower-farm-name"
             type="text"
@@ -51,7 +51,8 @@ export default function GrowerLoginForm({ callbackUrl = '/grower/fields' }: { ca
             onChange={(e) => setFarm(e.target.value)}
             required
             autoFocus
-            autoComplete="organization"
+            autoComplete="username"
+            placeholder="Farm name or username"
           />
         </div>
         <div className="grower-login-field">

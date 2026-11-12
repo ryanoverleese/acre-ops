@@ -15,10 +15,10 @@ export const POST = withApiAuth(async (request) => {
   const farmName = body?.farm ?? body?.name;
   const pin = body?.pin;
   if (typeof farmName !== 'string' || !farmName.trim()) {
-    throw new DataError('Farm name and PIN required');
+    throw new DataError('Farm or username and PIN required');
   }
   if (!/^\d{4,6}$/.test(String(pin))) {
-    throw new DataError('Farm name and PIN required');
+    throw new DataError('Farm or username and PIN required');
   }
 
   const key = farmName.trim().toLowerCase();
@@ -42,7 +42,7 @@ export const POST = withApiAuth(async (request) => {
   const pilot = farm ? isGrowerPilotFarm(farm.id, farm.name) : false;
   const valid = farm && current && pilot && await verifyGrowerPin(farm.grower_pin, pin);
   if (!farm || !current || !pilot || !valid) {
-    throw new DataError('Incorrect farm name or PIN', 401);
+    throw new DataError('Incorrect farm name, username, or PIN', 401);
   }
 
   attempts.delete(key);

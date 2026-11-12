@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-test('Farm name and PIN labels use htmlFor matching input ids', () => {
+test('Farm or username and PIN labels use htmlFor matching input ids', () => {
   const src = fs.readFileSync(
     path.join(__dirname, '../app/grower/login/GrowerLoginForm.tsx'),
     'utf8',
@@ -12,6 +12,8 @@ test('Farm name and PIN labels use htmlFor matching input ids', () => {
 
   assert.match(src, /htmlFor=["']grower-farm-name["']/);
   assert.match(src, /id=["']grower-farm-name["']/);
+  assert.match(src, />\s*Farm or username\s*</);
+  assert.match(src, /placeholder=["']Farm name or username["']/);
   assert.match(src, /htmlFor=["']grower-pin["']/);
   assert.match(src, /id=["']grower-pin["']/);
 
