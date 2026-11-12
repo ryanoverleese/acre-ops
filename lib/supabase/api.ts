@@ -14,6 +14,14 @@ export type Actor =
   | {kind:'customer';token:string}
   | {kind:'public'};
 export async function actor(request: Request): Promise<Actor> {
+  const path = new URL(request.url).pathname;
+  // This endpoint records the grower cookie only. It does not open office data,
+  // and a staff session in the same browser must not hide the grower farm.
+  if (path === '/api/grower-activity') {
+    const growerOnly = await readGrowerSession((await cookies()).get(GROWER_COOKIE)?.value);
+    if (growerOnly) return { kind: 'grower', operationId: growerOnly.operationId, name: growerOnly.name };
+    return { kind: 'public' };
+  }
   const session = await auth();
   if (session?.user?.id) {
     const user = await getRow<{id:number;name:string;active:boolean;role:{value:string}}>('users',positiveId(session.user.id));
@@ -37,6 +45,7 @@ export function authorizeActor(current: Actor,path: string,method: string) {
   if (path==='/api/installer-pins' && method==='GET') return; // names + pinSet only
   if (current.kind==='customer' && /^\/api\/probe-assignments\/\d+$/.test(path) && method==='PATCH') return;
   if (current.kind==='customer' && path==='/api/notifications' && method==='POST') return;
+  if (path === '/api/grower-activity' && method === 'POST' && current.kind === 'grower') return;
   if (current.kind==='grower') throw new DataError('Grower access is limited to grower pages',403);
   if (adminOnly.some(p=>matches(path,p)) && !(path==='/api/select-options' && method==='GET')) {
     if(current.kind!=='staff'||current.role!=='admin') throw new DataError('Administrator access required',403);

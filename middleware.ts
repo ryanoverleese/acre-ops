@@ -50,6 +50,15 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
     return NextResponse.next();
   }
 
+  // Page-view beacon. Office sign-in is not required; the route records only
+  // the signed grower cookie's farm.
+  if (pathname === '/api/grower-activity' && req.method === 'POST') {
+    if (!grower) {
+      return NextResponse.json({ error: 'Sign in with an authorized account' }, { status: 401 });
+    }
+    return NextResponse.next();
+  }
+
   // Allow public routes
   if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();

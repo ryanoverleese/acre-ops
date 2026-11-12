@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { GROWER_TABS, growerTabForPath } from '@/lib/grower-nav';
+import GrowerActivityBeacon from '@/components/grower/GrowerActivityBeacon';
 
 function FieldsIcon() {
   return (
@@ -39,6 +40,7 @@ export default function GrowerChrome({ children }: { children: ReactNode }) {
 
   return (
     <div className="grower-chrome">
+      <GrowerActivityBeacon />
       <nav className="grower-tabs" aria-label="Main">
         {GROWER_TABS.map((tab) => (
           <Link

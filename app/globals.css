@@ -12482,3 +12482,172 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
   .probe-chev,
   .probe-dates { order: 0; flex: none; margin: 0; }
 }
+
+/* Grower sign-in activity for office staff. Plain list, Central time. */
+.grower-activity,
+.grower-activity h2,
+.grower-activity h3,
+.grower-activity button,
+.grower-activity input,
+.grower-activity-strip,
+.grower-activity-strip h3 {
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+a.grower-activity-jump {
+  text-decoration: none;
+}
+
+.grower-activity-intro,
+.grower-activity-quiet {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.grower-activity-strip {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.grower-activity-strip-head,
+.grower-activity-farm-head,
+.grower-activity-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.grower-activity-strip h3,
+.grower-activity-farm h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.grower-activity-strip-head a {
+  color: var(--accent-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.grower-activity-strip-head a:hover {
+  text-decoration: underline;
+}
+
+.grower-activity-strip-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.grower-activity-name {
+  display: block;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.grower-activity-meta {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.grower-activity-tools {
+  margin-bottom: 16px;
+  align-items: flex-end;
+}
+
+.grower-activity-search {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  min-width: min(100%, 280px);
+}
+
+.grower-activity-search input {
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.grower-activity-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.grower-activity-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.grower-activity-farm {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.grower-activity-farm:last-child {
+  border-bottom: 0;
+}
+
+.grower-activity-farm-head span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.grower-activity-recent {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+}
+
+.grower-activity-recent li {
+  display: flex;
+  gap: 16px;
+  padding: 3px 0;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.grower-activity-when {
+  color: var(--text-muted);
+  min-width: 13.5rem;
+  flex: none;
+}
+
+@media (max-width: 720px) {
+  .grower-activity-recent li {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .grower-activity-when {
+    min-width: 0;
+  }
+}

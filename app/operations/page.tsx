@@ -1,6 +1,9 @@
 import { getOperations, getContacts, getBillingEntities, getFields, getProbes } from '@/lib/data';
 import { buildOperationMap, buildBillingEntityMap, buildBillingToOperationMaps, buildOperationToBillingEntityMap } from '@/lib/data-mappings';
+import { listGrowerActivityForOffice } from '@/lib/supabase/grower-activity';
+import type { GrowerActivityFarm } from '@/lib/grower-activity-display';
 import OperationsClient, { ProcessedOperation, ContactOption, LinkedContact } from './OperationsClient';
+import GrowerActivityStrip from './GrowerActivityStrip';
 
 import { staffMetadata } from '@/lib/site-metadata';
 
@@ -94,7 +97,23 @@ async function getOperationsData(): Promise<{
   }
 }
 
+function highlightedFarms(farms: GrowerActivityFarm[]): GrowerActivityFarm[] {
+  return farms
+    .filter((farm) => farm.pilot || farm.pinSet || farm.loginCount > 0 || farm.viewCount > 0)
+    .slice(0, 6);
+}
+
 export default async function OperationsPage() {
-  const { operations, allContacts } = await getOperationsData();
-  return <OperationsClient operations={operations} allContacts={allContacts} />;
+  const [{ operations, allContacts }, activity] = await Promise.all([
+    getOperationsData(),
+    listGrowerActivityForOffice(),
+  ]);
+  return (
+    <OperationsClient operations={operations} allContacts={allContacts}>
+      <GrowerActivityStrip
+        farms={activity ? highlightedFarms(activity) : []}
+        unavailable={activity == null}
+      />
+    </OperationsClient>
+  );
 }
