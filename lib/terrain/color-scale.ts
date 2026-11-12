@@ -76,6 +76,14 @@ export function formatElevationFeet(meters: number): string {
   return `${Math.round(meters * METERS_TO_FEET)} ft`;
 }
 
+/** Range for the legend row: one "ft", same rounding as formatElevationFeet. */
+export function formatLegendRange(loMeters: number, hiMeters: number): string {
+  const lo = formatElevationFeet(loMeters).replace(/ ft$/, '');
+  const hi = formatElevationFeet(hiMeters).replace(/ ft$/, '');
+  if (!lo || !hi) return '';
+  return `${lo}–${hi} ft`;
+}
+
 /** 0–255 index into the elevation LUT. Same meters and same scale → same index. */
 export function elevationColorIndex(meters: number, scale: ElevRange): number {
   const span = Math.max(scale.hi - scale.lo, 0.5);
