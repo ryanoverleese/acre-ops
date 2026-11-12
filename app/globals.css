@@ -2557,6 +2557,55 @@ a.notification-item {
   white-space: nowrap;
 }
 
+/* Terrain picker sits under the map, not on top of the field. */
+.field-map-frame {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+}
+
+.terrain-strip {
+  position: static;
+  top: auto;
+  left: auto;
+  z-index: 1;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--bone, #F6F2EA);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+}
+
+.terrain-strip .terrain-control-legend {
+  display: contents;
+}
+
+.terrain-strip select {
+  min-height: 44px;
+  max-width: 148px;
+}
+
+.field-map-frame .field-detail-map {
+  border-bottom: 0;
+}
+
+.field-map-frame .field-detail-map-drawing {
+  border-bottom: 1px solid var(--border);
+}
+
 .map-fullscreen-btn {
   position: absolute;
   top: 10px;
@@ -2590,15 +2639,15 @@ a.notification-item {
   max-width: calc(100% - 68px);
 }
 
-.field-detail-map:fullscreen,
-.grower-map:fullscreen,
-.field-detail-map:-webkit-full-screen,
-.grower-map:-webkit-full-screen {
+.field-map-frame:fullscreen,
+.field-map-frame:-webkit-full-screen {
   width: 100%;
   height: 100%;
   max-width: none;
   border-radius: 0;
   background: #1a1a1a;
+  display: flex;
+  flex-direction: column;
 }
 
 .is-map-css-fullscreen {
@@ -2616,11 +2665,25 @@ a.notification-item {
   border-radius: 0 !important;
   z-index: 10000 !important;
   background: #1a1a1a;
+  display: flex !important;
+  flex-direction: column;
+}
+
+.is-map-expanded .grower-map,
+.is-map-expanded .field-detail-map {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: auto !important;
+  min-height: 0;
+  border-radius: 0;
 }
 
 .is-map-expanded .leaflet-container {
+  flex: 1 1 auto;
   width: 100%;
-  height: 100%;
+  height: auto !important;
+  min-height: 0;
 }
 
 .is-map-expanded .map-fullscreen-btn {
@@ -2628,11 +2691,10 @@ a.notification-item {
   right: calc(10px + env(safe-area-inset-right, 0px));
 }
 
-.is-map-expanded .terrain-control,
-.is-map-expanded .field-detail-map-terrain,
-.is-map-expanded .grower-map-terrain {
-  top: calc(8px + env(safe-area-inset-top, 0px));
-  left: calc(8px + env(safe-area-inset-left, 0px));
+.is-map-expanded .terrain-strip {
+  flex: 0 0 auto;
+  padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
+  background: rgba(246, 242, 234, 0.98);
 }
 
 .is-map-expanded .field-detail-map-actions,
@@ -11601,14 +11663,24 @@ a.grower-list-row:hover .grower-list-primary {
 }
 .grower-map-wrap {
   width: 100%;
-  height: 320px;
-  min-height: 280px;
+  height: auto;
+  min-height: 0;
   border: 1px solid var(--grower-line);
   border-radius: 4px;
-  overflow: visible;
+  overflow: hidden;
   margin: 0 0 16px;
   position: relative;
-  background: #f3f3f3;
+  background: #fff;
+}
+.grower-map-wrap .grower-map {
+  height: 320px;
+  min-height: 280px;
+  border-radius: 4px 4px 0 0;
+}
+.grower-map-wrap .terrain-strip {
+  background: #fff;
+  border-top: 1px solid var(--grower-line);
+  color: var(--grower-ink);
 }
 .grower-map {
   width: 100%;
@@ -11622,7 +11694,7 @@ a.grower-list-row:hover .grower-list-primary {
   height: 100%;
   font: inherit;
 }
-/* Keep terrain control inside the map; 44px select for touch. */
+/* Installer maps still float .terrain-control. The grower strip is outside the map. */
 .grower-map-terrain,
 .grower-map .terrain-control {
   position: absolute;
@@ -11647,7 +11719,8 @@ a.grower-list-row:hover .grower-list-primary {
   color: var(--grower-ink);
 }
 .grower-map .terrain-control select,
-.grower-map-terrain select {
+.grower-map-terrain select,
+.grower-map-wrap .terrain-strip select {
   min-height: 44px;
   max-width: 160px;
   padding: 8px 10px;
@@ -11676,20 +11749,55 @@ a.grower-list-row:hover .grower-list-primary {
   box-shadow: none;
   color: var(--grower-ink, #1a1a1a);
 }
-.grower-map.is-map-expanded .map-fullscreen-btn {
+.field-map-frame.is-map-expanded .grower-map .map-fullscreen-btn {
   top: calc(8px + env(safe-area-inset-top, 0px));
   right: calc(8px + env(safe-area-inset-right, 0px));
 }
 .grower-map .terrain-control-scale-value,
-.grower-map-terrain .terrain-control-scale-value {
+.grower-map-terrain .terrain-control-scale-value,
+.grower-map-wrap .terrain-strip .terrain-control-scale-value {
   font-size: 11px;
   font-weight: 600;
   color: var(--grower-ink);
 }
 .grower-map .terrain-control-source,
-.grower-map-terrain .terrain-control-source {
+.grower-map-terrain .terrain-control-source,
+.grower-map-wrap .terrain-strip .terrain-control-source {
   color: var(--grower-muted, #666);
   font-weight: 500;
+}
+@media (max-width: 480px) {
+  .terrain-strip .terrain-control-title {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .terrain-strip {
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  .terrain-strip select,
+  .grower-map-wrap .terrain-strip select {
+    min-height: 40px;
+    max-width: 124px;
+    padding: 4px 4px 4px 6px;
+    font-size: 12px;
+  }
+  .terrain-strip .terrain-control-scale .terrain-control-ramp {
+    width: 28px;
+    min-width: 28px;
+    flex-basis: 28px;
+  }
+  .terrain-strip .terrain-control-scale-value,
+  .terrain-strip .terrain-control-source {
+    font-size: 10px;
+  }
 }
 .grower-probe-pin-hit {
   width: 44px;
@@ -11778,7 +11886,7 @@ a.grower-list-row:hover .grower-list-primary {
   .grower-shell {
     padding: 24px 16px 40px;
   }
-  .grower-map-wrap {
+  .grower-map-wrap .grower-map {
     height: 360px;
   }
 }

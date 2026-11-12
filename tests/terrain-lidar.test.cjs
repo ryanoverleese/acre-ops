@@ -123,5 +123,7 @@ test('field map pinch snap is a tenth of a level and button steps divide evenly'
     assert.match(src, /zoomSnap=\{FIELD_MAP_ZOOM\.zoomSnap\}/);
     assert.match(src, /zoomDelta=\{FIELD_MAP_ZOOM\.zoomDelta\}/);
     assert.match(src, /wheelPxPerZoomLevel=\{FIELD_MAP_ZOOM\.wheelPxPerZoomLevel\}/);
+    assert.match(src, /field-map-frame/);
+    assert.match(src, /terrain-control terrain-strip/);
   }
 });
