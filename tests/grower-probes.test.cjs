@@ -16,6 +16,14 @@ const removed = (id, fieldId, fieldName, serial) => ({
   elevation: null, lat: null, lng: null,
 });
 
+test('probe rows label age and do not show elevation', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../app/grower/hardware/GrowerHardwareList.tsx'), 'utf8');
+  assert.match(src, /Age: \$\{formatProbeAge/);
+  assert.match(src, /Owned by: /);
+  assert.match(src, /probe\.brand/);
+  assert.equal(src.includes('elevation'), false);
+});
+
 test('probe dates keep one form and the year once when it matches', () => {
   assert.equal(probes.formatProbeListDates('2026-05-15', '2026-09-17'), 'May 15 – Sep 17, 2026');
   assert.equal(probes.formatProbeListDates('2025-12-09', '2026-09-18'), 'Dec 9, 2025 – Sep 18, 2026');

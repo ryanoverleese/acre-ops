@@ -50,10 +50,7 @@ export default function GrowerHardwareList({
   if (selected) {
     const serial = formatProbeSerial(selected.serial);
     const dates = formatProbeListDates(selected.installDate, selected.removalDate);
-    const age = selected.ageSeasons != null ? formatProbeAge(selected.ageSeasons) : null;
-    const elevation = selected.elevation != null && Number.isFinite(selected.elevation)
-      ? `${selected.elevation} ft`
-      : null;
+    const age = selected.ageSeasons != null ? `Age: ${formatProbeAge(selected.ageSeasons)}` : null;
     const maps = mapsSearchUrl(selected.lat, selected.lng);
     return (
       <div className="grower-shell probes-page">
@@ -67,9 +64,10 @@ export default function GrowerHardwareList({
         <p className="probe-detail-line">
           <a href={`/grower/fields/${selected.fieldId}`}>{selected.fieldName}</a>
         </p>
+        {selected.brand ? <p className="probe-detail-muted">{selected.brand}</p> : null}
+        {selected.ownerName ? <p className="probe-detail-muted">{`Owned by: ${selected.ownerName}`}</p> : null}
         {dates ? <p className="probe-detail-muted">{dates}</p> : null}
         {age ? <p className="probe-detail-muted">{age}</p> : null}
-        {elevation ? <p className="probe-detail-muted">{elevation}</p> : null}
         {maps ? (
           <p className="probe-detail-line">
             <a href={maps} target="_blank" rel="noopener noreferrer">Open in Maps</a>
@@ -116,7 +114,7 @@ export default function GrowerHardwareList({
                 {group.probes.map((probe) => {
                   const serial = formatProbeSerial(probe.serial);
                   const dates = formatProbeListDates(probe.installDate, probe.removalDate);
-                  const age = probe.ageSeasons != null ? formatProbeAge(probe.ageSeasons) : null;
+                  const age = probe.ageSeasons != null ? `Age: ${formatProbeAge(probe.ageSeasons)}` : null;
                   const status = probe.status?.trim() || '';
                   return (
                     <li key={probe.id}>
@@ -125,7 +123,10 @@ export default function GrowerHardwareList({
                         className={`probe-line${mixed ? '' : ' is-plain'}`}
                         onClick={() => setSelectedId(probe.id)}
                       >
-                        <span className="probe-serial">{serial || 'Probe'}</span>
+                        <span className="probe-serial-wrap">
+                          <span className="probe-serial">{serial || 'Probe'}</span>
+                          {probe.brand ? <span className="probe-brand">{probe.brand}</span> : null}
+                        </span>
                         {mixed && status ? <span className={chipClass(status)}>{status}</span> : null}
                         <span className="probe-dates">{dates || ''}</span>
                         <span className="probe-age">{age || ''}</span>

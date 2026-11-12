@@ -219,6 +219,8 @@ export type GrowerHardwareRow = {
   ageSeasons: number | null;
   elevation: number | null;
   soilType: string | null;
+  brand: string | null;
+  ownerName: string | null;
   lat: number | null;
   lng: number | null;
 };
@@ -245,6 +247,8 @@ export async function listGrowerHardwareForSeason(
       probe_year_new: unknown;
       elevation: unknown;
       soil_type: string | null;
+      probe_brand: string | null;
+      owner_billing_entity: string | null;
       install_lat: unknown;
       install_lng: unknown;
       placement_lat: unknown;
@@ -263,6 +267,8 @@ export async function listGrowerHardwareForSeason(
               p.probe_year_new,
               p.elevation,
               p.soil_type,
+              p.probe_brand,
+              p.owner_billing_entity,
               p.install_lat,
               p.install_lng,
               p.placement_lat,
@@ -294,6 +300,8 @@ export async function listGrowerHardwareForSeason(
         ),
         elevation: p.elevation == null ? null : Number(p.elevation),
         soilType: p.soil_type,
+        brand: p.probe_brand?.trim() || null,
+        ownerName: p.owner_billing_entity?.trim() || null,
         lat: pin?.lat ?? null,
         lng: pin?.lng ?? null,
       };

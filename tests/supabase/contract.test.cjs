@@ -29,7 +29,11 @@ test('removal_at is a nullable timestamptz and removal_date stays a date', async
   const view=await f.db.query(`SELECT a.attname FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='probe_assignments_calculated' AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum`);
   assert.equal(view.rows.at(-1).attname,'removal_at');
   const grower=await f.db.query(`SELECT a.attname FROM pg_attribute a JOIN pg_class c ON c.oid=a.attrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='grower_probe_assignments' AND a.attnum>0 AND NOT a.attisdropped ORDER BY a.attnum`);
-  assert.deepEqual(grower.rows.slice(-2).map(row=>row.attname),['removal_date','removal_at']);
+  const growerNames = grower.rows.map(row => row.attname);
+  assert.ok(growerNames.includes('removal_date'));
+  assert.ok(growerNames.includes('removal_at'));
+  assert.ok(growerNames.includes('probe_brand'));
+  assert.ok(growerNames.includes('owner_billing_entity'));
   const historical=await a.createRow('probe_assignments',{field_season:[season.id],removal_date:'2026-09-17',removed_by:'Brandon'});
   try {
     assert.equal(historical.removal_date,'2026-09-17');

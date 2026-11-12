@@ -96,6 +96,8 @@ test.before(async () => {
   const probe = await a.createRow('probes', {
     serial_number: 'SN-A-1',
     year_new: 2024,
+    brand: 'Fixture',
+    billing_entity: [beA.id],
   });
   await a.createRow('probe_assignments', {
     field_season: [seasonA.id],
@@ -106,6 +108,18 @@ test.before(async () => {
     install_date: '2026-04-01T12:00:00.000Z',
     install_lat: 40.111,
     install_lng: -99.111,
+  });
+  const outsider = await a.createRow('probes', {
+    serial_number: 'SN-OTHER-OWNER',
+    year_new: 2024,
+    brand: 'Fixture',
+    billing_entity: [beB.id],
+  });
+  await a.createRow('probe_assignments', {
+    field_season: [seasonA.id],
+    probe: [outsider.id],
+    probe_number: 2,
+    probe_status: 'Installed',
   });
   await a.createRow('water_recs', {
     field_season: [seasonA.id],
@@ -235,13 +249,16 @@ test('farm A cannot read farm B water recs or probe rows', async () => {
 
   const probes = await withGrowerOperation(opA.id, () =>
     growerQuery(
-      'SELECT probe_serial_number, probe_year_new, label FROM public.grower_probe_assignments',
+      'SELECT probe_serial_number, probe_year_new, label, probe_brand, owner_billing_entity FROM public.grower_probe_assignments ORDER BY probe_serial_number',
     ),
   );
-  assert.equal(probes.length, 1);
-  assert.equal(probes[0].probe_serial_number, 'SN-A-1');
+  assert.deepEqual(probes.map((row) => row.probe_serial_number), ['SN-A-1', 'SN-OTHER-OWNER']);
   assert.equal(probes[0].probe_year_new, 2024);
   assert.equal(probes[0].label, 'NE');
+  assert.equal(probes[0].probe_brand, 'Fixture');
+  assert.equal(probes[0].owner_billing_entity, 'Bill A');
+  assert.equal(probes[1].probe_brand, 'Fixture');
+  assert.equal(probes[1].owner_billing_entity, null);
 
   const bWaterAsA = await withGrowerOperation(opA.id, () =>
     growerQuery(

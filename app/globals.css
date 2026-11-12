@@ -11913,20 +11913,29 @@ a.grower-list-row:hover .grower-list-primary {
   border-radius: 4px;
 }
 .map-controls {
+  box-sizing: border-box;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   height: 44px;
   background: #fff;
   border: 1px solid #D8D5CE;
   border-bottom: 0;
   border-radius: 4px 4px 0 0;
+  overflow: hidden;
 }
-.map-seg { display: flex; height: 44px; }
+.map-seg {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  height: 100%;
+}
 .map-seg button {
+  box-sizing: border-box;
   min-width: 64px;
-  height: 44px;
+  height: 100%;
   padding: 0 12px;
   border: 0;
+  border-right: 1px solid #D8D5CE;
   background: #fff;
   color: #1A1A1A;
   font-family: inherit;
@@ -11934,24 +11943,27 @@ a.grower-list-row:hover .grower-list-primary {
   font-weight: 500;
   cursor: pointer;
 }
-.map-seg button + button { border-left: 1px solid #D8D5CE; }
 .map-seg button.map-seg-sat { min-width: 88px; }
 .map-seg button[aria-pressed="true"] { background: #1A1A1A; color: #fff; }
 .map-seg button[aria-pressed="false"]:active { background: #EFEDE6; }
 .map-controls-right {
+  box-sizing: border-box;
   margin-left: auto;
   display: flex;
-  height: 44px;
-  border-left: 1px solid #D8D5CE;
+  align-items: stretch;
+  height: 100%;
+  min-width: 0;
 }
 .map-zoom-btn,
 .map-fs-btn {
+  box-sizing: border-box;
   width: 44px;
-  height: 44px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 0;
+  border-left: 1px solid #D8D5CE;
   background: #fff;
   color: #1A1A1A;
   font-family: inherit;
@@ -11960,7 +11972,6 @@ a.grower-list-row:hover .grower-list-primary {
   line-height: 1;
   cursor: pointer;
 }
-.map-zoom-btn + .map-zoom-btn { border-left: 1px solid #D8D5CE; }
 .map-zoom-btn { display: none; }
 .map-zoom-btn:active,
 .map-fs-btn:active { background: #EFEDE6; }
@@ -12384,7 +12395,9 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
   cursor: pointer;
 }
 .probe-group-list li:last-child .probe-line { border-bottom: 0; }
-.probe-serial { order: 1; font-size: 15px; font-weight: 600; }
+.probe-serial-wrap { order: 1; display: inline-flex; align-items: baseline; gap: 8px; min-width: 0; }
+.probe-serial { font-size: 15px; font-weight: 600; }
+.probe-brand { font-size: 13px; font-weight: 400; color: #5A5A5A; white-space: nowrap; }
 .probe-chip { order: 2; }
 .probe-age { order: 3; margin-left: auto; font-size: 13px; font-weight: 400; color: #5A5A5A; white-space: nowrap; }
 .probe-chev { order: 4; flex: 0 0 20px; display: flex; color: #5A5A5A; }
@@ -12463,7 +12476,7 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
     padding: 0;
     gap: 0;
   }
-  .probe-serial,
+  .probe-serial-wrap,
   .probe-chip,
   .probe-age,
   .probe-chev,
