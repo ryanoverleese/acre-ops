@@ -10,7 +10,7 @@ import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import { probeHasPin, type ProbeRowData } from '@/components/fields/ProbeRows';
-import { formatLegendRange, type ElevRange } from '@/lib/terrain/color-scale';
+import { formatLegendRange, formatReliefFeet, type ElevRange } from '@/lib/terrain/color-scale';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -149,6 +149,7 @@ export default function FieldMapBlock({
 }) {
   const [mode, setMode] = useState<TerrainMode>('colorshade');
   const [range, setRange] = useState<ElevRange | null>(null);
+  const [reliefMeters, setReliefMeters] = useState<number | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const onMap = useCallback((map: L.Map) => { mapRef.current = map; }, []);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
@@ -161,6 +162,7 @@ export default function FieldMapBlock({
   const feet = range && Number.isFinite(range.lo) && Number.isFinite(range.hi)
     ? formatLegendRange(range.lo, range.hi)
     : '';
+  const relief = reliefMeters == null ? '' : formatReliefFeet(reliefMeters);
   const center: [number, number] = lat != null && lng != null ? [lat, lng] : NEBRASKA_FALLBACK;
   const pins = probes.filter(probeHasPin);
 
@@ -172,6 +174,13 @@ export default function FieldMapBlock({
       <div className="map-controls">
         {!expanded && (
           <div className="map-seg" role="group" aria-label="Terrain">
+            <button
+              type="button"
+              aria-pressed={mode === 'off'}
+              onClick={() => setMode('off')}
+            >
+              Satellite
+            </button>
             <button
               type="button"
               aria-pressed={mode === 'colorshade'}
@@ -219,7 +228,12 @@ export default function FieldMapBlock({
         >
           <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
           {hasOutline && (
-            <ElevationOverlay mode={mode} clipTo={boundaries} onFieldRange={setRange} />
+            <ElevationOverlay
+              mode={mode}
+              clipTo={boundaries}
+              onFieldRange={setRange}
+              onFieldRelief={setReliefMeters}
+            />
           )}
           <BoundaryLayer data={boundaries} selectedId={fieldId} />
           {pins.map((probe) => (
@@ -242,8 +256,10 @@ export default function FieldMapBlock({
         </MapContainer>
       </div>
       <div className="map-legend">
-        {mode !== 'shade' ? <span className="map-legend-ramp" style={{ background: RAMP }} aria-hidden="true" /> : null}
+        {mode === 'colorshade' ? <span className="map-legend-ramp" style={{ background: RAMP }} aria-hidden="true" /> : null}
+        {feet ? <span className="map-legend-kind">Elevation</span> : null}
         {feet ? <span className="map-legend-range">{feet}</span> : null}
+        {relief ? <span className="map-legend-relief">{relief}</span> : null}
         {lidar ? <span className="map-legend-source">{lidar}</span> : null}
       </div>
     </div>

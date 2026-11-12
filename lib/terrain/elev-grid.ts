@@ -3,6 +3,7 @@ import * as Lerc from 'lerc';
 import {
   colorScaleForTile,
   elevationColorIndex,
+  fieldReliefMeters,
   rangeFromSamples,
   type ElevRange,
 } from './color-scale';
@@ -121,6 +122,8 @@ export type ElevGridOptions = {
    * Does not change sampling, coloring, or the elevation request.
    */
   onFieldScale?: (range: Range | null) => void;
+  /** True max−min of the clipped field sample, in meters. Display only. */
+  onFieldRelief?: (meters: number | null) => void;
 };
 
 function renderCanvas(tile: ElevTile, mode: ElevRenderMode, fieldScale: Range | null) {
@@ -200,6 +203,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     fieldAbort: null as AbortController | null,
     fieldGen: 0,
     onFieldScale: options.onFieldScale,
+    onFieldRelief: options.onFieldRelief,
   };
 
   const Layer = L.GridLayer.extend({
@@ -278,6 +282,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           // One scale for every tile at every zoom. Tile min/max is never used.
           state.fieldScale = colorScaleForTile(null, sample);
           state.onFieldScale?.(state.fieldScale);
+          state.onFieldRelief?.(fieldReliefMeters(values));
           this._paintLoaded();
         })
         .catch((err) => {

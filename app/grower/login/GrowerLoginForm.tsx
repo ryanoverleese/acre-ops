@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export default function GrowerLoginForm({ callbackUrl = '/grower' }: { callbackUrl?: string }) {
+export default function GrowerLoginForm({ callbackUrl = '/grower/fields' }: { callbackUrl?: string }) {
   const [farm, setFarm] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +23,10 @@ export default function GrowerLoginForm({ callbackUrl = '/grower' }: { callbackU
         setError(typeof data.error === 'string' ? data.error : 'Incorrect farm name or PIN');
         return;
       }
-      window.location.href = callbackUrl.startsWith('/grower') ? callbackUrl : '/grower';
+      const next = callbackUrl === '/grower' || !callbackUrl.startsWith('/grower')
+        ? '/grower/fields'
+        : callbackUrl;
+      window.location.href = next;
     } catch {
       setError('Something went wrong. Please try again.');
     } finally {

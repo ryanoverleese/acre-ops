@@ -16,7 +16,24 @@ export type GrowerFieldRow = {
   season: number;
   /** Probe assignment statuses for this field/season (Installed, Removed, …). */
   probeStatuses: string[];
+  /** GeoJSON geometry, or null when this field has no boundary. */
+  boundary: { type: string; coordinates: unknown } | null;
 };
+
+function boundaryGeometry(value: unknown): { type: string; coordinates: unknown } | null {
+  let raw = value;
+  if (typeof raw === 'string') {
+    try {
+      raw = JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!raw || typeof raw !== 'object') return null;
+  const geometry = raw as { type?: unknown; coordinates?: unknown };
+  if (typeof geometry.type !== 'string' || geometry.coordinates == null) return null;
+  return { type: geometry.type, coordinates: geometry.coordinates };
+}
 
 /** Fields for one farm that have a field_season in the given year. */
 export async function listGrowerFieldsForSeason(
@@ -67,6 +84,20 @@ export async function listGrowerFieldsForSeason(
       if (row.probe_status?.trim()) list.push(row.probe_status.trim());
       byField.set(fieldId, list);
     }
+    const ids = rows.map((row) => positiveId(row.id));
+    const boundaryRows = ids.length
+      ? await growerQuery<{ field_id: unknown; geometry: unknown }>(
+        `SELECT field_id, geometry
+           FROM public.grower_field_boundaries
+          WHERE field_id = ANY($1::int[])`,
+        [ids],
+      )
+      : [];
+    const boundaries = new Map<number, { type: string; coordinates: unknown }>();
+    for (const row of boundaryRows) {
+      const geometry = boundaryGeometry(row.geometry);
+      if (geometry) boundaries.set(positiveId(row.field_id), geometry);
+    }
     return rows.map((row) => {
       const id = positiveId(row.id);
       return {
@@ -79,6 +110,7 @@ export async function listGrowerFieldsForSeason(
         fieldSeasonId: positiveId(row.field_season_id),
         season: Number(row.season),
         probeStatuses: byField.get(id) || [],
+        boundary: boundaries.get(id) || null,
       };
     });
   });

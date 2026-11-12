@@ -84,6 +84,49 @@ export function formatLegendRange(loMeters: number, hiMeters: number): string {
   return `${lo}–${hi} ft`;
 }
 
+/**
+ * Real max minus min inside the field, in meters.
+ * Uses the same sample filter as rangeFromSamples and does not add the
+ * half-meter pad that function applies so a flat field can still be colored.
+ * Null when no ground sample exists. Zero is a real flat field, not missing data.
+ */
+export function fieldReliefMeters(values: ArrayLike<number>): number | null {
+  const kept: number[] = [];
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v > 0 && v < 9000) kept.push(v);
+  }
+  if (!kept.length) return null;
+  kept.sort((a, b) => a - b);
+  const mid = kept[kept.length >> 1];
+  let lo = Infinity;
+  let hi = -Infinity;
+  let n = 0;
+  for (const v of kept) {
+    if (Math.abs(v - mid) > OUTLIER_RADIUS_M) continue;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+    n++;
+  }
+  if (!n) return null;
+  return hi - lo;
+}
+
+/**
+ * Relief for the legend strip. Under 10 ft, nearest tenth; otherwise nearest foot.
+ * Empty when the span is missing.
+ */
+export function formatReliefFeet(meters: number): string {
+  if (!Number.isFinite(meters) || meters < 0) return '';
+  const feet = meters * METERS_TO_FEET;
+  if (feet < 10) {
+    const tenths = Math.round(feet * 10) / 10;
+    const text = Number.isInteger(tenths) ? String(tenths) : tenths.toFixed(1);
+    return `${text} ft change`;
+  }
+  return `${Math.round(feet)} ft change`;
+}
+
 /** 0–255 index into the elevation LUT. Same meters and same scale → same index. */
 export function elevationColorIndex(meters: number, scale: ElevRange): number {
   const span = Math.max(scale.hi - scale.lo, 0.5);

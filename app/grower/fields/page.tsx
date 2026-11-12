@@ -40,6 +40,7 @@ export default async function GrowerFieldsPage() {
           acres: f.acres,
           acresFromBoundary: f.acresFromBoundary,
           probeStatuses: f.probeStatuses,
+          boundary: f.boundary,
         }))}
       />
     </>

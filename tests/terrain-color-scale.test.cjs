@@ -97,6 +97,23 @@ test('legend feet are meters times 3.28084, rounded, and color math stays in met
   assert.equal(index, scale.elevationColorIndex(NORTH_EDGE_M, { lo: FIELD.lo, hi: FIELD.hi }));
 });
 
+test('field relief is max minus min of the clipped samples, in feet', () => {
+  assert.equal(scale.fieldReliefMeters([]), null);
+  assert.equal(scale.fieldReliefMeters([0, 0, NaN]), null);
+  assert.equal(scale.fieldReliefMeters([100, 100, 100]), 0);
+  const span = scale.fieldReliefMeters([674.1867065429688, 678.5460815429688, 0, 9000]);
+  assert.ok(Math.abs(span - (678.5460815429688 - 674.1867065429688)) < 1e-9);
+  assert.equal(scale.formatReliefFeet(span), '14 ft change');
+  assert.equal(scale.formatReliefFeet(12 / 3.28084), '12 ft change');
+  assert.equal(scale.formatReliefFeet(3.14 / 3.28084), '3.1 ft change');
+  assert.equal(scale.formatReliefFeet(0), '0 ft change');
+  assert.equal(scale.formatReliefFeet(Number.NaN), '');
+  // A flat sample is padded for color. Relief stays the real span.
+  const flat = scale.rangeFromSamples([500, 500]);
+  assert.ok(flat.hi - flat.lo > 0);
+  assert.equal(scale.fieldReliefMeters([500, 500]), 0);
+});
+
 test('field scale is reported for the legend without a second color path', () => {
   const src = fs.readFileSync(path.join(__dirname, '../lib/terrain/elev-grid.ts'), 'utf8');
   assert.match(src, /state\.fieldScale = colorScaleForTile\(null, sample\)/);

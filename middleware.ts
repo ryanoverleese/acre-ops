@@ -41,8 +41,11 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
     if (pathname.startsWith('/grower/login')) return NextResponse.next();
     if (!grower) {
       const loginUrl = new URL('/grower/login', req.url);
-      loginUrl.searchParams.set('callbackUrl', pathname);
+      loginUrl.searchParams.set('callbackUrl', pathname === '/grower' ? '/grower/fields' : pathname);
       return NextResponse.redirect(loginUrl);
+    }
+    if (pathname === '/grower') {
+      return NextResponse.redirect(new URL('/grower/fields', req.url));
     }
     return NextResponse.next();
   }
@@ -74,7 +77,7 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   if (!req.auth?.user?.id) {
     // A grower cookie must not open office pages.
     if (grower) {
-      return NextResponse.redirect(new URL('/grower', req.url));
+      return NextResponse.redirect(new URL('/grower/fields', req.url));
     }
     const loginUrl = new URL('/login', req.url);
     loginUrl.searchParams.set('callbackUrl', pathname);

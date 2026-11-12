@@ -21,6 +21,9 @@ test('legend ramp is the CutSheetRX gradient, not a different scale', () => {
   const map = fs.readFileSync(path.join(__dirname, '../components/fields/FieldMapBlock.tsx'), 'utf8');
   assert.match(map, /elevationCssGradient\(\)/);
   assert.match(map, /useLidarLabel/);
+  assert.match(map, /\n\s*Satellite\n/);
+  assert.match(map, /map-legend-kind">Elevation/);
+  assert.match(map, /formatReliefFeet/);
   assert.match(map, /padding: \[16, 16\]/);
   assert.equal(map.includes('viridis'), false);
 });
