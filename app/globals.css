@@ -11605,14 +11605,15 @@ a.grower-list-row:hover .grower-list-primary {
   margin-top: 24px;
 }
 .grower-section-title {
-  margin: 0 0 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--grower-line);
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--grower-muted);
+  margin: 0 0 4px;
+  padding: 0;
+  border: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #5A5A5A;
 }
 .grower-section-block {
   padding: 12px 0;

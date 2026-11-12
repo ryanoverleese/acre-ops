@@ -48,7 +48,10 @@ test('grower pill tabs point at the existing routes and field detail stays on Fi
   assert.equal(nav.growerTabForPath('/grower/hardware'), 'probes');
   assert.equal(nav.growerTabForPath('/grower/recommendations'), 'recs');
   assert.equal(nav.growerTabForPath('/grower/login'), null);
+  const detail = fs.readFileSync(path.join(__dirname, '../app/grower/fields/[id]/FieldDetailClient.tsx'), 'utf8');
+  assert.match(detail, />Water recommendations</);
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  assert.match(css, /\.grower-section-title \{[^}]*font-size: 12px;[^}]*font-weight: 500;[^}]*text-transform: none;[^}]*letter-spacing: 0;/);
   assert.match(css, /\.grower-pill \{[^}]*height: 52px/);
   assert.match(css, /box-shadow: 0 2px 8px rgba\(0, 0, 0, 0\.16\)/);
   assert.match(css, /background: #1A1A1A/);
