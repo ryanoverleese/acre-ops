@@ -19,9 +19,10 @@ export type GrowerLoginFarm = {
 };
 
 /**
- * Resolve farm name → login projection via grower_login_lookup on the grower
- * connection. Needs DATABASE_URL_GROWER (or owner fallback in non-prod). Does
- * not use the office DATABASE_URL.
+ * Resolve farm name or grower username → login projection via
+ * grower_login_lookup on the grower connection. The returned name is
+ * operations.name. Needs DATABASE_URL_GROWER (or owner fallback in non-prod).
+ * Does not use the office DATABASE_URL.
  */
 export async function lookupGrowerLogin(name: string): Promise<GrowerLoginFarm | null> {
   const trimmed = name.trim();

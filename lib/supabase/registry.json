@@ -1472,6 +1472,12 @@
           "type": "text",
           "required": false,
           "identity": false
+        },
+        {
+          "name": "grower_username",
+          "type": "text",
+          "required": false,
+          "identity": false
         }
       ],
       "read": "operations"
