@@ -133,8 +133,9 @@ export default function GrowerFieldMap({
   return (
     <div
       ref={rootRef}
-      className={`grower-map${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
+      className={`field-map-frame${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
     >
+      <div className="grower-map">
       <MapContainer
         center={center}
         zoom={lat != null && lng != null ? 15 : 7}
@@ -164,12 +165,10 @@ export default function GrowerFieldMap({
         <MapSizeSync expanded={expanded} />
       </MapContainer>
       <MapFullscreenButton expanded={expanded} onClick={toggle} />
+      </div>
       {hasOutline && (
         <TerrainControl
-          // Keep base .terrain-control positioning (top/left). grower-map-terrain
-          // alone omitted those rules, so the control sat below the map and was
-          // clipped by .grower-map-wrap { overflow: hidden }.
-          className="terrain-control grower-map-terrain"
+          className="terrain-control terrain-strip"
           value={terrainMode}
           onChange={setTerrainMode}
           range={elevRange}

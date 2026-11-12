@@ -278,8 +278,9 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
   return (
     <div
       ref={rootRef}
-      className={`field-detail-map${editing ? ' field-detail-map-drawing' : ''}${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
+      className={`field-map-frame${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
     >
+    <div className={`field-detail-map${editing ? ' field-detail-map-drawing' : ''}`}>
       <MapContainer
         center={center}
         zoom={hasPin ? 15 : 7}
@@ -362,16 +363,6 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
 
       <MapFullscreenButton expanded={expanded} onClick={toggle} />
 
-      {!editing && (
-        <TerrainControl
-          className="field-detail-map-terrain"
-          value={terrainMode}
-          onChange={setTerrainMode}
-          range={elevRange}
-          sourceLabel={lidarLabel}
-        />
-      )}
-
       {editing ? (
         <div className="field-detail-map-draw-bar">
           <span className="field-detail-map-draw-hint">
@@ -425,6 +416,16 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
           )}
         </div>
       )}
+    </div>
+    {!editing && (
+      <TerrainControl
+        className="terrain-control terrain-strip"
+        value={terrainMode}
+        onChange={setTerrainMode}
+        range={elevRange}
+        sourceLabel={lidarLabel}
+      />
+    )}
     </div>
   );
 }
