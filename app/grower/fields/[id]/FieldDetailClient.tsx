@@ -2,12 +2,14 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useMemo } from 'react';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
   formatGrowerAcres,
   formatProbeAge,
   summarizeGrowerFieldProbeStatus,
 } from '@/lib/grower-display';
+import { compareProbePinOrder, probeListTitle } from '@/lib/probe-pin-label';
 import { formatRemovalWhen } from '@/lib/removal-time';
 import type { GrowerProbePin, GrowerWaterRec } from '@/lib/supabase/grower-fields';
 
@@ -41,6 +43,10 @@ export default function FieldDetailClient({
   };
 }) {
   const fieldStatus = summarizeGrowerFieldProbeStatus(field.probes.map((p) => p.status));
+  const probes = useMemo(
+    () => field.probes.slice().sort(compareProbePinOrder),
+    [field.probes],
+  );
 
   return (
     <div className="grower-shell">
@@ -68,21 +74,22 @@ export default function FieldDetailClient({
           lat={field.lat}
           lng={field.lng}
           boundaries={field.boundaries}
-          probes={field.probes}
+          probes={probes}
         />
       </div>
 
       <section className="grower-section">
         <h2 className="grower-section-title">Probes</h2>
-        {field.probes.length === 0 ? (
+        {probes.length === 0 ? (
           <p className="grower-empty">No probes for {field.season}.</p>
         ) : (
           <ul className="grower-list">
-            {field.probes.map((probe) => (
+            {probes.map((probe) => (
               <li key={probe.id} className="grower-section-block">
                 <div className="grower-list-row grower-list-row-static">
                   <span className="grower-list-primary">
-                    {probe.serial ? `#${probe.serial}` : 'Probe'}
+                    {probeListTitle(probe)}
+                    {probe.serial ? ` · #${probe.serial}` : ''}
                     {probe.label ? ` · ${probe.label}` : ''}
                   </span>
                   <span className="grower-list-meta">{probe.status || 'Not recorded'}</span>

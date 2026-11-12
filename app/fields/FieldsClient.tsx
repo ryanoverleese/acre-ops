@@ -17,6 +17,7 @@ import type { ProcessedField, ProcessedProbeAssignment, OperationOption, Billing
 import type { ColorByMode, FieldData } from '@/components/FieldsMap';
 import { useOperationFocus } from '@/lib/OperationFocusContext';
 import { fieldBilling } from '@/lib/data-mappings';
+import { compareProbePinOrder, probeListTitle } from '@/lib/probe-pin-label';
 import { formatRemovalWhen } from '@/lib/removal-time';
 
 const FieldsMap = dynamic(() => import('@/components/FieldsMap'), {
@@ -231,6 +232,14 @@ export default function FieldsClient({
   const [mapVisible, setMapVisible] = useState(false);
   const [colorBy, setColorBy] = useState<ColorByMode>('none');
   const [selectedField, setSelectedField] = useState<ProcessedField | null>(null);
+  const selectedFieldProbes = useMemo(() => {
+    const seasonId = selectedField?.fieldSeasonId;
+    if (seasonId == null) return [];
+    return probeAssignments
+      .filter((pa) => pa.fieldSeasonId === seasonId)
+      .slice()
+      .sort(compareProbePinOrder);
+  }, [probeAssignments, selectedField]);
   const [isEditing, setIsEditing] = useState(false);
   const [showMoreFieldDetails, setShowMoreFieldDetails] = useState(false);
   const [editForm, setEditForm] = useState<Partial<ProcessedField>>({});
@@ -3071,19 +3080,31 @@ export default function FieldsClient({
                         <span className="detail-label">Crop</span>
                         <span className="detail-value">{getCropBadge(selectedField.crop)}</span>
                       </div>
-                      <div className="detail-row">
-                        <span className="detail-label">Probe</span>
-                        <span className="detail-value">{selectedField.probe || '—'}</span>
-                      </div>
+                      {selectedFieldProbes.length === 0 ? (
+                        <div className="detail-row">
+                          <span className="detail-label">Probe</span>
+                          <span className="detail-value">{selectedField.probe || '—'}</span>
+                        </div>
+                      ) : (
+                        selectedFieldProbes.map((pa) => (
+                          <div className="detail-row" key={pa.id}>
+                            <span className="detail-label">{probeListTitle(pa)}</span>
+                            <span className="detail-value">
+                              {pa.probe || '—'}
+                              {pa.label ? ` · ${pa.label}` : ''}
+                            </span>
+                          </div>
+                        ))
+                      )}
                       <div className="detail-row">
                         <span className="detail-label">Status</span>
                         <span className="detail-value">{getStatusBadge(selectedField.probeStatus)}</span>
                       </div>
-                      {probeAssignments
-                        .filter((pa) => pa.fieldSeasonId === selectedField.fieldSeasonId && (pa.removalDate || pa.removalAt))
+                      {selectedFieldProbes
+                        .filter((pa) => pa.removalDate || pa.removalAt)
                         .map((pa) => (
-                          <div className="detail-row" key={pa.id}>
-                            <span className="detail-label">Pulled{pa.probe ? ` ${pa.probe}` : pa.probeNumber > 1 ? ` P${pa.probeNumber}` : ''}</span>
+                          <div className="detail-row" key={`pulled-${pa.id}`}>
+                            <span className="detail-label">Pulled · {probeListTitle(pa)}</span>
                             <span className="detail-value">{formatRemovalWhen(pa.removalDate, pa.removalAt, 'long') || pa.removalDate || '—'}</span>
                           </div>
                         ))}

@@ -6,7 +6,9 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
+import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import TerrainControl from '@/components/TerrainControl';
+import type { ElevRange } from '@/lib/terrain/color-scale';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import { useFieldBoundaries, type FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
@@ -135,6 +137,8 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
   const [boundaryTick, setBoundaryTick] = useState(0);
   const boundaries = useFieldBoundaries([fieldId], undefined, boundaryTick);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
+  const [elevRange, setElevRange] = useState<ElevRange | null>(null);
+  const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
   const [mode, setMode] = useState<Mode>('idle');
   const [points, setPoints] = useState<LatLng[]>([]);
   const [history, setHistory] = useState<LatLng[][]>([]);
@@ -260,7 +264,10 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
   };
 
   return (
-    <div className={`field-detail-map${editing ? ' field-detail-map-drawing' : ''}`}>
+    <div
+      ref={rootRef}
+      className={`field-detail-map${editing ? ' field-detail-map-drawing' : ''}${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
+    >
       <MapContainer
         center={center}
         zoom={hasPin ? 15 : 7}
@@ -269,7 +276,9 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-        {!editing && <ElevationOverlay mode={terrainMode} clipTo={boundaries} />}
+        {!editing && (
+          <ElevationOverlay mode={terrainMode} clipTo={boundaries} onFieldRange={setElevRange} />
+        )}
         {!editing && <BoundaryLayer data={boundaries} selectedId={fieldId} />}
         {hasPin && !editing && (
           <Marker position={[lat as number, lng as number]} icon={pinIcon()} interactive={false} />
@@ -333,13 +342,17 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
           }}
         />
         <FitField lat={lat} lng={lng} boundaries={boundaries} editing={editing} />
+        <MapSizeSync expanded={expanded} />
       </MapContainer>
+
+      <MapFullscreenButton expanded={expanded} onClick={toggle} />
 
       {!editing && (
         <TerrainControl
           className="field-detail-map-terrain"
           value={terrainMode}
           onChange={setTerrainMode}
+          range={elevRange}
         />
       )}
 

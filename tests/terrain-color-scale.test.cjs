@@ -87,6 +87,24 @@ test('field sample keeps points inside the boundary and ignores a zero outside i
   assert.ok(range.lo > 670 && range.hi < 680, JSON.stringify(range));
 });
 
+test('legend feet are meters times 3.28084, rounded, and color math stays in meters', () => {
+  assert.equal(scale.METERS_TO_FEET, 3.28084);
+  assert.equal(scale.formatElevationFeet(674.1867065429688), '2212 ft');
+  assert.equal(scale.formatElevationFeet(678.5460815429688), '2226 ft');
+  assert.equal(scale.formatElevationFeet(100), `${Math.round(100 * 3.28084)} ft`);
+  assert.equal(scale.formatElevationFeet(Number.NaN), '');
+  const index = scale.elevationColorIndex(NORTH_EDGE_M, FIELD);
+  assert.equal(index, scale.elevationColorIndex(NORTH_EDGE_M, { lo: FIELD.lo, hi: FIELD.hi }));
+});
+
+test('field scale is reported for the legend without a second color path', () => {
+  const src = fs.readFileSync(path.join(__dirname, '../lib/terrain/elev-grid.ts'), 'utf8');
+  assert.match(src, /state\.fieldScale = colorScaleForTile\(null, sample\)/);
+  assert.match(src, /state\.onFieldScale\?\.\(state\.fieldScale\)/);
+  const ui = fs.readFileSync(path.join(__dirname, '../components/TerrainControl.tsx'), 'utf8');
+  assert.match(ui, /formatElevationFeet/);
+});
+
 test('elevation requests are distinct URLs and the proxy does not cache them together', () => {
   const req = f.load('lib/terrain/elevation-request.ts');
   const field = req.elevationRequestPath([-11038551.258, 4940397.927, -11037490.694, 4941465.657], 96, 96);

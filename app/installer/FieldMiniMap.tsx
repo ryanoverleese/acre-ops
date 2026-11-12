@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { ElevRange } from '@/lib/terrain/color-scale';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
@@ -110,6 +111,7 @@ interface Props {
 export default function FieldMiniMap({ lat, lng, boundary }: Props) {
   const posRef = useRef<{ lat: number; lng: number } | null>(null);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
+  const [elevRange, setElevRange] = useState<ElevRange | null>(null);
 
   if (!lat || !lng) return null;
 
@@ -123,7 +125,7 @@ export default function FieldMiniMap({ lat, lng, boundary }: Props) {
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-        <ElevationOverlay mode={terrainMode} clipTo={boundary} />
+        <ElevationOverlay mode={terrainMode} clipTo={boundary} onFieldRange={setElevRange} />
         <BoundaryLayer data={boundary} />
         <Marker position={[lat, lng]} icon={pin()} interactive={false} />
         <UserLocation posRef={posRef} />
@@ -131,7 +133,7 @@ export default function FieldMiniMap({ lat, lng, boundary }: Props) {
         <CenterOn lat={lat} lng={lng} />
       </MapContainer>
 
-      <TerrainControl value={terrainMode} onChange={setTerrainMode} />
+      <TerrainControl value={terrainMode} onChange={setTerrainMode} range={elevRange} />
 
       {/* Recenter — bottom-right, matches main map button */}
       <button
