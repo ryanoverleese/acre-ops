@@ -9,7 +9,10 @@ import ElevationOverlay from '@/components/ElevationOverlay';
 import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import TerrainControl from '@/components/TerrainControl';
 import { compareProbePinOrder, probePinText } from '@/lib/probe-pin-label';
+import { useLidarLabel } from '@/components/useLidarLabel';
 import type { ElevRange } from '@/lib/terrain/color-scale';
+import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
+import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import type { GrowerProbePin } from '@/lib/supabase/grower-fields';
@@ -119,6 +122,11 @@ export default function GrowerFieldMap({
     [probes],
   );
   const hasOutline = boundaries.features.length > 0;
+  const sourcePoint = useMemo(
+    () => fieldInteriorPoint(boundaries.features.map((feature) => feature.geometry?.coordinates), lat, lng),
+    [boundaries, lat, lng],
+  );
+  const lidarLabel = useLidarLabel(sourcePoint?.lat ?? null, sourcePoint?.lng ?? null);
   const center: [number, number] =
     lat != null && lng != null ? [lat, lng] : NEBRASKA_FALLBACK;
 
@@ -133,6 +141,9 @@ export default function GrowerFieldMap({
         style={{ width: '100%', height: '100%' }}
         zoomControl={false}
         attributionControl={false}
+        zoomSnap={FIELD_MAP_ZOOM.zoomSnap}
+        zoomDelta={FIELD_MAP_ZOOM.zoomDelta}
+        wheelPxPerZoomLevel={FIELD_MAP_ZOOM.wheelPxPerZoomLevel}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
         {hasOutline && (
@@ -162,6 +173,7 @@ export default function GrowerFieldMap({
           value={terrainMode}
           onChange={setTerrainMode}
           range={elevRange}
+          sourceLabel={lidarLabel}
         />
       )}
     </div>

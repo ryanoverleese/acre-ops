@@ -33,6 +33,7 @@ const FIELD_RELIEF = {
 
 type Range = ElevRange;
 
+/** Tile zoom is the integer GridLayer uses. Fractional map zoom only scales these tiles. */
 function tileBBox(coords: L.Coords) {
   const world = 40075016.68557849;
   const size = world / Math.pow(2, coords.z);

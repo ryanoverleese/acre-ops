@@ -8,7 +8,10 @@ import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
 import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import TerrainControl from '@/components/TerrainControl';
+import { useLidarLabel } from '@/components/useLidarLabel';
 import type { ElevRange } from '@/lib/terrain/color-scale';
+import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
+import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import { useFieldBoundaries, type FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
@@ -146,6 +149,15 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const hasPin = Boolean(lat && lng);
+  const sourcePoint = useMemo(
+    () => fieldInteriorPoint(
+      boundaries.features.map((feature) => feature.geometry?.coordinates),
+      hasPin ? lat : null,
+      hasPin ? lng : null,
+    ),
+    [boundaries, hasPin, lat, lng],
+  );
+  const lidarLabel = useLidarLabel(sourcePoint?.lat ?? null, sourcePoint?.lng ?? null);
   const fieldFeature = boundaries.features.find((f) => (f.properties?.fieldId ?? f.id) === fieldId);
   const hasBoundary = Boolean(fieldFeature);
   const complex = isComplexBoundary(fieldFeature?.geometry);
@@ -274,6 +286,9 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
         style={{ width: '100%', height: '100%' }}
         zoomControl={false}
         attributionControl={false}
+        zoomSnap={FIELD_MAP_ZOOM.zoomSnap}
+        zoomDelta={FIELD_MAP_ZOOM.zoomDelta}
+        wheelPxPerZoomLevel={FIELD_MAP_ZOOM.wheelPxPerZoomLevel}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
         {!editing && (
@@ -353,6 +368,7 @@ export default function FieldDetailMap({ fieldId, lat, lng, onPlacePin, onBounda
           value={terrainMode}
           onChange={setTerrainMode}
           range={elevRange}
+          sourceLabel={lidarLabel}
         />
       )}
 
