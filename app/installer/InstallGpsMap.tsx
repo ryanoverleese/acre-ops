@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import type { ElevRange } from '@/lib/terrain/color-scale';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import ElevationOverlay from '@/components/ElevationOverlay';
 import TerrainControl from '@/components/TerrainControl';
@@ -52,6 +53,7 @@ function FollowUser({ pos }: { pos: { lat: number; lng: number } | null }) {
 export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, userPos, boundary }: Props) {
   const [ready, setReady] = useState(false);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
+  const [elevRange, setElevRange] = useState<ElevRange | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const handleMap = useCallback((m: L.Map) => { mapRef.current = m; }, []);
   useEffect(() => { setReady(true); }, []);
@@ -131,14 +133,14 @@ export default function InstallGpsMap({ fallbackLat, fallbackLng, captured, user
         keyboard={false}
       >
         <TileLayer url={SAT_URL} attribution={ATTR} maxZoom={21} />
-        <ElevationOverlay mode={terrainMode} clipTo={boundary} />
+        <ElevationOverlay mode={terrainMode} clipTo={boundary} onFieldRange={setElevRange} />
         <BoundaryLayer data={boundary} />
         <FollowUser pos={userPos} />
         <MapRef onMap={handleMap} />
         {userPos && userIcon && <Marker position={[userPos.lat, userPos.lng]} icon={userIcon} interactive={false} />}
         {captured && capturedIcon && <Marker position={[captured.lat, captured.lng]} icon={capturedIcon} interactive={false} />}
       </MapContainer>
-      <TerrainControl value={terrainMode} onChange={setTerrainMode} />
+      <TerrainControl value={terrainMode} onChange={setTerrainMode} range={elevRange} />
       <button style={{ ...btnStyle, top: 8 }} onPointerDown={(e) => { e.preventDefault(); mapRef.current?.zoomIn(); }}>+</button>
       <button style={{ ...btnStyle, top: 52 }} onPointerDown={(e) => { e.preventDefault(); mapRef.current?.zoomOut(); }}>−</button>
     </div>

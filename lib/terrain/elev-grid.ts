@@ -115,6 +115,11 @@ export type ElevGridOptions = {
   fieldBounds?: L.LatLngBounds | null;
   /** [lng, lat] rings. Samples outside these rings do not affect the color scale. */
   fieldRings?: LngLatRing[] | null;
+  /**
+   * Display hook. Called with the same field scale passed to colorScaleForTile.
+   * Does not change sampling, coloring, or the elevation request.
+   */
+  onFieldScale?: (range: Range | null) => void;
 };
 
 function renderCanvas(tile: ElevTile, mode: ElevRenderMode, fieldScale: Range | null) {
@@ -193,6 +198,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     boundsKey: '',
     fieldAbort: null as AbortController | null,
     fieldGen: 0,
+    onFieldScale: options.onFieldScale,
   };
 
   const Layer = L.GridLayer.extend({
@@ -270,6 +276,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           if (!sample) return;
           // One scale for every tile at every zoom. Tile min/max is never used.
           state.fieldScale = colorScaleForTile(null, sample);
+          state.onFieldScale?.(state.fieldScale);
           this._paintLoaded();
         })
         .catch((err) => {

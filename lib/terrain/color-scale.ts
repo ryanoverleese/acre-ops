@@ -64,6 +64,18 @@ export function colorScaleForTile(tileRange: ElevRange | null, fieldRange: ElevR
   return { lo: fieldRange.lo, hi: fieldRange.hi };
 }
 
+/**
+ * Display factor for the elevation legend. Color math stays in meters.
+ * 1 m = 3.28084 ft, rounded to a whole foot.
+ */
+export const METERS_TO_FEET = 3.28084;
+
+/** Whole feet for the terrain legend. Does not affect the color scale. */
+export function formatElevationFeet(meters: number): string {
+  if (!Number.isFinite(meters)) return '';
+  return `${Math.round(meters * METERS_TO_FEET)} ft`;
+}
+
 /** 0–255 index into the elevation LUT. Same meters and same scale → same index. */
 export function elevationColorIndex(meters: number, scale: ElevRange): number {
   const span = Math.max(scale.hi - scale.lo, 0.5);

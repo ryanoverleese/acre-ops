@@ -6,7 +6,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
+import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import TerrainControl from '@/components/TerrainControl';
+import { compareProbePinOrder, probePinText } from '@/lib/probe-pin-label';
+import type { ElevRange } from '@/lib/terrain/color-scale';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import type { GrowerProbePin } from '@/lib/supabase/grower-fields';
@@ -109,12 +112,21 @@ export default function GrowerFieldMap({
   probes: GrowerProbePin[];
 }) {
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
+  const [elevRange, setElevRange] = useState<ElevRange | null>(null);
+  const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
+  const orderedProbes = useMemo(
+    () => probes.slice().sort(compareProbePinOrder),
+    [probes],
+  );
   const hasOutline = boundaries.features.length > 0;
   const center: [number, number] =
     lat != null && lng != null ? [lat, lng] : NEBRASKA_FALLBACK;
 
   return (
-    <div className="grower-map">
+    <div
+      ref={rootRef}
+      className={`grower-map${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
+    >
       <MapContainer
         center={center}
         zoom={lat != null && lng != null ? 15 : 7}
@@ -123,20 +135,24 @@ export default function GrowerFieldMap({
         attributionControl={false}
       >
         <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
-        {hasOutline && <ElevationOverlay mode={terrainMode} clipTo={boundaries} />}
+        {hasOutline && (
+          <ElevationOverlay mode={terrainMode} clipTo={boundaries} onFieldRange={setElevRange} />
+        )}
         <BoundaryLayer data={boundaries} selectedId={fieldId} />
-        {probes
+        {orderedProbes
           .filter((probe) => probe.lat != null && probe.lng != null)
           .map((probe) => (
           <Marker
             key={probe.id}
             position={[probe.lat as number, probe.lng as number]}
-            icon={probeIcon(probe.label || String(probe.probeNumber || 'P'))}
+            icon={probeIcon(probePinText(probe))}
             interactive={false}
           />
         ))}
-        <Fit fieldLat={lat} fieldLng={lng} boundaries={boundaries} probes={probes} />
+        <Fit fieldLat={lat} fieldLng={lng} boundaries={boundaries} probes={orderedProbes} />
+        <MapSizeSync expanded={expanded} />
       </MapContainer>
+      <MapFullscreenButton expanded={expanded} onClick={toggle} />
       {hasOutline && (
         <TerrainControl
           // Keep base .terrain-control positioning (top/left). grower-map-terrain
@@ -145,6 +161,7 @@ export default function GrowerFieldMap({
           className="terrain-control grower-map-terrain"
           value={terrainMode}
           onChange={setTerrainMode}
+          range={elevRange}
         />
       )}
     </div>

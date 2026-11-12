@@ -5,6 +5,7 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import * as esriLeaflet from 'esri-leaflet';
 import type { FieldBoundaryCollection } from './useFieldBoundaries';
+import type { ElevRange } from '@/lib/terrain/color-scale';
 import { createElevGridLayer, type ElevRenderMode } from '@/lib/terrain/elev-grid';
 import type { LngLatRing } from '@/lib/terrain/elevation-request';
 import {
@@ -80,6 +81,11 @@ interface ElevationOverlayProps {
    * With no clip geometry, terrain stays off — we only want LiDAR inside fields.
    */
   clipTo?: FieldBoundaryCollection | null;
+  /**
+   * Field-wide color scale in meters, the same range the tiles are painted with.
+   * Null when terrain is off. Display only.
+   */
+  onFieldRange?: (range: ElevRange | null) => void;
 }
 
 type ElevLayer = ReturnType<typeof createElevGridLayer>;
@@ -123,10 +129,12 @@ function boundsForClip(data: FieldBoundaryCollection | null | undefined): L.LatL
  * Color modes use CutSheetRX's blue→red ramp on client-decoded DEM tiles.
  * One elevation min/max is taken from the field boundary and applied to every tile.
  */
-export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverlayProps) {
+export default function ElevationOverlay({ mode, show, clipTo, onFieldRange }: ElevationOverlayProps) {
   const map = useMap();
   const elevRef = useRef<ElevLayer | null>(null);
   const contourRef = useRef<ContourLayer | null>(null);
+  const onFieldRangeRef = useRef(onFieldRange);
+  onFieldRangeRef.current = onFieldRange;
 
   const resolved: TerrainMode =
     mode ?? (show ? 'contours' : 'off');
@@ -167,6 +175,7 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
       clearContour();
       const pane = map.getPane(ELEVATION_PANE);
       if (pane) pane.style.clipPath = '';
+      onFieldRangeRef.current?.(null);
       return () => { clearElev(); clearContour(); };
     }
 
@@ -197,6 +206,7 @@ export default function ElevationOverlay({ mode, show, clipTo }: ElevationOverla
         pane: ELEVATION_PANE,
         fieldBounds,
         fieldRings,
+        onFieldScale: (range) => onFieldRangeRef.current?.(range),
       });
       elevRef.current.addTo(map);
     } else {
