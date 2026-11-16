@@ -12389,7 +12389,81 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-.grower-tabs .grower-op-name { display: none; }
+.grower-tabs-op { display: none; }
+/* Acre Insights staff viewing a farm. */
+.grower-viewing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  width: 100%;
+}
+.grower-viewing-tag {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid #2F5D3A;
+  border-radius: 3px;
+  color: #2F5D3A;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.grower-viewing .grower-op-name { flex: 0 1 auto; }
+.grower-viewing-link {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #5A5A5A;
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.grower-viewing-link:first-of-type { margin-left: auto; }
+.grower-viewing-link:hover { color: #1A1A1A; }
+.grower-admin-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #5A5A5A;
+}
+.grower-admin-filter input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #D8D5CE;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 15px;
+  color: #1A1A1A;
+}
+.grower-admin-filter input:focus { outline: 2px solid #2F5D3A; outline-offset: 1px; }
+.grower-admin-list { list-style: none; margin: 0; padding: 0; }
+.grower-admin-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid #E6E2DA;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: #1A1A1A;
+  cursor: pointer;
+}
+.grower-admin-row:hover .grower-admin-name { text-decoration: underline; }
+.grower-admin-row:disabled { cursor: progress; }
+.grower-admin-name { font-size: 15px; font-weight: 500; }
+.grower-admin-meta { flex: 0 0 auto; font-size: 13px; color: #5A5A5A; }
 .grower-footer {
   display: flex;
   justify-content: center;
@@ -12454,12 +12528,17 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
   .map-fs-btn { border-left: 1px solid #D8D5CE; }
   .grower-pill-wrap { display: none; }
   .grower-topbar { display: none; }
-  .grower-tabs .grower-op-name {
-    display: block;
+  .grower-tabs-op {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 55%;
     margin-right: auto;
-    max-width: 40%;
-    font-size: 16px;
   }
+  .grower-tabs-op .grower-op-name { font-size: 16px; }
+  .grower-tabs-op .grower-viewing { gap: 12px; }
+  .grower-tabs-op .grower-viewing-link:first-of-type { margin-left: 8px; }
+  .grower-tabs .grower-viewing-link { line-height: normal; font-size: 13px; font-weight: 400; color: #5A5A5A; text-decoration: underline; }
   .grower-tabs {
     display: flex;
     align-items: center;

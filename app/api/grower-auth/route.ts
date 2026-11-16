@@ -7,8 +7,28 @@ import {
   lookupGrowerLogin,
   verifyGrowerPin,
 } from '@/lib/supabase/grower-auth';
-import { createGrowerSession, GROWER_COOKIE, readGrowerSession } from '@/lib/grower-session';
+import {
+  createGrowerAdminSession,
+  createGrowerSession,
+  GROWER_ADMIN_COOKIE,
+  GROWER_COOKIE,
+  readGrowerAdminSession,
+  readGrowerSession,
+} from '@/lib/grower-session';
 import { recordGrowerActivity } from '@/lib/supabase/grower-activity';
+import {
+  findGrowerOperationForAdmin,
+  isGrowerAdminUsername,
+  verifyGrowerAdminLogin,
+} from '@/lib/supabase/grower-admin';
+
+const COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 12 * 60 * 60,
+};
 
 const attempts = new Map<string, { count: number; until: number }>();
 
@@ -37,6 +57,22 @@ export const POST = withApiAuth(async (request) => {
     for (const [k, v] of attempts) if (v.until < now) attempts.delete(k);
   }
 
+  // Acre Insights staff sign-in: env-held bcrypt hash, no farm row, no activity log.
+  if (isGrowerAdminUsername(farmName)) {
+    if (!(await verifyGrowerAdminLogin(farmName, pin))) {
+      throw new DataError('Incorrect farm name, username, or PIN', 401);
+    }
+    attempts.delete(key);
+    const response = NextResponse.json({ ok: true, admin: true, next: '/grower/admin' });
+    response.cookies.set(
+      GROWER_ADMIN_COOKIE,
+      await createGrowerAdminSession(farmName.trim()),
+      COOKIE_OPTIONS,
+    );
+    response.cookies.delete(GROWER_COOKIE);
+    return response;
+  }
+
   // Grower connection only (DATABASE_URL_GROWER + AUTH_SECRET). No office DATABASE_URL.
   const farm = await lookupGrowerLogin(farmName);
   // Same message for missing farm, bad PIN, past-only, non-pilot, or duplicate names.
@@ -53,21 +89,35 @@ export const POST = withApiAuth(async (request) => {
   response.cookies.set(
     GROWER_COOKIE,
     await createGrowerSession(farm.id, farm.name),
-    {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 12 * 60 * 60,
-    },
+    COOKIE_OPTIONS,
+  );
+  // A real grower sign-in ends any staff view in this browser.
+  response.cookies.delete(GROWER_ADMIN_COOKIE);
+  return response;
+});
+
+/** Staff picks a farm to view. Requires the admin cookie; read-only like any grower session. */
+export const PUT = withApiAuth(async (request) => {
+  const admin = await readGrowerAdminSession((await cookies()).get(GROWER_ADMIN_COOKIE)?.value);
+  if (!admin) throw new DataError('Sign in with an authorized account', 401);
+  const body = await request.json().catch(() => ({}));
+  const operation = await findGrowerOperationForAdmin(body?.operationId);
+  if (!operation) throw new DataError('Operation not found', 404);
+  const response = NextResponse.json({ ok: true, operationId: operation.id, name: operation.name });
+  response.cookies.set(
+    GROWER_COOKIE,
+    await createGrowerSession(operation.id, operation.name, { admin: true }),
+    COOKIE_OPTIONS,
   );
   return response;
 });
 
 export const DELETE = withApiAuth(async () => {
   const session = await readGrowerSession((await cookies()).get(GROWER_COOKIE)?.value);
-  if (session) await recordGrowerActivity(session.operationId, 'logout', null);
+  // Staff viewing a farm is not that farm's activity.
+  if (session && !session.admin) await recordGrowerActivity(session.operationId, 'logout', null);
   const response = NextResponse.json({ ok: true });
   response.cookies.delete(GROWER_COOKIE);
+  response.cookies.delete(GROWER_ADMIN_COOKIE);
   return response;
 });

@@ -4,7 +4,7 @@ const { auth } = NextAuth(authConfig);
 import { NextResponse, type NextRequest, type NextFetchEvent } from 'next/server';
 import { LEGACY_EQUIPMENT_ROUTES } from '@/lib/equipment-navigation';
 import { CREW_COOKIE, readCrewSession } from '@/lib/crew-session';
-import { GROWER_COOKIE, readGrowerSession } from '@/lib/grower-session';
+import { GROWER_ADMIN_COOKIE, GROWER_COOKIE, readGrowerAdminSession, readGrowerSession } from '@/lib/grower-session';
 import { isKnownAppRoute } from '@/lib/known-routes';
 
 // Routes that installers can access
@@ -39,6 +39,11 @@ const authenticatedMiddleware = auth(async (req, _event: NextFetchEvent) => {
   // Grower area: farm-name + PIN session. Office staff auth is separate.
   if (pathname === '/grower' || pathname.startsWith('/grower/')) {
     if (pathname.startsWith('/grower/login')) return NextResponse.next();
+    // Staff farm picker: Acre Insights admin cookie only.
+    if (pathname === '/grower/admin' || pathname.startsWith('/grower/admin/')) {
+      if (await readGrowerAdminSession(req.cookies.get(GROWER_ADMIN_COOKIE)?.value)) return NextResponse.next();
+      return NextResponse.redirect(new URL('/grower/login', req.url));
+    }
     if (!grower) {
       const loginUrl = new URL('/grower/login', req.url);
       loginUrl.searchParams.set('callbackUrl', pathname === '/grower' ? '/grower/fields' : pathname);

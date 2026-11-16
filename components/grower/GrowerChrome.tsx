@@ -48,15 +48,33 @@ function GrowerFooter() {
   );
 }
 
+function ViewingAs({ name }: { name: string }) {
+  const exit = async () => {
+    await fetch('/api/grower-auth', { method: 'DELETE' });
+    window.location.href = '/grower/login';
+  };
+  return (
+    <span className="grower-viewing">
+      <span className="grower-viewing-tag">Viewing as</span>
+      <span className="grower-op-name">{name}</span>
+      <a href="/grower/admin" className="grower-viewing-link">Switch</a>
+      <button type="button" className="grower-viewing-link" onClick={exit}>Exit</button>
+    </span>
+  );
+}
+
 export default function GrowerChrome({
   children,
   operationName,
+  viewingAs = false,
 }: {
   children: ReactNode;
   operationName?: string | null;
+  /** Acre Insights staff viewing this farm: show the indicator and skip activity logging. */
+  viewingAs?: boolean;
 }) {
   const pathname = usePathname() || '';
-  if (pathname.startsWith('/grower/login')) {
+  if (pathname.startsWith('/grower/login') || pathname.startsWith('/grower/admin')) {
     return (
       <div className="grower-chrome grower-chrome-login">
         {children}
@@ -68,15 +86,17 @@ export default function GrowerChrome({
   const name = operationName?.trim() || null;
 
   return (
-    <div className="grower-chrome">
-      <GrowerActivityBeacon />
+    <div className={`grower-chrome${viewingAs ? ' is-viewing-as' : ''}`}>
+      {!viewingAs && <GrowerActivityBeacon />}
       {name && (
         <header className="grower-topbar">
-          <span className="grower-op-name">{name}</span>
+          {viewingAs ? <ViewingAs name={name} /> : <span className="grower-op-name">{name}</span>}
         </header>
       )}
       <nav className="grower-tabs" aria-label="Main">
-        {name && <span className="grower-op-name">{name}</span>}
+        {name && (viewingAs
+          ? <span className="grower-tabs-op"><ViewingAs name={name} /></span>
+          : <span className="grower-tabs-op"><span className="grower-op-name">{name}</span></span>)}
         {GROWER_TABS.map((tab) => (
           <Link
             key={tab.id}

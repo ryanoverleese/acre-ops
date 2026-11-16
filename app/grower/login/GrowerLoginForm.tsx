@@ -23,9 +23,11 @@ export default function GrowerLoginForm({ callbackUrl = '/grower/fields' }: { ca
         setError(typeof data.error === 'string' ? data.error : 'Incorrect farm name, username, or PIN');
         return;
       }
-      const next = callbackUrl === '/grower' || !callbackUrl.startsWith('/grower')
-        ? '/grower/fields'
-        : callbackUrl;
+      const next = data?.admin === true
+        ? '/grower/admin'
+        : callbackUrl === '/grower' || !callbackUrl.startsWith('/grower')
+          ? '/grower/fields'
+          : callbackUrl;
       window.location.href = next;
     } catch {
       setError('Something went wrong. Please try again.');

@@ -1,9 +1,18 @@
 // Web Crypto only: shared by Node route guards and edge middleware.
 export const GROWER_COOKIE = 'acre-grower-supabase-v1';
+/** Acre Insights staff "view as grower" sign-in. Separate cookie, same HMAC. */
+export const GROWER_ADMIN_COOKIE = 'acre-grower-admin-v1';
 
 export interface GrowerSession {
   operationId: number;
   name: string;
+  expires: number;
+  /** True when Acre Insights staff is viewing this farm. Never logged as grower activity. */
+  admin?: true;
+}
+
+export interface GrowerAdminSession {
+  username: string;
   expires: number;
 }
 
@@ -24,20 +33,24 @@ async function signature(text: string) {
   return toHex(await crypto.subtle.sign('HMAC', key, encoder.encode(text)));
 }
 
-export async function createGrowerSession(operationId: number, name: string) {
+export async function createGrowerSession(
+  operationId: number,
+  name: string,
+  options?: { admin?: boolean },
+) {
   const payload = encodeURIComponent(
     JSON.stringify({
       operationId,
       name,
       expires: Date.now() + 12 * 60 * 60 * 1000,
+      ...(options?.admin ? { admin: true } : {}),
     }),
   );
   return payload + '.' + (await signature(payload));
 }
 
-export async function readGrowerSession(
-  value: string | undefined,
-): Promise<GrowerSession | null> {
+/** Verify the HMAC and return the decoded JSON payload, or null. */
+async function readSigned(value: string | undefined): Promise<Record<string, unknown> | null> {
   if (!value || value.length > 2000) return null;
   const at = value.lastIndexOf('.');
   const payload = value.slice(0, at);
@@ -48,18 +61,52 @@ export async function readGrowerSession(
     let diff = 0;
     for (let i = 0; i < mac.length; i++) diff |= mac.charCodeAt(i) ^ expected.charCodeAt(i);
     if (diff) return null;
-    const session = JSON.parse(decodeURIComponent(payload));
-    return Number.isSafeInteger(session.operationId)
-      && session.operationId > 0
-      && typeof session.name === 'string'
-      && session.expires > Date.now()
-      ? {
-          operationId: session.operationId,
-          name: session.name,
-          expires: session.expires,
-        }
-      : null;
+    const parsed = JSON.parse(decodeURIComponent(payload));
+    return parsed && typeof parsed === 'object' ? parsed : null;
   } catch {
     return null;
   }
+}
+
+export async function readGrowerSession(
+  value: string | undefined,
+): Promise<GrowerSession | null> {
+  const session = await readSigned(value);
+  if (!session) return null;
+  return Number.isSafeInteger(session.operationId)
+    && (session.operationId as number) > 0
+    && typeof session.name === 'string'
+    && typeof session.expires === 'number'
+    && session.expires > Date.now()
+    ? {
+        operationId: session.operationId as number,
+        name: session.name,
+        expires: session.expires,
+        ...(session.admin === true ? { admin: true as const } : {}),
+      }
+    : null;
+}
+
+export async function createGrowerAdminSession(username: string) {
+  const payload = encodeURIComponent(
+    JSON.stringify({
+      kind: 'grower-admin',
+      username,
+      expires: Date.now() + 12 * 60 * 60 * 1000,
+    }),
+  );
+  return payload + '.' + (await signature(payload));
+}
+
+export async function readGrowerAdminSession(
+  value: string | undefined,
+): Promise<GrowerAdminSession | null> {
+  const session = await readSigned(value);
+  if (!session) return null;
+  return session.kind === 'grower-admin'
+    && typeof session.username === 'string'
+    && typeof session.expires === 'number'
+    && session.expires > Date.now()
+    ? { username: session.username, expires: session.expires }
+    : null;
 }
