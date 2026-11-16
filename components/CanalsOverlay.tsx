@@ -19,6 +19,7 @@ type CanalProps = {
   type?: string | null;
   county?: string | null;
   length_mi?: number | null;
+  source?: string | null;
 };
 
 type CanalFix = GeoJSON.Feature<
@@ -86,17 +87,21 @@ function isMainCanal(props: CanalProps | undefined) {
 
 function canalStyle(feature: GeoJSON.Feature | undefined, flagged: boolean): L.PathOptions {
   const main = isMainCanal(feature?.properties as CanalProps | undefined);
+  // Main canals: bright blue over a thin dark halo (drawn by a separate layer) so they read on satellite.
   const base: L.PathOptions = main
-    ? { color: '#1D4ED8', weight: 4, opacity: 0.95 }
-    : { color: '#60A5FA', weight: 2, opacity: 0.9 };
+    ? { color: '#3B82F6', weight: 4, opacity: 1 }
+    : { color: '#7DB8FF', weight: 2, opacity: 0.95 };
   return flagged ? { ...base, color: '#9CA3AF', dashArray: '6 6', opacity: 0.9 } : { ...base, dashArray: undefined };
 }
+
+const HALO_STYLE: L.PathOptions = { color: '#0B1E3F', weight: 6.5, opacity: 0.85, lineCap: 'round', lineJoin: 'round' };
 
 function popupHtml(props: CanalProps, flagged: boolean) {
   const name = props.name?.trim() || (isMainCanal(props) ? 'Unnamed canal' : 'Unnamed lateral');
   const kind = isMainCanal(props) ? 'Canal' : 'Lateral / ditch';
   const miles = typeof props.length_mi === 'number' ? `${props.length_mi.toFixed(2)} mi` : '';
-  const detail = [kind, miles, props.county ?? ''].filter(Boolean).join(' · ');
+  const source = props.source === 'OSM' ? 'OpenStreetMap' : props.source ? 'USGS NHD' : '';
+  const detail = [kind, miles, props.county ?? '', source].filter(Boolean).join(' · ');
   const action = flagged ? 'Undo “Not there”' : 'Not there';
   return `<div class="canal-popup"><div class="canal-popup-name">${esc(name)}</div><div class="canal-popup-detail">${esc(detail)}</div><button type="button" class="canal-popup-flag" data-canal-flag="1">${action}</button></div>`;
 }
@@ -123,6 +128,7 @@ export default function CanalsOverlay({ show }: { show: boolean }) {
   const map = useMap();
   const layerRef = useRef<L.GeoJSON | null>(null);
   const rendererRef = useRef<L.Renderer | null>(null);
+  const groupRef = useRef<L.FeatureGroup | null>(null);
   const [fixes, setFixes] = useState<CanalFix[]>([]);
   const fixesRef = useRef<CanalFix[]>([]);
   const [drawing, setDrawing] = useState(false);
@@ -204,8 +210,17 @@ export default function CanalsOverlay({ show }: { show: boolean }) {
             });
           },
         };
+        const halo = L.geoJSON(data, {
+          pane: CANAL_PANE,
+          renderer,
+          interactive: false,
+          filter: (feature) => isMainCanal(feature.properties as CanalProps),
+          style: () => HALO_STYLE,
+        } as L.GeoJSONOptions & { renderer: L.Renderer });
         const layer = L.geoJSON(data, options);
-        layer.addTo(map);
+        const group = L.featureGroup([halo, layer]);
+        group.addTo(map);
+        groupRef.current = group;
         layerRef.current = layer;
         rendererRef.current = renderer;
       })
@@ -214,10 +229,11 @@ export default function CanalsOverlay({ show }: { show: boolean }) {
       });
     return () => {
       cancelled = true;
-      if (layerRef.current) {
-        map.removeLayer(layerRef.current);
-        layerRef.current = null;
+      if (groupRef.current) {
+        map.removeLayer(groupRef.current);
+        groupRef.current = null;
       }
+      layerRef.current = null;
       if (rendererRef.current) {
         map.removeLayer(rendererRef.current);
         rendererRef.current = null;
