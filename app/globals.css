@@ -11944,6 +11944,64 @@ a.grower-list-row:hover .grower-list-primary {
   cursor: pointer;
 }
 .map-seg button.map-seg-sat { min-width: 88px; }
+.map-seg button.map-seg-elev {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.field-map-frame { position: relative; }
+.map-elev-menu {
+  position: absolute;
+  top: 44px;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #D8D5CE;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.map-elev-menu button {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 0;
+  background: #fff;
+  color: #1A1A1A;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.map-elev-menu button[aria-checked="true"] { font-weight: 600; }
+.map-elev-menu button[aria-checked="true"]::after { content: "✓"; margin-left: auto; padding-left: 12px; }
+.map-elev-menu button:active { background: #EFEDE6; }
+.map-gesture-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0);
+  transition: background-color 0.2s ease;
+}
+.map-gesture-hint.is-visible { background: rgba(0, 0, 0, 0.45); }
+.map-gesture-hint span {
+  padding: 0 16px;
+  color: #fff;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: center;
+}
 .map-seg button[aria-pressed="true"] { background: #1A1A1A; color: #fff; }
 .map-seg button[aria-pressed="false"]:active { background: #EFEDE6; }
 .map-seg-layers { border-left: 1px solid #D8D5CE; margin-left: 8px; }

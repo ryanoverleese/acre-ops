@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import CanalsOverlay, { CANALS_SOURCE_LABEL } from '@/components/CanalsOverlay';
+import CooperativeGestures from '@/components/fields/CooperativeGestures';
 import ElevationOverlay from '@/components/ElevationOverlay';
 import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
@@ -152,6 +153,10 @@ export default function FieldMapBlock({
   const [range, setRange] = useState<ElevRange | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [showCanals, setShowCanals] = useState(false);
+  const [elevMenuOpen, setElevMenuOpen] = useState(false);
+  const [elevMenuLeft, setElevMenuLeft] = useState(0);
+  const elevBtnRef = useRef<HTMLButtonElement | null>(null);
+  const elevMenuRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const onMap = useCallback((map: L.Map) => { mapRef.current = map; }, []);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
@@ -164,6 +169,35 @@ export default function FieldMapBlock({
   const phrase = mode !== 'off' && range ? formatElevationStrip(range.lo, range.hi) : '';
   const center: [number, number] = lat != null && lng != null ? [lat, lng] : NEBRASKA_FALLBACK;
   const pins = probes.filter(probeHasPin);
+  const elevLabel = mode === 'colorshade' ? 'Elevation · Color' : mode === 'shade' ? 'Elevation · Gray' : 'Elevation';
+
+  // The elevation menu closes on any tap outside it, on Escape, and when the map goes full screen.
+  useEffect(() => {
+    if (!elevMenuOpen) return;
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (elevMenuRef.current?.contains(target) || elevBtnRef.current?.contains(target)) return;
+      setElevMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setElevMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [elevMenuOpen]);
+  useEffect(() => {
+    if (expanded) setElevMenuOpen(false);
+  }, [expanded]);
+
+  const chooseElevation = (next: TerrainMode) => {
+    setSourceOpen(false);
+    setMode(next);
+    setElevMenuOpen(false);
+  };
 
   return (
     <div
@@ -182,18 +216,22 @@ export default function FieldMapBlock({
               Satellite
             </button>
             <button
+              ref={elevBtnRef}
               type="button"
-              aria-pressed={mode === 'colorshade'}
-              onClick={() => { setSourceOpen(false); setMode('colorshade'); }}
+              className="map-seg-elev"
+              aria-pressed={mode !== 'off'}
+              aria-haspopup="menu"
+              aria-expanded={elevMenuOpen}
+              onClick={() => {
+                const btn = elevBtnRef.current;
+                if (btn) setElevMenuLeft(btn.offsetLeft);
+                setElevMenuOpen((open) => !open);
+              }}
             >
-              Color
-            </button>
-            <button
-              type="button"
-              aria-pressed={mode === 'shade'}
-              onClick={() => { setSourceOpen(false); setMode('shade'); }}
-            >
-              Gray
+              {elevLabel}
+              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+                <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
             </button>
           </div>
         )}
@@ -228,6 +266,16 @@ export default function FieldMapBlock({
           </button>
         </div>
       </div>
+      {elevMenuOpen && !expanded ? (
+        <div ref={elevMenuRef} className="map-elev-menu" role="menu" aria-label="Elevation" style={{ left: elevMenuLeft }}>
+          <button type="button" role="menuitemradio" aria-checked={mode === 'colorshade'} onClick={() => chooseElevation('colorshade')}>
+            Color
+          </button>
+          <button type="button" role="menuitemradio" aria-checked={mode === 'shade'} onClick={() => chooseElevation('shade')}>
+            Gray
+          </button>
+        </div>
+      ) : null}
       <div className="field-map-canvas">
         <MapContainer
           center={center}
@@ -249,6 +297,7 @@ export default function FieldMapBlock({
           )}
           <BoundaryLayer data={boundaries} selectedId={fieldId} />
           <CanalsOverlay show={showCanals} />
+          <CooperativeGestures enabled={!expanded} />
           {pins.map((probe) => (
             <Marker
               key={`${probe.id}-${selectedId === probe.id ? 'on' : 'off'}`}
