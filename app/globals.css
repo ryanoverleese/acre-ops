@@ -12249,6 +12249,8 @@ a.grower-list-row:hover .grower-list-primary {
   height: calc(44px + env(safe-area-inset-top, 0px));
 }
 html.map-fullscreen-fallback .grower-pill-wrap,
+html.map-fullscreen-fallback .grower-topbar,
+html.map-fullscreen-fallback .grower-footer,
 html.map-fullscreen-fallback .grower-tabs { display: none; }
 
 .probe-rows { margin-top: 16px; }
@@ -12355,6 +12357,47 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
   font-weight: 400;
   color: #5A5A5A;
 }
+/* Grower chrome: operation name on top, small Acre Insights footer at the bottom. */
+.grower-chrome {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #fff;
+}
+.grower-chrome > .grower-shell {
+  flex: 1 0 auto;
+  min-height: 0;
+}
+.grower-topbar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  padding-top: env(safe-area-inset-top, 0px);
+  border-bottom: 1px solid #D8D5CE;
+  background: #fff;
+}
+.grower-op-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #1A1A1A;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.grower-tabs .grower-op-name { display: none; }
+.grower-footer {
+  display: flex;
+  justify-content: center;
+  padding: 16px 16px 20px;
+  border-top: 1px solid #EFEDE6;
+  opacity: 0.6;
+}
+.grower-footer img { display: block; }
 .grower-tabs { display: none; }
 .grower-pill-wrap {
   position: fixed;
@@ -12399,10 +12442,24 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
     padding-bottom: calc(12px + 52px + 12px + env(safe-area-inset-bottom, 0px));
   }
 }
+@media (max-width: 1023px) {
+  /* The footer, not the page, makes room for the fixed bottom pill. */
+  .grower-chrome:not(.grower-chrome-login) > .grower-shell { padding-bottom: 24px; }
+  .grower-chrome:not(.grower-chrome-login) > .grower-footer {
+    padding-bottom: calc(12px + 52px + 16px + env(safe-area-inset-bottom, 0px));
+  }
+}
 @media (min-width: 1024px) {
   .map-zoom-btn { display: flex; }
   .map-fs-btn { border-left: 1px solid #D8D5CE; }
   .grower-pill-wrap { display: none; }
+  .grower-topbar { display: none; }
+  .grower-tabs .grower-op-name {
+    display: block;
+    margin-right: auto;
+    max-width: 40%;
+    font-size: 16px;
+  }
   .grower-tabs {
     display: flex;
     align-items: center;

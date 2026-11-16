@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
@@ -33,15 +34,49 @@ function RecsIcon() {
 
 const ICONS = { fields: FieldsIcon, probes: PinIcon, recs: RecsIcon };
 
-export default function GrowerChrome({ children }: { children: ReactNode }) {
+function GrowerFooter() {
+  return (
+    <footer className="grower-footer">
+      <Image
+        src="/acre-insights-logo-footer.png"
+        alt="Acre Insights"
+        width={158}
+        height={24}
+        style={{ objectFit: 'contain' }}
+      />
+    </footer>
+  );
+}
+
+export default function GrowerChrome({
+  children,
+  operationName,
+}: {
+  children: ReactNode;
+  operationName?: string | null;
+}) {
   const pathname = usePathname() || '';
-  if (pathname.startsWith('/grower/login')) return <>{children}</>;
+  if (pathname.startsWith('/grower/login')) {
+    return (
+      <div className="grower-chrome grower-chrome-login">
+        {children}
+        <GrowerFooter />
+      </div>
+    );
+  }
   const active = growerTabForPath(pathname);
+  const name = operationName?.trim() || null;
 
   return (
     <div className="grower-chrome">
       <GrowerActivityBeacon />
+      {name && (
+        <header className="grower-topbar">
+          <span className="grower-op-name">{name}</span>
+        </header>
+      )}
       <nav className="grower-tabs" aria-label="Main">
+        {name && <span className="grower-op-name">{name}</span>}
         {GROWER_TABS.map((tab) => (
           <Link
             key={tab.id}
@@ -54,6 +89,7 @@ export default function GrowerChrome({ children }: { children: ReactNode }) {
         ))}
       </nav>
       {children}
+      <GrowerFooter />
       <div className="grower-pill-wrap">
         <nav className="grower-pill" aria-label="Main">
           {GROWER_TABS.map((tab) => {
