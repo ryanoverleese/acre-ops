@@ -8,6 +8,7 @@ import BoundaryLayer from '@/components/BoundaryLayer';
 import CanalsOverlay, { CANALS_SOURCE_LABEL } from '@/components/CanalsOverlay';
 import CooperativeGestures from '@/components/fields/CooperativeGestures';
 import ElevationOverlay from '@/components/ElevationOverlay';
+import SoilsOverlay, { useSoilMap } from '@/components/SoilsOverlay';
 import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
@@ -17,6 +18,7 @@ import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { elevationCssGradient } from '@/lib/terrain/ramp';
+import { SOIL_SOURCE_LABELS } from '@/lib/soils/ssurgo';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
@@ -153,6 +155,7 @@ export default function FieldMapBlock({
   const [range, setRange] = useState<ElevRange | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [showCanals, setShowCanals] = useState(false);
+  const [showSoils, setShowSoils] = useState(false);
   const [elevMenuOpen, setElevMenuOpen] = useState(false);
   const [elevMenuLeft, setElevMenuLeft] = useState(0);
   const elevBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -161,6 +164,11 @@ export default function FieldMapBlock({
   const onMap = useCallback((map: L.Map) => { mapRef.current = map; }, []);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
   const hasOutline = boundaries.features.length > 0;
+  const soils = useSoilMap(boundaries, showSoils && hasOutline);
+  const layerNotes = [
+    showSoils && soils.status === 'ready' ? SOIL_SOURCE_LABELS[soils.map.source] : '',
+    showCanals ? CANALS_SOURCE_LABEL : '',
+  ].filter(Boolean);
   const sourcePoint = useMemo(
     () => fieldInteriorPoint(boundaries.features.map((feature) => feature.geometry?.coordinates), lat, lng),
     [boundaries, lat, lng],
@@ -246,6 +254,17 @@ export default function FieldMapBlock({
               <span className="map-canals-swatch" aria-hidden="true" />
               Canals
             </button>
+            {hasOutline ? (
+              <button
+                type="button"
+                className="map-seg-soils"
+                aria-pressed={showSoils}
+                onClick={() => setShowSoils((on) => !on)}
+              >
+                <span className="map-soils-swatch" aria-hidden="true" />
+                Soils
+              </button>
+            ) : null}
           </div>
         )}
         <div className="map-controls-right">
@@ -296,6 +315,7 @@ export default function FieldMapBlock({
             />
           )}
           <BoundaryLayer data={boundaries} selectedId={fieldId} />
+          {showSoils ? <SoilsOverlay state={soils} boundaries={boundaries} /> : null}
           <CanalsOverlay show={showCanals} />
           <CooperativeGestures enabled={!expanded} />
           {pins.map((probe) => (
@@ -316,7 +336,7 @@ export default function FieldMapBlock({
           <BindMap onMap={onMap} />
           <MapSizeSync expanded={expanded} />
         </MapContainer>
-        {showCanals ? <div className="map-canals-note">{CANALS_SOURCE_LABEL}</div> : null}
+        {layerNotes.length ? <div className="map-canals-note">{layerNotes.join(' · ')}</div> : null}
       </div>
       <div
         className={`map-legend${mode === 'off' ? ' is-satellite' : ''}${mode === 'colorshade' ? ' is-color' : ''}${sourceOpen ? ' is-source-open' : ''}`}
@@ -338,6 +358,24 @@ export default function FieldMapBlock({
         {phrase ? <span className="map-legend-range">{phrase}</span> : null}
         {mode !== 'off' && lidar ? <span className="map-legend-source">{lidar}</span> : null}
       </div>
+      {showSoils && hasOutline ? (
+        <div className="map-soils-legend" aria-live="polite">
+          {soils.status === 'loading' ? <p className="map-soils-status">Loading soils…</p> : null}
+          {soils.status === 'error' ? <p className="map-soils-status">Soil map isn’t available right now. The USDA soil service didn’t respond.</p> : null}
+          {soils.status === 'ready' && soils.legend.length === 0 ? <p className="map-soils-status">No mapped soils found for this field.</p> : null}
+          {soils.status === 'ready' && soils.legend.length > 0 ? (
+            <ul className="map-soils-list">
+              {soils.legend.map((row) => (
+                <li key={row.mukey}>
+                  <span className="map-soils-sym">{row.musym}</span>
+                  <span className="map-soils-name">{row.muname}</span>
+                  <span className="map-soils-share">{Math.max(1, Math.round(row.share * 100))}%</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
