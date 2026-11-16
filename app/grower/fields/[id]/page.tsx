@@ -5,6 +5,8 @@ import {
   getGrowerFieldDetail,
   growerCurrentSeasonYear,
 } from '@/lib/supabase/grower-fields';
+import { fieldOperationFor, isAllOperationsSession } from '@/lib/grower-scope';
+import { findGrowerOperationForAdmin } from '@/lib/supabase/grower-admin';
 import { staffMetadata } from '@/lib/site-metadata';
 import FieldDetailClient from './FieldDetailClient';
 
@@ -13,8 +15,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function GrowerFieldPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ op?: string | string[] }>;
 }) {
   const session = await readGrowerSession((await cookies()).get(GROWER_COOKIE)?.value);
   if (!session) redirect('/grower/login');
@@ -22,15 +26,27 @@ export default async function GrowerFieldPage({
   const { id } = await params;
   if (!/^[1-9]\d*$/.test(id)) notFound();
 
+  // Grower sessions always read their own farm; ?op only counts for staff All operations.
+  const all = isAllOperationsSession(session);
+  const operationId = fieldOperationFor(session, (await searchParams).op);
+  if (!operationId) notFound();
+
   const season = growerCurrentSeasonYear();
   let detail: Awaited<ReturnType<typeof getGrowerFieldDetail>> = null;
+  let operationName = session.name;
+  let operationMissing = false;
   let loadError = false;
   try {
-    detail = await getGrowerFieldDetail(session.operationId, Number(id), season);
+    if (all) {
+      const operation = await findGrowerOperationForAdmin(operationId);
+      if (operation) operationName = operation.name;
+      else operationMissing = true;
+    }
+    if (!operationMissing) detail = await getGrowerFieldDetail(operationId, Number(id), season);
   } catch {
     loadError = true;
   }
-  if (!loadError && !detail) notFound();
+  if (operationMissing || (!loadError && !detail)) notFound();
 
   if (loadError || !detail) {
     return (
@@ -47,7 +63,8 @@ export default async function GrowerFieldPage({
 
   return (
     <FieldDetailClient
-      farmName={session.name}
+      farmName={operationName}
+      operationLabel={all ? operationName : null}
       field={{
         id: detail.id,
         name: detail.name,

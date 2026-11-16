@@ -2,6 +2,7 @@ import 'server-only';
 import { query } from './database';
 import { verifyGrowerPin } from './grower-auth';
 import { positiveId } from './registry';
+import { isAllOperationsSession } from '../grower-scope';
 
 /**
  * Acre Insights staff "view as grower" login.
@@ -71,4 +72,40 @@ export async function findGrowerOperationForAdmin(
     [id],
   );
   return rows.length === 1 ? { id: positiveId(rows[0].id), name: rows[0].name } : null;
+}
+
+type ScopeSession = { operationId: number; name: string; admin?: true; all?: true };
+
+export type ScopedResult<T> = {
+  /** One entry per operation read; operation is null for a normal single-farm session. */
+  parts: Array<{ operation: { id: number; name: string } | null; value: T }>;
+  failed: number;
+};
+
+/**
+ * Run a per-farm grower read for the session's scope. Normal sessions read
+ * only their own farm. The staff "All operations" view reads every
+ * current-customer farm one at a time through the same farm-scoped grower
+ * reads, so database row scoping is unchanged.
+ */
+export async function readForGrowerScope<T>(
+  session: ScopeSession,
+  read: (operationId: number) => Promise<T>,
+): Promise<ScopedResult<T>> {
+  if (!isAllOperationsSession(session)) {
+    return { parts: [{ operation: null, value: await read(session.operationId) }], failed: 0 };
+  }
+  const operations = await listGrowerOperationsForAdmin();
+  const parts: ScopedResult<T>['parts'] = [];
+  let failed = 0;
+  // One farm at a time: each read is its own farm-scoped transaction, and
+  // running them side by side on a shared connection could mix scopes.
+  for (const op of operations) {
+    try {
+      parts.push({ operation: { id: op.id, name: op.name }, value: await read(op.id) });
+    } catch {
+      failed += 1;
+    }
+  }
+  return { parts, failed };
 }

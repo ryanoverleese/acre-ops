@@ -26,8 +26,11 @@ function fmtDate(value: unknown): string {
 
 export default function FieldDetailClient({
   field,
+  operationLabel = null,
 }: {
   farmName: string;
+  /** Staff All operations view: which farm this field belongs to. */
+  operationLabel?: string | null;
   field: {
     id: number;
     name: string;
@@ -56,6 +59,7 @@ export default function FieldDetailClient({
             <path d="M10.5 1.5L2 10l8.5 8.5" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </Link>
+        {operationLabel ? <p className="field-page-op">{operationLabel}</p> : null}
         <h1 className="field-page-title">{field.name}</h1>
         <p className="field-page-sub">
           {formatGrowerAcres(field.acres, {

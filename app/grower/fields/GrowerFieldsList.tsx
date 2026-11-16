@@ -2,6 +2,7 @@
 
 import FieldListThumb from '@/components/fields/FieldListThumb';
 import { formatGrowerAcres, summarizeGrowerFieldProbeStatus } from '@/lib/grower-display';
+import { growerFieldHref } from '@/lib/grower-scope';
 
 function Chevron() {
   return (
@@ -24,6 +25,9 @@ export default function GrowerFieldsList({
     acresFromBoundary: boolean;
     probeStatuses: string[];
     boundary: { type?: string; coordinates?: unknown } | null;
+    /** Staff All operations view only. */
+    operationId?: number;
+    operationName?: string;
   }>;
 }) {
   const signOut = async () => {
@@ -54,10 +58,13 @@ export default function GrowerFieldsList({
             });
             return (
               <li key={field.id}>
-                <a href={`/grower/fields/${field.id}`} className="field-list-row">
+                <a href={growerFieldHref(field.id, field.operationId)} className="field-list-row">
                   <FieldListThumb geometry={field.boundary} />
                   <span className="field-list-copy">
                     <span className="grower-list-primary">{field.name}</span>
+                    {field.operationName ? (
+                      <span className="grower-list-op">{field.operationName}</span>
+                    ) : null}
                     <span className="grower-list-meta">
                       {acres ? `${acres} · ${status.label}` : status.label}
                     </span>

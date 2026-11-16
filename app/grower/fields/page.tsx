@@ -5,6 +5,7 @@ import {
   growerCurrentSeasonYear,
   listGrowerFieldsForSeason,
 } from '@/lib/supabase/grower-fields';
+import { readForGrowerScope } from '@/lib/supabase/grower-admin';
 import { staffMetadata } from '@/lib/site-metadata';
 import GrowerFieldsList from './GrowerFieldsList';
 
@@ -16,10 +17,16 @@ export default async function GrowerFieldsPage() {
   if (!session) redirect('/grower/login?callbackUrl=/grower/fields');
 
   const season = growerCurrentSeasonYear();
-  let fields: Awaited<ReturnType<typeof listGrowerFieldsForSeason>> = [];
+  type Row = Awaited<ReturnType<typeof listGrowerFieldsForSeason>>[number]
+    & { operationId?: number; operationName?: string };
+  let fields: Row[] = [];
   let loadError = false;
   try {
-    fields = await listGrowerFieldsForSeason(session.operationId, season);
+    const scoped = await readForGrowerScope(session, (op) => listGrowerFieldsForSeason(op, season));
+    loadError = scoped.failed > 0;
+    fields = scoped.parts.flatMap(({ operation, value }) => value.map((f) => (
+      operation ? { ...f, operationId: operation.id, operationName: operation.name } : f
+    )));
   } catch {
     loadError = true;
   }
@@ -41,6 +48,8 @@ export default async function GrowerFieldsPage() {
           acresFromBoundary: f.acresFromBoundary,
           probeStatuses: f.probeStatuses,
           boundary: f.boundary,
+          operationId: f.operationId,
+          operationName: f.operationName,
         }))}
       />
     </>

@@ -5,6 +5,7 @@ import {
   growerCurrentSeasonYear,
   listGrowerWaterRecsForSeason,
 } from '@/lib/supabase/grower-fields';
+import { readForGrowerScope } from '@/lib/supabase/grower-admin';
 import { staffMetadata } from '@/lib/site-metadata';
 import GrowerRecommendationsList from './GrowerRecommendationsList';
 
@@ -16,10 +17,18 @@ export default async function GrowerRecommendationsPage() {
   if (!session) redirect('/grower/login?callbackUrl=/grower/recommendations');
 
   const season = growerCurrentSeasonYear();
-  let items: Awaited<ReturnType<typeof listGrowerWaterRecsForSeason>> = [];
+  type Row = Awaited<ReturnType<typeof listGrowerWaterRecsForSeason>>[number]
+    & { operationId?: number; operationName?: string };
+  let items: Row[] = [];
   let loadError = false;
   try {
-    items = await listGrowerWaterRecsForSeason(session.operationId, season);
+    const scoped = await readForGrowerScope(session, (op) => listGrowerWaterRecsForSeason(op, season));
+    loadError = scoped.failed > 0;
+    items = scoped.parts.flatMap(({ operation, value }) => value.map((rec) => (
+      operation ? { ...rec, operationId: operation.id, operationName: operation.name } : rec
+    )));
+    // Several farms: newest first across all of them.
+    if (scoped.parts.length > 1) items.sort((a, b) => String(b.date).localeCompare(String(a.date)));
   } catch {
     loadError = true;
   }

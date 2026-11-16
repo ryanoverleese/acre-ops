@@ -14,6 +14,7 @@ import {
   type ProbeListItem,
 } from '@/lib/grower-probes';
 import { formatProbeSerial } from '@/lib/probe-row';
+import { growerFieldHref } from '@/lib/grower-scope';
 
 function Chevron() {
   return (
@@ -62,7 +63,8 @@ export default function GrowerHardwareList({
         <h1 className="grower-title">{serial || 'Probe'}</h1>
         {selected.status?.trim() ? <p className="probe-detail-line">{selected.status.trim()}</p> : null}
         <p className="probe-detail-line">
-          <a href={`/grower/fields/${selected.fieldId}`}>{selected.fieldName}</a>
+          <a href={growerFieldHref(selected.fieldId, selected.operationId)}>{selected.fieldName}</a>
+          {selected.operationName ? <span className="probe-field-op">{` · ${selected.operationName}`}</span> : null}
         </p>
         {selected.brand ? <p className="probe-detail-muted">{selected.brand}</p> : null}
         {selected.ownerName ? <p className="probe-detail-muted">{`Owned by: ${selected.ownerName}`}</p> : null}
@@ -106,8 +108,9 @@ export default function GrowerHardwareList({
           </div>
           {groups.map((group) => (
             <section key={group.fieldId} className="probe-group">
-              <a className="probe-field-head" href={`/grower/fields/${group.fieldId}`}>
+              <a className="probe-field-head" href={growerFieldHref(group.fieldId, group.operationId)}>
                 {group.fieldName}
+                {group.operationName ? <span className="probe-field-op">{` · ${group.operationName}`}</span> : null}
                 <span className="probe-field-count">{` · ${group.probes.length}`}</span>
               </a>
               <ul className="probe-group-list">

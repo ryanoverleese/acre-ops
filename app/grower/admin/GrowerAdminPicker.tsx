@@ -20,14 +20,14 @@ export default function GrowerAdminPicker({
     return q ? operations.filter((op) => op.name.toLowerCase().includes(q)) : operations;
   }, [filter, operations]);
 
-  const view = async (op: Operation) => {
+  const view = async (op: Operation | 'all') => {
     setError('');
-    setBusy(op.id);
+    setBusy(op === 'all' ? 0 : op.id);
     try {
       const res = await fetch('/api/grower-auth', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operationId: op.id }),
+        body: JSON.stringify(op === 'all' ? { all: true } : { operationId: op.id }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -76,6 +76,24 @@ export default function GrowerAdminPicker({
           autoComplete="off"
         />
       </label>
+
+      {!filter.trim() && operations.length > 0 ? (
+        <ul className="grower-admin-list grower-admin-list-all">
+          <li>
+            <button
+              type="button"
+              className="grower-admin-row"
+              onClick={() => view('all')}
+              disabled={busy !== null}
+            >
+              <span className="grower-admin-name">All operations</span>
+              <span className="grower-admin-meta">
+                {busy === 0 ? 'Opening…' : `Every current customer · ${operations.length}`}
+              </span>
+            </button>
+          </li>
+        </ul>
+      ) : null}
 
       {shown.length === 0 ? (
         <p className="grower-empty">{operations.length ? 'No match.' : 'No current customers.'}</p>

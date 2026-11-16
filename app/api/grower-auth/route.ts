@@ -16,6 +16,7 @@ import {
   readGrowerSession,
 } from '@/lib/grower-session';
 import { recordGrowerActivity } from '@/lib/supabase/grower-activity';
+import { ALL_OPERATIONS_NAME } from '@/lib/grower-scope';
 import {
   findGrowerOperationForAdmin,
   isGrowerAdminUsername,
@@ -101,6 +102,15 @@ export const PUT = withApiAuth(async (request) => {
   const admin = await readGrowerAdminSession((await cookies()).get(GROWER_ADMIN_COOKIE)?.value);
   if (!admin) throw new DataError('Sign in with an authorized account', 401);
   const body = await request.json().catch(() => ({}));
+  if (body?.all === true) {
+    const response = NextResponse.json({ ok: true, all: true, name: ALL_OPERATIONS_NAME });
+    response.cookies.set(
+      GROWER_COOKIE,
+      await createGrowerSession(0, ALL_OPERATIONS_NAME, { admin: true, all: true }),
+      COOKIE_OPTIONS,
+    );
+    return response;
+  }
   const operation = await findGrowerOperationForAdmin(body?.operationId);
   if (!operation) throw new DataError('Operation not found', 404);
   const response = NextResponse.json({ ok: true, operationId: operation.id, name: operation.name });

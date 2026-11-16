@@ -13,6 +13,9 @@ export type ProbeListItem = {
   ownerName: string | null;
   lat: number | null;
   lng: number | null;
+  /** Set only in the staff All operations view. */
+  operationId?: number;
+  operationName?: string;
 };
 
 type DayParts = { y: number; m: number; d: number };
@@ -93,6 +96,8 @@ export function canCollapseRemoved(items: Array<{ status: string | null }>): boo
 export type ProbeGroupView = {
   fieldId: number;
   fieldName: string;
+  operationId?: number;
+  operationName?: string;
   probes: ProbeListItem[];
 };
 
@@ -104,7 +109,12 @@ export function groupProbes(items: ProbeListItem[], showRemoved: boolean): Probe
   for (const item of visible) {
     let group = byField.get(item.fieldId);
     if (!group) {
-      group = { fieldId: item.fieldId, fieldName: item.fieldName, probes: [] };
+      group = {
+        fieldId: item.fieldId,
+        fieldName: item.fieldName,
+        ...(item.operationId ? { operationId: item.operationId, operationName: item.operationName } : {}),
+        probes: [],
+      };
       byField.set(item.fieldId, group);
     }
     group.probes.push(item);

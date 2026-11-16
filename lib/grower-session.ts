@@ -9,6 +9,8 @@ export interface GrowerSession {
   expires: number;
   /** True when Acre Insights staff is viewing this farm. Never logged as grower activity. */
   admin?: true;
+  /** Staff "All operations" view (admin only; operationId is 0). */
+  all?: true;
 }
 
 export interface GrowerAdminSession {
@@ -36,7 +38,7 @@ async function signature(text: string) {
 export async function createGrowerSession(
   operationId: number,
   name: string,
-  options?: { admin?: boolean },
+  options?: { admin?: boolean; all?: boolean },
 ) {
   const payload = encodeURIComponent(
     JSON.stringify({
@@ -44,6 +46,7 @@ export async function createGrowerSession(
       name,
       expires: Date.now() + 12 * 60 * 60 * 1000,
       ...(options?.admin ? { admin: true } : {}),
+      ...(options?.admin && options?.all ? { all: true } : {}),
     }),
   );
   return payload + '.' + (await signature(payload));
@@ -73,8 +76,11 @@ export async function readGrowerSession(
 ): Promise<GrowerSession | null> {
   const session = await readSigned(value);
   if (!session) return null;
+  // "All operations" exists only for signed staff sessions; a grower cookie
+  // can never carry it, and operationId 0 is valid only together with it.
+  const all = session.admin === true && session.all === true;
   return Number.isSafeInteger(session.operationId)
-    && (session.operationId as number) > 0
+    && (all ? session.operationId === 0 : (session.operationId as number) > 0)
     && typeof session.name === 'string'
     && typeof session.expires === 'number'
     && session.expires > Date.now()
@@ -83,6 +89,7 @@ export async function readGrowerSession(
         name: session.name,
         expires: session.expires,
         ...(session.admin === true ? { admin: true as const } : {}),
+        ...(all ? { all: true as const } : {}),
       }
     : null;
 }

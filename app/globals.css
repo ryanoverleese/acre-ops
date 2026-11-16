@@ -12463,6 +12463,22 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
 .grower-admin-row:hover .grower-admin-name { text-decoration: underline; }
 .grower-admin-row:disabled { cursor: progress; }
 .grower-admin-name { font-size: 15px; font-weight: 500; }
+.grower-admin-list-all { margin-bottom: 8px; border-bottom: 1px solid #D8D5CE; }
+.grower-admin-list-all .grower-admin-row { border-bottom: 0; }
+/* Staff All operations view: which farm a row belongs to. */
+.grower-list-op {
+  font-size: 12px;
+  font-weight: 500;
+  color: #2F5D3A;
+  letter-spacing: 0.01em;
+}
+.grower-list-op-inline, .probe-field-op { color: #5A5A5A; font-weight: 400; }
+.field-page-op {
+  margin: 0 0 2px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2F5D3A;
+}
 .grower-admin-meta { flex: 0 0 auto; font-size: 13px; color: #5A5A5A; }
 .grower-footer {
   display: flex;

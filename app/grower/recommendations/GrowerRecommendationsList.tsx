@@ -1,6 +1,7 @@
 'use client';
 
 import type { GrowerFarmWaterRec } from '@/lib/supabase/grower-fields';
+import { growerFieldHref } from '@/lib/grower-scope';
 
 export default function GrowerRecommendationsList({
   season,
@@ -8,7 +9,7 @@ export default function GrowerRecommendationsList({
 }: {
   farmName: string;
   season: number;
-  items: GrowerFarmWaterRec[];
+  items: Array<GrowerFarmWaterRec & { operationId?: number; operationName?: string }>;
 }) {
   return (
     <div className="grower-shell">
@@ -33,7 +34,8 @@ export default function GrowerRecommendationsList({
                 </span>
               </div>
               <p className="grower-inline-link">
-                <a href={`/grower/fields/${rec.fieldId}`}>{rec.fieldName}</a>
+                <a href={growerFieldHref(rec.fieldId, rec.operationId)}>{rec.fieldName}</a>
+                {rec.operationName ? <span className="grower-list-op-inline">{` · ${rec.operationName}`}</span> : null}
               </p>
               <p className="grower-body-text">{rec.recommendation?.trim() || '—'}</p>
             </li>
