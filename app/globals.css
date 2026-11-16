@@ -12382,6 +12382,37 @@ html.map-fullscreen-fallback .grower-tabs { display: none; }
   .grower-field-layout .field-map-canvas { height: max(420px, calc(100vh - 274px)); }
 }
 
+/* Grower field page: big map first, everything else below it. Office field page is unaffected. */
+.grower-field-page .grower-field-layout .field-map-frame:not(.is-map-expanded):not(:fullscreen) .field-map-canvas {
+  height: max(360px, 62vh);
+}
+@media (max-width: 559px) {
+  .grower-field-page .grower-field-layout > .field-map-frame:not(.is-map-expanded):not(:fullscreen) {
+    width: auto;
+    margin: 0 -16px;
+    border-radius: 0;
+  }
+  .grower-field-page .grower-field-layout > .field-map-frame:not(.is-map-expanded):not(:fullscreen) .map-controls,
+  .grower-field-page .grower-field-layout > .field-map-frame:not(.is-map-expanded):not(:fullscreen) .map-legend {
+    border-left: 0;
+    border-right: 0;
+    border-radius: 0;
+  }
+  .grower-field-page .grower-field-layout > .field-map-frame:not(.is-map-expanded):not(:fullscreen) .field-map-canvas {
+    border-left: 0;
+    border-right: 0;
+  }
+}
+@media (min-width: 1024px) {
+  .grower-field-page .grower-field-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+  .grower-field-page .grower-field-layout .field-map-frame:not(.is-map-expanded):not(:fullscreen) .field-map-canvas {
+    height: max(520px, 72vh);
+  }
+}
+
 .field-list { list-style: none; margin: 0; padding: 0; }
 .field-list-row {
   display: flex;
