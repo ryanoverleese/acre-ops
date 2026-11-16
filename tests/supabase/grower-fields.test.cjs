@@ -263,9 +263,14 @@ test('probe and field status summarize Installed and Removed', () => {
   assert.equal(formatGrowerProbeStatus(null), 'Not recorded');
   assert.equal(
     summarizeGrowerFieldProbeStatus(['Installed', 'Removed']).label,
-    'Installed · Removed',
+    'Installed · Probe Removed',
   );
-  assert.equal(summarizeGrowerFieldProbeStatus(['Removed', 'Removed']).label, 'Removed');
+  assert.equal(summarizeGrowerFieldProbeStatus(['Removed']).label, 'Probe Removed');
+  assert.equal(summarizeGrowerFieldProbeStatus(['Removed', 'Removed']).label, 'Probes Removed');
+  assert.equal(
+    summarizeGrowerFieldProbeStatus(['Installed', 'Removed', 'Removed']).label,
+    'Installed · Probes Removed',
+  );
   assert.equal(summarizeGrowerFieldProbeStatus([]).label, 'No probes');
 });
 

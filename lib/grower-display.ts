@@ -27,7 +27,7 @@ export function formatGrowerProbeStatus(status: string | null | undefined): stri
 }
 
 export type GrowerFieldStatusSummary = {
-  /** Short label for lists: Installed, Removed, Installed · Removed, Assigned, No probes. */
+  /** Short label for lists: Installed, Probe Removed, Probes Removed, Installed · Probe Removed, Assigned, No probes. */
   label: string;
   installed: number;
   removed: number;
@@ -59,7 +59,7 @@ export function summarizeGrowerFieldProbeStatus(
   }
   const parts: string[] = [];
   if (installed) parts.push('Installed');
-  if (removed) parts.push('Removed');
+  if (removed) parts.push(removed === 1 ? 'Probe Removed' : 'Probes Removed');
   if (!installed && !removed && assigned) parts.push('Assigned');
   if (!parts.length && other) parts.push('Status not recorded');
   return {
