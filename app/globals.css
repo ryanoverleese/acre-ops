@@ -12006,8 +12006,7 @@ a.grower-list-row:hover .grower-list-primary {
   flex-wrap: wrap;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-.canal-fix-bar button,
-.canal-fix-hint {
+.canal-fix-bar button {
   height: 26px;
   padding: 0 8px;
   border: 1px solid #D8D5CE;
@@ -12021,11 +12020,8 @@ a.grower-list-row:hover .grower-list-primary {
   white-space: nowrap;
 }
 .canal-fix-bar button { cursor: pointer; }
-.canal-fix-bar button:disabled { color: #9A9A9A; cursor: default; }
-.canal-fix-bar button:active:not(:disabled) { background: #EFEDE6; }
-.canal-fix-hint { box-sizing: border-box; font-weight: 400; color: #5A5A5A; }
+.canal-fix-bar button:active { background: #EFEDE6; }
 .canal-fix-bar .canal-fix-clear { padding: 0 7px; color: #5A5A5A; }
-.leaflet-container.is-canal-drawing { cursor: crosshair; }
 .map-controls-right {
   box-sizing: border-box;
   margin-left: auto;

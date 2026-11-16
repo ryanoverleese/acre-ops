@@ -25,7 +25,7 @@ type CanalProps = {
 type CanalFix = GeoJSON.Feature<
   GeoJSON.Geometry,
   {
-    fix: 'not_there' | 'missing';
+    fix: 'not_there';
     key: string;
     marked_at: string;
     name?: string | null;
@@ -55,7 +55,11 @@ function readFixes(): CanalFix[] {
   try {
     const raw = window.localStorage.getItem(FIXES_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as CanalFix[]) : [];
+    if (!Array.isArray(parsed)) return [];
+    // Only "Not there" flags are kept; older sketch entries are ignored.
+    return (parsed as CanalFix[]).filter(
+      (fix) => fix?.type === 'Feature' && fix.properties?.fix === 'not_there' && typeof fix.properties.key === 'string' && !!fix.geometry,
+    );
   } catch {
     return [];
   }
@@ -120,9 +124,8 @@ function downloadFixes(fixes: CanalFix[]) {
 }
 
 /**
- * Irrigation canals and laterals over any base map, plus a small browser-only
- * correction tool ("Not there" flags and "Mark missing canal" sketches) that
- * downloads as GeoJSON. Off by default; data is fetched on first use.
+ * Irrigation canals and laterals over any base map, plus browser-only
+ * "Not there" flags that download as GeoJSON. Off by default; data is fetched on first use.
  */
 export default function CanalsOverlay({ show }: { show: boolean }) {
   const map = useMap();
@@ -131,8 +134,6 @@ export default function CanalsOverlay({ show }: { show: boolean }) {
   const groupRef = useRef<L.FeatureGroup | null>(null);
   const [fixes, setFixes] = useState<CanalFix[]>([]);
   const fixesRef = useRef<CanalFix[]>([]);
-  const [drawing, setDrawing] = useState(false);
-  const [draft, setDraft] = useState<[number, number][]>([]);
   const barRef = useRef<HTMLDivElement | null>(null);
 
   const saveFixes = useCallback((next: CanalFix[]) => {
@@ -241,64 +242,6 @@ export default function CanalsOverlay({ show }: { show: boolean }) {
     };
   }, [show, map, saveFixes]);
 
-  // Sketched "missing canal" lines Ryan has already saved.
-  useEffect(() => {
-    if (!show) return;
-    const group = L.layerGroup();
-    for (const fix of fixes) {
-      if (fix.properties.fix !== 'missing' || fix.geometry.type !== 'LineString') continue;
-      const latlngs = (fix.geometry.coordinates as number[][]).map(([lng, lat]) => L.latLng(lat, lng));
-      L.polyline(latlngs, { color: '#EA580C', weight: 3, dashArray: '8 6', interactive: false }).addTo(group);
-    }
-    group.addTo(map);
-    return () => {
-      map.removeLayer(group);
-    };
-  }, [show, map, fixes]);
-
-  // Drawing mode: each map tap adds a point to the sketch.
-  useEffect(() => {
-    if (!show || !drawing) return;
-    const pane = map.getPane(CANAL_PANE);
-    if (pane) pane.style.pointerEvents = 'none';
-    map.doubleClickZoom.disable();
-    map.closePopup();
-    const container = map.getContainer();
-    container.classList.add('is-canal-drawing');
-    const onClick = (event: L.LeafletMouseEvent) => {
-      setDraft((points) => [...points, [event.latlng.lat, event.latlng.lng]]);
-    };
-    map.on('click', onClick);
-    return () => {
-      map.off('click', onClick);
-      map.doubleClickZoom.enable();
-      container.classList.remove('is-canal-drawing');
-      if (pane) pane.style.pointerEvents = '';
-    };
-  }, [show, drawing, map]);
-
-  // Live preview of the sketch.
-  useEffect(() => {
-    if (!drawing || draft.length === 0) return;
-    const group = L.layerGroup();
-    L.polyline(draft, { color: '#EA580C', weight: 3, interactive: false }).addTo(group);
-    for (const point of draft) {
-      L.circleMarker(point, { radius: 4, color: '#fff', weight: 1.5, fillColor: '#EA580C', fillOpacity: 1, interactive: false }).addTo(group);
-    }
-    group.addTo(map);
-    return () => {
-      map.removeLayer(group);
-    };
-  }, [drawing, draft, map]);
-
-  // Leaving the overlay cancels any half-drawn sketch.
-  useEffect(() => {
-    if (!show) {
-      setDrawing(false);
-      setDraft([]);
-    }
-  }, [show]);
-
   useEffect(() => {
     if (barRef.current) {
       L.DomEvent.disableClickPropagation(barRef.current);
@@ -306,62 +249,30 @@ export default function CanalsOverlay({ show }: { show: boolean }) {
     }
   });
 
-  const saveDraft = () => {
-    if (draft.length < 2) return;
-    saveFixes([
-      ...fixesRef.current,
-      {
-        type: 'Feature',
-        geometry: { type: 'LineString', coordinates: draft.map(([lat, lng]) => [Number(lng.toFixed(6)), Number(lat.toFixed(6))]) },
-        properties: { fix: 'missing', key: `missing-${Date.now()}`, marked_at: new Date().toISOString() },
-      },
-    ]);
-    setDraft([]);
-    setDrawing(false);
-  };
-
-  if (!show) return null;
+  if (!show || fixes.length === 0) return null;
 
   return createPortal(
     <div className="canal-fix-bar" ref={barRef}>
-      {drawing ? (
-        <>
-          <span className="canal-fix-hint">
-            {draft.length === 0 ? 'Tap along the missing canal' : `${draft.length} point${draft.length === 1 ? '' : 's'}`}
-          </span>
-          <button type="button" disabled={draft.length === 0} onClick={() => setDraft((points) => points.slice(0, -1))}>Undo</button>
-          <button type="button" disabled={draft.length < 2} onClick={saveDraft}>Save</button>
-          <button type="button" onClick={() => { setDraft([]); setDrawing(false); }}>Cancel</button>
-        </>
-      ) : (
-        <>
-          <button type="button" onClick={() => { setDraft([]); setDrawing(true); }}>Mark missing canal</button>
-          {fixes.length > 0 && (
-            <>
-              <button type="button" onClick={() => downloadFixes(fixes)} title="Download your canal fixes as GeoJSON">
-                Canal fixes ({fixes.length})
-              </button>
-              <button
-                type="button"
-                className="canal-fix-clear"
-                aria-label="Clear canal fixes"
-                title="Clear canal fixes saved in this browser"
-                onClick={() => {
-                  if (window.confirm(`Clear ${fixes.length} canal fix${fixes.length === 1 ? '' : 'es'} saved in this browser?`)) {
-                    saveFixes([]);
-                    layerRef.current?.eachLayer((child) => {
-                      const feature = (child as L.Path & { feature?: GeoJSON.Feature }).feature;
-                      (child as L.Path).setStyle(canalStyle(feature, false));
-                    });
-                  }
-                }}
-              >
-                ×
-              </button>
-            </>
-          )}
-        </>
-      )}
+      <button type="button" onClick={() => downloadFixes(fixes)} title="Download your canal fixes as GeoJSON">
+        Canal fixes ({fixes.length})
+      </button>
+      <button
+        type="button"
+        className="canal-fix-clear"
+        aria-label="Clear canal fixes"
+        title="Clear canal fixes saved in this browser"
+        onClick={() => {
+          if (window.confirm(`Clear ${fixes.length} canal fix${fixes.length === 1 ? '' : 'es'} saved in this browser?`)) {
+            saveFixes([]);
+            layerRef.current?.eachLayer((child) => {
+              const feature = (child as L.Path & { feature?: GeoJSON.Feature }).feature;
+              (child as L.Path).setStyle(canalStyle(feature, false));
+            });
+          }
+        }}
+      >
+        ×
+      </button>
     </div>,
     map.getContainer(),
   );
