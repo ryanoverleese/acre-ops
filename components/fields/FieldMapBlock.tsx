@@ -5,6 +5,7 @@ import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
+import CanalsOverlay, { CANALS_SOURCE_LABEL } from '@/components/CanalsOverlay';
 import ElevationOverlay from '@/components/ElevationOverlay';
 import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
@@ -150,6 +151,7 @@ export default function FieldMapBlock({
   const [mode, setMode] = useState<TerrainMode>('colorshade');
   const [range, setRange] = useState<ElevRange | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
+  const [showCanals, setShowCanals] = useState(false);
   const mapRef = useRef<L.Map | null>(null);
   const onMap = useCallback((map: L.Map) => { mapRef.current = map; }, []);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
@@ -195,6 +197,19 @@ export default function FieldMapBlock({
             </button>
           </div>
         )}
+        {!expanded && (
+          <div className="map-seg map-seg-layers" role="group" aria-label="Layers">
+            <button
+              type="button"
+              className="map-seg-canals"
+              aria-pressed={showCanals}
+              onClick={() => setShowCanals((on) => !on)}
+            >
+              <span className="map-canals-swatch" aria-hidden="true" />
+              Canals
+            </button>
+          </div>
+        )}
         <div className="map-controls-right">
           {!expanded && (
             <>
@@ -233,6 +248,7 @@ export default function FieldMapBlock({
             />
           )}
           <BoundaryLayer data={boundaries} selectedId={fieldId} />
+          <CanalsOverlay show={showCanals} />
           {pins.map((probe) => (
             <Marker
               key={`${probe.id}-${selectedId === probe.id ? 'on' : 'off'}`}
@@ -251,6 +267,7 @@ export default function FieldMapBlock({
           <BindMap onMap={onMap} />
           <MapSizeSync expanded={expanded} />
         </MapContainer>
+        {showCanals ? <div className="map-canals-note">{CANALS_SOURCE_LABEL}</div> : null}
       </div>
       <div
         className={`map-legend${mode === 'off' ? ' is-satellite' : ''}${mode === 'colorshade' ? ' is-color' : ''}${sourceOpen ? ' is-source-open' : ''}`}

@@ -137,6 +137,13 @@ const PLSSOverlay = dynamic(
   { ssr: false }
 );
 
+import { CANALS_SOURCE_LABEL } from './canals-source';
+
+const CanalsOverlay = dynamic(
+  () => import('./CanalsOverlay'),
+  { ssr: false }
+);
+
 const ElevationOverlay = dynamic(
   () => import('./ElevationOverlay'),
   { ssr: false }
@@ -153,6 +160,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
   const [brightness, setBrightness] = useState(1.2);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showPLSS, setShowPLSS] = useState(false);
+  const [showCanals, setShowCanals] = useState(false);
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
   const [measureMode, setMeasureMode] = useState<MeasureMode>(null);
   const [showMeasureMenu, setShowMeasureMenu] = useState(false);
@@ -455,6 +463,17 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           PLSS Grid
         </label>
 
+        {/* Irrigation canals overlay (USGS NHD) */}
+        <label style={{ ...controlStyle, cursor: 'pointer' }} title="Canals: USGS NHD">
+          <input
+            type="checkbox"
+            checked={showCanals}
+            onChange={(e) => setShowCanals(e.target.checked)}
+            style={{ cursor: 'pointer' }}
+          />
+          Canals
+        </label>
+
         {/* Brightness */}
         <div style={controlStyle}>
           <span>Brightness</span>
@@ -521,6 +540,7 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
         />
         <ElevationOverlay mode={terrainMode} clipTo={boundaries} />
         <PLSSOverlay show={showPLSS} />
+        <CanalsOverlay show={showCanals} />
         <MeasureTool mode={measureMode} onModeChange={setMeasureMode} clearSignal={clearMeasureCounter} />
         <BoundaryLayer data={boundaries} />
         {mappableFields.map((field) => {
@@ -582,6 +602,8 @@ export default function FieldsMap({ fields, visible, colorBy = 'none', onClose }
           );
         })}
       </MapContainer>
+
+      {showCanals && <div className="map-canals-note map-canals-note-attr">{CANALS_SOURCE_LABEL}</div>}
 
       {/* Color legend */}
       {useColoredMarkers && legendEntries.length > 0 && (

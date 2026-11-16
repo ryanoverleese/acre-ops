@@ -11946,6 +11946,86 @@ a.grower-list-row:hover .grower-list-primary {
 .map-seg button.map-seg-sat { min-width: 88px; }
 .map-seg button[aria-pressed="true"] { background: #1A1A1A; color: #fff; }
 .map-seg button[aria-pressed="false"]:active { background: #EFEDE6; }
+.map-seg-layers { border-left: 1px solid #D8D5CE; margin-left: 8px; }
+.map-seg button.map-seg-canals {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.map-canals-swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  background: #1D4ED8;
+}
+.map-seg button.map-seg-canals[aria-pressed="true"] { background: #E8EFFC; color: #1D4ED8; }
+.map-canals-note-attr { bottom: 22px; }
+.field-map-canvas .map-canals-note { top: 6px; bottom: auto; }
+@media (max-width: 420px) {
+  .map-seg-layers { margin-left: 0; }
+  .map-seg button.map-seg-canals { padding: 0 10px; }
+}
+.map-canals-note {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  z-index: 1000;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #5A5A5A;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 11px;
+}
+.canal-popup-wrap .leaflet-popup-content-wrapper { border-radius: 4px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
+.canal-popup-wrap .leaflet-popup-content { margin: 8px 10px; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+.canal-popup-name { font-size: 13px; font-weight: 600; color: #1A1A1A; }
+.canal-popup-detail { margin-top: 2px; font-size: 12px; color: #5A5A5A; }
+.canal-popup-flag {
+  margin-top: 6px;
+  padding: 2px 8px;
+  border: 1px solid #D8D5CE;
+  border-radius: 3px;
+  background: #fff;
+  color: #1A1A1A;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.canal-popup-flag:active { background: #EFEDE6; }
+.canal-fix-bar {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 16px);
+  flex-wrap: wrap;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.canal-fix-bar button,
+.canal-fix-hint {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid #D8D5CE;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1A1A1A;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+}
+.canal-fix-bar button { cursor: pointer; }
+.canal-fix-bar button:disabled { color: #9A9A9A; cursor: default; }
+.canal-fix-bar button:active:not(:disabled) { background: #EFEDE6; }
+.canal-fix-hint { box-sizing: border-box; font-weight: 400; color: #5A5A5A; }
+.canal-fix-bar .canal-fix-clear { padding: 0 7px; color: #5A5A5A; }
+.leaflet-container.is-canal-drawing { cursor: crosshair; }
 .map-controls-right {
   box-sizing: border-box;
   margin-left: auto;
