@@ -143,3 +143,74 @@ export function elevationColorIndex(meters: number, scale: ElevRange): number {
   if (t >= 1) return 255;
   return t * 255 | 0;
 }
+
+
+const SPREAD_BINS = 1024;
+
+/**
+ * Histogram-equalized (area) mapping. Colors are assigned by how much land
+ * sits at each height, so a high plateau does not collapse to one flat red.
+ * Built once from the viewport (or field) sample and shared by every tile.
+ */
+export type SpreadMap = {
+  lo: number;
+  hi: number;
+  /** 1024 bins from lo to hi → 0–255 LUT index. */
+  index: Uint8Array;
+};
+
+/** Ground samples in meters, same filter as rangeFromSamples, unsorted. */
+export function keptGroundSamples(values: ArrayLike<number>): number[] {
+  const kept: number[] = [];
+  for (let i = 0; i < values.length; i++) {
+    const v = values[i];
+    if (v > 0 && v < 9000) kept.push(v);
+  }
+  return kept;
+}
+
+export function buildSpreadMap(
+  values: ArrayLike<number>,
+  clip?: ElevRange | null,
+): SpreadMap | null {
+  let kept = keptGroundSamples(values);
+  if (isUsableRange(clip)) {
+    const lo = clip.lo;
+    const hi = clip.hi;
+    kept = kept.filter((v) => v >= lo && v <= hi);
+  }
+  if (kept.length < 2) return null;
+  kept.sort((a, b) => a - b);
+  const lo = isUsableRange(clip) ? clip.lo : kept[0];
+  const hi = isUsableRange(clip) ? clip.hi : kept[kept.length - 1];
+  if (!(hi > lo)) return null;
+  const index = new Uint8Array(SPREAD_BINS);
+  const n = kept.length;
+  let j = 0;
+  for (let b = 0; b < SPREAD_BINS; b++) {
+    const x = lo + ((b + 0.5) / SPREAD_BINS) * (hi - lo);
+    while (j < n && kept[j] <= x) j++;
+    const p = j / n;
+    index[b] = p <= 0 ? 0 : p >= 1 ? 255 : (p * 255) | 0;
+  }
+  index[0] = 0;
+  index[SPREAD_BINS - 1] = 255;
+  return { lo, hi, index };
+}
+
+export function elevationColorIndexSpread(meters: number, map: SpreadMap): number {
+  if (meters <= map.lo) return map.index[0];
+  if (meters >= map.hi) return 255;
+  const t = (meters - map.lo) / (map.hi - map.lo);
+  const i = Math.min(SPREAD_BINS - 1, Math.max(0, (t * SPREAD_BINS) | 0));
+  return map.index[i];
+}
+
+/** Whole feet → meters for the color-range slider. Inverse of formatElevationFeet. */
+export function feetToMetersExact(feet: number): number {
+  return feet / METERS_TO_FEET;
+}
+
+export function metersToWholeFeet(meters: number): number {
+  return Math.round(meters * METERS_TO_FEET);
+}

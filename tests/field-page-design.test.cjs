@@ -17,7 +17,7 @@ test('legend range keeps whole feet and says ft once', () => {
 test('legend ramp is the CutSheetRX gradient, not a different scale', () => {
   const css = ramp.elevationCssGradient();
   assert.match(css, /rgb\(33,64,154\)/);
-  assert.match(css, /rgb\(165,0,38\)/);
+  assert.match(css, /rgb\(216,48,52\)/);
   const map = fs.readFileSync(path.join(__dirname, '../components/fields/FieldMapBlock.tsx'), 'utf8');
   assert.match(map, /elevationCssGradient\(\)/);
   assert.match(map, /useLidarLabel/);

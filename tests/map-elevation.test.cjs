@@ -73,3 +73,42 @@ test('staff map Elevation reuses the field DEM path, sits under soils, and does 
   const proxy = read('app/api/usgs-elevation/[[...path]]/route.ts');
   assert.match(proxy, /elevation\.nationalmap\.gov/);
 });
+
+test('staff map Color mode has range controls, Spread, Auto, and a corner logo', () => {
+  const client = read('app/map/MapClient.tsx');
+  const controls = read('app/map/ElevColorControls.tsx');
+  const prefs = f.load('lib/terrain/elev-color-prefs.ts');
+
+  assert.match(client, /ElevColorControls/);
+  assert.match(client, /ELEV_COLOR_PREFS_KEY/);
+  assert.match(client, /acre-insights-logo-footer\.png/);
+  assert.match(client, /pointerEvents: 'none'/);
+  assert.match(client, /clamp\(88px, 22vw, 140px\)/);
+  assert.match(client, /acre-insights-logo-footer[\s\S]{0,400}boxShadow: 'none'/);
+  assert.match(controls, /Auto/);
+  assert.match(controls, /Spread/);
+  assert.match(controls, /elevationCssGradient/);
+  assert.match(controls, /Low elevation, feet/);
+  assert.match(controls, /High elevation, feet/);
+  assert.equal(prefs.ELEV_COLOR_PREFS_KEY, 'acre-ops-map-elev-color');
+  const stored = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: false, spread: true, loFt: 2100, hiFt: 2350 }));
+  assert.deepEqual(stored, { auto: false, spread: true, loFt: 2100, hiFt: 2350 });
+  const auto = prefs.parseElevColorPrefs('{"auto":true,"spread":false,"loFt":null,"hiFt":null}');
+  assert.equal(auto.auto, true);
+  assert.equal(auto.spread, false);
+});
+
+test('elevation tiles share one color stretch, a 1-px hillshade halo, and no per-tile scale', () => {
+  const grid = read('lib/terrain/elev-grid.ts');
+  const paint = read('lib/terrain/paint-elev.ts');
+  assert.match(paint, /TILE_HALO = 1/);
+  assert.match(paint, /ELEV_GRID = TILE \+ TILE_HALO \* 2/);
+  assert.match(paint, /mercatorPixelMeters/);
+  assert.match(paint, /tileRowLatRad/);
+  assert.match(paint, /reliefLight/);
+  assert.match(grid, /paintElevationTile/);
+  assert.match(grid, /setColorOptions/);
+  assert.match(grid, /buildSpreadMap/);
+  assert.equal(grid.includes('tile._range'), false);
+  assert.equal(grid.includes('_range'), false);
+});

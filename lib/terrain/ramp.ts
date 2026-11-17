@@ -1,6 +1,7 @@
 /**
  * Elevation color ramp lifted from CutSheetRX (senterfarms.com/programs/csrx):
  * low blue → teal → green → yellow → orange → high red.
+ * The top stop is a lit crimson, not a near-black maroon, so hillshade still reads on high ground.
  */
 export const CUTSHEET_STOPS: Array<[number, [number, number, number]]> = [
   [0, [33, 64, 154]],
@@ -9,7 +10,7 @@ export const CUTSHEET_STOPS: Array<[number, [number, number, number]]> = [
   [0.55, [171, 221, 164]],
   [0.7, [254, 224, 139]],
   [0.85, [244, 109, 67]],
-  [1, [165, 0, 38]],
+  [1, [216, 48, 52]],
 ];
 
 /** Precomputed 256×RGB lookup matching CutSheetRX's LUT builder. */

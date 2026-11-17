@@ -6,9 +6,17 @@ import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus } from './UnifiedMap';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
-import { formatLegendRange, type ElevRange } from '@/lib/terrain/color-scale';
+import { formatLegendRange, feetToMetersExact, metersToWholeFeet, type ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
+import {
+  defaultElevColorPrefs,
+  ELEV_COLOR_PREFS_KEY,
+  parseElevColorPrefs,
+  serializeElevColorPrefs,
+  type ElevColorPrefs,
+} from '@/lib/terrain/elev-color-prefs';
 import { elevationButtonLabel } from '@/lib/terrain/viewport-scale';
+import { ElevColorControls } from './ElevColorControls';
 
 const UnifiedMap = dynamic(() => import('./UnifiedMap'), { ssr: false });
 
@@ -45,6 +53,39 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
   const [soilsStatus, setSoilsStatus] = useState<SoilsViewStatus>('off');
   const [elevationMode, setElevationMode] = useState<TerrainMode>('off');
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
+  const [elevPrefs, setElevPrefs] = useState<ElevColorPrefs>(defaultElevColorPrefs);
+  const [prefsReady, setPrefsReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      setElevPrefs(parseElevColorPrefs(window.localStorage.getItem(ELEV_COLOR_PREFS_KEY)));
+    } catch {
+      setElevPrefs(defaultElevColorPrefs());
+    }
+    setPrefsReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsReady) return;
+    try {
+      window.localStorage.setItem(ELEV_COLOR_PREFS_KEY, serializeElevColorPrefs(elevPrefs));
+    } catch {
+      // private mode or blocked storage — controls still work for this session
+    }
+  }, [elevPrefs, prefsReady]);
+
+  const autoLoFt = elevRange ? metersToWholeFeet(elevRange.lo) : null;
+  const autoHiFt = elevRange ? metersToWholeFeet(elevRange.hi) : null;
+  const colorOn = elevationMode === 'colorshade' || elevationMode === 'color';
+  const elevColor = useMemo(() => {
+    const manual = !elevPrefs.auto
+      && elevPrefs.loFt != null
+      && elevPrefs.hiFt != null
+      && elevPrefs.hiFt > elevPrefs.loFt
+      ? { lo: feetToMetersExact(elevPrefs.loFt), hi: feetToMetersExact(elevPrefs.hiFt) }
+      : null;
+    return { manualRange: manual, spread: elevPrefs.spread };
+  }, [elevPrefs]);
 
   const toggle = useCallback((key: keyof Layers) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -320,6 +361,26 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           onSoilsStatus={setSoilsStatus}
           elevationMode={elevationMode}
           onElevationRange={setElevRange}
+          elevColor={elevColor}
+        />
+
+        <img
+          src="/acre-insights-logo-footer.png"
+          alt="Acre Insights"
+          width={140}
+          height={21}
+          style={{
+            position: 'absolute',
+            left: 10,
+            bottom: 12,
+            width: 'clamp(88px, 22vw, 140px)',
+            height: 'auto',
+            zIndex: 500,
+            pointerEvents: 'none',
+            userSelect: 'none',
+            boxShadow: 'none',
+            filter: 'none',
+          }}
         />
 
         {/* Layer toggle panel */}
@@ -333,7 +394,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
             borderRadius: 10,
             boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
             padding: '10px 14px',
-            minWidth: 140,
+            minWidth: colorOn ? 200 : 140,
           }}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
@@ -368,6 +429,24 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
             range={elevRange}
             onChoose={setElevationMode}
           />
+          {colorOn ? (
+            <ElevColorControls
+              autoLoFt={autoLoFt}
+              autoHiFt={autoHiFt}
+              loFt={elevPrefs.loFt}
+              hiFt={elevPrefs.hiFt}
+              auto={elevPrefs.auto}
+              spread={elevPrefs.spread}
+              onAuto={() => setElevPrefs((prev) => ({
+                ...prev,
+                auto: true,
+                loFt: autoLoFt,
+                hiFt: autoHiFt,
+              }))}
+              onSpread={(spread) => setElevPrefs((prev) => ({ ...prev, spread }))}
+              onRange={(loFt, hiFt) => setElevPrefs((prev) => ({ ...prev, auto: false, loFt, hiFt }))}
+            />
+          ) : null}
           {layers.plantDays && (
             <div style={{ borderTop: '1px solid #e7e5e4', marginTop: 8, paddingTop: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Days Since Planting</div>

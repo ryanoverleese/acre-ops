@@ -1,7 +1,7 @@
 'use client';
 
 import L from 'leaflet';
-import { createElevGridLayer, type ElevRenderMode } from '@/lib/terrain/elev-grid';
+import { createElevGridLayer, type ElevColorOptions, type ElevRenderMode } from '@/lib/terrain/elev-grid';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import {
   needsNewElevSample,
@@ -20,8 +20,11 @@ const MODE_OPACITY: Record<ElevRenderMode, number> = {
   shade: 0.75,
 };
 
+export type StaffElevColor = ElevColorOptions;
+
 export type StaffElevationHandle = {
   setMode: (mode: ElevRenderMode) => void;
+  setColorOptions: (color: StaffElevColor) => void;
   detach: () => void;
 };
 
@@ -59,6 +62,7 @@ export function attachStaffElevation(
   map: L.Map,
   mode: ElevRenderMode,
   onRange?: (range: ElevRange | null) => void,
+  color?: StaffElevColor,
 ): StaffElevationHandle {
   ensureElevationPane(map);
 
@@ -69,6 +73,7 @@ export function attachStaffElevation(
     fieldBounds: null,
     fieldRings: null,
     onFieldScale: (range) => onRange?.(range),
+    color,
   });
   layer.addTo(map);
 
@@ -96,6 +101,9 @@ export function attachStaffElevation(
     setMode(next: ElevRenderMode) {
       layer.setElevMode(next);
       layer.setOpacity(MODE_OPACITY[next]);
+    },
+    setColorOptions(next: StaffElevColor) {
+      layer.setColorOptions(next);
     },
     detach() {
       if (timer) clearTimeout(timer);

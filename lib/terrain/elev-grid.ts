@@ -1,37 +1,34 @@
 import L from 'leaflet';
 import * as Lerc from 'lerc';
 import {
+  buildSpreadMap,
   colorScaleForTile,
-  elevationColorIndex,
   fieldElevationBounds,
   fieldReliefMeters,
+  isUsableRange,
   rangeFromSamples,
   type ElevRange,
+  type SpreadMap,
 } from './color-scale';
 import {
   elevationRequestPath,
   elevationsInsideField,
   type LngLatRing,
 } from './elevation-request';
-import { clamp255, ELEVATION_LUT } from './ramp';
+import {
+  ELEV_GRID,
+  TILE,
+  TILE_HALO,
+  paintElevationTile,
+  type ElevPaintMode,
+} from './paint-elev';
 
-const TILE = 256;
-const N = TILE + 2; // 1px halo for slope neighbors
+export type ElevRenderMode = ElevPaintMode;
+
+const N = ELEV_GRID; // 256 + 1px halo on each side for slope neighbors
 /** Fixed grid for the field sample. Independent of the map zoom. */
 const FIELD_SAMPLE = 96;
 const FT = 0.3048;
-
-export type ElevRenderMode = 'colorshade' | 'color' | 'shade';
-
-/** CutSheetRX "field" relief preset — strong relief for flat Nebraska ground. */
-const FIELD_RELIEF = {
-  exag: 6,
-  az: 315,
-  alt: 35,
-  shadow: 75,
-  bright: 105,
-  soft: false,
-};
 
 type Range = ElevRange;
 
@@ -40,10 +37,10 @@ function tileBBox(coords: L.Coords) {
   const world = 40075016.68557849;
   const size = world / Math.pow(2, coords.z);
   const px = size / TILE;
-  const minX = -world / 2 + coords.x * size - px;
-  const maxX = minX + size + 2 * px;
-  const maxY = world / 2 - coords.y * size + px;
-  const minY = maxY - size - 2 * px;
+  const minX = -world / 2 + coords.x * size - px * TILE_HALO;
+  const maxX = minX + size + 2 * px * TILE_HALO;
+  const maxY = world / 2 - coords.y * size + px * TILE_HALO;
+  const minY = maxY - size - 2 * px * TILE_HALO;
   const latC = Math.atan(Math.sinh(Math.PI * (1 - 2 * (coords.y + 0.5) / Math.pow(2, coords.z))));
   return { bbox: [minX, minY, maxX, maxY] as [number, number, number, number], cell: px * Math.cos(latC) };
 }
@@ -69,28 +66,6 @@ function boundsIdentity(bounds: L.LatLngBounds | null, rings: LngLatRing[] | nul
   return `${box}#${ringKey}`;
 }
 
-function val(elev: Float32Array, i: number, fallback: number) {
-  const v = elev[i];
-  return v === v ? v : fallback;
-}
-
-function sunVectors() {
-  const { az, alt, soft } = FIELD_RELIEF;
-  const list = soft
-    ? [[az, 0.4], [az - 60, 0.2], [az + 60, 0.2], [az + 180, 0.2]] as const
-    : [[az, 1]] as const;
-  const altR = alt * Math.PI / 180;
-  return list.map(([a, w]) => {
-    const azR = a * Math.PI / 180;
-    return {
-      x: Math.cos(altR) * Math.sin(azR),
-      y: Math.cos(altR) * Math.cos(azR),
-      z: Math.sin(altR),
-      w,
-    };
-  });
-}
-
 let lercReady: Promise<void> | null = null;
 function ensureLerc() {
   if (!lercReady) {
@@ -104,8 +79,17 @@ function ensureLerc() {
 type ElevTile = HTMLCanvasElement & {
   _elev?: Float32Array;
   _cell?: number;
+  _z?: number;
+  _tileY?: number;
   _dead?: boolean;
   _abort?: AbortController | null;
+};
+
+export type ElevColorOptions = {
+  /** When set, every tile uses this stretch instead of the auto sample. */
+  manualRange?: ElevRange | null;
+  /** Histogram-equalize colors by land area in the (clipped) sample. */
+  spread?: boolean;
 };
 
 export type ElevGridOptions = {
@@ -125,75 +109,38 @@ export type ElevGridOptions = {
   onFieldScale?: (range: Range | null) => void;
   /** True max−min of the clipped field sample, in meters. Display only. */
   onFieldRelief?: (meters: number | null) => void;
+  color?: ElevColorOptions;
 };
 
-function renderCanvas(tile: ElevTile, mode: ElevRenderMode, fieldScale: Range | null) {
+export type ElevGridLayer = L.GridLayer & {
+  setElevMode: (mode: ElevRenderMode) => void;
+  setFieldBounds: (bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) => void;
+  setColorOptions: (color: ElevColorOptions) => void;
+  rerender: () => void;
+};
+
+function renderCanvas(
+  tile: ElevTile,
+  mode: ElevRenderMode,
+  fieldScale: Range | null,
+  spreadMap: SpreadMap | null,
+) {
   const elev = tile._elev;
-  const cell = tile._cell;
-  if (!elev || !cell) return;
-  const scale = mode === 'shade' ? null : (fieldScale ? colorScaleForTile(null, fieldScale) : null);
-  if (mode !== 'shade' && !scale) return;
+  if (!elev || tile._z == null || tile._tileY == null) return;
   const ctx = tile.getContext('2d');
   if (!ctx) return;
   const img = ctx.createImageData(TILE, TILE);
-  const out = img.data;
-  const suns = sunVectors();
-  const zf = FIELD_RELIEF.exag / (8 * cell);
-  const ambient = 1 - FIELD_RELIEF.shadow / 100;
-  const bright = FIELD_RELIEF.bright / 100;
-  let flat = 0;
-  for (const s of suns) flat += s.w * s.z;
-
-  for (let y = 0; y < TILE; y++) {
-    for (let x = 0; x < TILE; x++) {
-      const ci = (y + 1) * N + (x + 1);
-      const o = (y * TILE + x) * 4;
-      const e = elev[ci];
-      if (!(e > -500 && e < 9000)) {
-        out[o + 3] = 0;
-        continue;
-      }
-      const A = val(elev, ci - N - 1, e), B = val(elev, ci - N, e), C = val(elev, ci - N + 1, e);
-      const D = val(elev, ci - 1, e), F = val(elev, ci + 1, e);
-      const G = val(elev, ci + N - 1, e), H = val(elev, ci + N, e), I = val(elev, ci + N + 1, e);
-      const gx = (C + 2 * F + I) - (A + 2 * D + G);
-      const gy = (A + 2 * B + C) - (G + 2 * H + I);
-
-      let r: number, g: number, b: number;
-      if (mode === 'color') {
-        const ti = elevationColorIndex(e, scale!) * 3;
-        r = ELEVATION_LUT[ti]; g = ELEVATION_LUT[ti + 1]; b = ELEVATION_LUT[ti + 2];
-      } else {
-        const nx = -gx * zf, ny = -gy * zf;
-        const len = Math.sqrt(nx * nx + ny * ny + 1);
-        let lit = 0;
-        for (const L0 of suns) {
-          const d = (nx * L0.x + ny * L0.y + L0.z) / len;
-          lit += L0.w * (d > 0 ? d : 0);
-        }
-        const shade = lit / flat * 0.82;
-        const light = (ambient + (1 - ambient) * shade) * bright;
-        if (mode === 'shade') {
-          const v = Math.max(70, Math.min(225, light * 225));
-          r = g = b = v;
-        } else {
-          const ti = elevationColorIndex(e, scale!) * 3;
-          r = clamp255(ELEVATION_LUT[ti] * light);
-          g = clamp255(ELEVATION_LUT[ti + 1] * light);
-          b = clamp255(ELEVATION_LUT[ti + 2] * light);
-        }
-      }
-      out[o] = r; out[o + 1] = g; out[o + 2] = b; out[o + 3] = 255;
-    }
-  }
+  paintElevationTile(img.data, elev, {
+    mode,
+    fieldScale,
+    spreadMap,
+    z: tile._z,
+    tileY: tile._tileY,
+  });
   ctx.putImageData(img, 0, 0);
 }
 
-export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
-  setElevMode: (mode: ElevRenderMode) => void;
-  setFieldBounds: (bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) => void;
-  rerender: () => void;
-} {
+export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
   const owned = new Set<ElevTile>();
   const state = {
     mode: options.mode,
@@ -205,7 +152,27 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     fieldGen: 0,
     onFieldScale: options.onFieldScale,
     onFieldRelief: options.onFieldRelief,
+    manualRange: options.color?.manualRange && isUsableRange(options.color.manualRange)
+      ? options.color.manualRange
+      : null as Range | null,
+    spread: options.color?.spread === true,
+    sampleValues: null as number[] | null,
+    spreadMap: null as SpreadMap | null,
+    activeScale: null as Range | null,
   };
+
+  const applyColor = () => {
+    const auto = state.fieldScale;
+    const manual = state.manualRange && isUsableRange(state.manualRange) ? state.manualRange : null;
+    const scale = manual ?? auto;
+    state.activeScale = scale;
+    if (state.spread && state.sampleValues && scale) {
+      state.spreadMap = buildSpreadMap(state.sampleValues, scale);
+    } else {
+      state.spreadMap = null;
+    }
+  };
+  applyColor();
 
   const Layer = L.GridLayer.extend({
     options: {
@@ -214,6 +181,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
       tileSize: TILE,
       maxZoom: 20,
       keepBuffer: 2,
+      updateWhenZooming: false,
       attribution: 'Elevation: USGS 3DEP',
     },
     onAdd(map: L.Map) {
@@ -241,7 +209,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     _paintLoaded() {
       for (const el of owned) {
         if (el._dead || !el._elev) continue;
-        renderCanvas(el, state.mode, state.fieldScale);
+        renderCanvas(el, state.mode, state.activeScale, state.spreadMap);
       }
     },
     _loadFieldScale() {
@@ -284,6 +252,8 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
           // One scale for every tile at every zoom. Tile min/max is never used.
           // The legend uses the unpadded field min/max, not a tile extent.
           state.fieldScale = colorScaleForTile(null, sample);
+          state.sampleValues = values;
+          applyColor();
           state.onFieldScale?.(display);
           state.onFieldRelief?.(fieldReliefMeters(values));
           this._paintLoaded();
@@ -299,8 +269,11 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
       const tile = document.createElement('canvas') as ElevTile;
       tile.width = TILE;
       tile.height = TILE;
+      tile._z = coords.z;
+      tile._tileY = coords.y;
       owned.add(tile);
       const bb = tileBBox(coords);
+      tile._cell = bb.cell;
       const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
       tile._abort = ac;
 
@@ -325,9 +298,8 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
             elev[p] = (mask && !mask[p]) || !(v > 0 && v < 9000) ? NaN : v;
           }
           tile._elev = elev;
-          tile._cell = bb.cell;
           // Same field scale at every zoom. A tile never stretches its own min/max.
-          if (state.fieldScale) renderCanvas(tile, state.mode, state.fieldScale);
+          if (state.activeScale) renderCanvas(tile, state.mode, state.activeScale, state.spreadMap);
           done(undefined, tile);
         })
         .catch((err) => {
@@ -341,6 +313,12 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     setElevMode(mode: ElevRenderMode) {
       state.mode = mode;
       this.rerender();
+    },
+    setColorOptions(color: ElevColorOptions) {
+      state.manualRange = color.manualRange && isUsableRange(color.manualRange) ? color.manualRange : null;
+      state.spread = color.spread === true;
+      applyColor();
+      this._paintLoaded();
     },
     setFieldBounds(bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) {
       const nextRings = rings === undefined ? state.fieldRings : rings;
@@ -357,11 +335,7 @@ export function createElevGridLayer(options: ElevGridOptions): L.GridLayer & {
     },
   });
 
-  return new Layer() as L.GridLayer & {
-    setElevMode: (mode: ElevRenderMode) => void;
-    setFieldBounds: (bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) => void;
-    rerender: () => void;
-  };
+  return new Layer() as ElevGridLayer;
 }
 
 /** Convert meters ↔ feet helpers for range display. */

@@ -22,7 +22,7 @@ test('CSS gradient includes CutSheetRX endpoints', () => {
   const css = ramp.elevationCssGradient();
   assert.match(css, /^linear-gradient\(90deg,/);
   assert.match(css, /rgb\(33,64,154\)/);
-  assert.match(css, /rgb\(165,0,38\)/);
+  assert.match(css, /rgb\(216,48,52\)/);
 });
 
 test('picker is Off + Color + shade + Gray shade', () => {
