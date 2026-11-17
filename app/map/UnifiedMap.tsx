@@ -8,7 +8,10 @@ import type { LatBand } from '@/lib/territory-grid';
 import { useFieldBoundaries } from '@/components/useFieldBoundaries';
 import { loadSoilMap } from '@/lib/soils/load-map';
 import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
+import type { ElevRange } from '@/lib/terrain/color-scale';
+import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
+import { attachStaffElevation, type StaffElevationHandle } from './elevation-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
@@ -84,6 +87,8 @@ interface Props {
   center: [number, number];
   zoom: number;
   onSoilsStatus?: (status: SoilsViewStatus) => void;
+  elevationMode?: TerrainMode;
+  onElevationRange?: (range: ElevRange | null) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -112,7 +117,7 @@ function probeDaysColor(plantingDate?: string): string {
   return '#ff3b30';                      // too early — red
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, elevationMode = 'off', onElevationRange }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -127,6 +132,9 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
   const soilsGroupRef = useRef<L.LayerGroup | null>(null);
   const soilsStatusRef = useRef(onSoilsStatus);
   soilsStatusRef.current = onSoilsStatus;
+  const elevCtlRef = useRef<StaffElevationHandle | null>(null);
+  const elevRangeRef = useRef(onElevationRange);
+  elevRangeRef.current = onElevationRange;
 
   // Fly to computed center when it changes (after data loads)
   useEffect(() => {
@@ -385,6 +393,30 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       clearSoils();
     };
   }, [layers.soils]);
+
+  // Elevation: viewport-stretched USGS 3DEP tiles in a pane below soils and markers.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const mode = elevationMode === 'shade' ? 'shade' : elevationMode === 'color' ? 'color' : 'colorshade';
+    if (elevationMode === 'off') {
+      elevCtlRef.current?.detach();
+      elevCtlRef.current = null;
+      return;
+    }
+    if (!elevCtlRef.current) {
+      elevCtlRef.current = attachStaffElevation(map, mode, (range) => elevRangeRef.current?.(range));
+    } else {
+      elevCtlRef.current.setMode(mode);
+    }
+  }, [elevationMode]);
+
+  useEffect(() => {
+    return () => {
+      elevCtlRef.current?.detach();
+      elevCtlRef.current = null;
+    };
+  }, []);
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }

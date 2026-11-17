@@ -1,11 +1,14 @@
 'use client';
 import { fieldBilling } from '@/lib/data-mappings';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus } from './UnifiedMap';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
+import { formatLegendRange, type ElevRange } from '@/lib/terrain/color-scale';
+import type { TerrainMode } from '@/lib/terrain/modes';
+import { elevationButtonLabel } from '@/lib/terrain/viewport-scale';
 
 const UnifiedMap = dynamic(() => import('./UnifiedMap'), { ssr: false });
 
@@ -40,6 +43,8 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     soils: false,
   });
   const [soilsStatus, setSoilsStatus] = useState<SoilsViewStatus>('off');
+  const [elevationMode, setElevationMode] = useState<TerrainMode>('off');
+  const [elevRange, setElevRange] = useState<ElevRange | null>(null);
 
   const toggle = useCallback((key: keyof Layers) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -313,6 +318,8 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           center={mapCenter}
           zoom={10}
           onSoilsStatus={setSoilsStatus}
+          elevationMode={elevationMode}
+          onElevationRange={setElevRange}
         />
 
         {/* Layer toggle panel */}
@@ -356,6 +363,11 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               ) : null}
             </div>
           ))}
+          <ElevationToggle
+            mode={elevationMode}
+            range={elevRange}
+            onChoose={setElevationMode}
+          />
           {layers.plantDays && (
             <div style={{ borderTop: '1px solid #e7e5e4', marginTop: 8, paddingTop: 8 }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Days Since Planting</div>
@@ -375,6 +387,171 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function ElevationToggle({
+  mode,
+  range,
+  onChoose,
+}: {
+  mode: TerrainMode;
+  range: ElevRange | null;
+  onChoose: (mode: TerrainMode) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const on = mode === 'colorshade' || mode === 'shade' || mode === 'color';
+  const label = elevationButtonLabel(mode);
+  const phrase = on && range ? formatLegendRange(range.lo, range.hi) : '';
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current?.contains(target) || btnRef.current?.contains(target)) return;
+      setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('pointerdown', onDown, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const pick = (next: TerrainMode) => {
+    onChoose(next);
+    setOpen(false);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-pressed={on}
+        onClick={() => setOpen((value) => !value)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          padding: '4px 0',
+          background: 'none',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: 13,
+          color: on ? '#4a7a5b' : '#a8a29e',
+          fontWeight: on ? 600 : 400,
+          textAlign: 'left',
+        }}
+      >
+        <span
+          style={{
+            width: 14,
+            height: 14,
+            borderRadius: 3,
+            border: `2px solid ${on ? '#4a7a5b' : '#d4cfc9'}`,
+            background: on ? '#4a7a5b' : 'transparent',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {on && (
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d="M1.5 4L3.5 6L6.5 2" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </span>
+        <span style={{ flex: 1 }}>{label}</span>
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open ? (
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Elevation"
+          style={{
+            margin: '0 0 6px 22px',
+            padding: '4px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 0,
+          }}
+        >
+          {on ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => pick('off')}
+              style={{
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                textAlign: 'left',
+                padding: '4px 0',
+                fontSize: 13,
+                color: '#78716c',
+              }}
+            >
+              Off
+            </button>
+          ) : null}
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={mode === 'colorshade'}
+            onClick={() => pick('colorshade')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+              padding: '4px 0',
+              fontSize: 13,
+              fontWeight: mode === 'colorshade' ? 600 : 400,
+              color: mode === 'colorshade' ? '#4a7a5b' : '#57534e',
+            }}
+          >
+            Color
+          </button>
+          <button
+            type="button"
+            role="menuitemradio"
+            aria-checked={mode === 'shade'}
+            onClick={() => pick('shade')}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              textAlign: 'left',
+              padding: '4px 0',
+              fontSize: 13,
+              fontWeight: mode === 'shade' ? 600 : 400,
+              color: mode === 'shade' ? '#4a7a5b' : '#57534e',
+            }}
+          >
+            Gray
+          </button>
+        </div>
+      ) : null}
+      {phrase ? (
+        <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
+          {phrase}
+        </div>
+      ) : null}
     </div>
   );
 }
