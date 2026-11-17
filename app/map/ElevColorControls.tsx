@@ -10,9 +10,12 @@ export function ElevColorControls({
   hiFt,
   auto,
   spread,
+  relief,
+  showColor = true,
   onAuto,
   onSpread,
   onRange,
+  onRelief,
 }: {
   autoLoFt: number | null;
   autoHiFt: number | null;
@@ -20,9 +23,12 @@ export function ElevColorControls({
   hiFt: number | null;
   auto: boolean;
   spread: boolean;
+  relief: number;
+  showColor?: boolean;
   onAuto: () => void;
   onSpread: (next: boolean) => void;
   onRange: (loFt: number, hiFt: number) => void;
+  onRelief: (next: number) => void;
 }) {
   const trackLo = autoLoFt;
   const trackHi = autoHiFt;
@@ -41,6 +47,8 @@ export function ElevColorControls({
         color: '#44403c',
       }}
     >
+      {showColor ? (
+        <>
       <div
         aria-hidden="true"
         style={{
@@ -126,6 +134,30 @@ export function ElevColorControls({
         >
           Spread
         </button>
+      </div>
+        </>
+      ) : null}
+      <div style={{ marginTop: showColor ? 10 : 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#57534e' }}>
+          <span>Low</span>
+          <span>Relief</span>
+          <span>High</span>
+        </div>
+        <input
+          type="range"
+          aria-label="Relief"
+          min={0}
+          max={100}
+          value={relief}
+          onChange={(event) => onRelief(Number(event.target.value))}
+          style={{
+            width: '100%',
+            margin: 0,
+            height: 22,
+            accentColor: '#1c1917',
+            cursor: 'pointer',
+          }}
+        />
       </div>
     </div>
   );

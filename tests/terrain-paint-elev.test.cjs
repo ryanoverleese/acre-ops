@@ -134,3 +134,74 @@ test('spread mapping uses land area so a high cluster is not one flat red', () =
   assert.equal(scale.elevationColorIndexSpread(700, spread), 0);
   assert.equal(scale.elevationColorIndexSpread(750, spread), 255);
 });
+
+test('default relief matches the earlier (weaker) exaggeration, high matches the strong look', () => {
+  assert.equal(paint.FIELD_RELIEF.exag, 6);
+  assert.equal(paint.RELIEF_EXAG_DEFAULT, 6);
+  assert.equal(paint.RELIEF_EXAG_HIGH, 12);
+  assert.equal(paint.reliefExag(0.5), 6);
+  assert.equal(paint.reliefExag(1), 12);
+  assert.equal(paint.reliefExag(0), paint.RELIEF_EXAG_LOW);
+  assert.equal(paint.reliefExag(), 6);
+  const gentle = 0.97;
+  const classic = paint.classicReliefLight(gentle);
+  const strong = paint.reliefLight(gentle);
+  const mid = paint.reliefLightAt(gentle, 0.5);
+  const high = paint.reliefLightAt(gentle, 1);
+  const implicit = paint.reliefLightAt(gentle);
+  assert.equal(mid, classic);
+  assert.equal(implicit, classic);
+  assert.equal(high, strong);
+  // Default lighting should not punch gentle slopes the way the High end does.
+  assert.ok(paint.reliefLight(1) - strong >= 0.08);
+  assert.ok(paint.classicReliefLight(1) - classic < 0.05);
+});
+
+test('high relief contrast is stronger than the default on the same slope', () => {
+  const z = 10;
+  const tileY = 389;
+  const fieldScale = { lo: 680, hi: 760 };
+  // Local slope in meters (not mercator x/200, which is far outside real elevations).
+  const elev = new Float32Array(N * N);
+  for (let row = 0; row < N; row++) {
+    for (let col = 0; col < N; col++) {
+      elev[row * N + col] = 720 + col * 0.08 + Math.sin(row / 18) * 3;
+    }
+  }
+  function paintWith(relief, mode) {
+    const out = new Uint8ClampedArray(TILE * TILE * 4);
+    paint.paintElevationTile(out, elev, {
+      mode,
+      fieldScale,
+      spreadMap: null,
+      z,
+      tileY,
+      relief,
+    });
+    return out;
+  }
+  const def = paintWith(0.5, 'colorshade');
+  const high = paintWith(1, 'colorshade');
+  assert.equal(pixel(def, 128, 128)[3], 255);
+  let defVar = 0;
+  let highVar = 0;
+  const mid = pixel(def, 128, 128);
+  const hm = pixel(high, 128, 128);
+  for (let y = 8; y < TILE; y += 16) {
+    for (let x = 8; x < TILE; x += 16) {
+      const a = pixel(def, x, y);
+      const b = pixel(high, x, y);
+      defVar = Math.max(defVar, Math.abs(a[0] - mid[0]), Math.abs(a[1] - mid[1]), Math.abs(a[2] - mid[2]));
+      highVar = Math.max(highVar, Math.abs(b[0] - hm[0]), Math.abs(b[1] - hm[1]), Math.abs(b[2] - hm[2]));
+    }
+  }
+  assert.ok(highVar > defVar, `high contrast ${highVar} should exceed default ${defVar}`);
+
+  const grayDef = paintWith(0.5, 'shade');
+  const grayHigh = paintWith(1, 'shade');
+  let grayDiff = 0;
+  for (let i = 0; i < grayDef.length; i += 4) {
+    grayDiff = Math.max(grayDiff, Math.abs(grayDef[i] - grayHigh[i]));
+  }
+  assert.ok(grayDiff > 0, 'Gray mode should also change with the Relief slider');
+});

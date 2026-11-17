@@ -77,6 +77,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
   const autoLoFt = elevRange ? metersToWholeFeet(elevRange.lo) : null;
   const autoHiFt = elevRange ? metersToWholeFeet(elevRange.hi) : null;
   const colorOn = elevationMode === 'colorshade' || elevationMode === 'color';
+  const elevOn = colorOn || elevationMode === 'shade';
   const elevColor = useMemo(() => {
     const manual = !elevPrefs.auto
       && elevPrefs.loFt != null
@@ -84,7 +85,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
       && elevPrefs.hiFt > elevPrefs.loFt
       ? { lo: feetToMetersExact(elevPrefs.loFt), hi: feetToMetersExact(elevPrefs.hiFt) }
       : null;
-    return { manualRange: manual, spread: elevPrefs.spread };
+    return { manualRange: manual, spread: elevPrefs.spread, relief: elevPrefs.relief / 100 };
   }, [elevPrefs]);
 
   const toggle = useCallback((key: keyof Layers) => {
@@ -394,7 +395,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
             borderRadius: 10,
             boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
             padding: '10px 14px',
-            minWidth: colorOn ? 200 : 140,
+            minWidth: elevOn ? 200 : 140,
           }}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
@@ -429,7 +430,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
             range={elevRange}
             onChoose={setElevationMode}
           />
-          {colorOn ? (
+          {elevOn ? (
             <ElevColorControls
               autoLoFt={autoLoFt}
               autoHiFt={autoHiFt}
@@ -437,6 +438,8 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               hiFt={elevPrefs.hiFt}
               auto={elevPrefs.auto}
               spread={elevPrefs.spread}
+              relief={elevPrefs.relief}
+              showColor={colorOn}
               onAuto={() => setElevPrefs((prev) => ({
                 ...prev,
                 auto: true,
@@ -445,6 +448,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               }))}
               onSpread={(spread) => setElevPrefs((prev) => ({ ...prev, spread }))}
               onRange={(loFt, hiFt) => setElevPrefs((prev) => ({ ...prev, auto: false, loFt, hiFt }))}
+              onRelief={(relief) => setElevPrefs((prev) => ({ ...prev, relief }))}
             />
           ) : null}
           {layers.plantDays && (

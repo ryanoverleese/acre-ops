@@ -18,15 +18,35 @@ export const TILE = 256;
 export const TILE_HALO = 1;
 export const ELEV_GRID = TILE + TILE_HALO * 2;
 
-/** CutSheetRX "field" relief preset — strong relief for flat Nebraska ground. */
+/** CutSheetRX "field" relief preset — default matches pre-c0501d9 strength. */
 export const FIELD_RELIEF = {
-  exag: 12,
+  exag: 6,
   az: 315,
   alt: 35,
   shadow: 75,
   bright: 105,
   soft: false,
 };
+
+/** Slider 0..1. Mid (default) is a56e1e1; max is the stronger c0501d9 look. */
+export const RELIEF_STRENGTH_DEFAULT = 0.5;
+export const RELIEF_EXAG_LOW = 2;
+export const RELIEF_EXAG_DEFAULT = FIELD_RELIEF.exag;
+export const RELIEF_EXAG_HIGH = 12;
+
+export function clampReliefStrength(value: number | null | undefined): number {
+  if (!Number.isFinite(value as number)) return RELIEF_STRENGTH_DEFAULT;
+  const v = value as number;
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+export function reliefExag(strength?: number | null): number {
+  const t = clampReliefStrength(strength);
+  if (t <= 0.5) {
+    return RELIEF_EXAG_LOW + (RELIEF_EXAG_DEFAULT - RELIEF_EXAG_LOW) * (t / 0.5);
+  }
+  return RELIEF_EXAG_DEFAULT + (RELIEF_EXAG_HIGH - RELIEF_EXAG_DEFAULT) * ((t - 0.5) / 0.5);
+}
 
 const WORLD = 40075016.68557849;
 
@@ -60,10 +80,10 @@ export function sunVectors() {
 }
 
 /**
- * Multiplicative hillshade for the color ramp.
- * Gentle plateau slopes sit near shade=1; a high gamma spreads those
- * small departures so texture reads on the high red. The floor stays
- * high enough that crimson never collapses to near-black.
+ * Multiplicative hillshade used at the High end of the Relief slider
+ * (c0501d9). Gentle plateau slopes sit near shade=1; a high gamma
+ * spreads those small departures so texture reads on the high red.
+ * The floor stays high enough that crimson never collapses to near-black.
  */
 export const RELIEF_SHADE_GAMMA = 10;
 export const RELIEF_LIGHT_FLOOR = 0.62;
@@ -72,6 +92,24 @@ export function reliefLight(shade: number): number {
   const s = shade < 0 ? 0 : shade > 1 ? 1 : shade;
   const shaped = Math.pow(s, RELIEF_SHADE_GAMMA);
   return RELIEF_LIGHT_FLOOR + (1 - RELIEF_LIGHT_FLOOR) * shaped;
+}
+
+/** a56e1e1 colorshade lighting: 0.82 shade, then ambient + brightness. */
+export function classicReliefLight(shade: number): number {
+  const s = shade < 0 ? 0 : shade > 1 ? 1 : shade;
+  const shaped = s * 0.82;
+  const ambient = 1 - FIELD_RELIEF.shadow / 100;
+  const bright = FIELD_RELIEF.bright / 100;
+  return (ambient + (1 - ambient) * shaped) * bright;
+}
+
+/** Blend classic lighting at default strength up to reliefLight() at max. */
+export function reliefLightAt(shade: number, strength?: number | null): number {
+  const t = clampReliefStrength(strength);
+  const classic = classicReliefLight(shade);
+  if (t <= 0.5) return classic;
+  const k = (t - 0.5) / 0.5;
+  return classic + (reliefLight(shade) - classic) * k;
 }
 
 function val(elev: Float32Array, i: number, fallback: number) {
@@ -87,6 +125,8 @@ export type PaintElevOptions = {
   spreadMap?: SpreadMap | null;
   z: number;
   tileY: number;
+  /** 0..1. Omit for the default (a56e1e1) strength. */
+  relief?: number | null;
 };
 
 export function colorIndexForElev(
@@ -109,6 +149,8 @@ export function paintElevationTile(
 ): void {
   const { mode, fieldScale, z, tileY } = opts;
   const spreadMap = opts.spreadMap ?? null;
+  const relief = clampReliefStrength(opts.relief);
+  const exag = reliefExag(relief);
   const scale = mode === 'shade' ? null : (fieldScale ? colorScaleForTile(null, fieldScale) : null);
   if (mode !== 'shade' && !scale) return;
   const suns = sunVectors();
@@ -120,7 +162,7 @@ export function paintElevationTile(
 
   for (let y = 0; y < TILE; y++) {
     const cell = mercatorPixelMeters(z, tileRowLatRad(z, tileY, y));
-    const zf = FIELD_RELIEF.exag / (8 * cell);
+    const zf = exag / (8 * cell);
     for (let x = 0; x < TILE; x++) {
       const ci = (y + 1) * n + (x + 1);
       const o = (y * TILE + x) * 4;
@@ -159,7 +201,7 @@ export function paintElevationTile(
           r = g = b = v;
         } else {
           const shade = lit / flat;
-          const light = reliefLight(shade);
+          const light = reliefLightAt(shade, relief);
           const ti = colorIndexForElev(e, scale!, spreadMap) * 3;
           r = clamp255(ELEVATION_LUT[ti] * light);
           g = clamp255(ELEVATION_LUT[ti + 1] * light);

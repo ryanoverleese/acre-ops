@@ -91,11 +91,21 @@ test('staff map Color mode has range controls, Spread, Auto, and a corner logo',
   assert.match(controls, /Low elevation, feet/);
   assert.match(controls, /High elevation, feet/);
   assert.equal(prefs.ELEV_COLOR_PREFS_KEY, 'acre-ops-map-elev-color');
-  const stored = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: false, spread: true, loFt: 2100, hiFt: 2350 }));
-  assert.deepEqual(stored, { auto: false, spread: true, loFt: 2100, hiFt: 2350 });
+  const stored = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: false, spread: true, loFt: 2100, hiFt: 2350, relief: 50 }));
+  assert.deepEqual(stored, { auto: false, spread: true, loFt: 2100, hiFt: 2350, relief: 50 });
   const auto = prefs.parseElevColorPrefs('{"auto":true,"spread":false,"loFt":null,"hiFt":null}');
   assert.equal(auto.auto, true);
   assert.equal(auto.spread, false);
+  assert.equal(auto.relief, 50);
+  const strong = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: true, spread: false, loFt: null, hiFt: null, relief: 100 }));
+  assert.equal(strong.relief, 100);
+  assert.match(controls, /aria-label="Relief"/);
+  assert.match(controls, />Low</);
+  assert.match(controls, />Relief</);
+  assert.match(controls, />High</);
+  assert.match(client, /onRelief/);
+  assert.match(client, /elevOn/);
+  assert.match(client, /showColor=\{colorOn\}/);
 });
 
 test('elevation tiles share one color stretch, a 1-px hillshade halo, and no per-tile scale', () => {

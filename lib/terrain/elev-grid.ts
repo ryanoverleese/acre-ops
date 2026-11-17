@@ -19,6 +19,7 @@ import {
   ELEV_GRID,
   TILE,
   TILE_HALO,
+  clampReliefStrength,
   paintElevationTile,
   type ElevPaintMode,
 } from './paint-elev';
@@ -90,6 +91,8 @@ export type ElevColorOptions = {
   manualRange?: ElevRange | null;
   /** Histogram-equalize colors by land area in the (clipped) sample. */
   spread?: boolean;
+  /** 0..1 hillshade strength. Omit for the default (a56e1e1) look. */
+  relief?: number | null;
 };
 
 export type ElevGridOptions = {
@@ -124,6 +127,7 @@ function renderCanvas(
   mode: ElevRenderMode,
   fieldScale: Range | null,
   spreadMap: SpreadMap | null,
+  relief: number,
 ) {
   const elev = tile._elev;
   if (!elev || tile._z == null || tile._tileY == null) return;
@@ -136,6 +140,7 @@ function renderCanvas(
     spreadMap,
     z: tile._z,
     tileY: tile._tileY,
+    relief,
   });
   ctx.putImageData(img, 0, 0);
 }
@@ -156,6 +161,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
       ? options.color.manualRange
       : null as Range | null,
     spread: options.color?.spread === true,
+    relief: clampReliefStrength(options.color?.relief),
     sampleValues: null as number[] | null,
     spreadMap: null as SpreadMap | null,
     activeScale: null as Range | null,
@@ -209,7 +215,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
     _paintLoaded() {
       for (const el of owned) {
         if (el._dead || !el._elev) continue;
-        renderCanvas(el, state.mode, state.activeScale, state.spreadMap);
+        renderCanvas(el, state.mode, state.activeScale, state.spreadMap, state.relief);
       }
     },
     _loadFieldScale() {
@@ -299,7 +305,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
           }
           tile._elev = elev;
           // Same field scale at every zoom. A tile never stretches its own min/max.
-          if (state.activeScale) renderCanvas(tile, state.mode, state.activeScale, state.spreadMap);
+          if (state.activeScale) renderCanvas(tile, state.mode, state.activeScale, state.spreadMap, state.relief);
           done(undefined, tile);
         })
         .catch((err) => {
@@ -317,6 +323,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
     setColorOptions(color: ElevColorOptions) {
       state.manualRange = color.manualRange && isUsableRange(color.manualRange) ? color.manualRange : null;
       state.spread = color.spread === true;
+      state.relief = clampReliefStrength(color.relief);
       applyColor();
       this._paintLoaded();
     },
