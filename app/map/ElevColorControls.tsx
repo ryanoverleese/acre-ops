@@ -11,11 +11,13 @@ export function ElevColorControls({
   auto,
   spread,
   relief,
+  opacity,
   showColor = true,
   onAuto,
   onSpread,
   onRange,
   onRelief,
+  onOpacity,
 }: {
   autoLoFt: number | null;
   autoHiFt: number | null;
@@ -24,11 +26,13 @@ export function ElevColorControls({
   auto: boolean;
   spread: boolean;
   relief: number;
+  opacity: number;
   showColor?: boolean;
   onAuto: () => void;
   onSpread: (next: boolean) => void;
   onRange: (loFt: number, hiFt: number) => void;
   onRelief: (next: number) => void;
+  onOpacity: (next: number) => void;
 }) {
   const trackLo = autoLoFt;
   const trackHi = autoHiFt;
@@ -150,6 +154,27 @@ export function ElevColorControls({
           max={100}
           value={relief}
           onChange={(event) => onRelief(Number(event.target.value))}
+          style={{
+            width: '100%',
+            margin: 0,
+            height: 22,
+            accentColor: '#1c1917',
+            cursor: 'pointer',
+          }}
+        />
+      </div>
+      <div style={{ marginTop: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, color: '#57534e' }}>
+          <span>Opacity</span>
+          <span>{opacity}%</span>
+        </div>
+        <input
+          type="range"
+          aria-label="Opacity"
+          min={30}
+          max={100}
+          value={opacity}
+          onChange={(event) => onOpacity(Number(event.target.value))}
           style={{
             width: '100%',
             margin: 0,

@@ -62,8 +62,10 @@ test('staff map Elevation reuses the field DEM path, sits under soils, and does 
   assert.match(layer, /ELEVATION_PANE_Z = '350'/);
   assert.match(layer, /pointerEvents = 'none'/);
   assert.match(layer, /setFieldBounds/);
-  assert.match(layer, /colorshade: 0\.65/);
-  assert.match(layer, /shade: 0\.75/);
+  assert.match(layer, /DEFAULT_ELEV_OPACITY = 0\.9/);
+  assert.match(layer, /setOpacity/);
+  assert.equal(layer.includes('colorshade: 0.65'), false);
+  assert.equal(layer.includes('shade: 0.75'), false);
   assert.match(soils, /SOILS_PANE_Z = '390'/);
   assert.ok(Number(layer.match(/ELEVATION_PANE_Z = '(\d+)'/)[1]) < Number(soils.match(/SOILS_PANE_Z = '(\d+)'/)[1]));
 
@@ -92,20 +94,41 @@ test('staff map Color mode has range controls, Spread, Auto, and a corner logo',
   assert.match(controls, /High elevation, feet/);
   assert.equal(prefs.ELEV_COLOR_PREFS_KEY, 'acre-ops-map-elev-color');
   const stored = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: false, spread: true, loFt: 2100, hiFt: 2350, relief: 50 }));
-  assert.deepEqual(stored, { auto: false, spread: true, loFt: 2100, hiFt: 2350, relief: 50 });
+  assert.deepEqual(stored, { auto: false, spread: true, loFt: 2100, hiFt: 2350, relief: 50, opacity: 90 });
   const auto = prefs.parseElevColorPrefs('{"auto":true,"spread":false,"loFt":null,"hiFt":null}');
   assert.equal(auto.auto, true);
   assert.equal(auto.spread, false);
   assert.equal(auto.relief, 50);
+  assert.equal(auto.opacity, 90);
+  assert.equal(prefs.DEFAULT_OPACITY, 90);
+  assert.equal(prefs.MIN_OPACITY, 30);
+  assert.equal(prefs.MAX_OPACITY, 100);
   const strong = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: true, spread: false, loFt: null, hiFt: null, relief: 100 }));
   assert.equal(strong.relief, 100);
+  assert.equal(strong.opacity, 90);
+  const custom = prefs.parseElevColorPrefs(prefs.serializeElevColorPrefs({ auto: true, spread: false, loFt: null, hiFt: null, relief: 50, opacity: 40 }));
+  assert.equal(custom.opacity, 40);
+  assert.equal(prefs.clampOpacityPref(20), 30);
+  assert.equal(prefs.clampOpacityPref(140), 100);
+  assert.equal(prefs.clampOpacityPref('nope'), 90);
   assert.match(controls, /aria-label="Relief"/);
   assert.match(controls, />Low</);
   assert.match(controls, />Relief</);
   assert.match(controls, />High</);
+  assert.match(controls, /aria-label="Opacity"/);
+  assert.match(controls, />Opacity</);
+  assert.match(controls, /\{opacity\}%/);
+  assert.match(controls, /min=\{30\}/);
+  assert.match(controls, /max=\{100\}/);
   assert.match(client, /onRelief/);
+  assert.match(client, /onOpacity/);
+  assert.match(client, /elevOpacity=/);
   assert.match(client, /elevOn/);
   assert.match(client, /showColor=\{colorOn\}/);
+  const map = read('app/map/UnifiedMap.tsx');
+  assert.match(map, /elevOpacity/);
+  assert.match(map, /setOpacity/);
+  assert.match(map, /DEFAULT_ELEV_OPACITY/);
 });
 
 test('elevation tiles share one color stretch, a 1-px hillshade halo, and no per-tile scale', () => {

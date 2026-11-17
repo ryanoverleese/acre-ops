@@ -363,6 +363,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           elevationMode={elevationMode}
           onElevationRange={setElevRange}
           elevColor={elevColor}
+          elevOpacity={elevPrefs.opacity / 100}
         />
 
         <img
@@ -439,6 +440,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               auto={elevPrefs.auto}
               spread={elevPrefs.spread}
               relief={elevPrefs.relief}
+              opacity={elevPrefs.opacity}
               showColor={colorOn}
               onAuto={() => setElevPrefs((prev) => ({
                 ...prev,
@@ -449,6 +451,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               onSpread={(spread) => setElevPrefs((prev) => ({ ...prev, spread }))}
               onRange={(loFt, hiFt) => setElevPrefs((prev) => ({ ...prev, auto: false, loFt, hiFt }))}
               onRelief={(relief) => setElevPrefs((prev) => ({ ...prev, relief }))}
+              onOpacity={(opacity) => setElevPrefs((prev) => ({ ...prev, opacity }))}
             />
           ) : null}
           {layers.plantDays && (

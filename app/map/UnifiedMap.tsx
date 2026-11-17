@@ -11,7 +11,7 @@ import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
-import { attachStaffElevation, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
+import { attachStaffElevation, DEFAULT_ELEV_OPACITY, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
@@ -90,6 +90,7 @@ interface Props {
   elevationMode?: TerrainMode;
   onElevationRange?: (range: ElevRange | null) => void;
   elevColor?: StaffElevColor;
+  elevOpacity?: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -118,7 +119,7 @@ function probeDaysColor(plantingDate?: string): string {
   return '#ff3b30';                      // too early — red
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, elevationMode = 'off', onElevationRange, elevColor }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -138,6 +139,8 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
   elevRangeRef.current = onElevationRange;
   const elevColorRef = useRef(elevColor);
   elevColorRef.current = elevColor;
+  const elevOpacityRef = useRef(elevOpacity);
+  elevOpacityRef.current = elevOpacity;
 
   // Fly to computed center when it changes (after data loads)
   useEffect(() => {
@@ -408,13 +411,20 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       return;
     }
     const color = elevColor ?? {};
+    const opacity = elevOpacityRef.current ?? DEFAULT_ELEV_OPACITY;
     if (!elevCtlRef.current) {
-      elevCtlRef.current = attachStaffElevation(map, mode, (range) => elevRangeRef.current?.(range), color);
+      elevCtlRef.current = attachStaffElevation(map, mode, (range) => elevRangeRef.current?.(range), color, opacity);
     } else {
       elevCtlRef.current.setMode(mode);
       elevCtlRef.current.setColorOptions(color);
     }
   }, [elevationMode, elevColor]);
+
+  // Opacity is applied live on the existing tiles. Keep it out of the color
+  // options so a slider drag does not rerender or reload the DEM.
+  useEffect(() => {
+    elevCtlRef.current?.setOpacity(elevOpacity ?? DEFAULT_ELEV_OPACITY);
+  }, [elevOpacity]);
 
   useEffect(() => {
     return () => {

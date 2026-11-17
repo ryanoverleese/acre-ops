@@ -14,17 +14,15 @@ export const ELEVATION_PANE = 'acre-elevation';
 export const ELEVATION_PANE_Z = '350';
 export const ELEVATION_DEBOUNCE_MS = 300;
 
-const MODE_OPACITY: Record<ElevRenderMode, number> = {
-  colorshade: 0.65,
-  color: 0.65,
-  shade: 0.75,
-};
+/** Default layer opacity (0..1). More opaque than the old 0.65 / 0.75 modes. */
+export const DEFAULT_ELEV_OPACITY = 0.9;
 
 export type StaffElevColor = ElevColorOptions;
 
 export type StaffElevationHandle = {
   setMode: (mode: ElevRenderMode) => void;
   setColorOptions: (color: StaffElevColor) => void;
+  setOpacity: (opacity: number) => void;
   detach: () => void;
 };
 
@@ -63,12 +61,13 @@ export function attachStaffElevation(
   mode: ElevRenderMode,
   onRange?: (range: ElevRange | null) => void,
   color?: StaffElevColor,
+  opacity = DEFAULT_ELEV_OPACITY,
 ): StaffElevationHandle {
   ensureElevationPane(map);
 
   const layer = createElevGridLayer({
     mode,
-    opacity: MODE_OPACITY[mode],
+    opacity,
     pane: ELEVATION_PANE,
     fieldBounds: null,
     fieldRings: null,
@@ -100,10 +99,12 @@ export function attachStaffElevation(
   return {
     setMode(next: ElevRenderMode) {
       layer.setElevMode(next);
-      layer.setOpacity(MODE_OPACITY[next]);
     },
     setColorOptions(next: StaffElevColor) {
       layer.setColorOptions(next);
+    },
+    setOpacity(next: number) {
+      layer.setOpacity(next);
     },
     detach() {
       if (timer) clearTimeout(timer);
