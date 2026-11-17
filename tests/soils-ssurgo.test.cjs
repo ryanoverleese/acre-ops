@@ -97,3 +97,44 @@ test('label prefers a spot inside the field', () => {
   const at = soils.labelPoint(poly, 32, field);
   assert.ok(at[0] >= 3, String(at));
 });
+
+test('viewport tiling snaps to route-valid boxes and refuses a too-wide view', () => {
+  const one = soils.soilBboxKeysForView({ w: -99.130, s: 40.530, e: -99.120, n: 40.540 });
+  assert.equal(one.length, 1);
+  assert.ok(soils.parseSoilBboxKey(one[0]));
+  assert.deepEqual(soils.soilBboxKeysForView({ w: -99.130, s: 40.530, e: -99.120, n: 40.540 }), one);
+
+  const mid = soils.soilBboxKeysForView({ w: -99.16, s: 40.52, e: -99.04, n: 40.58 }, 9);
+  assert.ok(mid.length >= 2 && mid.length <= 9);
+  assert.equal(new Set(mid).size, mid.length);
+  for (const key of mid) {
+    const box = soils.parseSoilBboxKey(key);
+    assert.ok(box, key);
+    assert.ok(box.e - box.w <= soils.SOIL_BBOX_MAX_SPAN + 1e-9);
+    assert.ok(box.n - box.s <= soils.SOIL_BBOX_MAX_SPAN + 1e-9);
+  }
+
+  // ~0.5° around Kearney is far too large for 9 tiles of 0.06°.
+  assert.equal(soils.soilBboxKeysForView({ w: -99.40, s: 40.40, e: -98.80, n: 41.00 }, 9), null);
+  assert.equal(soils.soilBboxKeysForView({ w: -99.13, s: 40.53, e: -99.13, n: 40.54 }), null);
+});
+
+test('staff map: Soils is a layer toggle that uses the snapped soil-map API', () => {
+  const client = fs.readFileSync(path.join(root, 'app/map/MapClient.tsx'), 'utf8');
+  const unified = fs.readFileSync(path.join(root, 'app/map/UnifiedMap.tsx'), 'utf8');
+  const layer = fs.readFileSync(path.join(root, 'app/map/soils-layer.ts'), 'utf8');
+  assert.match(client, /soils: 'Soils'/);
+  assert.match(client, /Zoom in to see soils/);
+  assert.match(unified, /layers\.soils/);
+  assert.match(unified, /soilBboxKeysForView/);
+  assert.match(unified, /loadSoilMap/);
+  assert.match(unified, /SOILS_MIN_ZOOM/);
+  assert.match(layer, /SOILS_MIN_ZOOM = 14/);
+  assert.match(layer, /zIndex = SOILS_PANE_Z/);
+  assert.match(layer, /SOILS_PANE_Z = '390'/); // below overlay markers (400), above elevation (350)
+  // Popup shows symbol and map unit name only; the API has no major components.
+  assert.match(layer, /soil-popup-sym/);
+  assert.match(layer, /soil-popup-name/);
+  assert.doesNotMatch(layer, /component/i);
+  assert.doesNotMatch(client, /component/i);
+});

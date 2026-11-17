@@ -265,3 +265,40 @@ export function boundaryRuns(ring: SoilRing, box: SoilBbox, eps = 2e-5): SoilRin
   }
   return runs;
 }
+
+/** Integer thousandths of a degree, matching soilBboxKey's 0.001 grid. */
+function toStep(v: number, mode: 'floor' | 'ceil'): number {
+  const x = v / KEY_STEP;
+  // Nudge so values like -99.130 / 0.001 don't fall just shy of an integer.
+  return mode === 'floor' ? Math.floor(x + 1e-9) : Math.ceil(x - 1e-9);
+}
+
+/**
+ * Tile a viewport into snapped boxes the /api/soil-map route will accept.
+ * Returns null when the view needs more than maxTiles boxes (zoom in more).
+ */
+export function soilBboxKeysForView(box: SoilBbox, maxTiles = 9): string[] | null {
+  if (!(Number.isFinite(box.w) && Number.isFinite(box.s) && Number.isFinite(box.e) && Number.isFinite(box.n))) return null;
+  if (!(box.w < box.e && box.s < box.n)) return null;
+  const w = toStep(box.w, 'floor');
+  const s = toStep(box.s, 'floor');
+  const e = toStep(box.e, 'ceil');
+  const n = toStep(box.n, 'ceil');
+  const maxUnits = Math.round(SOIL_BBOX_MAX_SPAN / KEY_STEP); // 60
+  const cols = Math.max(1, Math.ceil((e - w) / maxUnits));
+  const rows = Math.max(1, Math.ceil((n - s) / maxUnits));
+  if (cols * rows > maxTiles) return null;
+  const keys: string[] = [];
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const tw = w + c * maxUnits;
+      const ts = s + r * maxUnits;
+      const te = Math.min(e, tw + maxUnits);
+      const tn = Math.min(n, ts + maxUnits);
+      const key = [tw, ts, te, tn].map((u) => (u * KEY_STEP).toFixed(3)).join(',');
+      if (!parseSoilBboxKey(key)) return null;
+      keys.push(key);
+    }
+  }
+  return keys;
+}

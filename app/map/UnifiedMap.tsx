@@ -6,6 +6,9 @@ import 'leaflet/dist/leaflet.css';
 import { zoneBounds, zoneCenter, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import type { LatBand } from '@/lib/territory-grid';
 import { useFieldBoundaries } from '@/components/useFieldBoundaries';
+import { loadSoilMap } from '@/lib/soils/load-map';
+import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
+import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 
@@ -58,6 +61,8 @@ export interface MapCell {
   isHome: boolean;
 }
 
+export type SoilsViewStatus = 'off' | 'zoom' | 'loading' | 'ready' | 'error';
+
 export interface Layers {
   fields: boolean;
   probes: boolean;
@@ -65,6 +70,7 @@ export interface Layers {
   repairs: boolean;
   customers: boolean;
   territory: boolean;
+  soils: boolean;
 }
 
 interface Props {
@@ -77,6 +83,7 @@ interface Props {
   layers: Layers;
   center: [number, number];
   zoom: number;
+  onSoilsStatus?: (status: SoilsViewStatus) => void;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -105,7 +112,7 @@ function probeDaysColor(plantingDate?: string): string {
   return '#ff3b30';                      // too early — red
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -117,6 +124,9 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     customers: L.LayerGroup;
     territory: L.LayerGroup;
   } | null>(null);
+  const soilsGroupRef = useRef<L.LayerGroup | null>(null);
+  const soilsStatusRef = useRef(onSoilsStatus);
+  soilsStatusRef.current = onSoilsStatus;
 
   // Fly to computed center when it changes (after data loads)
   useEffect(() => {
@@ -306,6 +316,75 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     toggle(groups.customers, layers.customers);
     toggle(groups.territory, layers.territory);
   }, [layers]);
+
+  // Soils: viewport tiles from the snapped-bbox API, only when zoomed in enough.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const setStatus = (status: SoilsViewStatus) => soilsStatusRef.current?.(status);
+    const clearSoils = () => {
+      soilsGroupRef.current?.remove();
+      soilsGroupRef.current = null;
+    };
+
+    if (!layers.soils) {
+      clearSoils();
+      setStatus('off');
+      return;
+    }
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let gen = 0;
+
+    const run = () => {
+      const my = ++gen;
+      const zoomLevel = map.getZoom();
+      const bounds = map.getBounds();
+      const keys = zoomLevel >= SOILS_MIN_ZOOM
+        ? soilBboxKeysForView(
+            { w: bounds.getWest(), s: bounds.getSouth(), e: bounds.getEast(), n: bounds.getNorth() },
+            SOILS_MAX_TILES,
+          )
+        : null;
+      if (!keys) {
+        clearSoils();
+        if (!cancelled) setStatus('zoom');
+        return;
+      }
+      // Keep the last tiles on screen while a pan/zoom request is in flight.
+      if (!cancelled && !soilsGroupRef.current) setStatus('loading');
+      Promise.all(keys.map(loadSoilMap))
+        .then((maps) => {
+          if (cancelled || my !== gen) return;
+          const next = drawStaffSoils(map, maps);
+          soilsGroupRef.current?.remove();
+          soilsGroupRef.current = next;
+          setStatus('ready');
+        })
+        .catch(() => {
+          if (cancelled || my !== gen) return;
+          setStatus('error');
+        });
+    };
+
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(run, SOILS_DEBOUNCE_MS);
+    };
+
+    run();
+    map.on('moveend', schedule);
+    map.on('zoomend', schedule);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      map.off('moveend', schedule);
+      map.off('zoomend', schedule);
+      clearSoils();
+    };
+  }, [layers.soils]);
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }

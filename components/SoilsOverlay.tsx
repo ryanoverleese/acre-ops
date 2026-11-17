@@ -13,6 +13,7 @@ import {
   type SoilMap,
   type SoilUnit,
 } from '@/lib/soils/ssurgo';
+import { loadSoilMap } from '@/lib/soils/load-map';
 
 const SOILS_PANE = 'acre-soils'; // above elevation (350), below canals (420) and pins
 const LABEL_MIN_PX = 26; // hide a symbol when its polygon is smaller than this on screen
@@ -31,24 +32,6 @@ function fieldPolygons(boundaries: FieldBoundaryCollection): number[][][][] {
     else if (g?.type === 'MultiPolygon') out.push(...(g.coordinates as number[][][][]));
   }
   return out;
-}
-
-const cache = new Map<string, Promise<SoilMap>>();
-function loadSoilMap(key: string): Promise<SoilMap> {
-  let hit = cache.get(key);
-  if (!hit) {
-    hit = fetch(`/api/soil-map/${encodeURIComponent(key)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Soil map failed (${res.status})`);
-        return res.json() as Promise<SoilMap>;
-      })
-      .catch((err) => {
-        cache.delete(key);
-        throw err;
-      });
-    cache.set(key, hit);
-  }
-  return hit;
 }
 
 /** Soil map units around a field, fetched the first time Soils is turned on. */

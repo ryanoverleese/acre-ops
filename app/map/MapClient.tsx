@@ -4,7 +4,7 @@ import { fieldBilling } from '@/lib/data-mappings';
 import { useState, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
-import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers } from './UnifiedMap';
+import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus } from './UnifiedMap';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 
 const UnifiedMap = dynamic(() => import('./UnifiedMap'), { ssr: false });
@@ -25,6 +25,7 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
   repairs: 'Repairs',
   customers: 'Customers',
   territory: 'Territory',
+  soils: 'Soils',
 };
 
 
@@ -36,7 +37,9 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     repairs: false,
     customers: false,
     territory: false,
+    soils: false,
   });
+  const [soilsStatus, setSoilsStatus] = useState<SoilsViewStatus>('off');
 
   const toggle = useCallback((key: keyof Layers) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -309,6 +312,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           layers={layers}
           center={mapCenter}
           zoom={10}
+          onSoilsStatus={setSoilsStatus}
         />
 
         {/* Layer toggle panel */}
@@ -329,12 +333,28 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
             Layers
           </div>
           {(Object.keys(layers) as (keyof Layers)[]).map((key) => (
-            <LayerToggle
-              key={key}
-              label={LAYER_LABELS[key]}
-              active={layers[key]}
-              onToggle={() => toggle(key)}
-            />
+            <div key={key}>
+              <LayerToggle
+                label={LAYER_LABELS[key]}
+                active={layers[key]}
+                onToggle={() => toggle(key)}
+              />
+              {key === 'soils' && layers.soils && soilsStatus === 'zoom' ? (
+                <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
+                  Zoom in to see soils
+                </div>
+              ) : null}
+              {key === 'soils' && layers.soils && soilsStatus === 'loading' ? (
+                <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
+                  Loading soils…
+                </div>
+              ) : null}
+              {key === 'soils' && layers.soils && soilsStatus === 'error' ? (
+                <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
+                  Soil map isn’t available right now.
+                </div>
+              ) : null}
+            </div>
           ))}
           {layers.plantDays && (
             <div style={{ borderTop: '1px solid #e7e5e4', marginTop: 8, paddingTop: 8 }}>
