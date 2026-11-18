@@ -191,20 +191,25 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
         style: { color: '#f8fafc', weight: 2, fillColor: '#1F402A', fillOpacity: 0.22 },
       }).addTo(g);
     }
-    for (const f of fields) {
-      const circle = L.circleMarker([f.lat, f.lng], {
-        radius: 6,
-        color: '#fff',
-        weight: 1,
-        fillColor: '#4a7a5b',
-        fillOpacity: 0.9,
-      });
-      circle.bindPopup(
-        `<b>${f.name}</b><br>${f.operation}${f.acres ? `<br>${f.acres} ac` : ''}${f.crop ? `<br>${f.crop}` : ''}`
-      );
-      g.addLayer(circle);
+    // Field lat/lng is the default probe placement point (used as fallback for
+    // placement_lat/install_lat). These pins look like probe markers, so only
+    // show them when the Probes layer is on.
+    if (layers.probes) {
+      for (const f of fields) {
+        const circle = L.circleMarker([f.lat, f.lng], {
+          radius: 6,
+          color: '#fff',
+          weight: 1,
+          fillColor: '#4a7a5b',
+          fillOpacity: 0.9,
+        });
+        circle.bindPopup(
+          `<b>${f.name}</b><br>${f.operation}${f.acres ? `<br>${f.acres} ac` : ''}${f.crop ? `<br>${f.crop}` : ''}`
+        );
+        g.addLayer(circle);
+      }
     }
-  }, [fields, boundaries]);
+  }, [fields, boundaries, layers.probes]);
 
   // Rebuild probes layer
   useEffect(() => {
