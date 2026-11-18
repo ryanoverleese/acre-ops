@@ -17,6 +17,8 @@ const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 // Roads and place names only (transparent), drawn above Elevation and Soils.
 const LABELS_URL = 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}';
 const LABELS_PANE = 'acre-labels';
+// Just below the default overlay pane (400) so probe/placement markers stay tappable.
+const FIELDS_PANE = 'acre-fields';
 
 export interface MapField {
   id: number;
@@ -122,6 +124,10 @@ function probeDaysColor(plantingDate?: string): string {
   return '#ff3b30';                      // too early — red
 }
 
+function fieldPopupHtml(field: MapField): string {
+  return `<b>${field.name}</b><br>${field.operation}${field.acres ? `<br>${field.acres} ac` : ''}${field.crop ? `<br>${field.crop}` : ''}`;
+}
+
 export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,6 +166,8 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
 
     const map = L.map(containerRef.current, { center: [CENTER_LAT, CENTER_LNG], zoom, zoomControl: true });
     L.tileLayer(SAT_URL, { attribution: '', maxZoom: 20 }).addTo(map);
+    const fieldsPane = map.createPane(FIELDS_PANE);
+    fieldsPane.style.zIndex = '399';
     mapRef.current = map;
 
     const groups = {
@@ -187,8 +195,15 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     g.clearLayers();
     if (boundaries.features.length) {
       L.geoJSON(boundaries as GeoJSON.GeoJsonObject, {
-        interactive: false,
+        pane: FIELDS_PANE,
+        interactive: true,
         style: { color: '#f8fafc', weight: 2, fillColor: '#1F402A', fillOpacity: 0.22 },
+        onEachFeature: (feature, layer) => {
+          const raw = (feature.properties as { fieldId?: number } | null)?.fieldId ?? feature.id;
+          const id = typeof raw === 'number' ? raw : Number(raw);
+          const field = fields.find(item => item.id === id);
+          if (field) layer.bindPopup(fieldPopupHtml(field));
+        },
       }).addTo(g);
     }
     // Field lat/lng is the default probe placement point (used as fallback for
@@ -203,9 +218,7 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
           fillColor: '#4a7a5b',
           fillOpacity: 0.9,
         });
-        circle.bindPopup(
-          `<b>${f.name}</b><br>${f.operation}${f.acres ? `<br>${f.acres} ac` : ''}${f.crop ? `<br>${f.crop}` : ''}`
-        );
+        circle.bindPopup(fieldPopupHtml(f));
         g.addLayer(circle);
       }
     }
