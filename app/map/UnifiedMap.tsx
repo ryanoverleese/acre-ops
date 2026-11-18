@@ -14,6 +14,9 @@ import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } fr
 import { attachStaffElevation, DEFAULT_ELEV_OPACITY, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
+// Roads and place names only (transparent), drawn above Elevation and Soils.
+const LABELS_URL = 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}';
+const LABELS_PANE = 'acre-labels';
 
 export interface MapField {
   id: number;
@@ -425,6 +428,29 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
   useEffect(() => {
     elevCtlRef.current?.setOpacity(elevOpacity ?? DEFAULT_ELEV_OPACITY);
   }, [elevOpacity]);
+
+  // Highways and town names stay readable on top of Elevation and Soils, at any opacity.
+  const labelsLayerRef = useRef<L.TileLayer | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const needed = elevationMode !== 'off' || !!layers.soils;
+    if (!needed) {
+      if (labelsLayerRef.current) {
+        map.removeLayer(labelsLayerRef.current);
+        labelsLayerRef.current = null;
+      }
+      return;
+    }
+    if (labelsLayerRef.current) return;
+    let pane = map.getPane(LABELS_PANE);
+    if (!pane) {
+      pane = map.createPane(LABELS_PANE);
+      pane.style.zIndex = '395';
+    }
+    pane.style.pointerEvents = 'none';
+    labelsLayerRef.current = L.tileLayer(LABELS_URL, { attribution: '', maxZoom: 20, pane: LABELS_PANE }).addTo(map);
+  }, [elevationMode, layers.soils]);
 
   useEffect(() => {
     return () => {
