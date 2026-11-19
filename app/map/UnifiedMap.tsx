@@ -30,10 +30,12 @@ export interface MapField {
   id: number;
   name: string;
   operation: string;
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
   acres?: number;
   crop?: string;
+  /** Default probe-placement pin. Off-season bounded fields leave this false. */
+  showPlacementPin?: boolean;
 }
 
 export interface MapProbe {
@@ -226,7 +228,11 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     // show them when the Probes layer is on.
     if (layers.probes) {
       for (const f of fields) {
-        const circle = L.circleMarker([f.lat, f.lng], {
+        if (f.showPlacementPin === false) continue;
+        const lat = Number(f.lat);
+        const lng = Number(f.lng);
+        if (!lat || !lng || isNaN(lat) || isNaN(lng)) continue;
+        const circle = L.circleMarker([lat, lng], {
           radius: 6,
           color: '#fff',
           weight: 1,

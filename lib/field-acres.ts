@@ -124,3 +124,17 @@ export async function loadBoundaryAcresByFieldId(): Promise<Map<number, number>>
   }
   return map;
 }
+
+/** Every field_id that has a public.field_boundaries row, including null acres. */
+export async function loadBoundedFieldIds(): Promise<number[]> {
+  const rows = await query<{ field_id: unknown }>(
+    'SELECT field_id FROM public.field_boundaries ORDER BY field_id',
+  );
+  const ids: number[] = [];
+  for (const row of rows) {
+    const id = Number(row.field_id);
+    if (Number.isSafeInteger(id) && id > 0) ids.push(id);
+  }
+  return ids;
+}
+

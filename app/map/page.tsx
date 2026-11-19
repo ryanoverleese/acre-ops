@@ -1,4 +1,4 @@
-import { effectiveFieldAcres, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
+import { effectiveFieldAcres, loadBoundaryAcresByFieldId, loadBoundedFieldIds } from '@/lib/field-acres';
 import { getCachedRows } from '@/lib/supabase/adapter';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import MapClient from './MapClient';
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export default async function MapPage() {
   const currentYear = new Date().getFullYear();
 
-  const [fields, operations, contacts, fieldSeasons, probeAssignments, repairs, boundaryAcres] =
+  const [fields, operations, contacts, fieldSeasons, probeAssignments, repairs, boundaryAcres, boundedFieldIds] =
     await Promise.all([
       getCachedRows<Field>('fields', {}, 120),
       getCachedRows<Operation>('operations', {}, 120),
@@ -21,6 +21,7 @@ export default async function MapPage() {
       getCachedRows<ProbeAssignment>('probe_assignments', {}, 120),
       getCachedRows<Repair>('repairs', {}, 120),
       loadBoundaryAcresByFieldId(),
+      loadBoundedFieldIds(),
     ]);
 
   const fieldsWithBoundaryAcres = fields.map((field) => {
@@ -36,6 +37,7 @@ export default async function MapPage() {
       fieldSeasons={fieldSeasons}
       probeAssignments={probeAssignments}
       repairs={repairs}
+      boundedFieldIds={boundedFieldIds}
     />
   );
 }

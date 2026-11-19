@@ -1,5 +1,6 @@
 'use client';
 import { fieldBilling } from '@/lib/data-mappings';
+import { buildStaffMapFields, hasMapCoords } from './staff-map-fields';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
@@ -29,6 +30,7 @@ interface Props {
   fieldSeasons: FieldSeason[];
   probeAssignments: ProbeAssignment[];
   repairs: Repair[];
+  boundedFieldIds: number[];
 }
 
 const LAYER_LABELS: Record<keyof Layers, string> = {
@@ -44,7 +46,7 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
 };
 
 
-export default function MapClient({ fields, operations, contacts, fieldSeasons, probeAssignments, repairs }: Props) {
+export default function MapClient({ fields, operations, contacts, fieldSeasons, probeAssignments, repairs, boundedFieldIds }: Props) {
   const [layers, setLayers] = useState<Layers>({
     fields: true,
     probes: true,
@@ -146,31 +148,10 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     return m;
   }, [fieldSeasons, fieldToOperation]);
 
-  // Map fields
+  // Map fields: current-season fields plus every field that has a boundary.
   const mapFields = useMemo<MapField[]>(() => {
-    const seen = new Set<number>();
-    const out: MapField[] = [];
-    for (const fs of fieldSeasons) {
-      const fieldLink = fs.field?.[0];
-      if (!fieldLink) continue;
-      if (seen.has(fieldLink.id)) continue;
-      seen.add(fieldLink.id);
-      const f = fieldMap.get(fieldLink.id);
-      const lat = Number(f?.lat);
-      const lng = Number(f?.lng);
-      if (!f || !lat || !lng || isNaN(lat) || isNaN(lng)) continue;
-      out.push({
-        id: f.id,
-        name: f.name,
-        operation: fieldToOperation.get(f.id) ?? '',
-        lat,
-        lng,
-        acres: f.acres,
-        crop: fs.crop?.value,
-      });
-    }
-    return out;
-  }, [fieldSeasons, fieldMap, fieldToOperation]);
+    return buildStaffMapFields({ fields, fieldSeasons, boundedFieldIds });
+  }, [fields, fieldSeasons, boundedFieldIds]);
 
   // Map probes
   const mapProbes = useMemo<MapProbe[]>(() => {
@@ -300,7 +281,9 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
       return cellData.get(key)!;
     };
 
-    for (const f of mapFields) ensure(f.lat, f.lng).fields++;
+    for (const f of mapFields) {
+      if (hasMapCoords(f.lat, f.lng)) ensure(f.lat!, f.lng!).fields++;
+    }
     for (const p of mapProbes) ensure(p.lat, p.lng).probes++;
 
     return Array.from(cellData.values()).map((d) => ({
@@ -327,9 +310,10 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
 
   // Map center: centroid of all fields or home base fallback
   const mapCenter = useMemo<[number, number]>(() => {
-    if (mapFields.length === 0) return [CENTER_LAT, CENTER_LNG];
-    const lat = mapFields.reduce((s, f) => s + f.lat, 0) / mapFields.length;
-    const lng = mapFields.reduce((s, f) => s + f.lng, 0) / mapFields.length;
+    const located = mapFields.filter((f) => hasMapCoords(f.lat, f.lng));
+    if (located.length === 0) return [CENTER_LAT, CENTER_LNG];
+    const lat = located.reduce((s, f) => s + (f.lat as number), 0) / located.length;
+    const lng = located.reduce((s, f) => s + (f.lng as number), 0) / located.length;
     return [lat, lng];
   }, [mapFields]);
 
