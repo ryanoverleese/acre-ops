@@ -19,13 +19,14 @@ function asText(value: unknown): string | null {
 }
 
 export async function loadCatalog(sql: Sql): Promise<CatalogField[]> {
-  const rows = await sql.query<{id: unknown; cropx_field_uuid: unknown}>('SELECT id, cropx_field_uuid FROM public.fields ORDER BY id');
-  return rows.map(row => ({ id: asId(row.id), cropxFieldUuid: asText(row.cropx_field_uuid)?.toLowerCase() ?? null }));
+  const rows = await sql.query<{id: unknown; cropx_field_uuid: unknown; name: unknown}>('SELECT id, cropx_field_uuid, name FROM public.fields ORDER BY id');
+  return rows.map(row => ({ id: asId(row.id), cropxFieldUuid: asText(row.cropx_field_uuid)?.toLowerCase() ?? null, name: asText(row.name) }));
 }
 export async function loadCommitted(sql: Sql): Promise<CommittedBoundary[]> {
-  const rows = await sql.query<{field_id: unknown; cropx_field_uuid: unknown; geometry_sha256: unknown; edited: unknown; source_file_name: unknown; source_file_sha256: unknown; source_feature_name: unknown}>(
+  const rows = await sql.query<{field_id: unknown; cropx_field_uuid: unknown; geometry_sha256: unknown; edited: unknown; source_file_name: unknown; source_file_sha256: unknown; source_feature_name: unknown; source_jd_org_id: unknown; source_jd_field_id: unknown; source_jd_boundary_id: unknown}>(
     `SELECT field_id, cropx_field_uuid, geometry_sha256, (edited_at IS NOT NULL) AS edited,
-            source_file_name, source_file_sha256, source_feature_name
+            source_file_name, source_file_sha256, source_feature_name,
+            source_jd_org_id, source_jd_field_id, source_jd_boundary_id
        FROM public.field_boundaries ORDER BY field_id`);
   return rows.map(row => ({
     fieldId: asId(row.field_id),
@@ -35,6 +36,9 @@ export async function loadCommitted(sql: Sql): Promise<CommittedBoundary[]> {
     sourceFileName: asText(row.source_file_name),
     sourceFileSha256: asText(row.source_file_sha256),
     sourceFeatureName: asText(row.source_feature_name),
+    sourceJdOrgId: asText(row.source_jd_org_id),
+    sourceJdFieldId: asText(row.source_jd_field_id),
+    sourceJdBoundaryId: asText(row.source_jd_boundary_id),
   }));
 }
 
@@ -47,10 +51,10 @@ export async function dryRunBoundaries(sql: Sql, dataset: BoundaryDataset) {
   return { writes: 0 as const, summary: countDispositions(rows), review: reviewOf(rows) };
 }
 
-export async function stageReviewedRows(sql: Sql, rows: ClassifiedBoundary[], requestSha256: string, observedAt: string, source: 'cropx' | 'file' = 'cropx') {
+export async function stageReviewedRows(sql: Sql, rows: ClassifiedBoundary[], requestSha256: string, observedAt: string, source: 'cropx' | 'file' | 'john_deere' = 'cropx') {
   assertImportWritesEnabled();
   if (!/^[0-9a-f]{64}$/.test(requestSha256)) throw new DataError('Dataset hash is invalid', 400);
-  if (source !== 'cropx' && source !== 'file') throw new DataError('Boundary source must be cropx or file', 400);
+  if (source !== 'cropx' && source !== 'file' && source !== 'john_deere') throw new DataError('Boundary source must be cropx, file, or john_deere', 400);
   return sql.transaction(async () => {
     const summary = countDispositions(rows);
     const inserted = await sql.query<{id: unknown}>(
@@ -59,6 +63,25 @@ export async function stageReviewedRows(sql: Sql, rows: ClassifiedBoundary[], re
       [source, 'EPSG:4326', 'lonlat', observedAt, requestSha256, JSON.stringify(summary)]);
     const importId = asId(inserted[0]?.id);
     for (const row of rows) {
+      if (source === 'john_deere') {
+        if (row.cropxFieldUuid) throw new DataError('A John Deere boundary cannot carry a CropX uuid', 400);
+        if (row.sourceFileName || row.sourceFileSha256 || row.sourceFeatureName) throw new DataError('A John Deere boundary cannot carry file lineage', 400);
+        if (!row.sourceJdOrgId || !row.sourceJdFieldId || !row.sourceJdBoundaryId || !row.sourceJdFetchedAt) {
+          throw new DataError('A John Deere boundary is missing its Operations Center lineage', 400);
+        }
+        await sql.query(
+          `INSERT INTO public.field_boundary_import_rows
+            (import_id, source, cropx_field_uuid, source_field_name, source_farm_id, source_farm_name, source_cropx_field_id,
+             geometry, geometry_sha256, declared_field_id, resolved_field_id, disposition, detail,
+             source_observed_at, legacy_br_field_season_id, source_field_season_id,
+             source_jd_org_id, source_jd_field_id, source_jd_boundary_id, source_jd_fetched_at)
+           VALUES ($1,'john_deere',NULL,$2,$3,$4,$5,$6::jsonb,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)`,
+          [importId, row.sourceFieldName, row.sourceFarmId, row.sourceFarmName, row.sourceCropxFieldId,
+            row.geometry ? JSON.stringify(row.geometry) : null, row.geometrySha256, row.acreFieldId, row.resolvedFieldId, row.disposition, row.detail,
+            row.sourceObservedAt, row.legacyBrFieldSeasonId, row.sourceFieldSeasonId,
+            row.sourceJdOrgId, row.sourceJdFieldId, row.sourceJdBoundaryId, row.sourceJdFetchedAt]);
+        continue;
+      }
       if (source === 'file') {
         if (row.cropxFieldUuid) throw new DataError('A file boundary cannot carry a CropX uuid', 400);
         if (!row.sourceFileName || !row.sourceFileSha256 || !row.sourceFeatureName) throw new DataError('A file boundary is missing its file lineage', 400);
@@ -131,6 +154,7 @@ async function applyOne(sql: Sql, row: Record<string, unknown>, observedAt: unkn
   const fieldId = asId(row.resolved_field_id);
   const source = row.source == null || row.source === '' ? 'cropx' : String(row.source);
   if (source === 'file') return applyFileRow(sql, row, fieldId, observedAt, replacement);
+  if (source === 'john_deere') return applyJdRow(sql, row, fieldId, observedAt, replacement);
   if (source !== 'cropx' || row.cropx_field_uuid == null) return 'blocked';
   const uuid = String(row.cropx_field_uuid);
   let geometry: BoundaryGeometry;
@@ -170,7 +194,8 @@ async function applyOne(sql: Sql, row: Record<string, unknown>, observedAt: unkn
     `UPDATE public.field_boundaries
         SET geometry = $2::jsonb, geometry_sha256 = $3, source = 'cropx', source_observed_at = $4,
             import_row_id = $5, updated_at = now(), cropx_field_uuid = $6,
-            source_file_name = NULL, source_file_sha256 = NULL, source_feature_name = NULL
+            source_file_name = NULL, source_file_sha256 = NULL, source_feature_name = NULL,
+            source_jd_org_id = NULL, source_jd_field_id = NULL, source_jd_boundary_id = NULL, source_jd_fetched_at = NULL
       WHERE field_id = $1 AND edited_at IS NULL
       RETURNING field_id`,
     [fieldId, JSON.stringify(geometry), hash, observedAt, asId(row.id), uuid]);
@@ -212,10 +237,57 @@ async function applyFileRow(sql: Sql, row: Record<string, unknown>, fieldId: num
     `UPDATE public.field_boundaries
         SET geometry = $2::jsonb, geometry_sha256 = $3, source = 'file', source_observed_at = $4,
             import_row_id = $5, updated_at = now(), cropx_field_uuid = NULL,
-            source_file_name = $6, source_file_sha256 = $7, source_feature_name = $8
+            source_file_name = $6, source_file_sha256 = $7, source_feature_name = $8,
+            source_jd_org_id = NULL, source_jd_field_id = NULL, source_jd_boundary_id = NULL, source_jd_fetched_at = NULL
       WHERE field_id = $1 AND edited_at IS NULL
       RETURNING field_id`,
     [fieldId, JSON.stringify(geometry), hash, observedAt, asId(row.id), fileName, fileSha, featureName]);
+  return updated.length ? 'replaced' : 'blocked';
+}
+
+
+async function applyJdRow(sql: Sql, row: Record<string, unknown>, fieldId: number, observedAt: unknown, replacement: boolean): Promise<'inserted' | 'replaced' | 'skipped_unchanged' | 'blocked'> {
+  const orgId = asText(row.source_jd_org_id);
+  const jdFieldId = asText(row.source_jd_field_id);
+  const jdBoundaryId = asText(row.source_jd_boundary_id);
+  const fetchedAt = row.source_jd_fetched_at ?? observedAt;
+  if (!orgId || !jdFieldId || !jdBoundaryId || fetchedAt == null || row.cropx_field_uuid != null) return 'blocked';
+  if (asText(row.source_file_name) || asText(row.source_file_sha256) || asText(row.source_feature_name)) return 'blocked';
+  let geometry: BoundaryGeometry;
+  try {
+    const parsed = typeof row.geometry === 'string' ? JSON.parse(row.geometry) : row.geometry;
+    geometry = validateGeometry(parsed);
+  } catch { return 'blocked'; }
+  const hash = geometrySha256(geometry);
+  if (hash !== row.geometry_sha256) return 'blocked';
+  const owners = await sql.query<{id: unknown}>('SELECT id FROM public.fields WHERE id = $1 FOR UPDATE', [fieldId]);
+  if (owners.length !== 1) return 'blocked';
+  const existing = await sql.query<{geometry_sha256: unknown; edited_at: unknown; source_jd_org_id: unknown; source_jd_field_id: unknown; source_jd_boundary_id: unknown}>(
+    `SELECT geometry_sha256, edited_at, source_jd_org_id, source_jd_field_id, source_jd_boundary_id
+       FROM public.field_boundaries WHERE field_id = $1 FOR UPDATE`, [fieldId]);
+  if (!existing.length) {
+    await sql.query(
+      `INSERT INTO public.field_boundaries
+        (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, source_observed_at, import_row_id,
+         source_jd_org_id, source_jd_field_id, source_jd_boundary_id, source_jd_fetched_at)
+       VALUES ($1, NULL, $2::jsonb, $3, 'EPSG:4326', 'lonlat', 'john_deere', $4, $5, $6, $7, $8, $9)`,
+      [fieldId, JSON.stringify(geometry), hash, observedAt, asId(row.id), orgId, jdFieldId, jdBoundaryId, fetchedAt]);
+    return 'inserted';
+  }
+  const sameLineage = asText(existing[0].source_jd_org_id) === orgId
+    && asText(existing[0].source_jd_field_id) === jdFieldId
+    && asText(existing[0].source_jd_boundary_id) === jdBoundaryId;
+  if (String(existing[0].geometry_sha256) === hash && sameLineage) return 'skipped_unchanged';
+  if (existing[0].edited_at != null || !replacement) return 'blocked';
+  const updated = await sql.query<{field_id: unknown}>(
+    `UPDATE public.field_boundaries
+        SET geometry = $2::jsonb, geometry_sha256 = $3, source = 'john_deere', source_observed_at = $4,
+            import_row_id = $5, updated_at = now(), cropx_field_uuid = NULL,
+            source_file_name = NULL, source_file_sha256 = NULL, source_feature_name = NULL,
+            source_jd_org_id = $6, source_jd_field_id = $7, source_jd_boundary_id = $8, source_jd_fetched_at = $9
+      WHERE field_id = $1 AND edited_at IS NULL
+      RETURNING field_id`,
+    [fieldId, JSON.stringify(geometry), hash, observedAt, asId(row.id), orgId, jdFieldId, jdBoundaryId, fetchedAt]);
   return updated.length ? 'replaced' : 'blocked';
 }
 
@@ -295,6 +367,7 @@ export async function readImportReview(sql: Sql, importId: number) {
   if (!jobs.length) throw new DataError('Import was not found', 404);
   const rows = await sql.query<Record<string, unknown>>(
     `SELECT id, source, cropx_field_uuid, source_cropx_field_id, source_file_name, source_file_sha256, source_feature_name,
+            source_jd_org_id, source_jd_field_id, source_jd_boundary_id, source_jd_fetched_at,
             declared_field_id, resolved_field_id, disposition, detail, resolution, apply_result
        FROM public.field_boundary_import_rows WHERE import_id = $1 ORDER BY id`, [importId]);
   return {
@@ -308,6 +381,10 @@ export async function readImportReview(sql: Sql, importId: number) {
       sourceFileName: row.source_file_name,
       sourceFileSha256: row.source_file_sha256,
       sourceFeatureName: row.source_feature_name,
+      sourceJdOrgId: row.source_jd_org_id,
+      sourceJdFieldId: row.source_jd_field_id,
+      sourceJdBoundaryId: row.source_jd_boundary_id,
+      sourceJdFetchedAt: row.source_jd_fetched_at,
       sourceCropxFieldId: row.source_cropx_field_id,
       acreFieldId: row.declared_field_id == null ? null : asId(row.declared_field_id),
       resolvedFieldId: row.resolved_field_id == null ? null : asId(row.resolved_field_id),

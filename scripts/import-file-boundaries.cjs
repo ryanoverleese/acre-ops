@@ -27,6 +27,7 @@ require.extensions['.ts'] = (module, filename) => {
   }).outputText;
   module._compile(output, filename);
 };
+require(path.join(root, 'scripts/prefer-ts-over-json.cjs'))();
 const engine = require(path.join(root, 'lib/field-boundaries/engine.ts'));
 
 function arg(name) {

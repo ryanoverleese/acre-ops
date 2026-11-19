@@ -27,7 +27,7 @@ export interface Polygon { type: 'Polygon'; coordinates: Position[][] }
 export interface MultiPolygon { type: 'MultiPolygon'; coordinates: Position[][][] }
 export type BoundaryGeometry = Polygon | MultiPolygon;
 
-export interface CatalogField { id: number; cropxFieldUuid: string | null }
+export interface CatalogField { id: number; cropxFieldUuid: string | null; name?: string | null }
 export interface CommittedBoundary {
   fieldId: number;
   cropxFieldUuid: string | null;
@@ -36,6 +36,9 @@ export interface CommittedBoundary {
   sourceFileName?: string | null;
   sourceFileSha256?: string | null;
   sourceFeatureName?: string | null;
+  sourceJdOrgId?: string | null;
+  sourceJdFieldId?: string | null;
+  sourceJdBoundaryId?: string | null;
 }
 
 export interface BoundaryDataset {
@@ -78,6 +81,12 @@ export interface ClassifiedBoundary {
   sourceFileName: string | null;
   sourceFileSha256: string | null;
   sourceFeatureName: string | null;
+  sourceJdOrgId: string | null;
+  sourceJdFieldId: string | null;
+  sourceJdBoundaryId: string | null;
+  sourceJdFetchedAt: string | null;
+  createFieldName: string | null;
+  createFieldBillingEntity: number | null;
   geometry: BoundaryGeometry | null;
   geometrySha256: string | null;
   sourceObservedAt: string | null;
@@ -281,10 +290,11 @@ export function parseCatalog(input: unknown): CatalogField[] {
   if (!Array.isArray(body.fields)) throw new BoundaryDatasetError('Catalog needs a fields array');
   return body.fields.map(entry => {
     const row = record(entry, 'Catalog field');
-    rejectUnknown(row, ['id', 'cropxFieldUuid']);
+    rejectUnknown(row, ['id', 'cropxFieldUuid', 'name']);
     if (typeof row.id !== 'number' || !Number.isSafeInteger(row.id) || row.id <= 0) throw new BoundaryDatasetError('Catalog id must be a fields.id');
-    if (row.cropxFieldUuid == null || row.cropxFieldUuid === '') return { id: row.id, cropxFieldUuid: null };
-    return { id: row.id, cropxFieldUuid: canonicalUuid(row.cropxFieldUuid) };
+    const name = row.name == null || row.name === '' ? null : String(row.name);
+    if (row.cropxFieldUuid == null || row.cropxFieldUuid === '') return { id: row.id, cropxFieldUuid: null, name };
+    return { id: row.id, cropxFieldUuid: canonicalUuid(row.cropxFieldUuid), name };
   });
 }
 
@@ -311,6 +321,12 @@ export function classifyBoundaries(dataset: BoundaryDataset, catalog: CatalogFie
       sourceFileName: null,
       sourceFileSha256: null,
       sourceFeatureName: null,
+      sourceJdOrgId: null,
+      sourceJdFieldId: null,
+      sourceJdBoundaryId: null,
+      sourceJdFetchedAt: null,
+      createFieldName: null,
+      createFieldBillingEntity: null,
       geometry: item.geometry,
       geometrySha256: item.geometry ? geometrySha256(item.geometry) : null,
     };
@@ -355,6 +371,12 @@ export function reviewOf(rows: ClassifiedBoundary[]) {
     sourceFileName: row.sourceFileName,
     sourceFileSha256: row.sourceFileSha256,
     sourceFeatureName: row.sourceFeatureName,
+    sourceJdOrgId: row.sourceJdOrgId ?? null,
+    sourceJdFieldId: row.sourceJdFieldId ?? null,
+    sourceJdBoundaryId: row.sourceJdBoundaryId ?? null,
+    sourceJdFetchedAt: row.sourceJdFetchedAt ?? null,
+    createFieldName: row.createFieldName ?? null,
+    createFieldBillingEntity: row.createFieldBillingEntity ?? null,
     disposition: row.disposition,
     detail: row.detail,
     legacyBrFieldSeasonId: row.legacyBrFieldSeasonId,
@@ -465,6 +487,12 @@ export function classifyFileBoundaries(dataset: FileBoundaryDataset, catalog: Ca
       sourceFileName: item.sourceFileName,
       sourceFileSha256: item.sourceFileSha256,
       sourceFeatureName: item.sourceFeatureName,
+      sourceJdOrgId: null,
+      sourceJdFieldId: null,
+      sourceJdBoundaryId: null,
+      sourceJdFetchedAt: null,
+      createFieldName: null,
+      createFieldBillingEntity: null,
       geometry: item.geometry,
       geometrySha256: hash,
     };
@@ -523,6 +551,8 @@ function heldRow(partial: {
     cropxFieldUuid: partial.cropxFieldUuid, acreFieldId: partial.acreFieldId, resolvedFieldId: null,
     sourceFieldName: partial.sourceFieldName ?? null, sourceFarmId: null, sourceFarmName: partial.sourceFarmName ?? null,
     sourceCropxFieldId: null, sourceFileName: null, sourceFileSha256: null, sourceFeatureName: null,
+    sourceJdOrgId: null, sourceJdFieldId: null, sourceJdBoundaryId: null, sourceJdFetchedAt: null,
+    createFieldName: null, createFieldBillingEntity: null,
     geometry: null, geometrySha256: null,
     sourceObservedAt: partial.sourceObservedAt ?? null, legacyBrFieldSeasonId: partial.legacyBrFieldSeasonId ?? null,
     sourceFieldSeasonId: partial.sourceFieldSeasonId ?? null, disposition: partial.disposition, detail: partial.detail,
@@ -610,4 +640,228 @@ export function reviewHandoff(bundle: HandoffBundle, catalog: CatalogField[], co
     }
   }
   return { rows: [...held, ...classified], supplemental };
+}
+
+
+const JD_ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
+
+export interface JdCreateField {
+  name: string;
+  billingEntity: number;
+  acres: number | null;
+  lat: number | null;
+  lng: number | null;
+  season: number | null;
+  notes: string | null;
+}
+
+export interface JdBoundaryItem {
+  fieldId: number | null;
+  createField: JdCreateField | null;
+  sourceJdOrgId: string;
+  sourceJdFieldId: string;
+  sourceJdBoundaryId: string;
+  sourceJdFetchedAt: string;
+  sourceFieldName: string;
+  geometry: BoundaryGeometry | null;
+  geometryDetail: string | null;
+}
+
+export interface JdBoundaryDataset {
+  source: 'john_deere';
+  crs: typeof ACCEPTED_CRS;
+  axisOrder: typeof ACCEPTED_AXIS_ORDER;
+  observedAt: string;
+  items: JdBoundaryItem[];
+}
+
+function jdId(value: unknown, label: string): string {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) value = String(value);
+  if (typeof value !== 'string') throw new BoundaryDatasetError(`${label} must be text`);
+  const text = value.trim();
+  if (!JD_ID_RE.test(text)) throw new BoundaryDatasetError(`${label} is missing or not a John Deere id`);
+  return text;
+}
+
+function optionalNumber(value: unknown, label: string): number | null {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new BoundaryDatasetError(`${label} must be a number`);
+  return value;
+}
+
+function readCreateField(value: unknown): JdCreateField {
+  const spec = record(value, 'create_field');
+  for (const key of Object.keys(spec)) {
+    if (!['name', 'billing_entity', 'acres', 'lat', 'lng', 'season', 'notes'].includes(key)) {
+      throw new BoundaryDatasetError('Dataset contains an unrecognized field');
+    }
+  }
+  const name = fileText(spec.name, 'create_field.name');
+  const billing = spec.billing_entity;
+  const billingEntity = typeof billing === 'number' && Number.isSafeInteger(billing) && billing > 0
+    ? billing
+    : Array.isArray(billing) && billing.length === 1 && typeof billing[0] === 'number' && Number.isSafeInteger(billing[0]) && billing[0] > 0
+      ? billing[0]
+      : null;
+  if (billingEntity == null) throw new BoundaryDatasetError('create_field.billing_entity must be a billing_entities.id');
+  const seasonRaw = spec.season;
+  let season: number | null = null;
+  if (seasonRaw != null && seasonRaw !== '') {
+    if (typeof seasonRaw !== 'number' || !Number.isSafeInteger(seasonRaw) || seasonRaw < 2000 || seasonRaw > 2100) {
+      throw new BoundaryDatasetError('create_field.season must be a year');
+    }
+    season = seasonRaw;
+  }
+  const notes = spec.notes == null || spec.notes === '' ? null : fileText(spec.notes, 'create_field.notes');
+  return {
+    name,
+    billingEntity,
+    acres: optionalNumber(spec.acres, 'create_field.acres'),
+    lat: optionalNumber(spec.lat, 'create_field.lat'),
+    lng: optionalNumber(spec.lng, 'create_field.lng'),
+    season,
+    notes,
+  };
+}
+
+const JD_CANDIDATE_KEYS = [
+  'field_id', 'create_field', 'org_id', 'jd_field_id', 'jd_boundary_id', 'fetched_at',
+  'FieldName', 'jd_field_name', 'jd_boundary_name', 'geometry', 'valid',
+  'org_name', 'flags', 'proposed_name', 'acres',
+] as const;
+
+// Approved John Deere export is a JSON array, used as-is.
+// org_id, jd_field_id, jd_boundary_id, fetched_at, FieldName (or jd_field_name), and geometry are required.
+// Either field_id (an existing fields.id) or create_field (name + billing_entity) is required, not both.
+// valid:false holds the geometry back. Coordinates are already WGS84 longitude/latitude.
+export function parseJdCandidates(input: unknown, observedAt: string): JdBoundaryDataset {
+  if (!Array.isArray(input)) throw new BoundaryDatasetError('John Deere candidates must be a JSON array');
+  if (input.length < 1 || input.length > 1000) throw new BoundaryDatasetError('Dataset needs between 1 and 1000 fields');
+  const seenFields = new Set<number>();
+  const seenJd = new Set<string>();
+  const items = input.map(value => {
+    const item = record(value, 'Each John Deere candidate');
+    rejectUnknown(item, JD_CANDIDATE_KEYS as unknown as string[]);
+    for (const key of ['org_id', 'jd_field_id', 'jd_boundary_id', 'fetched_at', 'geometry']) {
+      if (!Object.hasOwn(item, key)) throw new BoundaryDatasetError('A John Deere candidate is missing org_id, jd_field_id, jd_boundary_id, fetched_at, or geometry');
+    }
+    const sourceFieldName = item.FieldName != null && item.FieldName !== ''
+      ? fileText(item.FieldName, 'FieldName')
+      : fileText(item.jd_field_name, 'jd_field_name');
+    const hasFieldId = Object.hasOwn(item, 'field_id') && item.field_id != null && item.field_id !== '';
+    const hasCreate = Object.hasOwn(item, 'create_field') && item.create_field != null;
+    if (hasFieldId === hasCreate) throw new BoundaryDatasetError('Each John Deere candidate needs field_id or create_field, not both');
+    let fieldId: number | null = null;
+    let createField: JdCreateField | null = null;
+    if (hasFieldId) {
+      if (typeof item.field_id !== 'number' || !Number.isSafeInteger(item.field_id) || item.field_id <= 0) {
+        throw new BoundaryDatasetError('field_id must be a fields.id');
+      }
+      if (seenFields.has(item.field_id)) throw new BoundaryDatasetError('John Deere candidates repeat a fields.id');
+      seenFields.add(item.field_id);
+      fieldId = item.field_id;
+    } else {
+      createField = readCreateField(item.create_field);
+    }
+    const orgId = jdId(item.org_id, 'org_id');
+    const jdFieldId = jdId(item.jd_field_id, 'jd_field_id');
+    const jdBoundaryId = jdId(item.jd_boundary_id, 'jd_boundary_id');
+    const jdKey = `${orgId}:${jdFieldId}`;
+    if (seenJd.has(jdKey)) throw new BoundaryDatasetError('John Deere candidates repeat a field id');
+    seenJd.add(jdKey);
+    if (item.valid != null && typeof item.valid !== 'boolean') throw new BoundaryDatasetError('valid must be a boolean');
+    let geometry: BoundaryGeometry | null = null;
+    let geometryDetail: string | null = null;
+    if (item.valid === false) geometryDetail = 'Candidate was not marked valid';
+    else {
+      const inspected = inspectGeometry(item.geometry);
+      if (inspected.ok) geometry = inspected.geometry;
+      else geometryDetail = inspected.detail;
+    }
+    return {
+      fieldId,
+      createField,
+      sourceJdOrgId: orgId,
+      sourceJdFieldId: jdFieldId,
+      sourceJdBoundaryId: jdBoundaryId,
+      sourceJdFetchedAt: parseInstant(item.fetched_at),
+      sourceFieldName,
+      geometry,
+      geometryDetail,
+    };
+  });
+  return { source: 'john_deere', crs: ACCEPTED_CRS, axisOrder: ACCEPTED_AXIS_ORDER, observedAt: parseInstant(observedAt), items };
+}
+
+function sameJdLineage(existing: CommittedBoundary, item: JdBoundaryItem): boolean {
+  return (existing.sourceJdOrgId ?? null) === item.sourceJdOrgId
+    && (existing.sourceJdFieldId ?? null) === item.sourceJdFieldId
+    && (existing.sourceJdBoundaryId ?? null) === item.sourceJdBoundaryId;
+}
+
+function catalogNameKey(name: string): string {
+  return name.trim().toLowerCase().replace(/['\u2019]/g, "'");
+}
+
+// John Deere rows are keyed by public.fields.id, or by create_field when the field does not exist yet.
+// They do not match or invent a CropX uuid.
+export function classifyJdBoundaries(dataset: JdBoundaryDataset, catalog: CatalogField[], committed: CommittedBoundary[]): ClassifiedBoundary[] {
+  const byId = new Map<number, CatalogField>();
+  const byName = new Map<string, number[]>();
+  for (const field of catalog) {
+    if (byId.has(field.id)) throw new BoundaryDatasetError('Catalog repeats a fields.id');
+    byId.set(field.id, field);
+    if (field.name) {
+      const key = catalogNameKey(field.name);
+      const ids = byName.get(key) ?? [];
+      ids.push(field.id);
+      byName.set(key, ids);
+    }
+  }
+  const committedByField = new Map(committed.map(row => [row.fieldId, row]));
+  return dataset.items.map(item => {
+    const hash = item.geometry ? geometrySha256(item.geometry) : null;
+    const base = {
+      cropxFieldUuid: null as string | null,
+      acreFieldId: item.fieldId,
+      sourceFieldName: item.sourceFieldName,
+      sourceFarmId: null as string | null,
+      sourceFarmName: null as string | null,
+      sourceCropxFieldId: null as string | null,
+      sourceFileName: null as string | null,
+      sourceFileSha256: null as string | null,
+      sourceFeatureName: null as string | null,
+      sourceJdOrgId: item.sourceJdOrgId,
+      sourceJdFieldId: item.sourceJdFieldId,
+      sourceJdBoundaryId: item.sourceJdBoundaryId,
+      sourceJdFetchedAt: item.sourceJdFetchedAt,
+      createFieldName: item.createField?.name ?? null,
+      createFieldBillingEntity: item.createField?.billingEntity ?? null,
+      geometry: item.geometry,
+      geometrySha256: hash,
+    };
+    const finish = (disposition: Disposition, detail: string, resolvedFieldId: number | null, keepGeometry = true): ClassifiedBoundary => ({
+      ...base,
+      sourceObservedAt: dataset.observedAt,
+      legacyBrFieldSeasonId: null,
+      sourceFieldSeasonId: null,
+      disposition, detail, resolvedFieldId,
+      geometry: keepGeometry ? base.geometry : null,
+      geometrySha256: keepGeometry ? base.geometrySha256 : null,
+    });
+    if (!item.geometry) return finish('invalid_geometry', item.geometryDetail || 'Boundary geometry is invalid', null, false);
+    if (item.createField) {
+      const matches = byName.get(catalogNameKey(item.createField.name)) ?? [];
+      if (matches.length) {
+        return finish('ambiguous', `A fields row already uses this name (fields.id ${matches.join(', ')})`, null);
+      }
+      return finish('eligible', `New fields row will be created as ${item.createField.name}`, null);
+    }
+    if (item.fieldId == null || !byId.has(item.fieldId)) return finish('unmatched', 'No fields row has this id', null);
+    const existing = committedByField.get(item.fieldId);
+    if (!existing) return finish('eligible', 'Unique fields.id match', item.fieldId);
+    if (existing.geometrySha256 === hash && sameJdLineage(existing, item)) return finish('unchanged', 'Stored boundary is unchanged', item.fieldId);
+    if (existing.edited) return finish('conflict_edited', 'Stored boundary was edited', item.fieldId);
+    return finish('conflict_changed', 'Stored boundary differs and was not marked for replacement', item.fieldId);
+  });
 }

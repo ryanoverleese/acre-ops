@@ -677,3 +677,244 @@ test('draw helpers load an exterior ring, close polygons, and insert midpoints',
   assert.equal(mids[0].index, 1);
   assert.equal(draw.ringToPolygon([[40.4, -99.5], [40.4, -99.48]]), null);
 });
+
+test('import scripts prefer registry.ts over registry.json', () => {
+  const script = `
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const ts = require('typescript');
+    const Module = require('node:module');
+    const root = ${JSON.stringify(root)};
+    require.extensions['.ts'] = (module, filename) => {
+      const output = ts.transpileModule(fs.readFileSync(filename, 'utf8'), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true },
+      }).outputText;
+      module._compile(output, filename);
+    };
+    const before = require.resolve(path.join(root, 'lib/supabase/registry'));
+    if (!before.endsWith('registry.json')) {
+      console.error('expected registry.json first, got', before);
+      process.exit(4);
+    }
+    require(path.join(root, 'scripts/prefer-ts-over-json.cjs'))();
+    for (const key of Object.keys(Module._pathCache || {})) {
+      if (key.includes('lib/supabase/registry')) delete Module._pathCache[key];
+    }
+    delete require.cache[before];
+    const resolved = require.resolve(path.join(root, 'lib/supabase/registry'));
+    if (!resolved.endsWith('registry.ts')) {
+      console.error(resolved);
+      process.exit(2);
+    }
+    const registry = require(resolved);
+    if (typeof registry.DataError !== 'function') process.exit(3);
+  `;
+  const run = spawnSync(process.execPath, ['-e', script], { encoding: 'utf8', timeout: 20000 });
+  assert.equal(run.status, 0, run.stderr + run.stdout);
+});
+
+test('john deere candidates keep Operations Center lineage and do not invent a CropX uuid', () => {
+  const fetched = '2026-11-19T15:39:21.000Z';
+  const geometry = square(-99.110998);
+  const parsed = engine.parseJdCandidates([{
+    create_field: { name: "Steve's 80", billing_entity: 123, acres: 81.05, lat: 40.5, lng: -99.11 },
+    org_id: '132573',
+    jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e',
+    jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb',
+    fetched_at: fetched,
+    FieldName: "Steve's 80",
+    geometry,
+  }], '2026-11-19T16:00:00.000Z');
+  assert.equal(parsed.source, 'john_deere');
+  assert.equal(parsed.items[0].fieldId, null);
+  assert.equal(parsed.items[0].createField.name, "Steve's 80");
+  assert.equal(parsed.items[0].createField.billingEntity, 123);
+  assert.equal(parsed.items[0].sourceJdOrgId, '132573');
+  assert.equal(parsed.items[0].sourceJdFieldId, '0d3574be-159f-41e6-a906-7e64b5eaf04e');
+  const catalog = [{ id: 18, cropxFieldUuid: KNOWN_UUID, name: 'QA Known' }, { id: 462, cropxFieldUuid: null, name: "Mother's" }];
+  const rows = engine.classifyJdBoundaries(parsed, catalog, []);
+  assert.equal(rows[0].disposition, 'eligible');
+  assert.equal(rows[0].resolvedFieldId, null);
+  assert.equal(rows[0].cropxFieldUuid, null);
+  assert.equal(rows[0].createFieldName, "Steve's 80");
+  assert.equal(JSON.stringify(engine.reviewOf(rows)).includes('-99.110998'), false);
+  const existingName = engine.classifyJdBoundaries(parsed, [{ id: 900, cropxFieldUuid: null, name: "steve's 80" }], []);
+  assert.equal(existingName[0].disposition, 'ambiguous');
+  const held = engine.parseJdCandidates([{
+    field_id: 462, org_id: 132573, jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e',
+    jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb', fetched_at: fetched, FieldName: "Steve's 80",
+    valid: false, geometry,
+  }], fetched);
+  assert.equal(engine.classifyJdBoundaries(held, catalog, [])[0].disposition, 'invalid_geometry');
+  const matched = engine.parseJdCandidates([{
+    field_id: 462, org_id: '132573', jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e',
+    jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb', fetched_at: fetched, FieldName: "Steve's 80", geometry,
+  }], fetched);
+  const eligible = engine.classifyJdBoundaries(matched, catalog, []);
+  assert.equal(eligible[0].disposition, 'eligible');
+  assert.equal(eligible[0].resolvedFieldId, 462);
+  const again = engine.classifyJdBoundaries(matched, catalog, [{
+    fieldId: 462, cropxFieldUuid: null, geometrySha256: engine.geometrySha256(geometry), edited: false,
+    sourceJdOrgId: '132573', sourceJdFieldId: '0d3574be-159f-41e6-a906-7e64b5eaf04e', sourceJdBoundaryId: 'ce9f1d08-9172-489f-bbda-8e535d729eeb',
+  }]);
+  assert.equal(again[0].disposition, 'unchanged');
+  const overCropx = engine.classifyJdBoundaries(engine.parseJdCandidates([{
+    field_id: 18, org_id: '132573', jd_field_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    jd_boundary_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', fetched_at: fetched, FieldName: 'Other', geometry: square(-99.05),
+  }], fetched), catalog, [{ fieldId: 18, cropxFieldUuid: KNOWN_UUID, geometrySha256: engine.geometrySha256(square()), edited: false }]);
+  assert.equal(overCropx[0].disposition, 'conflict_changed');
+  assert.throws(() => engine.parseJdCandidates([
+    { field_id: 462, org_id: '132573', jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e', jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb', fetched_at: fetched, FieldName: 'A', geometry },
+    { field_id: 462, org_id: '132573', jd_field_id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', jd_boundary_id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', fetched_at: fetched, FieldName: 'B', geometry },
+  ], fetched), /repeat/);
+  assert.throws(() => engine.parseJdCandidates([
+    { field_id: 462, org_id: '132573', jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e', jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb', fetched_at: fetched, FieldName: 'A', geometry },
+    { create_field: { name: 'Other', billing_entity: 123 }, org_id: '132573', jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e', jd_boundary_id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', fetched_at: fetched, FieldName: 'B', geometry },
+  ], fetched), /repeat/);
+  assert.throws(() => engine.parseJdCandidates([
+    { org_id: '132573', jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e', jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb', fetched_at: fetched, FieldName: 'A', geometry },
+  ], fetched), /field_id or create_field/);
+});
+
+test('john deere candidate dry-run writes nothing and does not echo coordinates', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'acre-jd-boundaries-'));
+  const candidates = path.join(dir, 'candidates.json');
+  fs.writeFileSync(candidates, JSON.stringify([{
+    create_field: { name: "Steve's 80", billing_entity: 123, acres: 81.05, lat: 40.499587719, lng: -99.110998587 },
+    org_id: '132573',
+    jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e',
+    jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb',
+    fetched_at: '2026-11-19T15:39:21.000Z',
+    FieldName: "Steve's 80",
+    geometry: square(-99.110998587),
+  }]));
+  const run = spawnSync(process.execPath, [path.join(root, 'scripts/import-john-deere-boundaries.cjs'), '--candidates', candidates], {
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: 'postgresql://postgres:super-secret-password@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres', BOUNDARY_IMPORT_APPLY: engine.BOUNDARY_IMPORT_APPLY_VALUE },
+    timeout: 15000,
+  });
+  assert.equal(run.status, 0, run.stderr);
+  assert.equal(run.stdout.includes('super-secret-password'), false);
+  assert.equal(run.stdout.includes('-99.110998587'), false);
+  const report = JSON.parse(run.stdout);
+  assert.equal(report.mode, 'dry-run');
+  assert.equal(report.writes, 0);
+  assert.equal(report.catalogChecked, false);
+  assert.equal(report.validGeometry, 1);
+  assert.equal(report.fieldsToCreate, 1);
+  const refused = spawnSync(process.execPath, [path.join(root, 'scripts/import-john-deere-boundaries.cjs'), '--apply', '--candidates', candidates], {
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: 'postgresql://postgres:super-secret-password@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres' },
+    timeout: 15000,
+  });
+  assert.equal(refused.status, 1, refused.stderr);
+  assert.match(refused.stderr, /disabled/);
+  const missingFlag = spawnSync(process.execPath, [path.join(root, 'scripts/import-john-deere-boundaries.cjs'), '--apply', '--candidates', candidates], {
+    encoding: 'utf8',
+    env: { ...process.env, DATABASE_URL: 'postgresql://postgres:super-secret-password@db.junawlttpyztjlnbmvcb.supabase.co:5432/postgres', BOUNDARY_IMPORT_APPLY: engine.BOUNDARY_IMPORT_APPLY_VALUE },
+    timeout: 15000,
+  });
+  assert.equal(missingFlag.status, 2, missingFlag.stderr);
+  assert.match(missingFlag.stderr, /create-fields/);
+});
+
+test('john-deere source migration keeps existing cropx and file boundaries valid', async () => {
+  const { PGlite } = require('@electric-sql/pglite');
+  const { pgcrypto } = require('@electric-sql/pglite/contrib/pgcrypto');
+  const db = new PGlite({ extensions: { pgcrypto } });
+  await db.exec('CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role;');
+  const dir = path.join(root, 'supabase/migrations');
+  const files = fs.readdirSync(dir).filter(name => name.endsWith('.sql')).sort();
+  const added = '20261119163100_field_boundary_john_deere_source.sql';
+  for (const name of files) {
+    if (name >= added) continue;
+    await db.exec(fs.readFileSync(path.join(dir, name), 'utf8'));
+  }
+  const migration = fs.readFileSync(path.join(dir, added), 'utf8');
+  assert.equal(/\bUPDATE\b|\bDELETE\b/i.test(migration), false);
+  assert.match(migration, /john_deere/);
+  const cropxField = (await db.query(`INSERT INTO public.fields (name) VALUES ('QA CropX') RETURNING id`)).rows[0];
+  const fileField = (await db.query(`INSERT INTO public.fields (name) VALUES ('QA File') RETURNING id`)).rows[0];
+  const extra = (await db.query(`INSERT INTO public.fields (name) VALUES ('QA JD Incomplete') RETURNING id`)).rows[0];
+  const cropxGeom = JSON.stringify(square(-99.5));
+  const fileGeom = JSON.stringify(square(-99.2));
+  const sha = 'ab'.repeat(32);
+  await db.query(
+    `INSERT INTO public.field_boundaries (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source)
+     VALUES ($1, $2, $3::jsonb, $4, 'EPSG:4326', 'lonlat', 'cropx')`,
+    [cropxField.id, KNOWN_UUID, cropxGeom, engine.geometrySha256(square(-99.5))]);
+  await db.query(
+    `INSERT INTO public.field_boundaries (field_id, cropx_field_uuid, geometry, geometry_sha256, crs, axis_order, source, source_file_name, source_file_sha256, source_feature_name)
+     VALUES ($1, NULL, $2::jsonb, $3, 'EPSG:4326', 'lonlat', 'file', 'Rapp-Kelly.shp', $4, $5)`,
+    [fileField.id, fileGeom, engine.geometrySha256(square(-99.2)), sha, "Mother's"]);
+  const beforeRows = (await db.query('SELECT field_id, source, cropx_field_uuid, source_file_name, geometry_sha256 FROM public.field_boundaries ORDER BY field_id')).rows;
+  await db.exec(migration);
+  const afterRows = (await db.query('SELECT field_id, source, cropx_field_uuid, source_file_name, geometry_sha256 FROM public.field_boundaries ORDER BY field_id')).rows;
+  assert.deepEqual(afterRows, beforeRows);
+  const lineage = (await db.query('SELECT source_jd_org_id, source_jd_field_id, source_jd_boundary_id, source_jd_fetched_at FROM public.field_boundaries ORDER BY field_id')).rows;
+  assert.equal(lineage.every(row => row.source_jd_org_id == null && row.source_jd_field_id == null && row.source_jd_boundary_id == null && row.source_jd_fetched_at == null), true);
+  await assert.rejects(db.query(
+    `INSERT INTO public.field_boundaries (field_id, geometry, geometry_sha256, crs, axis_order, source, source_jd_org_id, source_jd_field_id, source_jd_boundary_id)
+     VALUES ($1, $2::jsonb, $3, 'EPSG:4326', 'lonlat', 'john_deere', '132573', '0d3574be-159f-41e6-a906-7e64b5eaf04e', 'ce9f1d08-9172-489f-bbda-8e535d729eeb')`,
+    [extra.id, cropxGeom, engine.geometrySha256(square(-99.5))]));
+  await db.close();
+});
+
+test('a john deere boundary is applied to a field created through createFieldRecord', async () => {
+  allow();
+  const a = f.load('lib/supabase/adapter.ts');
+  const store = f.load('lib/field-boundaries/store.ts');
+  const database = f.load('lib/supabase/database.ts');
+  const createField = f.load('lib/fields/create-field.ts');
+  const be = await a.createRow('billing_entities', { name: 'QA JD Billing' });
+  const created = await createField.createFieldRecord({
+    name: 'QA JD Field',
+    billing_entity: [be.id],
+    acres: 10,
+    lat: 40.5,
+    lng: -99.11,
+  });
+  assert.equal(created.field.name, 'QA JD Field');
+  assert.ok(created.fieldSeason.id);
+  assert.deepEqual((created.field.billing_entity || []).map(link => link.id), [be.id]);
+  const fetched = '2026-11-19T15:39:21.000Z';
+  const geometry = square(-99.11);
+  const sql = { query: database.query, transaction: database.transaction };
+  const parsed = engine.parseJdCandidates([{
+    field_id: created.field.id,
+    org_id: '132573',
+    jd_field_id: '0d3574be-159f-41e6-a906-7e64b5eaf04e',
+    jd_boundary_id: 'ce9f1d08-9172-489f-bbda-8e535d729eeb',
+    fetched_at: fetched,
+    FieldName: 'QA JD Field',
+    geometry,
+  }], fetched);
+  const first = engine.classifyJdBoundaries(parsed, await store.loadCatalog(sql), await store.loadCommitted(sql));
+  assert.equal(first[0].disposition, 'eligible');
+  assert.equal(first[0].resolvedFieldId, created.field.id);
+  const sha = 'cd'.repeat(32);
+  const staged = await store.stageReviewedRows(sql, first, sha, fetched, 'john_deere');
+  const stagedRow = (await f.db.query('SELECT source, cropx_field_uuid, source_jd_org_id, source_jd_field_id, source_jd_boundary_id, source_file_name FROM public.field_boundary_import_rows WHERE import_id = $1', [staged.importId])).rows[0];
+  assert.equal(stagedRow.source, 'john_deere');
+  assert.equal(stagedRow.cropx_field_uuid, null);
+  assert.equal(stagedRow.source_jd_org_id, '132573');
+  assert.equal(stagedRow.source_file_name, null);
+  assert.deepEqual((await store.applyBoundaryImport(sql, staged.importId)).results, { inserted: 1, replaced: 0, skipped_unchanged: 0, blocked: 0 });
+  const stored = (await f.db.query('SELECT cropx_field_uuid, source, source_jd_org_id, source_jd_field_id, source_jd_boundary_id, source_jd_fetched_at, source_file_name, geometry_sha256 FROM public.field_boundaries WHERE field_id = $1', [created.field.id])).rows[0];
+  assert.equal(stored.cropx_field_uuid, null);
+  assert.equal(stored.source, 'john_deere');
+  assert.equal(stored.source_jd_org_id, '132573');
+  assert.equal(stored.source_jd_field_id, '0d3574be-159f-41e6-a906-7e64b5eaf04e');
+  assert.equal(stored.source_jd_boundary_id, 'ce9f1d08-9172-489f-bbda-8e535d729eeb');
+  assert.equal(stored.source_file_name, null);
+  assert.equal(stored.geometry_sha256, engine.geometrySha256(geometry));
+  const againRows = engine.classifyJdBoundaries(parsed, await store.loadCatalog(sql), await store.loadCommitted(sql));
+  assert.equal(againRows[0].disposition, 'unchanged');
+  const again = await store.stageReviewedRows(sql, againRows, sha, fetched, 'john_deere');
+  const againApply = await store.applyBoundaryImport(sql, again.importId);
+  assert.equal(againApply.results.inserted, 0);
+  assert.equal(againApply.results.skipped_unchanged, 1);
+  assert.equal((await f.db.query('SELECT count(*)::int AS n FROM public.field_boundaries WHERE field_id = $1', [created.field.id])).rows[0].n, 1);
+  block();
+});
+
