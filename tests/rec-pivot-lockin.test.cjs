@@ -209,3 +209,20 @@ test('without the snapshot migration, recs still save and pages still load', asy
   assert.ok(detail.waterRecs.length >= 1);
   assert(detail.waterRecs.every(r => r.pivots === undefined));
 });
+
+test('step 1 live icon: age label from device report time, and it reuses the cached badge reading', () => {
+  const { liveAgeLabel } = f.load('lib/valley/pivot-lock-types.ts');
+  const now = Date.parse('2026-11-19T15:00:00Z');
+  const ago = m => new Date(now - m * 60000).toISOString();
+  assert.equal(liveAgeLabel(ago(0.2), false, now), 'Live, just now');
+  assert.equal(liveAgeLabel(ago(4), false, now), 'Live, 4 min ago');
+  assert.equal(liveAgeLabel(ago(95), false, now), 'Live, 1 hr 35 min ago (old reading)');
+  assert.equal(liveAgeLabel(ago(10), true, now), 'Live, 10 min ago (old reading)');
+  assert.equal(liveAgeLabel(null, false, now), 'Live, age unknown');
+  assert.equal(liveAgeLabel(ago(4), false, undefined), 'Live, age unknown');
+  assert.equal(liveAgeLabel(ago(-30), false, now), 'Live, age unknown');
+  const src = fs.readFileSync(path.join(root, 'app/water-recs/WaterRecsClient.tsx'), 'utf8');
+  // No new Valley request path: the preview reads valley.fields from useValleyPivots (5-minute server cache).
+  assert(!src.includes('/api/valley/'));
+  assert(/<LivePivotPreview status=\{valley\.fields\[field\.fieldId\]\} now=\{valley\.now\} \/>/.test(src));
+});

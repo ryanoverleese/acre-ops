@@ -6,7 +6,8 @@ import type { OperationGroup, WaterRecRecord } from './page';
 import PivotStatusIcon from './PivotStatusIcon';
 import { useValleyPivots } from './useValleyPivots';
 import GrowerPivotIcon from '@/components/grower/GrowerPivotIcon';
-import type { LockedPivot, PivotLockPreview, PivotLockSaveResult } from '@/lib/valley/pivot-lock-types';
+import { liveAgeLabel, type LockedPivot, type PivotLockPreview, type PivotLockSaveResult } from '@/lib/valley/pivot-lock-types';
+import { readingFreshness, type FieldPivotStatus } from '@/lib/valley/types';
 
 interface WaterRecsClientProps {
   operations: OperationGroup[];
@@ -39,6 +40,28 @@ function LockedPivotIcons({ pivots }: { pivots: LockedPivot[] }) {
     <span className="wr-pivotlock-icons">
       {pivots.map(p => <GrowerPivotIcon key={p.serial} pivot={{ angle: p.angle, on: p.on }} probe={null} size={30} />)}
     </span>
+  );
+}
+
+// Step 1 (before locking): the same cached reading the PivotStatusIcon badges
+// use (useValleyPivots, 5-minute server cache). Display only; nothing is saved
+// from this. Lock still does its own fresh read.
+function LivePivotPreview({ status, now }: { status?: FieldPivotStatus; now?: number }) {
+  if (!status) return <span className="wr-pivotlock-live">Live position loading…</span>;
+  const shown = status.pivots.filter(r => !r.isLateral && r.angle !== null);
+  if (!shown.length) {
+    return <span className="wr-pivotlock-live">{status.state === 'unavailable' ? 'Live position unavailable' : 'No live arm position'}</span>;
+  }
+  return (
+    <>
+      {shown.map(r => (
+        <span key={r.serial} className="wr-pivotlock-liveitem" data-pivot-live={readingFreshness(r, now ?? Date.now())}>
+          <GrowerPivotIcon pivot={{ angle: r.angle as number, on: r.power === 'ON' }} probe={null} size={30} />
+          <span className="wr-pivotlock-live">{liveAgeLabel(r.observedAt, r.behind, now)}</span>
+        </span>
+      ))}
+      {status.state === 'unavailable' && <span className="wr-pivotlock-live">Other pivot unavailable</span>}
+    </>
   );
 }
 
@@ -1991,6 +2014,7 @@ export default function WaterRecsClient({
                       const busy = lock?.status === 'locking';
                       return (
                         <div className={`wr-pivotlock${preview ? ' wr-pivotlock-pending' : ''}`} data-pivot-lock={preview ? 'pending' : 'none'}>
+                          {!preview && <LivePivotPreview status={valley.fields[field.fieldId]} now={valley.now} />}
                           {preview && <LockedPivotIcons pivots={preview.pivots} />}
                           {preview && (
                             <span className="wr-pivotlock-text">
