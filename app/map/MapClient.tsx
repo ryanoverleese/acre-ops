@@ -4,6 +4,7 @@ import { fieldBilling } from '@/lib/data-mappings';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
+import { CANALS_SOURCE_LABEL } from './canals-label';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus, SoilFamilyLegendRow } from './UnifiedMap';
 import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
@@ -37,6 +38,7 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
   repairs: 'Repairs',
   customers: 'Customers',
   territory: 'Territory',
+  canals: 'Canals',
   soils: 'Soils',
   lowSpots: 'Low spots',
 };
@@ -50,6 +52,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     repairs: false,
     customers: false,
     territory: false,
+    canals: false,
     soils: false,
     lowSpots: false,
   });
@@ -432,6 +435,11 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               {key === 'soils' && layers.soils && soilsStatus === 'error' ? (
                 <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
                   Soil map isn’t available right now.
+                </div>
+              ) : null}
+              {key === 'canals' && layers.canals ? (
+                <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
+                  Kearney and Phelps counties. {CANALS_SOURCE_LABEL}
                 </div>
               ) : null}
               {key === 'lowSpots' && layers.lowSpots ? (

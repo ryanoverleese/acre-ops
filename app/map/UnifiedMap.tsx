@@ -13,6 +13,7 @@ import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
 import { drawWideSoils, wideSoilPopupHtml, type WideSoilsDrawing } from './soils-wide-layer';
+import { attachStaffCanals, type StaffCanalsHandle } from './staff-canals';
 import { attachStaffLowSpots, type StaffLowSpotsHandle } from './staff-lowspots';
 import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { attachStaffElevation, DEFAULT_ELEV_OPACITY, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
@@ -84,6 +85,7 @@ export interface Layers {
   repairs: boolean;
   customers: boolean;
   territory: boolean;
+  canals: boolean;
   soils: boolean;
   lowSpots: boolean;
 }
@@ -520,6 +522,20 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     lowSpotsRef.current = attachStaffLowSpots(map, (status) => lowSpotsStatusRef.current?.(status));
   }, [layers.lowSpots]);
 
+  // Canals: same static NHD/OSM lines as the field maps, view only.
+  const canalsRef = useRef<StaffCanalsHandle | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!layers.canals) {
+      canalsRef.current?.detach();
+      canalsRef.current = null;
+      return;
+    }
+    if (canalsRef.current) return;
+    canalsRef.current = attachStaffCanals(map);
+  }, [layers.canals]);
+
   // Highways and town names stay readable on top of Elevation and Soils, at any opacity.
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   useEffect(() => {
@@ -545,6 +561,8 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
 
   useEffect(() => {
     return () => {
+      canalsRef.current?.detach();
+      canalsRef.current = null;
       lowSpotsRef.current?.detach();
       lowSpotsRef.current = null;
       elevCtlRef.current?.detach();
