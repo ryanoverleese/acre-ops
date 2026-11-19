@@ -104,3 +104,15 @@ test('staff map wires second-tap close into wide and detailed soil popups, and k
   assert.match(detailed, /fill\.openPopup\(event\.latlng\)/);
   assert.match(canals, /layer\.bindPopup\(canalPopupHtml/);
 });
+
+test('grower and office soils map: second tap closes the soil popup; canal popups stay on bindPopup', () => {
+  const overlay = read('components/SoilsOverlay.tsx');
+  const canals = read('components/CanalsOverlay.tsx');
+  assert.match(overlay, /attachSoilTapDismiss\(map\)/);
+  assert.match(overlay, /consumeSoilTapDismiss\(map\)/);
+  assert.match(overlay, /line\.off\('click'\)/);
+  assert.match(overlay, /line\.openPopup\(event\.latlng\)/);
+  assert.match(canals, /path\.bindPopup/);
+  assert.doesNotMatch(canals, /consumeSoilTapDismiss/);
+});
+

@@ -14,6 +14,7 @@ import {
   type SoilUnit,
 } from '@/lib/soils/ssurgo';
 import { loadSoilMap } from '@/lib/soils/load-map';
+import { attachSoilTapDismiss, consumeSoilTapDismiss } from '@/app/map/soil-tap-dismiss';
 
 const SOILS_PANE = 'acre-soils'; // above elevation (350), below canals (420) and pins
 const LABEL_MIN_PX = 26; // hide a symbol when its polygon is smaller than this on screen
@@ -117,7 +118,14 @@ export default function SoilsOverlay({ state, boundaries }: { state: SoilMapStat
           `<div class="soil-popup"><div class="soil-popup-sym">${esc(unit.musym)}</div><div class="soil-popup-name">${esc(unit.muname)}</div></div>`,
           { className: 'canal-popup-wrap', closeButton: false, autoPanPadding: [16, 16] },
         );
-        line.on('click', (event: L.LeafletMouseEvent) => L.DomEvent.stopPropagation(event));
+        // Same second-tap close as the staff map: Leaflet closes on preclick,
+        // so drop the default click-to-open and skip the reopen.
+        line.off('click');
+        line.on('click', (event: L.LeafletMouseEvent) => {
+          L.DomEvent.stopPropagation(event);
+          if (consumeSoilTapDismiss(map)) return;
+          line.openPopup(event.latlng);
+        });
       }
       group.addLayer(line);
       group.addLayer(casing);
@@ -150,10 +158,12 @@ export default function SoilsOverlay({ state, boundaries }: { state: SoilMapStat
     };
     group.addTo(map);
     groupRef.current = group;
+    const detachDismiss = attachSoilTapDismiss(map);
     fitLabels();
     map.on('zoomend', fitLabels);
     return () => {
       map.off('zoomend', fitLabels);
+      detachDismiss();
       group.remove();
       groupRef.current = null;
     };

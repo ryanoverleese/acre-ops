@@ -75,6 +75,9 @@ test('field map: Soils is its own toggle next to Canals and layers over elevatio
   assert.doesNotMatch(src, /setShowSoils[^\n]*setMode|setMode[^\n]*setShowSoils/);
   const overlay = fs.readFileSync(path.join(root, 'components/SoilsOverlay.tsx'), 'utf8');
   assert.match(overlay, /zIndex = '400'/); // above elevation pane (350)
+  assert.match(overlay, /attachSoilTapDismiss\(map\)/);
+  assert.match(overlay, /consumeSoilTapDismiss\(map\)/);
+  assert.match(overlay, /line\.openPopup\(event\.latlng\)/);
   const mw = fs.readFileSync(path.join(root, 'middleware.ts'), 'utf8');
   assert.match(mw, /'\/api\/soil-map'/);
 });
