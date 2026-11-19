@@ -46,6 +46,29 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
   lowSpots: 'Low spots',
 };
 
+/** Collapsed/expanded Layers panel. Absent means follow the viewport default. */
+const LAYERS_PANEL_KEY = 'acre-ops-map-layers-open';
+const LAYERS_PANEL_NARROW = '(max-width: 768px)';
+
+function readStoredLayersOpen(): boolean | null {
+  try {
+    const raw = window.localStorage.getItem(LAYERS_PANEL_KEY);
+    if (raw === 'open') return true;
+    if (raw === 'closed') return false;
+  } catch {
+    // private mode or blocked storage
+  }
+  return null;
+}
+
+function defaultLayersOpen(): boolean {
+  try {
+    return !window.matchMedia(LAYERS_PANEL_NARROW).matches;
+  } catch {
+    return true;
+  }
+}
+
 
 export default function MapClient({ fields, operations, contacts, fieldSeasons, probeAssignments, repairs, boundedFieldIds }: Props) {
   const [layers, setLayers] = useState<Layers>({
@@ -67,6 +90,8 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
   const [elevPrefs, setElevPrefs] = useState<ElevColorPrefs>(defaultElevColorPrefs);
   const [prefsReady, setPrefsReady] = useState(false);
+  // null = no saved pref yet; CSS defaults to collapsed on phones, open on desktop
+  const [layersOpen, setLayersOpen] = useState<boolean | null>(null);
 
   useEffect(() => {
     try {
@@ -86,6 +111,10 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     }
   }, [elevPrefs, prefsReady]);
 
+  useEffect(() => {
+    setLayersOpen(readStoredLayersOpen());
+  }, []);
+
   const autoLoFt = elevRange ? metersToWholeFeet(elevRange.lo) : null;
   const autoHiFt = elevRange ? metersToWholeFeet(elevRange.hi) : null;
   const colorOn = elevationMode === 'colorshade' || elevationMode === 'color';
@@ -102,6 +131,18 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
 
   const toggle = useCallback((key: keyof Layers) => {
     setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const toggleLayersPanel = useCallback(() => {
+    setLayersOpen((prev) => {
+      const next = !(prev ?? defaultLayersOpen());
+      try {
+        window.localStorage.setItem(LAYERS_PANEL_KEY, next ? 'open' : 'closed');
+      } catch {
+        // private mode or blocked storage — toggle still works for this session
+      }
+      return next;
+    });
   }, []);
 
   // Build lookup maps
@@ -384,21 +425,21 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
 
         {/* Layer toggle panel */}
         <div
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            zIndex: 1000,
-            background: 'rgba(255,255,255,0.97)',
-            borderRadius: 10,
-            boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
-            padding: '10px 14px',
-            minWidth: elevOn || layers.lowSpots ? 200 : 140,
-          }}
+          className={`staff-layers-panel${elevOn || layers.lowSpots ? ' is-wide' : ''}${layersOpen === true ? ' is-open' : layersOpen === false ? ' is-closed' : ''}`}
         >
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+          <button
+            type="button"
+            className="staff-layers-toggle"
+            aria-expanded={layersOpen ?? undefined}
+            aria-controls="staff-layers-body"
+            onClick={toggleLayersPanel}
+          >
             Layers
-          </div>
+            <svg className="staff-layers-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+              <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          <div id="staff-layers-body" className="staff-layers-body">
           {(Object.keys(layers) as (keyof Layers)[]).map((key) => (
             <div key={key}>
               <LayerToggle
@@ -482,6 +523,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
               ))}
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

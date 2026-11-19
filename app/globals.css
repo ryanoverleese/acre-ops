@@ -13119,6 +13119,76 @@ a.grower-activity-jump {
   padding: 4px 0 0;
 }
 
+/* Staff map Layers panel: collapsible. Default open on desktop, closed on phones. */
+.staff-layers-panel {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 10px 14px;
+  min-width: 140px;
+  box-sizing: border-box;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.staff-layers-panel.is-wide { min-width: 200px; }
+.staff-layers-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 28px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  color: #57534e;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+.staff-layers-chevron {
+  flex-shrink: 0;
+  color: #78716c;
+  transition: transform 0.15s ease;
+}
+/* Chevron points up when the list is open, down when collapsed. */
+.staff-layers-panel:not(.is-closed) .staff-layers-chevron { transform: rotate(180deg); }
+.staff-layers-panel.is-closed,
+.staff-layers-panel.is-closed.is-wide {
+  padding: 4px 10px;
+  min-width: 0;
+}
+.staff-layers-panel.is-closed .staff-layers-toggle { margin-bottom: 0; }
+.staff-layers-panel.is-closed .staff-layers-body { display: none; }
+.staff-layers-panel.is-closed .staff-layers-chevron { transform: none; }
+
+@media (max-width: 768px) {
+  .staff-layers-toggle { min-height: 36px; }
+  .staff-layers-panel:not(.is-open) {
+    padding: 4px 10px;
+    min-width: 0;
+  }
+  .staff-layers-panel:not(.is-open) .staff-layers-toggle { margin-bottom: 0; }
+  .staff-layers-panel:not(.is-open) .staff-layers-body { display: none; }
+  .staff-layers-panel:not(.is-open) .staff-layers-chevron { transform: none; }
+  .staff-layers-panel.is-open {
+    padding: 10px 14px;
+    min-width: 140px;
+  }
+  .staff-layers-panel.is-open.is-wide { min-width: 200px; }
+  .staff-layers-panel.is-open .staff-layers-toggle { margin-bottom: 8px; }
+  .staff-layers-panel.is-open .staff-layers-body { display: block; }
+  .staff-layers-panel.is-open .staff-layers-chevron { transform: rotate(180deg); }
+}
+
 
 /* Grower pivot icon: position staff locked into each water rec. Icon only; note sits under the section title. */
 .grower-pivot-note {
