@@ -23,6 +23,9 @@ import {
   paintElevationTile,
   type ElevPaintMode,
 } from './paint-elev';
+import { ELEV_TILE_FADE_MS, ELEV_TILE_PRUNE_DELAY_MS, elevTileFadeProgress } from './elev-fade';
+
+export { ELEV_TILE_FADE_MS, ELEV_TILE_PRUNE_DELAY_MS, elevTileFadeProgress } from './elev-fade';
 
 export type ElevRenderMode = ElevPaintMode;
 
@@ -84,6 +87,8 @@ type ElevTile = HTMLCanvasElement & {
   _tileY?: number;
   _dead?: boolean;
   _abort?: AbortController | null;
+  /** Held until the canvas has been painted (or the fetch failed) so a blank tile does not flash. */
+  _done?: L.DoneCallback | null;
 };
 
 export type ElevColorOptions = {
@@ -216,6 +221,11 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
       for (const el of owned) {
         if (el._dead || !el._elev) continue;
         renderCanvas(el, state.mode, state.activeScale, state.spreadMap, state.relief);
+        if (el._done) {
+          const done = el._done;
+          el._done = null;
+          done(undefined, el);
+        }
       }
     },
     _loadFieldScale() {
@@ -271,6 +281,84 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
           // Leave the previous field scale in place. Do not color from a tile.
         });
     },
+    // Leaflet fades tiles over 200ms and prunes the previous zoom 250ms after
+    // the last tile loads, which is why elevation pops in section by section.
+    // Use a longer fade and keep the outgoing tiles until it finishes.
+    _updateOpacity() {
+      const self = this as unknown as {
+        _map?: L.Map;
+        options: { opacity: number };
+        _container: HTMLElement;
+        _tiles: Record<string, { current?: boolean; loaded?: number; active?: boolean; el: HTMLElement }>;
+        _noPrune?: boolean;
+        _fadeFrame?: number;
+        _pruneTiles: () => void;
+        _onOpaqueTile: (tile: unknown) => void;
+        _updateOpacity: () => void;
+      };
+      if (!self._map) return;
+      L.DomUtil.setOpacity(self._container, self.options.opacity);
+      const now = Date.now();
+      let nextFrame = false;
+      let willPrune = false;
+      for (const key in self._tiles) {
+        const tile = self._tiles[key];
+        if (!tile.current || !tile.loaded) continue;
+        const fade = elevTileFadeProgress(now - tile.loaded);
+        L.DomUtil.setOpacity(tile.el, fade);
+        if (fade < 1) {
+          nextFrame = true;
+        } else if (tile.active) {
+          willPrune = true;
+        } else {
+          self._onOpaqueTile(tile);
+          tile.active = true;
+        }
+      }
+      if (willPrune && !self._noPrune) self._pruneTiles();
+      if (nextFrame) {
+        if (self._fadeFrame != null) L.Util.cancelAnimFrame(self._fadeFrame);
+        self._fadeFrame = L.Util.requestAnimFrame(() => this._updateOpacity(), this);
+      }
+    },
+    _tileReady(coords: L.Coords, err?: Error, _tile?: HTMLElement) {
+      const self = this as unknown as {
+        _map: L.Map & { _fadeAnimated?: boolean };
+        _tiles: Record<string, { loaded?: number; active?: boolean; el: HTMLElement }>;
+        _fadeFrame?: number;
+        _loading?: boolean;
+        _tileCoordsToKey: (coords: L.Coords) => string;
+        _noTilesToLoad: () => boolean;
+        _pruneTiles: () => void;
+        _updateOpacity: () => void;
+        fire: (type: string, data?: unknown) => void;
+      };
+      if (err) self.fire('tileerror', { error: err, tile: _tile, coords });
+      const rec = self._tiles[self._tileCoordsToKey(coords)];
+      if (!rec) return;
+      rec.loaded = Date.now();
+      if (self._map._fadeAnimated) {
+        L.DomUtil.setOpacity(rec.el, 0);
+        if (self._fadeFrame != null) L.Util.cancelAnimFrame(self._fadeFrame);
+        self._fadeFrame = L.Util.requestAnimFrame(() => this._updateOpacity(), this);
+      } else {
+        rec.active = true;
+        self._pruneTiles();
+      }
+      if (!err) {
+        L.DomUtil.addClass(rec.el, 'leaflet-tile-loaded');
+        self.fire('tileload', { tile: rec.el, coords });
+      }
+      if (self._noTilesToLoad()) {
+        self._loading = false;
+        self.fire('load');
+        if (L.Browser.ielt9 || !self._map._fadeAnimated) {
+          L.Util.requestAnimFrame(self._pruneTiles, this);
+        } else {
+          setTimeout(L.Util.bind(self._pruneTiles, this), ELEV_TILE_PRUNE_DELAY_MS);
+        }
+      }
+    },
     createTile(coords: L.Coords, done: L.DoneCallback) {
       const tile = document.createElement('canvas') as ElevTile;
       tile.width = TILE;
@@ -284,6 +372,22 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
       tile._abort = ac;
 
       const url = exportUrl(bb.bbox, N, N);
+
+      const finish = (painted: boolean) => {
+        if (tile._dead) return;
+        // Wait for a color scale so we fade the painted elevation in, not a
+        // blank canvas that later pops. Failed tiles still complete so they
+        // cannot sit at opacity 0 and hide the tiles underneath.
+        if (painted && state.activeScale) {
+          done(undefined, tile);
+          return;
+        }
+        if (painted) {
+          tile._done = done;
+          return;
+        }
+        done(undefined, tile);
+      };
 
       ensureLerc()
         .then(() => fetch(url, { signal: ac?.signal }))
@@ -306,12 +410,12 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
           tile._elev = elev;
           // Same field scale at every zoom. A tile never stretches its own min/max.
           if (state.activeScale) renderCanvas(tile, state.mode, state.activeScale, state.spreadMap, state.relief);
-          done(undefined, tile);
+          finish(true);
         })
         .catch((err) => {
           tile._abort = null;
           if (err?.name === 'AbortError') return;
-          done(undefined, tile);
+          finish(false);
         });
 
       return tile;
