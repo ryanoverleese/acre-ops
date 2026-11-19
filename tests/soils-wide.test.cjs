@@ -82,6 +82,8 @@ test('staff map: zoomed-out Soils uses wide tiles, map-click lookup, and keeps t
   assert.match(unified, /map\.on\('click', onClick\)/);
   assert.match(unified, /map\.off\('click', onClick\)/);
   assert.match(unified, /leaflet-interactive/); // field / probe taps win
+  assert.match(unified, /attachSoilTapDismiss\(map\)/);
+  assert.match(unified, /consumeSoilTapDismiss\(map\)/); // second tap closes, third tap can open
   assert.match(client, /SoilFamiliesNote/);
   assert.match(client, /soilsStatus === 'wide'/);
   assert.match(layer, /L\.canvas\(/);

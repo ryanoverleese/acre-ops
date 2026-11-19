@@ -12,6 +12,7 @@ import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
+import { attachSoilTapDismiss, consumeSoilTapDismiss } from './soil-tap-dismiss';
 import { drawWideSoils, wideSoilPopupHtml, type WideSoilsDrawing } from './soils-wide-layer';
 import { attachStaffCanals, type StaffCanalsHandle } from './staff-canals';
 import { attachStaffLowSpots, type StaffLowSpotsHandle } from './staff-lowspots';
@@ -448,10 +449,15 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
 
     // Zoomed out the soil fills are display only; a tap on open ground (not a
     // field, probe or other marker) shows the soil family at that spot.
+    // If a soil popup is already open, this tap only closes it; the next tap
+    // can open one again. Leaflet closes the popup on preclick, so we skip
+    // the reopen that would otherwise happen on click.
     const onClick = (event: L.LeafletMouseEvent) => {
+      const dismiss = consumeSoilTapDismiss(map);
       if (!wide) return;
       const target = event.originalEvent?.target as Element | null;
       if (target?.closest?.('.leaflet-interactive, .leaflet-popup, .leaflet-control')) return;
+      if (dismiss) return;
       const unit = wide.unitAt(event.latlng);
       if (!unit) return;
       L.popup({ className: 'canal-popup-wrap', closeButton: false, autoPanPadding: [16, 16] })
@@ -466,6 +472,7 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     };
 
     run();
+    const detachDismiss = attachSoilTapDismiss(map);
     map.on('moveend', schedule);
     map.on('zoomend', schedule);
     map.on('click', onClick);
@@ -475,6 +482,7 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       map.off('moveend', schedule);
       map.off('zoomend', schedule);
       map.off('click', onClick);
+      detachDismiss();
       clearSoils();
     };
   }, [layers.soils]);

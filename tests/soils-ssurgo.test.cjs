@@ -135,6 +135,8 @@ test('staff map: Soils is a layer toggle that uses the snapped soil-map API', ()
   // Popup shows symbol and map unit name only; the API has no major components.
   assert.match(layer, /soil-popup-sym/);
   assert.match(layer, /soil-popup-name/);
+  assert.match(layer, /consumeSoilTapDismiss\(map\)/); // second tap closes the detailed soil popup
+  assert.match(layer, /fill\.openPopup\(event\.latlng\)/);
   assert.doesNotMatch(layer, /component/i);
   assert.doesNotMatch(client, /component/i);
 });
