@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import { CANALS_SOURCE_LABEL } from './canals-label';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus, SoilFamilyLegendRow } from './UnifiedMap';
+import { hatchDataUrl, type SoilHatchId } from '@/lib/soils/hatch';
 import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import { formatLegendRange, feetToMetersExact, metersToWholeFeet, type ElevRange } from '@/lib/terrain/color-scale';
@@ -690,18 +691,35 @@ function LowSpotsNote({ status }: { status: LowSpotsStatus }) {
   );
 }
 
-/** Zoomed-out Soils: the most common soil families on screen, with their fill colors. */
+/** Zoomed-out Soils: the most common soil families on screen, with their hatch patterns. */
 function SoilFamiliesNote({ rows }: { rows: SoilFamilyLegendRow[] }) {
   return (
     <div style={{ fontSize: 11, color: '#57534e', padding: '0 0 6px 22px', lineHeight: 1.35, maxWidth: 210 }}>
       <div style={{ color: '#78716c', marginBottom: 3 }}>Soil families. Tap the map for a name; zoom in for map units.</div>
       {rows.map((row) => (
         <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: row.color, flex: '0 0 auto' }} />
+          <HatchSwatch hatch={row.hatch} />
           <span>{row.name}</span>
         </div>
       ))}
     </div>
+  );
+}
+
+function HatchSwatch({ hatch }: { hatch: SoilHatchId }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        width: 26,
+        height: 16,
+        borderRadius: 2,
+        border: '1px solid #d6d3d1',
+        backgroundImage: `url(${hatchDataUrl(hatch)})`,
+        backgroundRepeat: 'repeat',
+        flex: '0 0 auto',
+      }}
+    />
   );
 }
 

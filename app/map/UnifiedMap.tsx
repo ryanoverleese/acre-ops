@@ -8,6 +8,7 @@ import type { LatBand } from '@/lib/territory-grid';
 import { useFieldBoundaries } from '@/components/useFieldBoundaries';
 import { loadSoilMap, loadWideSoilMap } from '@/lib/soils/load-map';
 import { WIDE_MAX_TILES, WIDE_MIN_ZOOM, wideTileKeysForView } from '@/lib/soils/wide';
+import type { SoilHatchId } from '@/lib/soils/hatch';
 import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -77,7 +78,7 @@ export interface MapCell {
 
 /** 'wide': zoomed out, showing simplified soil families instead of the detailed map units. */
 export type SoilsViewStatus = 'off' | 'zoom' | 'loading' | 'ready' | 'wide' | 'error';
-export type SoilFamilyLegendRow = { name: string; color: string };
+export type SoilFamilyLegendRow = { name: string; hatch: SoilHatchId };
 
 export interface Layers {
   fields: boolean;
@@ -439,7 +440,7 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
           wide = next;
           wideKeys = tileSet;
           setStatus('wide');
-          setFamilies(next.families.slice(0, 8).map(({ name, color }) => ({ name, color })));
+          setFamilies(next.families.slice(0, 8).map(({ name, hatch }) => ({ name, hatch })));
         })
         .catch(() => {
           if (cancelled || my !== gen) return;
