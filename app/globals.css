@@ -12038,6 +12038,26 @@ a.grower-list-row:hover .grower-list-primary {
 }
 .canal-popup-wrap .leaflet-popup-content-wrapper { border-radius: 4px; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); }
 .canal-popup-wrap .leaflet-popup-content { margin: 8px 10px; font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+/* Soil popups get a tappable X. Leaflet's default close mark is 24px Tahoma
+   and is easy to miss on a phone; this is a plain text mark with a 36px target. */
+.soil-popup-wrap .leaflet-popup-content { margin: 8px 36px 8px 10px; }
+.leaflet-container .soil-popup-wrap a.leaflet-popup-close-button {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  top: 0;
+  right: 0;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 36px;
+  color: #555;
+}
+.leaflet-container .soil-popup-wrap a.leaflet-popup-close-button:hover,
+.leaflet-container .soil-popup-wrap a.leaflet-popup-close-button:focus {
+  color: #111;
+  background: transparent;
+}
 .canal-popup-name { font-size: 13px; font-weight: 600; color: #1A1A1A; }
 .canal-popup-detail { margin-top: 2px; font-size: 12px; color: #5A5A5A; }
 .canal-popup-flag {

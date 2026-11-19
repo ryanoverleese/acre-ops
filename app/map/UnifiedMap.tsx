@@ -12,7 +12,7 @@ import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
-import { attachSoilTapDismiss, consumeSoilTapDismiss } from './soil-tap-dismiss';
+import { attachSoilTapDismiss, closeOpenSoilPopup, consumeSoilTapDismiss, SOIL_POPUP_OPTIONS } from './soil-tap-dismiss';
 import { drawWideSoils, wideSoilPopupHtml, type WideSoilsDrawing } from './soils-wide-layer';
 import { attachStaffCanals, type StaffCanalsHandle } from './staff-canals';
 import { attachStaffLowSpots, type StaffLowSpotsHandle } from './staff-lowspots';
@@ -449,18 +449,21 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
 
     // Zoomed out the soil fills are display only; a tap on open ground (not a
     // field, probe or other marker) shows the soil family at that spot.
-    // If a soil popup is already open, this tap only closes it; the next tap
-    // can open one again. Leaflet closes the popup on preclick, so we skip
-    // the reopen that would otherwise happen on click.
+    // If a soil popup is already open, this tap only closes it (the X does
+    // too); the next tap can open one again. We skip the reopen that would
+    // otherwise happen on click after Leaflet or our pointerdown closes it.
     const onClick = (event: L.LeafletMouseEvent) => {
       const dismiss = consumeSoilTapDismiss(map);
       if (!wide) return;
       const target = event.originalEvent?.target as Element | null;
       if (target?.closest?.('.leaflet-interactive, .leaflet-popup, .leaflet-control')) return;
-      if (dismiss) return;
+      if (dismiss) {
+        closeOpenSoilPopup(map);
+        return;
+      }
       const unit = wide.unitAt(event.latlng);
       if (!unit) return;
-      L.popup({ className: 'canal-popup-wrap', closeButton: false, autoPanPadding: [16, 16] })
+      L.popup(SOIL_POPUP_OPTIONS)
         .setLatLng(event.latlng)
         .setContent(wideSoilPopupHtml(unit))
         .openOn(map);

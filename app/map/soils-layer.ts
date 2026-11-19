@@ -2,7 +2,7 @@
 
 import L from 'leaflet';
 import { boundaryRuns, labelPoint, type SoilMap, type SoilUnit } from '@/lib/soils/ssurgo';
-import { consumeSoilTapDismiss } from './soil-tap-dismiss';
+import { closeOpenSoilPopup, consumeSoilTapDismiss, SOIL_POPUP_OPTIONS } from './soil-tap-dismiss';
 
 export const SOILS_MIN_ZOOM = 14;
 export const SOILS_MAX_TILES = 9;
@@ -71,15 +71,16 @@ export function drawStaffSoils(map: L.Map, maps: SoilMap[]): L.LayerGroup {
         fill: true, fillColor: unit ? fillFor(unit.mukey) : '#c9b896', fillOpacity: 0.28,
       });
       if (unit) {
-        fill.bindPopup(popupHtml(unit), {
-          className: 'canal-popup-wrap', closeButton: false, autoPanPadding: [16, 16],
-        });
+        fill.bindPopup(popupHtml(unit), SOIL_POPUP_OPTIONS);
         // Replace Leaflet's click-to-open so a second tap can close the popup
         // without immediately opening the soil under the cursor.
         fill.off('click');
         fill.on('click', (event: L.LeafletMouseEvent) => {
           L.DomEvent.stopPropagation(event);
-          if (consumeSoilTapDismiss(map)) return;
+          if (consumeSoilTapDismiss(map)) {
+            closeOpenSoilPopup(map);
+            return;
+          }
           fill.openPopup(event.latlng);
         });
       }
