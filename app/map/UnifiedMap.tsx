@@ -16,7 +16,7 @@ import { attachSoilTapDismiss, closeOpenSoilPopup, consumeSoilTapDismiss, SOIL_P
 import { drawWideSoils, wideSoilPopupHtml, type WideSoilsDrawing } from './soils-wide-layer';
 import { attachStaffCanals, type StaffCanalsHandle } from './staff-canals';
 import { attachStaffLowSpots, type StaffLowSpotsHandle } from './staff-lowspots';
-import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
+import { DEFAULT_LOWSPOTS_SLIDERS, type LowSpotsSliders, type LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { attachStaffElevation, DEFAULT_ELEV_OPACITY, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
@@ -107,6 +107,7 @@ interface Props {
   /** Most common soil families in the zoomed-out view (empty otherwise). */
   onSoilFamilies?: (rows: SoilFamilyLegendRow[]) => void;
   onLowSpotsStatus?: (status: LowSpotsStatus) => void;
+  lowSpotsSliders?: LowSpotsSliders;
   elevationMode?: TerrainMode;
   onElevationRange?: (range: ElevRange | null) => void;
   elevColor?: StaffElevColor;
@@ -143,7 +144,7 @@ function fieldPopupHtml(field: MapField): string {
   return `<b>${field.name}</b><br>${field.operation}${field.acres ? `<br>${field.acres} ac` : ''}${field.crop ? `<br>${field.crop}` : ''}`;
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onSoilFamilies, onLowSpotsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onSoilFamilies, onLowSpotsStatus, lowSpotsSliders = DEFAULT_LOWSPOTS_SLIDERS, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -536,8 +537,12 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       return;
     }
     if (lowSpotsRef.current) return;
-    lowSpotsRef.current = attachStaffLowSpots(map, (status) => lowSpotsStatusRef.current?.(status));
+    lowSpotsRef.current = attachStaffLowSpots(map, (status) => lowSpotsStatusRef.current?.(status), lowSpotsSliders);
   }, [layers.lowSpots]);
+
+  useEffect(() => {
+    lowSpotsRef.current?.setSliders(lowSpotsSliders);
+  }, [lowSpotsSliders]);
 
   // Canals: same static NHD/OSM lines as the field maps, view only.
   const canalsRef = useRef<StaffCanalsHandle | null>(null);

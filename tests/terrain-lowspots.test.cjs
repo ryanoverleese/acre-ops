@@ -69,3 +69,82 @@ test('flow-line threshold scales with cell size', () => {
   assert.equal(ls.defaultFlowAreaM2(1), 10000);
   assert.equal(ls.defaultFlowAreaM2(7), 800 * 49);
 });
+
+
+test('slider midpoint matches the original default thresholds', () => {
+  const mid = ls.optionsFromSliders(50, 50, 1);
+  assert.equal(mid.minPondDepthM, 0.06);
+  assert.equal(mid.minPondAreaM2, 100);
+  assert.equal(mid.minShadeDepthM, 0.03);
+  assert.equal(mid.flowAreaM2, 10000);
+  assert.equal(ls.optionsFromSliders(50, 50, 7).flowAreaM2, ls.defaultFlowAreaM2(7));
+});
+
+test('raising the sliders shows more ponds and more drainage lines', () => {
+  const w = 240;
+  const h = 160;
+  const elev = grid(w, h);
+  // Three pits of different size/depth on the same slope.
+  const pits = [
+    { x: 70, y: 70, r: 32, depth: 0.8 },
+    { x: 160, y: 55, r: 14, depth: 0.25 },
+    { x: 200, y: 110, r: 5, depth: 0.2 },
+  ];
+  for (const pit of pits) {
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const r = Math.hypot(x - pit.x, y - pit.y);
+        if (r < pit.r) elev[y * w + x] -= pit.depth * (1 - r / pit.r);
+      }
+    }
+  }
+  const analysis = ls.analyzeLowSpots({ elev, width: w, height: h, cellM: 1 });
+  const few = ls.extractLowSpots(analysis, ls.optionsFromSliders(0, 0, 1));
+  const mid = ls.extractLowSpots(analysis, ls.optionsFromSliders(50, 50, 1));
+  const many = ls.extractLowSpots(analysis, ls.optionsFromSliders(100, 100, 1));
+  assert.equal(ls.computeLowSpots({ elev, width: w, height: h, cellM: 1 }).ponds, mid.ponds);
+  assert.ok(few.ponds < mid.ponds && mid.ponds < many.ponds, `ponds ${few.ponds} ${mid.ponds} ${many.ponds}`);
+  assert.ok(few.lines.length < mid.lines.length && mid.lines.length <= many.lines.length,
+    `lines ${few.lines.length} ${mid.lines.length} ${many.lines.length}`);
+  assert.ok(few.flowAreaM2 > mid.flowAreaM2 && mid.flowAreaM2 > many.flowAreaM2);
+});
+
+test('arrows along a line point toward later points and skip short lines', () => {
+  const east = ls.arrowsAlongPolyline([[0, 0], [100, 0]], 25);
+  assert.ok(east.length >= 3);
+  for (const a of east) {
+    assert.ok(Math.abs(a.angle) < 0.05, `angle ${a.angle}`);
+    assert.ok(a.x > 0 && a.x < 100);
+    assert.equal(a.y, 0);
+  }
+  const west = ls.arrowsAlongPolyline([[100, 0], [0, 0]], 25);
+  for (const a of west) {
+    assert.ok(Math.abs(Math.abs(a.angle) - Math.PI) < 0.05, `angle ${a.angle}`);
+  }
+  assert.deepEqual(ls.arrowsAlongPolyline([[0, 0], [10, 0]], 25), []);
+});
+
+test('drainage arrows point downhill along computed flow lines', () => {
+  const w = 200;
+  const h = 120;
+  const elev = grid(w, h);
+  const r = ls.computeLowSpots({ elev, width: w, height: h, cellM: 1 }, { flowAreaM2: 2000 });
+  let marks = 0;
+  for (const line of r.lines) {
+    // pts are upstream-first. Tributaries run toward the mid-row valley first,
+    // then east; arrows must follow that downhill route, not always point east.
+    const arrows = ls.arrowsAlongPolyline(line.pts, 8);
+    for (const a of arrows) {
+      marks++;
+      const aheadX = Math.max(0, Math.min(w - 1, Math.round(a.x + Math.cos(a.angle) * 3)));
+      const aheadY = Math.max(0, Math.min(h - 1, Math.round(a.y + Math.sin(a.angle) * 3)));
+      const hereX = Math.max(0, Math.min(w - 1, Math.round(a.x)));
+      const hereY = Math.max(0, Math.min(h - 1, Math.round(a.y)));
+      if (aheadX === hereX && aheadY === hereY) continue;
+      const here = elev[hereY * w + hereX];
+      const ahead = elev[aheadY * w + aheadX];
+      assert.ok(ahead <= here + 0.002, `arrow aimed uphill ${here} -> ${ahead} at ${hereX},${hereY} angle ${a.angle}`);
+    }
+  }
+  assert.ok(marks > 0, 'expected arrows on flow lines');
+});

@@ -11,6 +11,9 @@
  * 3. Flow accumulation counts the cells that drain through each cell.
  *    Cells above an area threshold are traced into polylines.
  *
+ * The flood and accumulation run once. Sliders only change the filters
+ * (pond depth/size and flow-area threshold) and re-trace the lines.
+ *
  * Grid row 0 is north (ArcGIS exportImage order). NaN is no-data and acts as
  * an outlet, like the grid edge.
  */
@@ -53,12 +56,152 @@ export type LowSpotsResult = {
   flowAreaM2: number;
 };
 
+export type PondCandidate = {
+  members: number[];
+  deepest: number;
+};
+
+/** Expensive flood + accumulation. Filters are applied later by extractLowSpots. */
+export type LowSpotsAnalysis = {
+  width: number;
+  height: number;
+  cellM: number;
+  elev: Float32Array;
+  filled: Float32Array;
+  /** 2 = no-data; 1 = visited. */
+  state: Uint8Array;
+  acc: Float32Array;
+  dir: Int8Array;
+  pondCandidates: PondCandidate[];
+};
+
+export type PolylineArrow = {
+  x: number;
+  y: number;
+  /** Radians in the same axis system as the points; 0 = +x, increases toward +y. */
+  angle: number;
+};
+
 const DX = [1, 1, 0, -1, -1, -1, 0, 1];
 const DY = [0, 1, 1, 1, 0, -1, -1, -1];
+
+export const LOWSPOTS_SLIDER_MIN = 0;
+export const LOWSPOTS_SLIDER_MAX = 100;
+/** Midpoint keeps the original default thresholds. */
+export const LOWSPOTS_SLIDER_DEFAULT = 50;
+
+export type LowSpotsSliders = {
+  /** 0 = fewer, deeper ponds; 100 = more, including shallow ones. */
+  lowSpots: number;
+  /** 0 = only the main drainage paths; 100 = more small tributaries. */
+  drainage: number;
+};
+
+export const DEFAULT_LOWSPOTS_SLIDERS: LowSpotsSliders = {
+  lowSpots: LOWSPOTS_SLIDER_DEFAULT,
+  drainage: LOWSPOTS_SLIDER_DEFAULT,
+};
 
 /** Default flow-line threshold: about 2.5 acres, and at least 800 cells on coarse grids. */
 export function defaultFlowAreaM2(cellM: number): number {
   return Math.max(10_000, 800 * cellM * cellM);
+}
+
+function clampSlider(n: number): number {
+  if (!Number.isFinite(n)) return LOWSPOTS_SLIDER_DEFAULT;
+  return Math.min(LOWSPOTS_SLIDER_MAX, Math.max(LOWSPOTS_SLIDER_MIN, n));
+}
+
+function lerpLog(a: number, b: number, t: number): number {
+  return Math.exp(Math.log(a) + (Math.log(b) - Math.log(a)) * t);
+}
+
+/** Piecewise log interpolation with an exact midpoint. t is 0..1. */
+function piecewise(t: number, lo: number, mid: number, hi: number): number {
+  if (t === 0.5) return mid;
+  if (t < 0.5) return lerpLog(lo, mid, t / 0.5);
+  return lerpLog(mid, hi, (t - 0.5) / 0.5);
+}
+
+/**
+ * Map the two 0–100 sliders onto compute thresholds.
+ * 50 / 50 is exactly the original default (min pond 0.06 m and 100 m²,
+ * shade 0.03 m, and the default flow-area threshold).
+ */
+export function optionsFromSliders(lowSpots: number, drainage: number, cellM: number): LowSpotsOptions {
+  const t = clampSlider(lowSpots) / 100;
+  const d = clampSlider(drainage) / 100;
+  const minPondDepthM = piecewise(t, 0.30, 0.06, 0.015);
+  const minPondAreaM2 = piecewise(t, 2000, 100, 16);
+  const minShadeDepthM = piecewise(t, 0.15, 0.03, 0.01);
+  const base = defaultFlowAreaM2(cellM);
+  const flowAreaM2 = piecewise(d, base * 8, base, base / 8);
+  return { minPondDepthM, minPondAreaM2, minShadeDepthM, flowAreaM2 };
+}
+
+/**
+ * Place arrows along a polyline, spaced in the same units as the points.
+ * The angle at each mark points toward later points (downstream when
+ * `pts` is upstream-first).
+ */
+export function arrowsAlongPolyline(
+  pts: Array<[number, number]>,
+  spacing: number,
+  opts?: { inset?: number; minLength?: number },
+): PolylineArrow[] {
+  if (pts.length < 2 || !(spacing > 0)) return [];
+  const cum: number[] = [0];
+  for (let i = 1; i < pts.length; i++) {
+    const dx = pts[i][0] - pts[i - 1][0];
+    const dy = pts[i][1] - pts[i - 1][1];
+    cum.push(cum[i - 1] + Math.hypot(dx, dy));
+  }
+  const total = cum[cum.length - 1];
+  const minLength = opts?.minLength ?? spacing * 0.75;
+  if (!(total >= minLength)) return [];
+  const inset = Math.min(opts?.inset ?? spacing * 0.45, total / 2);
+  const start = inset;
+  const end = total - inset;
+  const usable = end - start;
+  if (!(usable > 0)) {
+    return [pointAt(pts, cum, total / 2)];
+  }
+  const n = Math.max(1, Math.floor(usable / spacing) + 1);
+  const used = (n - 1) * spacing;
+  const origin = start + (usable - used) / 2;
+  const out: PolylineArrow[] = [];
+  for (let i = 0; i < n; i++) {
+    const dist = origin + i * spacing;
+    if (dist < 0 || dist > total) continue;
+    out.push(pointAt(pts, cum, dist));
+  }
+  return out;
+}
+
+function pointAt(pts: Array<[number, number]>, cum: number[], dist: number): PolylineArrow {
+  const total = cum[cum.length - 1];
+  const d = Math.min(Math.max(dist, 0), total);
+  let i = 0;
+  while (i + 1 < cum.length && cum[i + 1] < d) i++;
+  const remain = d - cum[i];
+  let dx: number;
+  let dy: number;
+  if (i + 1 < pts.length) {
+    dx = pts[i + 1][0] - pts[i][0];
+    dy = pts[i + 1][1] - pts[i][1];
+  } else {
+    dx = pts[i][0] - pts[i - 1][0];
+    dy = pts[i][1] - pts[i - 1][1];
+  }
+  const len = Math.hypot(dx, dy);
+  const t = len > 0 ? remain / len : 0;
+  const ux = len > 0 ? dx / len : 1;
+  const uy = len > 0 ? dy / len : 0;
+  return {
+    x: pts[i][0] + dx * t,
+    y: pts[i][1] + dy * t,
+    angle: Math.atan2(uy, ux),
+  };
 }
 
 class MinHeap {
@@ -108,17 +251,13 @@ class MinHeap {
   }
 }
 
-export function computeLowSpots(input: LowSpotsInput, opts: LowSpotsOptions = {}): LowSpotsResult {
+/** Priority-Flood, D8 directions, accumulation, and every depression candidate. */
+export function analyzeLowSpots(input: LowSpotsInput): LowSpotsAnalysis {
   const { elev, width: w, height: h, cellM } = input;
   const n = w * h;
   if (elev.length !== n || w < 3 || h < 3 || !(cellM > 0)) {
     throw new Error('lowspots: bad grid');
   }
-  const minShade = opts.minShadeDepthM ?? 0.03;
-  const minPondDepth = opts.minPondDepthM ?? 0.06;
-  const minPondCells = Math.max(1, Math.round((opts.minPondAreaM2 ?? 100) / (cellM * cellM)));
-  const flowAreaM2 = opts.flowAreaM2 ?? defaultFlowAreaM2(cellM);
-  const flowCells = Math.max(2, flowAreaM2 / (cellM * cellM));
 
   const filled = new Float32Array(n);
   const dir = new Int8Array(n).fill(-1); // 0..7 neighbor index, -1 outlet
@@ -209,15 +348,9 @@ export function computeLowSpots(input: LowSpotsInput, opts: LowSpotsOptions = {}
     acc[i + DY[k] * w + DX[k]] += acc[i];
   }
 
-  // Depressions: keep connected pits that are deep and big enough.
-  const depth = new Float32Array(n);
-  // Ponds big enough that flow lines stop at their edge (half an acre).
-  const bigPond = new Uint8Array(n);
-  const bigPondCells = Math.max(40, 2000 / (cellM * cellM));
+  const pondCandidates: PondCandidate[] = [];
   const label = new Int32Array(n);
   const stack = new Int32Array(n);
-  let ponds = 0;
-  let maxDepthM = 0;
   const members: number[] = [];
   for (let i = 0; i < n; i++) {
     if (label[i] !== 0 || state[i] === 2 || filled[i] - elev[i] <= 0) continue;
@@ -246,11 +379,34 @@ export function computeLowSpots(input: LowSpotsInput, opts: LowSpotsOptions = {}
         stack[top++] = j;
       }
     }
-    if (deepest < minPondDepth || members.length < minPondCells) continue;
+    pondCandidates.push({ members: members.slice(), deepest });
+  }
+
+  return { width: w, height: h, cellM, elev, filled, state, acc, dir, pondCandidates };
+}
+
+/** Keep ponds and flow lines that pass the current thresholds. Cheap to rerun. */
+export function extractLowSpots(analysis: LowSpotsAnalysis, opts: LowSpotsOptions = {}): LowSpotsResult {
+  const { width: w, height: h, cellM, elev, filled, state, acc, dir, pondCandidates } = analysis;
+  const n = w * h;
+  const minShade = opts.minShadeDepthM ?? 0.03;
+  const minPondDepth = opts.minPondDepthM ?? 0.06;
+  const minPondCells = Math.max(1, Math.round((opts.minPondAreaM2 ?? 100) / (cellM * cellM)));
+  const flowAreaM2 = opts.flowAreaM2 ?? defaultFlowAreaM2(cellM);
+  const flowCells = Math.max(2, flowAreaM2 / (cellM * cellM));
+
+  const depth = new Float32Array(n);
+  // Ponds big enough that flow lines stop at their edge (half an acre).
+  const bigPond = new Uint8Array(n);
+  const bigPondCells = Math.max(40, 2000 / (cellM * cellM));
+  let ponds = 0;
+  let maxDepthM = 0;
+  for (const pond of pondCandidates) {
+    if (pond.deepest < minPondDepth || pond.members.length < minPondCells) continue;
     ponds++;
-    if (deepest > maxDepthM) maxDepthM = deepest;
-    const big = members.length >= bigPondCells ? 1 : 0;
-    for (const c of members) {
+    if (pond.deepest > maxDepthM) maxDepthM = pond.deepest;
+    const big = pond.members.length >= bigPondCells ? 1 : 0;
+    for (const c of pond.members) {
       const d = filled[c] - elev[c];
       if (d >= minShade) depth[c] = d;
       bigPond[c] = big;
@@ -305,4 +461,8 @@ export function computeLowSpots(input: LowSpotsInput, opts: LowSpotsOptions = {}
   }
 
   return { width: w, height: h, depth, maxDepthM, ponds, lines, flowAreaM2 };
+}
+
+export function computeLowSpots(input: LowSpotsInput, opts: LowSpotsOptions = {}): LowSpotsResult {
+  return extractLowSpots(analyzeLowSpots(input), opts);
 }

@@ -13082,6 +13082,44 @@ a.grower-activity-jump {
   color: #57534e;
 }
 
+.lowspots-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  padding: 2px 0 8px;
+  font-family: inherit;
+}
+.lowspots-slider-row input[type='range'] {
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  accent-color: #1d5fbf;
+  cursor: pointer;
+}
+.lowspots-slider-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #44403c;
+  margin-bottom: 1px;
+}
+.lowspots-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  line-height: 1.2;
+  color: #78716c;
+}
+/* Staff layer panel: indent with the status note. */
+.map-lowspots-controls {
+  padding: 0 0 6px 22px;
+  max-width: 210px;
+}
+.map-lowspots-controls .lowspots-sliders {
+  padding: 4px 0 0;
+}
+
+
 /* Grower pivot icon: position staff locked into each water rec. Icon only; note sits under the section title. */
 .grower-pivot-note {
   margin: 0 0 6px;

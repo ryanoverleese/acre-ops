@@ -1,7 +1,20 @@
 import L from 'leaflet';
 import * as Lerc from 'lerc';
 import { ensureLerc, exportUrl } from './elev-grid';
-import { computeLowSpots, type LowSpotsResult } from './lowspots';
+import {
+  analyzeLowSpots,
+  arrowsAlongPolyline,
+  extractLowSpots,
+  optionsFromSliders,
+  DEFAULT_LOWSPOTS_SLIDERS,
+  type FlowLine,
+  type LowSpotsAnalysis,
+  type LowSpotsResult,
+  type LowSpotsSliders,
+} from './lowspots';
+
+export { DEFAULT_LOWSPOTS_SLIDERS, LOWSPOTS_SLIDER_DEFAULT, LOWSPOTS_SLIDER_MAX, LOWSPOTS_SLIDER_MIN } from './lowspots';
+export type { LowSpotsAnalysis, LowSpotsSliders };
 
 /** Above Elevation (350) and Soils (390), below labels (395) and fields (399). */
 export const LOWSPOTS_PANE = 'acre-lowspots';
@@ -11,6 +24,10 @@ export const LOWSPOTS_MAX_PX = 1024;
 /** Ponds use this depth for the darkest blue, meters (2 ft). */
 const DEEP_M = 0.6096;
 const LINE_COLOR = '#1d5fbf';
+/** Screen-space gap between drainage-path chevrons, in CSS pixels. */
+const ARROW_SPACING_PX = 36;
+const ARROW_SIZE_PX = 7;
+const ARROW_SIZE_MAJOR_PX = 9;
 
 export type LowSpotsStatus = 'off' | 'zoom' | 'loading' | 'ready' | 'nodata' | 'error';
 
@@ -78,7 +95,97 @@ function depthColor(t: number): [number, number, number] {
   return t < 0.5 ? lerp(a, b, t / 0.5) : lerp(b, c, (t - 0.5) / 0.5);
 }
 
-/** Ponds as one image, flow paths as thin lines. Nothing is interactive. */
+function resultFromSliders(analysis: LowSpotsAnalysis, sliders: LowSpotsSliders): LowSpotsResult {
+  return extractLowSpots(
+    analysis,
+    optionsFromSliders(sliders.lowSpots, sliders.drainage, analysis.cellM),
+  );
+}
+
+/**
+ * Flow lines and downhill chevrons, redrawn in screen space so arrow
+ * spacing stays even at every zoom. pts on each line are upstream-first,
+ * so the stroke direction is downhill.
+ */
+const FlowPathsLayer = L.Layer.extend({
+  initialize(this: any, lines: FlowLine[], toLatLng: (c: number, r: number) => L.LatLng, flowAreaM2: number) {
+    this._lines = lines;
+    this._toLatLng = toLatLng;
+    this._flowAreaM2 = flowAreaM2;
+  },
+  onAdd(this: any, map: L.Map) {
+    const pane = map.getPane(LOWSPOTS_PANE) || map.getPanes().overlayPane;
+    const canvas = L.DomUtil.create('canvas', 'acre-flow-paths', pane) as HTMLCanvasElement;
+    canvas.style.pointerEvents = 'none';
+    canvas.style.position = 'absolute';
+    this._canvas = canvas;
+    this._ctx = canvas.getContext('2d');
+    map.on('move zoom viewreset', this._redraw, this);
+    this._redraw();
+  },
+  onRemove(this: any, map: L.Map) {
+    map.off('move zoom viewreset', this._redraw, this);
+    this._canvas?.remove();
+    this._canvas = undefined;
+    this._ctx = undefined;
+  },
+  _redraw(this: any) {
+    const map: L.Map | undefined = this._map;
+    const canvas: HTMLCanvasElement | undefined = this._canvas;
+    const ctx: CanvasRenderingContext2D | undefined = this._ctx;
+    if (!map || !canvas || !ctx) return;
+    const size = map.getSize();
+    const dpr = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.round(size.x * dpr));
+    const h = Math.max(1, Math.round(size.y * dpr));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = `${size.x}px`;
+      canvas.style.height = `${size.y}px`;
+    }
+    L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0]));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size.x, size.y);
+    ctx.strokeStyle = LINE_COLOR;
+    ctx.fillStyle = LINE_COLOR;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.95;
+    const majorArea = this._flowAreaM2 * 8;
+    const toLatLng = this._toLatLng as (c: number, r: number) => L.LatLng;
+    for (const line of this._lines as FlowLine[]) {
+      if (line.pts.length < 2) continue;
+      const major = line.areaM2 >= majorArea;
+      const pts: Array<[number, number]> = line.pts.map(([c, r]) => {
+        const p = map.latLngToContainerPoint(toLatLng(c, r));
+        return [p.x, p.y];
+      });
+      ctx.lineWidth = major ? 2.5 : 1.25;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.stroke();
+      const sizePx = major ? ARROW_SIZE_MAJOR_PX : ARROW_SIZE_PX;
+      const arrows = arrowsAlongPolyline(pts, ARROW_SPACING_PX, { inset: ARROW_SPACING_PX * 0.4 });
+      ctx.lineWidth = major ? 2.2 : 1.6;
+      for (const a of arrows) {
+        const s = sizePx;
+        ctx.save();
+        ctx.translate(a.x, a.y);
+        ctx.rotate(a.angle);
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.75, -s * 0.6);
+        ctx.lineTo(s * 0.4, 0);
+        ctx.lineTo(-s * 0.75, s * 0.6);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  },
+});
+
+/** Ponds as one image, flow paths as thin lines with downhill chevrons. Nothing is interactive. */
 export function drawLowSpots(result: LowSpotsResult, bbox: Box3857): L.LayerGroup {
   const { width: w, height: h, depth } = result;
   const group = L.layerGroup();
@@ -120,33 +227,52 @@ export function drawLowSpots(result: LowSpotsResult, bbox: Box3857): L.LayerGrou
     }
   }
 
-  const renderer = L.canvas({ pane: LOWSPOTS_PANE, padding: 0.3 });
-  const major = result.flowAreaM2 * 8;
-  for (const line of result.lines) {
-    L.polyline(line.pts.map(([c, r]) => toLatLng(c, r)), {
-      pane: LOWSPOTS_PANE,
-      renderer,
-      color: LINE_COLOR,
-      weight: line.areaM2 >= major ? 2.5 : 1.25,
-      opacity: 0.95,
-      interactive: false,
-      lineCap: 'round',
-      lineJoin: 'round',
-    }).addTo(group);
-  }
+  const FlowPaths = FlowPathsLayer as unknown as {
+    new (lines: FlowLine[], toLatLng: (c: number, r: number) => L.LatLng, flowAreaM2: number): L.Layer;
+  };
+  new FlowPaths(result.lines, toLatLng, result.flowAreaM2).addTo(group);
   return group;
 }
 
-export type LowSpotsRun = { group: L.LayerGroup | null; status: LowSpotsStatus };
+export function drawLowSpotsFromAnalysis(
+  analysis: LowSpotsAnalysis,
+  bbox: Box3857,
+  sliders: LowSpotsSliders = DEFAULT_LOWSPOTS_SLIDERS,
+): L.LayerGroup {
+  return drawLowSpots(resultFromSliders(analysis, sliders), bbox);
+}
+
+export type LowSpotsRun = {
+  group: L.LayerGroup | null;
+  status: LowSpotsStatus;
+  analysis: LowSpotsAnalysis | null;
+  bbox: Box3857 | null;
+};
 
 /** Fetch, compute and draw low spots for one box. Caller adds the group. */
-export async function buildLowSpots(bounds: L.LatLngBounds, signal?: AbortSignal): Promise<LowSpotsRun> {
+export async function buildLowSpots(
+  bounds: L.LatLngBounds,
+  signal?: AbortSignal,
+  sliders: LowSpotsSliders = DEFAULT_LOWSPOTS_SLIDERS,
+): Promise<LowSpotsRun> {
   const grid = await fetchLowSpotsGrid(bounds, signal);
   // Mostly-empty rasters (no 3DEP here) would draw nonsense at the edges.
-  if (grid.validCells < grid.width * grid.height * 0.5) return { group: null, status: 'nodata' };
+  if (grid.validCells < grid.width * grid.height * 0.5) {
+    return { group: null, status: 'nodata', analysis: null, bbox: null };
+  }
   // Let the "Loading" label paint before the ~0.3 s compute.
   await new Promise((r) => setTimeout(r, 0));
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  const result = computeLowSpots({ elev: grid.elev, width: grid.width, height: grid.height, cellM: grid.cellM });
-  return { group: drawLowSpots(result, grid.bbox), status: 'ready' };
+  const analysis = analyzeLowSpots({
+    elev: grid.elev,
+    width: grid.width,
+    height: grid.height,
+    cellM: grid.cellM,
+  });
+  return {
+    group: drawLowSpotsFromAnalysis(analysis, grid.bbox, sliders),
+    status: 'ready',
+    analysis,
+    bbox: grid.bbox,
+  };
 }

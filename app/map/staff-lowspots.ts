@@ -3,7 +3,11 @@
 import L from 'leaflet';
 import {
   buildLowSpots,
+  drawLowSpotsFromAnalysis,
   ensureLowSpotsPane,
+  DEFAULT_LOWSPOTS_SLIDERS,
+  type LowSpotsAnalysis,
+  type LowSpotsSliders,
   type LowSpotsStatus,
 } from '@/lib/terrain/lowspots-layer';
 import { needsNewElevSample, padBox, type MapBbox } from '@/lib/terrain/viewport-scale';
@@ -13,7 +17,10 @@ export const LOWSPOTS_MIN_ZOOM = 14;
 export const LOWSPOTS_DEBOUNCE_MS = 400;
 const LOWSPOTS_PAD = 0.15;
 
-export type StaffLowSpotsHandle = { detach: () => void };
+export type StaffLowSpotsHandle = {
+  detach: () => void;
+  setSliders: (sliders: LowSpotsSliders) => void;
+};
 
 function boundsToBox(b: L.LatLngBounds): MapBbox {
   return { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() };
@@ -21,15 +28,20 @@ function boundsToBox(b: L.LatLngBounds): MapBbox {
 
 /**
  * Low spots for the staff Map page: computed on demand for the visible area
- * (plus a margin) from the 3DEP DEM. Nothing is stored.
+ * (plus a margin) from the 3DEP DEM. Nothing is stored. Slider changes
+ * redraw from the last analysis without refetching the DEM.
  */
 export function attachStaffLowSpots(
   map: L.Map,
   onStatus?: (status: LowSpotsStatus) => void,
+  sliders: LowSpotsSliders = DEFAULT_LOWSPOTS_SLIDERS,
 ): StaffLowSpotsHandle {
   ensureLowSpotsPane(map);
   let drawn: L.LayerGroup | null = null;
   let sample: MapBbox | null = null;
+  let analysis: LowSpotsAnalysis | null = null;
+  let bbox: [number, number, number, number] | null = null;
+  let current = { ...sliders };
   let abort: AbortController | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let gen = 0;
@@ -39,6 +51,15 @@ export function attachStaffLowSpots(
     drawn?.remove();
     drawn = null;
     sample = null;
+    analysis = null;
+    bbox = null;
+  };
+
+  const paint = () => {
+    if (!analysis || !bbox) return;
+    drawn?.remove();
+    drawn = drawLowSpotsFromAnalysis(analysis, bbox, current);
+    drawn.addTo(map);
   };
 
   const run = () => {
@@ -58,14 +79,14 @@ export function attachStaffLowSpots(
     const my = ++gen;
     // Keep the old drawing on screen while the new one loads.
     if (!drawn) onStatus?.('loading');
-    buildLowSpots(L.latLngBounds(L.latLng(next.s, next.w), L.latLng(next.n, next.e)), ac.signal)
-      .then(({ group, status }) => {
+    buildLowSpots(L.latLngBounds(L.latLng(next.s, next.w), L.latLng(next.n, next.e)), ac.signal, current)
+      .then((run) => {
         if (dead || my !== gen) return;
-        drawn?.remove();
-        drawn = group;
-        group?.addTo(map);
+        analysis = run.analysis;
+        bbox = run.bbox;
         sample = next;
-        onStatus?.(status);
+        paint();
+        onStatus?.(run.status);
       })
       .catch((err) => {
         if (dead || my !== gen || err?.name === 'AbortError') return;
@@ -83,6 +104,10 @@ export function attachStaffLowSpots(
   map.on('zoomend', schedule);
 
   return {
+    setSliders(next: LowSpotsSliders) {
+      current = { ...next };
+      if (analysis && bbox) paint();
+    },
     detach() {
       dead = true;
       if (timer) clearTimeout(timer);

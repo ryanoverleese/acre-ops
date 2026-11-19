@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
 import LowSpotsOverlay from '@/components/LowSpotsOverlay';
+import LowSpotsSliders from '@/app/map/LowSpotsSliders';
 import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import TerrainControl from '@/components/TerrainControl';
 import { compareProbePinOrder, probePinText } from '@/lib/probe-pin-label';
@@ -17,7 +18,8 @@ import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import type { GrowerProbePin } from '@/lib/supabase/grower-fields';
-import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
+import { DEFAULT_LOWSPOTS_SLIDERS, type LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
+import type { LowSpotsSliders as LowSpotsSliderValues } from '@/lib/terrain/lowspots';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
@@ -127,6 +129,7 @@ export default function GrowerFieldMap({
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
   const [lowSpots, setLowSpots] = useState(false);
   const [lowSpotsStatus, setLowSpotsStatus] = useState<LowSpotsStatus>('off');
+  const [lowSpotsSliders, setLowSpotsSliders] = useState<LowSpotsSliderValues>(DEFAULT_LOWSPOTS_SLIDERS);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
   const orderedProbes = useMemo(
     () => probes.slice().sort(compareProbePinOrder),
@@ -162,7 +165,7 @@ export default function GrowerFieldMap({
           <ElevationOverlay mode={terrainMode} clipTo={boundaries} onFieldRange={setElevRange} />
         )}
         {hasOutline && (
-          <LowSpotsOverlay show={lowSpots} boundaries={boundaries} onStatus={setLowSpotsStatus} />
+          <LowSpotsOverlay show={lowSpots} boundaries={boundaries} onStatus={setLowSpotsStatus} sliders={lowSpotsSliders} />
         )}
         <BoundaryLayer data={boundaries} selectedId={fieldId} />
         {orderedProbes
@@ -201,6 +204,9 @@ export default function GrowerFieldMap({
           </label>
           {lowSpots && LOWSPOTS_NOTE[lowSpotsStatus] ? (
             <span className="lowspots-note">{LOWSPOTS_NOTE[lowSpotsStatus]}</span>
+          ) : null}
+          {lowSpots ? (
+            <LowSpotsSliders value={lowSpotsSliders} onChange={setLowSpotsSliders} />
           ) : null}
         </div>
       )}

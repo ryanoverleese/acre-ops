@@ -6,7 +6,11 @@ import L from 'leaflet';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
   buildLowSpots,
+  drawLowSpotsFromAnalysis,
   ensureLowSpotsPane,
+  DEFAULT_LOWSPOTS_SLIDERS,
+  type LowSpotsAnalysis,
+  type LowSpotsSliders,
   type LowSpotsStatus,
 } from '@/lib/terrain/lowspots-layer';
 
@@ -29,6 +33,8 @@ function fieldBounds(data: FieldBoundaryCollection | null | undefined): L.LatLng
   return b.isValid() ? b.pad(FIELD_PAD) : null;
 }
 
+type Cached = { analysis: LowSpotsAnalysis; bbox: [number, number, number, number] };
+
 /**
  * Low spots and flow paths for one field, from the 3DEP DEM over the
  * field's box. Computed in the browser; nothing is stored.
@@ -37,10 +43,12 @@ export default function LowSpotsOverlay({
   show,
   boundaries,
   onStatus,
+  sliders = DEFAULT_LOWSPOTS_SLIDERS,
 }: {
   show: boolean;
   boundaries: FieldBoundaryCollection;
   onStatus?: (status: LowSpotsStatus) => void;
+  sliders?: LowSpotsSliders;
 }) {
   const map = useMap();
   const onStatusRef = useRef(onStatus);
@@ -50,24 +58,40 @@ export default function LowSpotsOverlay({
   const key = bounds ? bounds.toBBoxString() : '';
   const boundsRef = useRef(bounds);
   boundsRef.current = bounds;
+  const slidersRef = useRef(sliders);
+  slidersRef.current = sliders;
+  const cacheRef = useRef<Cached | null>(null);
+  const groupRef = useRef<L.LayerGroup | null>(null);
+
+  const paint = () => {
+    groupRef.current?.remove();
+    groupRef.current = null;
+    const cached = cacheRef.current;
+    if (!cached) return;
+    const group = drawLowSpotsFromAnalysis(cached.analysis, cached.bbox, slidersRef.current);
+    group.addTo(map);
+    groupRef.current = group;
+  };
 
   useEffect(() => {
     const setStatus = (s: LowSpotsStatus) => onStatusRef.current?.(s);
     const bounds = boundsRef.current;
+    cacheRef.current = null;
+    groupRef.current?.remove();
+    groupRef.current = null;
     if (!show || !bounds) {
       setStatus('off');
       return;
     }
     ensureLowSpotsPane(map);
     const ac = new AbortController();
-    let group: L.LayerGroup | null = null;
     let dead = false;
     setStatus('loading');
-    buildLowSpots(bounds, ac.signal)
+    buildLowSpots(bounds, ac.signal, slidersRef.current)
       .then((run) => {
         if (dead) return;
-        group = run.group;
-        group?.addTo(map);
+        if (run.analysis && run.bbox) cacheRef.current = { analysis: run.analysis, bbox: run.bbox };
+        paint();
         setStatus(run.status);
       })
       .catch((err) => {
@@ -77,9 +101,17 @@ export default function LowSpotsOverlay({
     return () => {
       dead = true;
       ac.abort();
-      group?.remove();
+      cacheRef.current = null;
+      groupRef.current?.remove();
+      groupRef.current = null;
     };
   }, [map, show, key]);
+
+  useEffect(() => {
+    slidersRef.current = sliders;
+    if (!cacheRef.current) return;
+    paint();
+  }, [sliders.lowSpots, sliders.drainage, map]);
 
   return null;
 }

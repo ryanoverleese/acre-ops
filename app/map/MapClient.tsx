@@ -7,7 +7,8 @@ import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import { CANALS_SOURCE_LABEL } from './canals-label';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus, SoilFamilyLegendRow } from './UnifiedMap';
-import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
+import { DEFAULT_LOWSPOTS_SLIDERS, type LowSpotsSliders, type LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
+import LowSpotsSlidersControl from './LowSpotsSliders';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import { formatLegendRange, feetToMetersExact, metersToWholeFeet, type ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -61,6 +62,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
   const [soilsStatus, setSoilsStatus] = useState<SoilsViewStatus>('off');
   const [soilFamilies, setSoilFamilies] = useState<SoilFamilyLegendRow[]>([]);
   const [lowSpotsStatus, setLowSpotsStatus] = useState<LowSpotsStatus>('off');
+  const [lowSpotsSliders, setLowSpotsSliders] = useState<LowSpotsSliders>(DEFAULT_LOWSPOTS_SLIDERS);
   const [elevationMode, setElevationMode] = useState<TerrainMode>('off');
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
   const [elevPrefs, setElevPrefs] = useState<ElevColorPrefs>(defaultElevColorPrefs);
@@ -354,6 +356,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           onSoilsStatus={setSoilsStatus}
           onSoilFamilies={setSoilFamilies}
           onLowSpotsStatus={setLowSpotsStatus}
+          lowSpotsSliders={lowSpotsSliders}
           elevationMode={elevationMode}
           onElevationRange={setElevRange}
           elevColor={elevColor}
@@ -390,7 +393,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
             borderRadius: 10,
             boxShadow: '0 2px 12px rgba(0,0,0,0.15)',
             padding: '10px 14px',
-            minWidth: elevOn ? 200 : 140,
+            minWidth: elevOn || layers.lowSpots ? 200 : 140,
           }}
         >
           <div style={{ fontSize: 11, fontWeight: 700, color: '#57534e', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
@@ -427,7 +430,10 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
                 </div>
               ) : null}
               {key === 'lowSpots' && layers.lowSpots ? (
-                <LowSpotsNote status={lowSpotsStatus} />
+                <div className="map-lowspots-controls">
+                  <LowSpotsNote status={lowSpotsStatus} />
+                  <LowSpotsSlidersControl value={lowSpotsSliders} onChange={setLowSpotsSliders} />
+                </div>
               ) : null}
             </div>
           ))}
@@ -668,7 +674,7 @@ function LowSpotsNote({ status }: { status: LowSpotsStatus }) {
     ?? (status === 'ready' ? 'Blue: where water pools, darker is deeper (2 ft+). Lines: where water runs.' : null);
   if (!text) return null;
   return (
-    <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3, maxWidth: 190 }}>
+    <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 4px', lineHeight: 1.3 }}>
       {text}
     </div>
   );
