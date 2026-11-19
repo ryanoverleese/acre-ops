@@ -9,6 +9,7 @@ import {
   type SoilMap,
   type SoilPolygon,
 } from './ssurgo';
+import { WIDE_SIMPLIFY_DEG } from './wide';
 
 const SDA_URL = 'https://sdmdataaccess.sc.egov.usda.gov/Tabular/post.rest';
 /** USDA FPAC-hosted SSURGO map unit polygons; used only when Soil Data Access is down. */
@@ -44,6 +45,32 @@ WHERE P.mupolygongeo.STIntersects(${geom}) = 1`;
 
 /** Backup: USDA FPAC feature service (an older SSURGO vintage), clipped here. */
 export async function fetchFpacSoils(box: SoilBbox): Promise<SoilMap> {
+  return buildSoilMap('fpac', box, await fetchFpacRows(box, { maxAllowableOffset: 0, maxPages: 1 }));
+}
+
+/**
+ * Wide view: simplified FPAC map unit polygons for one 0.1° tile, paged past the
+ * 2000-record limit. One request per page; a farm-country tile is usually 300 to 600 polygons.
+ */
+export async function fetchWideSoils(box: SoilBbox): Promise<SoilMap> {
+  return buildSoilMap('fpac', box, await fetchFpacRows(box, { maxAllowableOffset: WIDE_SIMPLIFY_DEG, maxPages: 4 }));
+}
+
+async function fetchFpacRows(
+  box: SoilBbox,
+  opts: { maxAllowableOffset: number; maxPages: number },
+): Promise<{ mukey: string; musym: string; muname: string; polygons: SoilPolygon[] }[]> {
+  const out: { mukey: string; musym: string; muname: string; polygons: SoilPolygon[] }[] = [];
+  const pageSize = 2000;
+  for (let page = 0; page < opts.maxPages; page++) {
+    const { rows, more } = await fetchFpacPage(box, opts.maxAllowableOffset, opts.maxPages > 1 ? page * pageSize : -1, pageSize);
+    out.push(...rows);
+    if (!more) break;
+  }
+  return out;
+}
+
+async function fetchFpacPage(box: SoilBbox, maxAllowableOffset: number, offset: number, pageSize: number) {
   const params = new URLSearchParams({
     geometry: `${box.w},${box.s},${box.e},${box.n}`,
     geometryType: 'esriGeometryEnvelope',
@@ -52,12 +79,18 @@ export async function fetchFpacSoils(box: SoilBbox): Promise<SoilMap> {
     outFields: 'mukey,musym,muname',
     returnGeometry: 'true',
     outSR: '4326',
-    geometryPrecision: '6',
+    geometryPrecision: maxAllowableOffset ? '5' : '6',
     f: 'geojson',
   });
+  if (maxAllowableOffset) params.set('maxAllowableOffset', String(maxAllowableOffset));
+  if (offset >= 0) {
+    params.set('resultOffset', String(offset));
+    params.set('resultRecordCount', String(pageSize));
+    params.set('orderByFields', 'objectid');
+  }
   const res = await fetch(`${FPAC_URL}?${params}`, { signal: AbortSignal.timeout(TIMEOUT_MS), cache: 'no-store' });
   if (!res.ok) throw new Error(`USDA FPAC soils returned ${res.status}`);
-  const body = (await res.json()) as GeoJSON.FeatureCollection;
+  const body = (await res.json()) as GeoJSON.FeatureCollection & { exceededTransferLimit?: boolean; properties?: { exceededTransferLimit?: boolean } };
   if (!Array.isArray(body?.features)) throw new Error('USDA FPAC soils returned no features');
   const rows = body.features.map((f) => {
     const props = (f.properties ?? {}) as { mukey?: unknown; musym?: unknown; muname?: unknown };
@@ -68,7 +101,8 @@ export async function fetchFpacSoils(box: SoilBbox): Promise<SoilMap> {
     const clipped = polys.map((p) => clipPolygonToBox(p, box)).filter((p): p is SoilPolygon => !!p);
     return { mukey: String(props.mukey ?? ''), musym: String(props.musym ?? ''), muname: String(props.muname ?? ''), polygons: roundPolygons(clipped) };
   });
-  return buildSoilMap('fpac', box, rows);
+  const more = offset >= 0 && !!(body.exceededTransferLimit || body.properties?.exceededTransferLimit);
+  return { rows, more };
 }
 
 export async function fetchSoilMap(box: SoilBbox): Promise<SoilMap> {

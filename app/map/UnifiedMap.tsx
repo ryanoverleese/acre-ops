@@ -6,11 +6,13 @@ import 'leaflet/dist/leaflet.css';
 import { zoneBounds, zoneCenter, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import type { LatBand } from '@/lib/territory-grid';
 import { useFieldBoundaries } from '@/components/useFieldBoundaries';
-import { loadSoilMap } from '@/lib/soils/load-map';
+import { loadSoilMap, loadWideSoilMap } from '@/lib/soils/load-map';
+import { WIDE_MAX_TILES, WIDE_MIN_ZOOM, wideTileKeysForView } from '@/lib/soils/wide';
 import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
+import { drawWideSoils, wideSoilPopupHtml, type WideSoilsDrawing } from './soils-wide-layer';
 import { attachStaffLowSpots, type StaffLowSpotsHandle } from './staff-lowspots';
 import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { attachStaffElevation, DEFAULT_ELEV_OPACITY, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
@@ -71,7 +73,9 @@ export interface MapCell {
   isHome: boolean;
 }
 
-export type SoilsViewStatus = 'off' | 'zoom' | 'loading' | 'ready' | 'error';
+/** 'wide': zoomed out, showing simplified soil families instead of the detailed map units. */
+export type SoilsViewStatus = 'off' | 'zoom' | 'loading' | 'ready' | 'wide' | 'error';
+export type SoilFamilyLegendRow = { name: string; color: string };
 
 export interface Layers {
   fields: boolean;
@@ -95,6 +99,8 @@ interface Props {
   center: [number, number];
   zoom: number;
   onSoilsStatus?: (status: SoilsViewStatus) => void;
+  /** Most common soil families in the zoomed-out view (empty otherwise). */
+  onSoilFamilies?: (rows: SoilFamilyLegendRow[]) => void;
   onLowSpotsStatus?: (status: LowSpotsStatus) => void;
   elevationMode?: TerrainMode;
   onElevationRange?: (range: ElevRange | null) => void;
@@ -132,7 +138,7 @@ function fieldPopupHtml(field: MapField): string {
   return `<b>${field.name}</b><br>${field.operation}${field.acres ? `<br>${field.acres} ac` : ''}${field.crop ? `<br>${field.crop}` : ''}`;
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onLowSpotsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onSoilFamilies, onLowSpotsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -147,6 +153,8 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
   const soilsGroupRef = useRef<L.LayerGroup | null>(null);
   const soilsStatusRef = useRef(onSoilsStatus);
   soilsStatusRef.current = onSoilsStatus;
+  const soilFamiliesRef = useRef(onSoilFamilies);
+  soilFamiliesRef.current = onSoilFamilies;
   const elevCtlRef = useRef<StaffElevationHandle | null>(null);
   const elevRangeRef = useRef(onElevationRange);
   elevRangeRef.current = onElevationRange;
@@ -356,20 +364,27 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     toggle(groups.territory, layers.territory);
   }, [layers]);
 
-  // Soils: viewport tiles from the snapped-bbox API, only when zoomed in enough.
+  // Soils: detailed snapped-bbox tiles when zoomed in (z14+); simplified soil
+  // families from 0.1° tiles when zoomed out (z11 to z13, about 10 to 30 miles).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const setStatus = (status: SoilsViewStatus) => soilsStatusRef.current?.(status);
+    const setFamilies = (rows: SoilFamilyLegendRow[]) => soilFamiliesRef.current?.(rows);
+    let wide: WideSoilsDrawing | null = null;
+    let wideKeys = '';
     const clearSoils = () => {
       soilsGroupRef.current?.remove();
       soilsGroupRef.current = null;
+      wide = null;
+      wideKeys = '';
     };
 
     if (!layers.soils) {
       clearSoils();
       setStatus('off');
+      setFamilies([]);
       return;
     }
 
@@ -381,31 +396,66 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       const my = ++gen;
       const zoomLevel = map.getZoom();
       const bounds = map.getBounds();
-      const keys = zoomLevel >= SOILS_MIN_ZOOM
-        ? soilBboxKeysForView(
-            { w: bounds.getWest(), s: bounds.getSouth(), e: bounds.getEast(), n: bounds.getNorth() },
-            SOILS_MAX_TILES,
-          )
-        : null;
-      if (!keys) {
-        clearSoils();
-        if (!cancelled) setStatus('zoom');
+      const view = { w: bounds.getWest(), s: bounds.getSouth(), e: bounds.getEast(), n: bounds.getNorth() };
+      const keys = zoomLevel >= SOILS_MIN_ZOOM ? soilBboxKeysForView(view, SOILS_MAX_TILES) : null;
+      if (keys) {
+        // Keep the last tiles on screen while a pan/zoom request is in flight.
+        if (!cancelled && (!soilsGroupRef.current || wide)) setStatus('loading');
+        Promise.all(keys.map(loadSoilMap))
+          .then((maps) => {
+            if (cancelled || my !== gen) return;
+            const next = drawStaffSoils(map, maps);
+            soilsGroupRef.current?.remove();
+            soilsGroupRef.current = next;
+            wide = null;
+            wideKeys = '';
+            setStatus('ready');
+            setFamilies([]);
+          })
+          .catch(() => {
+            if (cancelled || my !== gen) return;
+            setStatus('error');
+          });
         return;
       }
-      // Keep the last tiles on screen while a pan/zoom request is in flight.
-      if (!cancelled && !soilsGroupRef.current) setStatus('loading');
-      Promise.all(keys.map(loadSoilMap))
+      const tiles = zoomLevel >= WIDE_MIN_ZOOM ? wideTileKeysForView(view, WIDE_MAX_TILES) : null;
+      if (!tiles) {
+        clearSoils();
+        if (!cancelled) { setStatus('zoom'); setFamilies([]); }
+        return;
+      }
+      const tileSet = tiles.join(';');
+      if (wide && tileSet === wideKeys) return; // same tiles already drawn
+      if (!cancelled && !wide) setStatus('loading');
+      Promise.all(tiles.map(loadWideSoilMap))
         .then((maps) => {
           if (cancelled || my !== gen) return;
-          const next = drawStaffSoils(map, maps);
+          const next = drawWideSoils(map, maps);
           soilsGroupRef.current?.remove();
-          soilsGroupRef.current = next;
-          setStatus('ready');
+          soilsGroupRef.current = next.group;
+          wide = next;
+          wideKeys = tileSet;
+          setStatus('wide');
+          setFamilies(next.families.slice(0, 8).map(({ name, color }) => ({ name, color })));
         })
         .catch(() => {
           if (cancelled || my !== gen) return;
           setStatus('error');
         });
+    };
+
+    // Zoomed out the soil fills are display only; a tap on open ground (not a
+    // field, probe or other marker) shows the soil family at that spot.
+    const onClick = (event: L.LeafletMouseEvent) => {
+      if (!wide) return;
+      const target = event.originalEvent?.target as Element | null;
+      if (target?.closest?.('.leaflet-interactive, .leaflet-popup, .leaflet-control')) return;
+      const unit = wide.unitAt(event.latlng);
+      if (!unit) return;
+      L.popup({ className: 'canal-popup-wrap', closeButton: false, autoPanPadding: [16, 16] })
+        .setLatLng(event.latlng)
+        .setContent(wideSoilPopupHtml(unit))
+        .openOn(map);
     };
 
     const schedule = () => {
@@ -416,11 +466,13 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     run();
     map.on('moveend', schedule);
     map.on('zoomend', schedule);
+    map.on('click', onClick);
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
       map.off('moveend', schedule);
       map.off('zoomend', schedule);
+      map.off('click', onClick);
       clearSoils();
     };
   }, [layers.soils]);
