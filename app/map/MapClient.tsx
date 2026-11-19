@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import { CANALS_SOURCE_LABEL } from './canals-label';
-import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus, SoilFamilyLegendRow } from './UnifiedMap';
+import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus } from './UnifiedMap';
 import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import { formatLegendRange, feetToMetersExact, metersToWholeFeet, type ElevRange } from '@/lib/terrain/color-scale';
@@ -57,7 +57,6 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     lowSpots: false,
   });
   const [soilsStatus, setSoilsStatus] = useState<SoilsViewStatus>('off');
-  const [soilFamilies, setSoilFamilies] = useState<SoilFamilyLegendRow[]>([]);
   const [lowSpotsStatus, setLowSpotsStatus] = useState<LowSpotsStatus>('off');
   const [elevationMode, setElevationMode] = useState<TerrainMode>('off');
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
@@ -368,7 +367,6 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           center={mapCenter}
           zoom={10}
           onSoilsStatus={setSoilsStatus}
-          onSoilFamilies={setSoilFamilies}
           onLowSpotsStatus={setLowSpotsStatus}
           elevationMode={elevationMode}
           onElevationRange={setElevRange}
@@ -425,7 +423,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
                 </div>
               ) : null}
               {key === 'soils' && layers.soils && soilsStatus === 'wide' ? (
-                <SoilFamiliesNote rows={soilFamilies} />
+                <SoilFamiliesNote />
               ) : null}
               {key === 'soils' && layers.soils && soilsStatus === 'loading' ? (
                 <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
@@ -690,17 +688,11 @@ function LowSpotsNote({ status }: { status: LowSpotsStatus }) {
   );
 }
 
-/** Zoomed-out Soils: the most common soil families on screen, with their fill colors. */
-function SoilFamiliesNote({ rows }: { rows: SoilFamilyLegendRow[] }) {
+/** Zoomed-out Soils: a short hint. Family names are on the map and in the tap popup. */
+function SoilFamiliesNote() {
   return (
-    <div style={{ fontSize: 11, color: '#57534e', padding: '0 0 6px 22px', lineHeight: 1.35, maxWidth: 210 }}>
-      <div style={{ color: '#78716c', marginBottom: 3 }}>Soil families. Tap the map for a name; zoom in for map units.</div>
-      {rows.map((row) => (
-        <div key={row.name} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: 2, background: row.color, flex: '0 0 auto' }} />
-          <span>{row.name}</span>
-        </div>
-      ))}
+    <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.35, maxWidth: 210 }}>
+      Soil families. Tap the map for a name.
     </div>
   );
 }

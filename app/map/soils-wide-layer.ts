@@ -2,11 +2,13 @@
 
 import L from 'leaflet';
 import { boundaryRuns, labelPoint, pointInPolygon, type SoilMap, type SoilUnit } from '@/lib/soils/ssurgo';
-import { soilFamilyName, soilSeriesColor } from '@/lib/soils/wide';
+import { soilFamilyName } from '@/lib/soils/wide';
 import { SOILS_PANE, SOILS_PANE_Z } from './soils-layer';
 
-/** Fill strong enough to read the soil pattern from 10+ miles out, light enough to see fields. */
-const WIDE_FILL_OPACITY = 0.5;
+/** Thin dark gray soil boundaries only — no fill — so Elevation color shows through. */
+const WIDE_LINE_COLOR = '#333333';
+const WIDE_LINE_WEIGHT = 1;
+const WIDE_LINE_OPACITY = 0.65;
 /** Only label a polygon this big on screen, and keep labels this far apart. */
 const LABEL_MIN_W = 120;
 const LABEL_MIN_H = 30;
@@ -28,8 +30,6 @@ export type WideSoilsDrawing = {
   group: L.LayerGroup;
   /** Soil map unit under a point, from the tiles on screen. */
   unitAt: (latlng: L.LatLng) => SoilUnit | null;
-  /** Soil families in the drawing, most polygons first. */
-  families: { name: string; color: string; count: number }[];
 };
 
 function ensurePane(map: L.Map) {
@@ -42,8 +42,9 @@ function ensurePane(map: L.Map) {
 }
 
 /**
- * Zoomed-out Soils: simplified map units filled by soil series (one canvas, display only).
- * Taps are answered by the map click handler through unitAt(), so field and probe taps still win.
+ * Zoomed-out Soils: thin gray outlines of simplified map units (one canvas, display only).
+ * No fill, so Elevation shading shows through. Taps are answered by unitAt()
+ * (a point inside a polygon, not only on the line), so field and probe taps still win.
  */
 export function drawWideSoils(map: L.Map, maps: SoilMap[]): WideSoilsDrawing {
   ensurePane(map);
@@ -52,32 +53,23 @@ export function drawWideSoils(map: L.Map, maps: SoilMap[]): WideSoilsDrawing {
   const hits: { unit: SoilUnit; bounds: L.LatLngBounds; polygon: SoilMap['features'][number]['polygons'][number] }[] = [];
   type Label = { family: string; bounds: L.LatLngBounds; polygon: SoilMap['features'][number]['polygons'][number]; marker?: L.Marker | null };
   const labels: Label[] = [];
-  const familyCount = new Map<string, { color: string; count: number }>();
 
   for (const soilMap of maps) {
     const units = new Map(soilMap.units.map((u) => [u.mukey, u]));
     for (const feature of soilMap.features) {
       const unit = units.get(feature.mukey);
       if (!unit) continue;
-      const color = soilSeriesColor(unit.muname);
       const family = soilFamilyName(unit.muname);
-      const fc = familyCount.get(family) ?? { color, count: 0 };
-      fc.count += feature.polygons.length;
-      familyCount.set(family, fc);
-
-      const latlngs = feature.polygons.map((poly) => poly.map((ring) => ring.map(([x, y]) => L.latLng(y, x))));
-      group.addLayer(L.polygon(latlngs, {
-        pane: SOILS_PANE, renderer, interactive: false, stroke: false,
-        fill: true, fillColor: color, fillOpacity: WIDE_FILL_OPACITY,
-      }));
-      // Thin light lines on real soil boundaries only (not the tile edges).
+      // Thin dark gray lines on real soil boundaries only (not the tile edges).
+      // Taps use the hit list below, not these lines, so a tap inside a unit still works.
       const runs = feature.polygons
         .flatMap((poly) => poly.flatMap((ring) => boundaryRuns(ring, soilMap.bbox, 2e-5)))
         .map((run) => run.map(([x, y]) => L.latLng(y, x)));
       if (runs.length) {
         group.addLayer(L.polyline(runs, {
           pane: SOILS_PANE, renderer, interactive: false,
-          color: '#FFFFFF', weight: 0.6, opacity: 0.55, lineJoin: 'round',
+          color: WIDE_LINE_COLOR, weight: WIDE_LINE_WEIGHT, opacity: WIDE_LINE_OPACITY,
+          lineJoin: 'round', lineCap: 'round',
         }));
       }
       for (const poly of feature.polygons) {
@@ -157,9 +149,5 @@ export function drawWideSoils(map: L.Map, maps: SoilMap[]): WideSoilsDrawing {
     return null;
   };
 
-  const families = [...familyCount.entries()]
-    .map(([name, v]) => ({ name, color: v.color, count: v.count }))
-    .sort((a, b) => b.count - a.count);
-
-  return { group, unitAt, families };
+  return { group, unitAt };
 }

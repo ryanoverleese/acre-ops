@@ -77,7 +77,6 @@ export interface MapCell {
 
 /** 'wide': zoomed out, showing simplified soil families instead of the detailed map units. */
 export type SoilsViewStatus = 'off' | 'zoom' | 'loading' | 'ready' | 'wide' | 'error';
-export type SoilFamilyLegendRow = { name: string; color: string };
 
 export interface Layers {
   fields: boolean;
@@ -102,8 +101,6 @@ interface Props {
   center: [number, number];
   zoom: number;
   onSoilsStatus?: (status: SoilsViewStatus) => void;
-  /** Most common soil families in the zoomed-out view (empty otherwise). */
-  onSoilFamilies?: (rows: SoilFamilyLegendRow[]) => void;
   onLowSpotsStatus?: (status: LowSpotsStatus) => void;
   elevationMode?: TerrainMode;
   onElevationRange?: (range: ElevRange | null) => void;
@@ -141,7 +138,7 @@ function fieldPopupHtml(field: MapField): string {
   return `<b>${field.name}</b><br>${field.operation}${field.acres ? `<br>${field.acres} ac` : ''}${field.crop ? `<br>${field.crop}` : ''}`;
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onSoilFamilies, onLowSpotsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onLowSpotsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -156,8 +153,6 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
   const soilsGroupRef = useRef<L.LayerGroup | null>(null);
   const soilsStatusRef = useRef(onSoilsStatus);
   soilsStatusRef.current = onSoilsStatus;
-  const soilFamiliesRef = useRef(onSoilFamilies);
-  soilFamiliesRef.current = onSoilFamilies;
   const elevCtlRef = useRef<StaffElevationHandle | null>(null);
   const elevRangeRef = useRef(onElevationRange);
   elevRangeRef.current = onElevationRange;
@@ -374,7 +369,6 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     if (!map) return;
 
     const setStatus = (status: SoilsViewStatus) => soilsStatusRef.current?.(status);
-    const setFamilies = (rows: SoilFamilyLegendRow[]) => soilFamiliesRef.current?.(rows);
     let wide: WideSoilsDrawing | null = null;
     let wideKeys = '';
     const clearSoils = () => {
@@ -387,7 +381,6 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     if (!layers.soils) {
       clearSoils();
       setStatus('off');
-      setFamilies([]);
       return;
     }
 
@@ -413,7 +406,6 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
             wide = null;
             wideKeys = '';
             setStatus('ready');
-            setFamilies([]);
           })
           .catch(() => {
             if (cancelled || my !== gen) return;
@@ -424,7 +416,7 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
       const tiles = zoomLevel >= WIDE_MIN_ZOOM ? wideTileKeysForView(view, WIDE_MAX_TILES) : null;
       if (!tiles) {
         clearSoils();
-        if (!cancelled) { setStatus('zoom'); setFamilies([]); }
+        if (!cancelled) setStatus('zoom');
         return;
       }
       const tileSet = tiles.join(';');
@@ -439,7 +431,6 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
           wide = next;
           wideKeys = tileSet;
           setStatus('wide');
-          setFamilies(next.families.slice(0, 8).map(({ name, color }) => ({ name, color })));
         })
         .catch(() => {
           if (cancelled || my !== gen) return;

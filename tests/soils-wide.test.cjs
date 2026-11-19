@@ -86,9 +86,16 @@ test('staff map: zoomed-out Soils uses wide tiles, map-click lookup, and keeps t
   assert.match(unified, /consumeSoilTapDismiss\(map\)/); // second tap closes, third tap can open
   assert.match(client, /SoilFamiliesNote/);
   assert.match(client, /soilsStatus === 'wide'/);
+  assert.match(client, /Soil families\. Tap the map for a name\./);
+  assert.doesNotMatch(client, /row\.color|HatchSwatch|background: row\.color/);
   assert.match(layer, /L\.canvas\(/);
   assert.match(layer, /interactive: false/);
   assert.match(layer, /pointerEvents = 'none'/);
+  assert.match(layer, /WIDE_LINE_COLOR/);
+  assert.match(layer, /WIDE_LINE_WEIGHT = 1/);
+  assert.doesNotMatch(layer, /WIDE_FILL_OPACITY|fillColor|soilSeriesColor|makeHatchPattern|hatch/);
+  assert.match(layer, /unitAt/);
+  assert.match(unified, /wide\.unitAt\(event\.latlng\)/);
   assert.match(route, /parseWideTileKey/);
   assert.equal(wide.WIDE_MIN_ZOOM, 11);
   const css = read('app/globals.css');
