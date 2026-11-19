@@ -5,8 +5,13 @@ import { boundaryRuns, labelPoint, pointInPolygon, type SoilMap, type SoilUnit }
 import { soilFamilyName, soilSeriesColor } from '@/lib/soils/wide';
 import { SOILS_PANE, SOILS_PANE_Z } from './soils-layer';
 
-/** Fill strong enough to read the soil pattern from 10+ miles out, light enough to see fields. */
-const WIDE_FILL_OPACITY = 0.5;
+/** Dark casing under the family-colored stroke, so lines stay readable on Elevation. */
+const WIDE_CASING_COLOR = '#111111';
+const WIDE_CASING_WEIGHT = 3.25;
+const WIDE_CASING_OPACITY = 0.75;
+/** Family-colored outline. No fill, so the Elevation shading shows through. */
+const WIDE_OUTLINE_WEIGHT = 1.85;
+const WIDE_OUTLINE_OPACITY = 1;
 /** Only label a polygon this big on screen, and keep labels this far apart. */
 const LABEL_MIN_W = 120;
 const LABEL_MIN_H = 30;
@@ -42,8 +47,10 @@ function ensurePane(map: L.Map) {
 }
 
 /**
- * Zoomed-out Soils: simplified map units filled by soil series (one canvas, display only).
- * Taps are answered by the map click handler through unitAt(), so field and probe taps still win.
+ * Zoomed-out Soils: simplified map units outlined by soil series (one canvas, display only).
+ * No fill, so Elevation color shading shows through. Taps are answered by the map
+ * click handler through unitAt() (a point inside a polygon, not only on the line),
+ * so field and probe taps still win.
  */
 export function drawWideSoils(map: L.Map, maps: SoilMap[]): WideSoilsDrawing {
   ensurePane(map);
@@ -65,19 +72,21 @@ export function drawWideSoils(map: L.Map, maps: SoilMap[]): WideSoilsDrawing {
       fc.count += feature.polygons.length;
       familyCount.set(family, fc);
 
-      const latlngs = feature.polygons.map((poly) => poly.map((ring) => ring.map(([x, y]) => L.latLng(y, x))));
-      group.addLayer(L.polygon(latlngs, {
-        pane: SOILS_PANE, renderer, interactive: false, stroke: false,
-        fill: true, fillColor: color, fillOpacity: WIDE_FILL_OPACITY,
-      }));
-      // Thin light lines on real soil boundaries only (not the tile edges).
+      // Two-tone outlines on real soil boundaries only (not the tile edges).
+      // A point-in-polygon hit list, not these lines, answers a tap inside a unit.
       const runs = feature.polygons
         .flatMap((poly) => poly.flatMap((ring) => boundaryRuns(ring, soilMap.bbox, 2e-5)))
         .map((run) => run.map(([x, y]) => L.latLng(y, x)));
       if (runs.length) {
         group.addLayer(L.polyline(runs, {
           pane: SOILS_PANE, renderer, interactive: false,
-          color: '#FFFFFF', weight: 0.6, opacity: 0.55, lineJoin: 'round',
+          color: WIDE_CASING_COLOR, weight: WIDE_CASING_WEIGHT, opacity: WIDE_CASING_OPACITY,
+          lineJoin: 'round', lineCap: 'round',
+        }));
+        group.addLayer(L.polyline(runs, {
+          pane: SOILS_PANE, renderer, interactive: false,
+          color, weight: WIDE_OUTLINE_WEIGHT, opacity: WIDE_OUTLINE_OPACITY,
+          lineJoin: 'round', lineCap: 'round',
         }));
       }
       for (const poly of feature.polygons) {

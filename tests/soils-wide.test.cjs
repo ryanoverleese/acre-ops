@@ -89,6 +89,14 @@ test('staff map: zoomed-out Soils uses wide tiles, map-click lookup, and keeps t
   assert.match(layer, /L\.canvas\(/);
   assert.match(layer, /interactive: false/);
   assert.match(layer, /pointerEvents = 'none'/);
+  // Outlines in the family color, with a dark casing, and no interior fill.
+  assert.match(layer, /WIDE_CASING_COLOR/);
+  assert.match(layer, /WIDE_OUTLINE_WEIGHT/);
+  assert.match(layer, /color, weight: WIDE_OUTLINE_WEIGHT/);
+  assert.doesNotMatch(layer, /WIDE_FILL_OPACITY|fillOpacity:\s*0\.5/);
+  assert.doesNotMatch(layer, /fillColor:\s*color/);
+  assert.match(layer, /unitAt/); // tap inside a polygon still looks up the family
+  assert.match(unified, /wide\.unitAt\(event\.latlng\)/);
   assert.match(route, /parseWideTileKey/);
   assert.equal(wide.WIDE_MIN_ZOOM, 11);
   const css = read('app/globals.css');
