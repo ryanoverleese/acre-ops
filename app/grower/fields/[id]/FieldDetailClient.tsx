@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import ProbeRows from '@/components/fields/ProbeRows';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
@@ -27,8 +27,14 @@ function fmtDate(value: unknown): string {
 export default function FieldDetailClient({
   field,
   operationLabel = null,
+  pivotNote = null,
+  pivotIcon = null,
 }: {
   farmName: string;
+  /** Server-rendered note shown only when a live pivot reading exists. */
+  pivotNote?: ReactNode;
+  /** Server-rendered live pivot icon for the newest recommendation. */
+  pivotIcon?: ReactNode;
   /** Staff All operations view: which farm this field belongs to. */
   operationLabel?: string | null;
   field: {
@@ -86,14 +92,18 @@ export default function FieldDetailClient({
 
       <section className="grower-section">
         <h2 className="grower-section-title">Water recommendations</h2>
+        {field.waterRecs.length > 0 ? pivotNote : null}
         {field.waterRecs.length === 0 ? (
           <p className="grower-empty">No recommendations for {field.season} yet.</p>
         ) : (
           <ul className="grower-list">
-            {field.waterRecs.map((rec) => (
+            {field.waterRecs.map((rec, index) => (
               <li key={rec.id} className="grower-section-block">
                 <div className="grower-list-row grower-list-row-static">
-                  <span className="grower-list-primary">{fmtDate(rec.date)}</span>
+                  <span className="grower-list-primary">
+                    {fmtDate(rec.date)}
+                    {index === 0 ? pivotIcon : null}
+                  </span>
                   <span className="grower-list-meta">
                     {rec.reportType === 'update' ? 'Update' : 'Full'}
                     {rec.suggestedWaterDay ? ` · ${rec.suggestedWaterDay}` : ''}

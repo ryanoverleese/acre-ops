@@ -13028,3 +13028,20 @@ a.grower-activity-jump {
 .map-soils-share { color: #5A5A5A; font-variant-numeric: tabular-nums; }
 .field-map-frame.is-map-expanded .map-soils-legend,
 .field-map-frame:fullscreen .map-soils-legend { display: none; }
+
+/* Grower live pivot icon (Valley, read-only). Icon only; note sits under the section title. */
+.grower-pivot-note {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--grower-muted);
+}
+.grower-pivot-icons {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.grower-pivot-icon {
+  display: inline-flex;
+  line-height: 0;
+}
