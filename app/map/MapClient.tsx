@@ -5,6 +5,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import type { Field, Operation, Contact, ProbeAssignment, Repair, FieldSeason } from '@/lib/types';
 import type { MapField, MapProbe, MapRepair, MapOperation, MapCell, Layers, SoilsViewStatus } from './UnifiedMap';
+import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { zoneOf, CENTER_LAT, CENTER_LNG } from '@/lib/territory-grid';
 import { formatLegendRange, feetToMetersExact, metersToWholeFeet, type ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -37,6 +38,7 @@ const LAYER_LABELS: Record<keyof Layers, string> = {
   customers: 'Customers',
   territory: 'Territory',
   soils: 'Soils',
+  lowSpots: 'Low spots',
 };
 
 
@@ -49,8 +51,10 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
     customers: false,
     territory: false,
     soils: false,
+    lowSpots: false,
   });
   const [soilsStatus, setSoilsStatus] = useState<SoilsViewStatus>('off');
+  const [lowSpotsStatus, setLowSpotsStatus] = useState<LowSpotsStatus>('off');
   const [elevationMode, setElevationMode] = useState<TerrainMode>('off');
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
   const [elevPrefs, setElevPrefs] = useState<ElevColorPrefs>(defaultElevColorPrefs);
@@ -360,6 +364,7 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
           center={mapCenter}
           zoom={10}
           onSoilsStatus={setSoilsStatus}
+          onLowSpotsStatus={setLowSpotsStatus}
           elevationMode={elevationMode}
           onElevationRange={setElevRange}
           elevColor={elevColor}
@@ -423,6 +428,9 @@ export default function MapClient({ fields, operations, contacts, fieldSeasons, 
                 <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3 }}>
                   Soil map isn’t available right now.
                 </div>
+              ) : null}
+              {key === 'lowSpots' && layers.lowSpots ? (
+                <LowSpotsNote status={lowSpotsStatus} />
               ) : null}
             </div>
           ))}
@@ -647,6 +655,24 @@ function StatChip({ label, value }: { label: string; value: string | number }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <span style={{ fontSize: 10, color: '#999', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
       <span style={{ fontWeight: 700 }}>{value}</span>
+    </div>
+  );
+}
+
+const LOWSPOTS_NOTE: Partial<Record<LowSpotsStatus, string>> = {
+  zoom: 'Zoom in to see low spots',
+  loading: 'Finding low spots…',
+  nodata: 'No lidar here.',
+  error: 'Lidar isn’t available right now.',
+};
+
+function LowSpotsNote({ status }: { status: LowSpotsStatus }) {
+  const text = LOWSPOTS_NOTE[status]
+    ?? (status === 'ready' ? 'Blue: where water pools, darker is deeper (2 ft+). Lines: where water runs.' : null);
+  if (!text) return null;
+  return (
+    <div style={{ fontSize: 11, color: '#78716c', padding: '0 0 6px 22px', lineHeight: 1.3, maxWidth: 190 }}>
+      {text}
     </div>
   );
 }

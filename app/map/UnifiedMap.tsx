@@ -11,6 +11,8 @@ import { soilBboxKeysForView } from '@/lib/soils/ssurgo';
 import type { ElevRange } from '@/lib/terrain/color-scale';
 import type { TerrainMode } from '@/lib/terrain/modes';
 import { drawStaffSoils, SOILS_DEBOUNCE_MS, SOILS_MAX_TILES, SOILS_MIN_ZOOM } from './soils-layer';
+import { attachStaffLowSpots, type StaffLowSpotsHandle } from './staff-lowspots';
+import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 import { attachStaffElevation, DEFAULT_ELEV_OPACITY, type StaffElevColor, type StaffElevationHandle } from './elevation-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
@@ -79,6 +81,7 @@ export interface Layers {
   customers: boolean;
   territory: boolean;
   soils: boolean;
+  lowSpots: boolean;
 }
 
 interface Props {
@@ -92,6 +95,7 @@ interface Props {
   center: [number, number];
   zoom: number;
   onSoilsStatus?: (status: SoilsViewStatus) => void;
+  onLowSpotsStatus?: (status: LowSpotsStatus) => void;
   elevationMode?: TerrainMode;
   onElevationRange?: (range: ElevRange | null) => void;
   elevColor?: StaffElevColor;
@@ -128,7 +132,7 @@ function fieldPopupHtml(field: MapField): string {
   return `<b>${field.name}</b><br>${field.operation}${field.acres ? `<br>${field.acres} ac` : ''}${field.crop ? `<br>${field.crop}` : ''}`;
 }
 
-export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
+export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, operations, cells, layers, center, zoom, onSoilsStatus, onLowSpotsStatus, elevationMode = 'off', onElevationRange, elevColor, elevOpacity }: Props) {
   const boundaries = useFieldBoundaries(fields.map(field => field.id));
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -447,12 +451,29 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     elevCtlRef.current?.setOpacity(elevOpacity ?? DEFAULT_ELEV_OPACITY);
   }, [elevOpacity]);
 
+  // Low spots: ponds and flow paths computed on demand from the 3DEP DEM for the view.
+  const lowSpotsStatusRef = useRef(onLowSpotsStatus);
+  lowSpotsStatusRef.current = onLowSpotsStatus;
+  const lowSpotsRef = useRef<StaffLowSpotsHandle | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!layers.lowSpots) {
+      lowSpotsRef.current?.detach();
+      lowSpotsRef.current = null;
+      lowSpotsStatusRef.current?.('off');
+      return;
+    }
+    if (lowSpotsRef.current) return;
+    lowSpotsRef.current = attachStaffLowSpots(map, (status) => lowSpotsStatusRef.current?.(status));
+  }, [layers.lowSpots]);
+
   // Highways and town names stay readable on top of Elevation and Soils, at any opacity.
   const labelsLayerRef = useRef<L.TileLayer | null>(null);
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    const needed = elevationMode !== 'off' || !!layers.soils;
+    const needed = elevationMode !== 'off' || !!layers.soils || !!layers.lowSpots;
     if (!needed) {
       if (labelsLayerRef.current) {
         map.removeLayer(labelsLayerRef.current);
@@ -468,10 +489,12 @@ export default function UnifiedMap({ fields, probes, plantDaysProbes, repairs, o
     }
     pane.style.pointerEvents = 'none';
     labelsLayerRef.current = L.tileLayer(LABELS_URL, { attribution: '', maxZoom: 20, pane: LABELS_PANE }).addTo(map);
-  }, [elevationMode, layers.soils]);
+  }, [elevationMode, layers.soils, layers.lowSpots]);
 
   useEffect(() => {
     return () => {
+      lowSpotsRef.current?.detach();
+      lowSpotsRef.current = null;
       elevCtlRef.current?.detach();
       elevCtlRef.current = null;
     };

@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import ElevationOverlay from '@/components/ElevationOverlay';
+import LowSpotsOverlay from '@/components/LowSpotsOverlay';
 import { MapFullscreenButton, MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import TerrainControl from '@/components/TerrainControl';
 import { compareProbePinOrder, probePinText } from '@/lib/probe-pin-label';
@@ -16,10 +17,18 @@ import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import { DEFAULT_TERRAIN_MODE, type TerrainMode } from '@/lib/terrain/modes';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import type { GrowerProbePin } from '@/lib/supabase/grower-fields';
+import type { LowSpotsStatus } from '@/lib/terrain/lowspots-layer';
 
 const SAT_URL = 'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}';
 const GOOGLE_ATTR = '&copy; Google';
 const NEBRASKA_FALLBACK: [number, number] = [41.5, -99.5];
+
+const LOWSPOTS_NOTE: Partial<Record<LowSpotsStatus, string>> = {
+  loading: 'Finding low spots…',
+  ready: 'Blue: where water pools, darker is deeper (2 ft+). Lines: where water runs.',
+  nodata: 'No lidar for this field.',
+  error: 'Lidar isn’t available right now.',
+};
 
 function probeIcon(label: string) {
   const text = label.replace(/[<>&"]/g, '');
@@ -116,6 +125,8 @@ export default function GrowerFieldMap({
 }) {
   const [terrainMode, setTerrainMode] = useState<TerrainMode>(DEFAULT_TERRAIN_MODE);
   const [elevRange, setElevRange] = useState<ElevRange | null>(null);
+  const [lowSpots, setLowSpots] = useState(false);
+  const [lowSpotsStatus, setLowSpotsStatus] = useState<LowSpotsStatus>('off');
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
   const orderedProbes = useMemo(
     () => probes.slice().sort(compareProbePinOrder),
@@ -150,6 +161,9 @@ export default function GrowerFieldMap({
         {hasOutline && (
           <ElevationOverlay mode={terrainMode} clipTo={boundaries} onFieldRange={setElevRange} />
         )}
+        {hasOutline && (
+          <LowSpotsOverlay show={lowSpots} boundaries={boundaries} onStatus={setLowSpotsStatus} />
+        )}
         <BoundaryLayer data={boundaries} selectedId={fieldId} />
         {orderedProbes
           .filter((probe) => probe.lat != null && probe.lng != null)
@@ -174,6 +188,21 @@ export default function GrowerFieldMap({
           range={elevRange}
           sourceLabel={lidarLabel}
         />
+      )}
+      {hasOutline && (
+        <div className="lowspots-strip">
+          <label className="lowspots-toggle">
+            <input
+              type="checkbox"
+              checked={lowSpots}
+              onChange={(e) => setLowSpots(e.target.checked)}
+            />
+            Low spots
+          </label>
+          {lowSpots && LOWSPOTS_NOTE[lowSpotsStatus] ? (
+            <span className="lowspots-note">{LOWSPOTS_NOTE[lowSpotsStatus]}</span>
+          ) : null}
+        </div>
       )}
     </div>
   );

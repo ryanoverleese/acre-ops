@@ -52,7 +52,7 @@ function latLngBoundsTo3857(b: L.LatLngBounds): [number, number, number, number]
   return [sw.x, sw.y, ne.x, ne.y];
 }
 
-function exportUrl(bbox: number[], width: number, height: number): string {
+export function exportUrl(bbox: number[], width: number, height: number): string {
   const box = bbox.map((v) => v.toFixed(3)).join(',');
   const query = 'f=image&format=lerc&pixelType=F32&bboxSR=3857&imageSR=3857'
     + `&bbox=${box}&size=${width},${height}&interpolation=RSP_BilinearInterpolation`;
@@ -68,7 +68,7 @@ function boundsIdentity(bounds: L.LatLngBounds | null, rings: LngLatRing[] | nul
 }
 
 let lercReady: Promise<void> | null = null;
-function ensureLerc() {
+export function ensureLerc() {
   if (!lercReady) {
     lercReady = Lerc.load({
       locateFile: (name) => (name.endsWith('.wasm') ? '/lerc-wasm.wasm' : name),
