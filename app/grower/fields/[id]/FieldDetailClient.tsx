@@ -4,6 +4,8 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import ProbeRows from '@/components/fields/ProbeRows';
+import GrowerPivotIcon from '@/components/grower/GrowerPivotIcon';
+import type { IconPoint } from '@/lib/valley/grower-icon';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import {
   formatGrowerAcres,
@@ -27,8 +29,11 @@ function fmtDate(value: unknown): string {
 export default function FieldDetailClient({
   field,
   operationLabel = null,
+  pivotProbeDot = null,
 }: {
   farmName: string;
+  /** Where the green probe dot sits inside the locked pivot icon (null hides it). */
+  pivotProbeDot?: IconPoint | null;
   /** Staff All operations view: which farm this field belongs to. */
   operationLabel?: string | null;
   field: {
@@ -86,6 +91,9 @@ export default function FieldDetailClient({
 
       <section className="grower-section">
         <h2 className="grower-section-title">Water recommendations</h2>
+        {field.waterRecs.some((rec) => rec.pivots?.length) ? (
+          <p className="grower-pivot-note">Pivot position at time of recommendation.</p>
+        ) : null}
         {field.waterRecs.length === 0 ? (
           <p className="grower-empty">No recommendations for {field.season} yet.</p>
         ) : (
@@ -93,7 +101,21 @@ export default function FieldDetailClient({
             {field.waterRecs.map((rec) => (
               <li key={rec.id} className="grower-section-block">
                 <div className="grower-list-row grower-list-row-static">
-                  <span className="grower-list-primary">{fmtDate(rec.date)}</span>
+                  <span className="grower-list-primary">
+                    {fmtDate(rec.date)}
+                    {rec.pivots?.length ? (
+                      <span className="grower-pivot-icons">
+                        {rec.pivots.map((pivot, i) => (
+                          <GrowerPivotIcon
+                            key={i}
+                            pivot={pivot}
+                            // The probe dot only makes sense against a single pivot circle.
+                            probe={rec.pivots!.length === 1 ? pivotProbeDot : null}
+                          />
+                        ))}
+                      </span>
+                    ) : null}
+                  </span>
                   <span className="grower-list-meta">
                     {rec.reportType === 'update' ? 'Update' : 'Full'}
                     {rec.suggestedWaterDay ? ` · ${rec.suggestedWaterDay}` : ''}

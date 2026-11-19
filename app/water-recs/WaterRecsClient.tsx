@@ -5,6 +5,8 @@ import SearchableSelect from '@/components/SearchableSelect';
 import type { OperationGroup, WaterRecRecord } from './page';
 import PivotStatusIcon from './PivotStatusIcon';
 import { useValleyPivots } from './useValleyPivots';
+import GrowerPivotIcon from '@/components/grower/GrowerPivotIcon';
+import type { LockedPivot, PivotLockPreview, PivotLockSaveResult } from '@/lib/valley/pivot-lock-types';
 
 interface WaterRecsClientProps {
   operations: OperationGroup[];
@@ -14,6 +16,30 @@ interface WaterRecsClientProps {
   fsToFieldName: Record<number, string>;
   waterDayOptions: string[];
   valleyEnabled?: boolean;
+  /** Locked pivot positions already saved, keyed by water rec id. */
+  pivotSnapshots?: Record<number, { capturedAt: string; pivots: LockedPivot[] }>;
+}
+
+// Lock pivot position: per field card in Full Report. 'pending' is a preview
+// that has not been saved yet (re-lock allowed); 'fixed' is saved with the rec.
+type PivotLockState =
+  | { status: 'locking'; previous?: PivotLockPreview }
+  | { status: 'pending'; preview: PivotLockPreview; message?: string }
+  | { status: 'fixed'; capturedAt: string; pivots: LockedPivot[] }
+  | { status: 'error'; message: string };
+
+function fmtLockTime(iso: string): string {
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return '';
+  return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function LockedPivotIcons({ pivots }: { pivots: LockedPivot[] }) {
+  return (
+    <span className="wr-pivotlock-icons">
+      {pivots.map(p => <GrowerPivotIcon key={p.serial} pivot={{ angle: p.angle, on: p.on }} probe={null} size={30} />)}
+    </span>
+  );
 }
 
 interface FieldForm {
@@ -340,6 +366,7 @@ export default function WaterRecsClient({
   fsToFieldName,
   waterDayOptions: rawDayOptions,
   valleyEnabled = false,
+  pivotSnapshots = {},
 }: WaterRecsClientProps) {
   // Smart-order day options: start from report date's day, wrap around, non-days at end
   const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -459,6 +486,40 @@ export default function WaterRecsClient({
   const [recPersisted, setRecPersisted] = useState<Record<number, string>>({});
   const [recSaveStatus, setRecSaveStatus] = useState<Record<number, 'saving' | 'saved' | 'error'>>({});
 
+  // Lock pivot position, per field season for the current operation + date.
+  const [pivotLocks, setPivotLocks] = useState<Record<number, PivotLockState>>({});
+  // Snapshots saved during this sitting (field season + date), so switching
+  // operations and back still shows them as fixed without a page reload.
+  const [savedLocks, setSavedLocks] = useState<Record<string, { capturedAt: string; pivots: LockedPivot[] }>>({});
+  const pendingLockToken = (fsId: number): string | undefined => {
+    const lock = pivotLocks[fsId];
+    if (lock?.status === 'pending') return lock.preview.token;
+    if (lock?.status === 'locking') return lock.previous?.token;
+    return undefined;
+  };
+  const applyLockResults = (results: Record<string, PivotLockSaveResult> | undefined, date: string) => {
+    if (!results) return;
+    const fixed: Record<string, { capturedAt: string; pivots: LockedPivot[] }> = {};
+    setPivotLocks(prev => {
+      const next = { ...prev };
+      for (const [key, result] of Object.entries(results)) {
+        const fsId = Number(key);
+        if (result.status === 'saved' || result.status === 'kept') {
+          next[fsId] = { status: 'fixed', capturedAt: result.capturedAt, pivots: result.pivots };
+          fixed[`${fsId}|${date}`] = { capturedAt: result.capturedAt, pivots: result.pivots };
+        } else {
+          const lock = prev[fsId];
+          const previous = lock?.status === 'pending' ? lock.preview : lock?.status === 'locking' ? lock.previous : undefined;
+          next[fsId] = result.status === 'failed' && previous
+            ? { status: 'pending', preview: previous, message: 'Rec saved, but the pivot lock did not save. Try Save lock again.' }
+            : { status: 'error', message: 'Lock expired. Lock it again.' };
+        }
+      }
+      return next;
+    });
+    setSavedLocks(prev => ({ ...prev, ...fixed }));
+  };
+
   // Scratch checkboxes for picking which probes to write recs on this week.
   // Deliberately NOT saved to Baserow and NOT persisted between weeks — it's a
   // working list for the current sitting only.
@@ -571,12 +632,15 @@ export default function WaterRecsClient({
             suggested_water_day: day,
             priority: form.priority,
             report_type: 'full',
+            pivot_lock: pendingLockToken(fsId),
           }],
           scopeFieldSeasons: [fsId],
           reportType: 'full',
         }),
       });
       if (res.ok) {
+        const data = await res.json().catch(() => null);
+        applyLockResults(data?.pivotLocks, reportDate);
         setDayPersisted(p => ({ ...p, [fsId]: day }));
         setDaySaveStatus(s => ({ ...s, [fsId]: 'saved' }));
       } else {
@@ -585,7 +649,8 @@ export default function WaterRecsClient({
     } catch {
       setDaySaveStatus(s => ({ ...s, [fsId]: 'error' }));
     }
-  }, [mode, fieldForms, dayPersisted, reportDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, fieldForms, dayPersisted, reportDate, pivotLocks]);
 
   // Update mode: clicking a day immediately creates (or replaces) a late-week
   // 'update' record for that field; un-clicking deletes it. No batch save needed.
@@ -884,6 +949,16 @@ export default function WaterRecsClient({
       });
       setRecPersisted(persisted);
       setRecSaveStatus({});
+      // Seed locked pivot positions already saved with this date's Full recs.
+      const locks: Record<number, PivotLockState> = {};
+      if (mode === 'full') {
+        currentOperation.fields.forEach(field => {
+          const fullRec = existingRecsForDate.find(r => r.fieldSeasonId === field.fieldSeasonId && r.reportType === 'full');
+          const snap = savedLocks[`${field.fieldSeasonId}|${reportDate}`] ?? (fullRec ? pivotSnapshots[fullRec.id] : undefined);
+          if (snap) locks[field.fieldSeasonId] = { status: 'fixed', capturedAt: snap.capturedAt, pivots: snap.pivots };
+        });
+      }
+      setPivotLocks(locks);
       // Seed water-day persisted baseline
       const dayBaseline: Record<number, string> = {};
       currentOperation.fields.forEach(field => {
@@ -930,8 +1005,10 @@ export default function WaterRecsClient({
     const rec = form.recommendation.trim();
     // Nothing to persist (no day, no text) — skip without clearing anything.
     if (!form.waterDay && !rec) return;
-    // No change since last save — don't re-hit Baserow.
-    if (rec === (recPersisted[fsId] ?? '')) return;
+    // No change since last save — don't re-hit Baserow (unless a pivot lock
+    // is waiting to be saved with this rec).
+    const lockToken = pendingLockToken(fsId);
+    if (rec === (recPersisted[fsId] ?? '') && !lockToken) return;
 
     setRecSaveStatus(s => ({ ...s, [fsId]: 'saving' }));
     try {
@@ -946,6 +1023,7 @@ export default function WaterRecsClient({
             suggested_water_day: form.waterDay,
             priority: form.priority,
             report_type: 'full',
+            pivot_lock: lockToken,
           }],
           scopeFieldSeasons: [fsId],
           reportType: 'full',
@@ -953,6 +1031,7 @@ export default function WaterRecsClient({
       });
       const data = await res.json();
       if (res.ok && data.created > 0) {
+        applyLockResults(data.pivotLocks, reportDate);
         setRecPersisted(p => ({ ...p, [fsId]: rec }));
         setRecSaveStatus(s => ({ ...s, [fsId]: 'saved' }));
       } else {
@@ -961,7 +1040,36 @@ export default function WaterRecsClient({
     } catch {
       setRecSaveStatus(s => ({ ...s, [fsId]: 'error' }));
     }
-  }, [mode, fieldForms, reportDate, recPersisted]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, fieldForms, reportDate, recPersisted, pivotLocks]);
+
+  // Lock pivot position: read the pivot once on the server and show what will
+  // be saved. Nothing is stored until this rec is saved; re-lock replaces it.
+  const failLock = (fsId: number, message: string, previous?: PivotLockPreview) => {
+    // A failed re-lock keeps the earlier lock (still not saved) rather than losing it.
+    setPivotLocks(prev => ({ ...prev, [fsId]: previous ? { status: 'pending', preview: previous, message } : { status: 'error', message } }));
+  };
+  const lockPivot = async (fsId: number) => {
+    const current = pivotLocks[fsId];
+    if (current?.status === 'fixed' || current?.status === 'locking') return;
+    const previous = current?.status === 'pending' ? current.preview : undefined;
+    setPivotLocks(prev => ({ ...prev, [fsId]: { status: 'locking', previous } }));
+    try {
+      const res = await fetch('/api/water-recs/pivot-lock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field_season: fsId, date: reportDate }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.token && Array.isArray(data.pivots)) {
+        setPivotLocks(prev => ({ ...prev, [fsId]: { status: 'pending', preview: data as PivotLockPreview } }));
+      } else {
+        failLock(fsId, data?.error || 'Could not read the pivot. Try again.', previous);
+      }
+    } catch {
+      failLock(fsId, 'Could not read the pivot. Try again.', previous);
+    }
+  };
 
   // Report route: which customer order to walk. Auto-picks by the report date's
   // weekday (Mon/Thu = one order, Tue/Fri = the other); can be overridden.
@@ -1009,7 +1117,7 @@ export default function WaterRecsClient({
   // Save report
   // Build the records array from the current forms (shared by manual + auto save)
   const collectRecords = useCallback(() => {
-    const records: { field_season: number; date: string; recommendation: string; suggested_water_day: string; priority: boolean; report_type: string }[] = [];
+    const records: { field_season: number; date: string; recommendation: string; suggested_water_day: string; priority: boolean; report_type: string; pivot_lock?: string }[] = [];
     if (!currentOperation) return records;
     currentOperation.fields.forEach(field => {
       const form = fieldForms[field.fieldSeasonId];
@@ -1023,6 +1131,7 @@ export default function WaterRecsClient({
             suggested_water_day: form.waterDay,
             priority: form.priority,
             report_type: 'full',
+            pivot_lock: pendingLockToken(field.fieldSeasonId),
           });
         }
       } else {
@@ -1041,7 +1150,8 @@ export default function WaterRecsClient({
       }
     });
     return records;
-  }, [currentOperation, fieldForms, mode, reportDate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentOperation, fieldForms, mode, reportDate, pivotLocks]);
 
   const handleSave = async () => {
     if (!currentOperation) return;
@@ -1092,6 +1202,7 @@ export default function WaterRecsClient({
 
       const data = await response.json();
       if (response.ok && data.created > 0) {
+        applyLockResults(data.pivotLocks, reportDate);
         setSavedStatus('saved');
         // Refresh the per-field saved baseline so every rec pill turns green.
         const persisted: Record<number, string> = {};
@@ -1857,6 +1968,58 @@ export default function WaterRecsClient({
                       else if (dirty && form.recommendation.trim()) { label = 'Unsaved'; cls = 'dirty'; }
                       else if (!dirty && form.recommendation.trim()) { label = 'Saved'; cls = 'saved'; }
                       return label ? <span className={`wr-recpill wr-recpill-${cls}`}>{label}</span> : null;
+                    })()}
+                    {/* Lock pivot position: saved with this rec, then fixed. */}
+                    {(() => {
+                      const fsId = field.fieldSeasonId;
+                      const lock = pivotLocks[fsId];
+                      const linked = valley.fields[field.fieldId]?.state !== 'unlinked';
+                      if (lock?.status !== 'fixed' && (!valleyEnabled || !linked)) return null;
+                      const describe = (pivots: LockedPivot[]) => pivots.map(p => `${p.on ? 'On' : 'Off'} · ${Math.round(p.angle)}°`).join(', ');
+                      if (lock?.status === 'fixed') {
+                        return (
+                          <div className="wr-pivotlock wr-pivotlock-fixed" data-pivot-lock="fixed">
+                            <LockedPivotIcons pivots={lock.pivots} />
+                            <span className="wr-pivotlock-text">
+                              Pivot locked {fmtLockTime(lock.capturedAt)} ({describe(lock.pivots)}). Saved with this rec.
+                            </span>
+                          </div>
+                        );
+                      }
+                      const preview = lock?.status === 'pending' ? lock.preview : lock?.status === 'locking' ? lock.previous : undefined;
+                      const hasContent = !!(form.waterDay || form.recommendation.trim());
+                      const busy = lock?.status === 'locking';
+                      return (
+                        <div className={`wr-pivotlock${preview ? ' wr-pivotlock-pending' : ''}`} data-pivot-lock={preview ? 'pending' : 'none'}>
+                          {preview && <LockedPivotIcons pivots={preview.pivots} />}
+                          {preview && (
+                            <span className="wr-pivotlock-text">
+                              Locked {fmtLockTime(preview.capturedAt)} ({describe(preview.pivots)}). Not saved yet.
+                            </span>
+                          )}
+                          <button
+                            type="button"
+                            className="wr-pivotlock-btn"
+                            disabled={busy}
+                            onClick={() => lockPivot(fsId)}
+                          >
+                            {busy ? 'Reading pivot…' : preview ? 'Re-lock' : 'Lock pivot position'}
+                          </button>
+                          {preview && (
+                            <button
+                              type="button"
+                              className="wr-pivotlock-btn wr-pivotlock-save"
+                              disabled={busy || !hasContent || recSaveStatus[fsId] === 'saving'}
+                              title={hasContent ? 'Save this rec with the locked pivot position' : 'Write the rec or pick a water day first'}
+                              onClick={() => saveOneRec(fsId)}
+                            >
+                              Save lock
+                            </button>
+                          )}
+                          {lock?.status === 'error' && <span className="wr-pivotlock-msg">{lock.message}</span>}
+                          {lock?.status === 'pending' && lock.message && <span className="wr-pivotlock-msg">{lock.message}</span>}
+                        </div>
+                      );
                     })()}
                     {isPriority && !form.recommendation.trim() && (
                       <div className="wr-rec-error">

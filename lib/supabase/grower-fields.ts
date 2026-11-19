@@ -167,7 +167,12 @@ export type GrowerWaterRec = {
   recommendation: string | null;
   suggestedWaterDay: string | null;
   reportType: string;
+  /** Pivot position locked by staff when this rec was written. Absent when none. */
+  pivots?: GrowerLockedPivot[];
 };
+
+/** Arm angle (degrees from north) and ON/not-ON only. No serial, no live reading. */
+export type GrowerLockedPivot = { angle: number; on: boolean };
 
 export type GrowerFieldDetail = {
   id: number;
@@ -486,6 +491,35 @@ export async function getGrowerFieldDetail(
       [positiveId(row.field_season_id)],
     );
 
+    // Locked pivot positions saved with these recs (grower view, same field
+    // check as grower_water_recs). Savepoint: if the snapshot view is not in
+    // this database yet, the field page still loads with no icons.
+    const pivotsByRec = new Map<number, GrowerLockedPivot[]>();
+    if (recs.length) {
+      await growerQuery('SAVEPOINT grower_rec_pivots');
+      try {
+        const snaps = await growerQuery<{ water_rec_id: unknown; arm_angle: unknown; pivot_on: unknown }>(
+          `SELECT water_rec_id, arm_angle, pivot_on
+             FROM public.grower_water_rec_pivot_snapshots
+            WHERE water_rec_id = ANY($1::bigint[])
+            ORDER BY water_rec_id, pivot_index`,
+          [recs.map((rec) => positiveId(rec.id))],
+        );
+        await growerQuery('RELEASE SAVEPOINT grower_rec_pivots');
+        for (const snap of snaps) {
+          const angle = Number(snap.arm_angle);
+          if (!Number.isFinite(angle) || angle < 0 || angle >= 360) continue;
+          const id = positiveId(snap.water_rec_id);
+          const list = pivotsByRec.get(id) ?? [];
+          list.push({ angle, on: snap.pivot_on === true });
+          pivotsByRec.set(id, list);
+        }
+      } catch {
+        await growerQuery('ROLLBACK TO SAVEPOINT grower_rec_pivots').catch(() => {});
+        pivotsByRec.clear();
+      }
+    }
+
     return {
       id: positiveId(row.id),
       name: row.name,
@@ -506,6 +540,7 @@ export async function getGrowerFieldDetail(
           recommendation: rec.recommendation,
           suggestedWaterDay: rec.suggested_water_day,
           reportType: rec.report_type || 'full',
+          ...(pivotsByRec.has(positiveId(rec.id)) ? { pivots: pivotsByRec.get(positiveId(rec.id)) } : {}),
         }];
       }),
     };

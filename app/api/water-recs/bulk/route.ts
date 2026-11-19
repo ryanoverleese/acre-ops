@@ -3,6 +3,8 @@ import { withApiAuth } from '@/lib/supabase/api';
 import { createRow, updateRow, getRow, getRows, deleteRow, type Row } from '@/lib/supabase/adapter';
 import { transaction, query } from '@/lib/supabase/database';
 import { DataError, positiveId } from '@/lib/supabase/registry';
+import { savePivotSnapshot, verifyPivotLock } from '@/lib/valley/pivot-lock';
+import type { PivotLockSaveResult } from '@/lib/valley/pivot-lock-types';
 
 export const POST=withApiAuth(async request=>{
  const {records,scopeFieldSeasons,reportType}=await request.json();
@@ -15,6 +17,16 @@ export const POST=withApiAuth(async request=>{
  const type=types[0]; const scope=(scopeFieldSeasons?.length?scopeFieldSeasons:records.map(r=>r.field_season)).map(positiveId);
  if(records.some(r=>!scope.includes(positiveId(r.field_season)))) throw new DataError('Recommendation is outside the submitted scope');
  if(new Set(records.map(r=>positiveId(r.field_season))).size!==records.length) throw new DataError('Duplicate fields in report');
+ // Locked pivot position (Full Report only). A lock the server did not sign for
+ // this exact field season + date is ignored; the rec itself still saves.
+ const pivotLocks:Record<number,PivotLockSaveResult>={};
+ const verifiedLocks=new Map<number,NonNullable<ReturnType<typeof verifyPivotLock>>>();
+ if(type==='full') for(const rec of records){
+  if(rec.pivot_lock===undefined||rec.pivot_lock===null) continue;
+  const fs=positiveId(rec.field_season);
+  const lock=verifyPivotLock(rec.pivot_lock,fs,date);
+  if(lock) verifiedLocks.set(fs,lock); else pivotLocks[fs]={status:'invalid'};
+ }
  const result=await transaction(async()=>{
   const existing=await getRows<{id:number;field_season:{id:number}[]}>('water_recs',{filters:{date,report_type:type}});
   const keep:number[]=[];
@@ -24,10 +36,12 @@ export const POST=withApiAuth(async request=>{
    const payload={field_season:[fs],date,recommendation:rec.recommendation||null,suggested_water_day:rec.suggested_water_day??null,report_type:type,...(rec.priority!==undefined?{priority:rec.priority}:{})};
    const saved=prior?await updateRow<{id:number}>('water_recs',prior.id,payload):await createRow<{id:number}>('water_recs',payload);
    keep.push(saved.id);
+   const lock=verifiedLocks.get(fs);
+   if(lock) pivotLocks[fs]=await savePivotSnapshot(saved.id,lock);
   }
   let deleted=0;
   for(const row of existing) if(scope.includes(row.field_season[0]?.id)&&!keep.includes(row.id)) {await deleteRow('water_recs',row.id);deleted++;}
-  return {success:true,created:keep.length,createdIds:keep,deleted,failed:0,total:records.length};
+  return {success:true,created:keep.length,createdIds:keep,deleted,failed:0,total:records.length,...(Object.keys(pivotLocks).length?{pivotLocks}:{})};
  });
  return NextResponse.json(result);
 });

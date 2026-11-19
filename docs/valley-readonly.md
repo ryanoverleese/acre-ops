@@ -98,3 +98,28 @@ and Removal (4) browser checks also pass. The full automated suite passes
 
 The release also updates Next.js from 16.4.0 to 16.4.2 for its published security
 fixes. No CropX, removal, billing, or recommendation-save behavior is changed.
+
+## Locked pivot position on water recs (branch `rec-pivot-lockin`)
+
+Ryan reports that Steve Sveum (Valley) approved by email, week of November 16,
+2026, saving the arm position and on/off at the moment a rec is written, shown
+only to that grower. Confirm against that email before applying the migration.
+
+- Staff Water Recs, Full Report: under each field's rec box, **Lock pivot
+  position** reads the field's linked pivot(s) once on the server (GET-only
+  status, not the 5-minute badge cache) and shows the icon that will be saved.
+  It refuses old, unknown-age, lateral, no-angle or failed readings, and a
+  partial multi-pivot failure. Re-lock is allowed until the rec is saved.
+- The lock travels as a server-signed token (derived from `AUTH_SECRET`, bound
+  to the field season and report date, 12-hour limit) and is stored only when
+  that rec is saved through `/api/water-recs/bulk`. After that it is fixed:
+  later saves keep the first snapshot and the table blocks UPDATE.
+- Stored per pivot: rec id, pivot serial (link), arm angle, on/off, lock time.
+  Nothing else from Valley. Table `public.water_rec_pivot_snapshots`, migration
+  `supabase/migrations/20261119140000_water_rec_pivot_snapshots.sql` (not
+  applied yet). Until it is applied, recs save normally and no icons show.
+- Grower field page shows the saved icon beside each rec that has one (arm
+  blue when on, gray when off, green probe dot), with the note "Pivot position
+  at time of recommendation." Growers read only
+  `public.grower_water_rec_pivot_snapshots` under their own farm scope. The
+  grower app makes no live Valley calls.

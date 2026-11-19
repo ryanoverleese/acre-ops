@@ -4,6 +4,7 @@ import { buildOperationMap, buildBillingToOperationMaps } from '@/lib/data-mappi
 import { effectiveFieldAcresOrZero, loadBoundaryAcresByFieldId } from '@/lib/field-acres';
 import WaterRecsClient from './WaterRecsClient';
 import { valleyEnabled } from '@/lib/valley/client';
+import { loadRecPivotSnapshots } from '@/lib/valley/pivot-lock';
 
 import { staffMetadata } from '@/lib/site-metadata';
 
@@ -46,7 +47,7 @@ export default async function WaterRecsPage() {
     // notes), so they read uncached — tag revalidation doesn't reliably purge
     // Netlify's cache, and Ryan must see his own saves on return. The other
     // tables aren't edited here and stay cached for speed.
-    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, selectOptions, boundaryAcres] = await Promise.all([
+    const [operations, rawFields, fieldSeasons, contacts, waterRecs, probeAssignments, selectOptions, boundaryAcres, pivotSnapshots] = await Promise.all([
       getCachedRows<Operation>('operations', undefined, 600),
       getCachedRows<Field>('fields', undefined, 120),
       getRows<FieldSeason>('field_seasons'),
@@ -55,6 +56,9 @@ export default async function WaterRecsPage() {
       getCachedRows<ProbeAssignment>('probe_assignments', undefined, 120),
       getCachedAllSelectOptions(['water_recs']),
       loadBoundaryAcresByFieldId(),
+      // Locked pivot positions saved with recs. Empty (never an error) when
+      // the snapshot migration has not been applied yet.
+      loadRecPivotSnapshots(),
     ]);
 
     // Get water day options from Baserow single_select field
@@ -167,6 +171,7 @@ export default async function WaterRecsPage() {
         fsToFieldName={Object.fromEntries(fsToFieldName)}
         waterDayOptions={waterDayOptions}
         valleyEnabled={valleyEnabled()}
+        pivotSnapshots={pivotSnapshots}
       />
     );
   } catch (error) {
