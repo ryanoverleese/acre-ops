@@ -17,6 +17,7 @@ import { probeHasPin, type ProbeRowData } from '@/components/fields/ProbeRows';
 import { formatElevationStrip, type ElevRange } from '@/lib/terrain/color-scale';
 import type { ElevPoint } from '@/lib/terrain/sample-elev';
 import { bufferCollectionToFieldFraction } from '@/lib/terrain/field-buffer';
+import { lockPageScroll } from '@/lib/terrain/elev-pin-gesture';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -161,6 +162,8 @@ export default function FieldMapBlock({
   const [showSoils, setShowSoils] = useState(false);
   const [elevMenuOpen, setElevMenuOpen] = useState(false);
   const [elevPin, setElevPin] = useState<ElevPoint | null>(null);
+  const [elevPinOn, setElevPinOn] = useState(false);
+  const elevOptionsRef = useRef<HTMLDivElement | null>(null);
   const [showOutside, setShowOutside] = useState(false);
   const [samplerGen, setSamplerGen] = useState(0);
   const samplerRef = useRef<ElevationSampler | null>(null);
@@ -213,6 +216,15 @@ export default function FieldMapBlock({
   useEffect(() => {
     if (expanded) setElevMenuOpen(false);
   }, [expanded]);
+
+  // While the elevation pin is on, lock page scroll (iOS Safari included)
+  // so a one-finger drag cannot rubber-band the page. Scroll the strip into
+  // view first so the toggle stays reachable, then unlock on toggle-off.
+  useEffect(() => {
+    if (!elevPinOn) return;
+    elevOptionsRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    return lockPageScroll();
+  }, [elevPinOn]);
 
   const chooseElevation = (next: TerrainMode) => {
     setSourceOpen(false);
@@ -332,7 +344,7 @@ export default function FieldMapBlock({
             />
             <ElevationPins
               samplerRef={samplerRef}
-              enabled={hasOutline}
+              enabled={elevPinOn}
               pin={elevPin}
               setPin={setElevPin}
               generation={samplerGen}
@@ -383,15 +395,38 @@ export default function FieldMapBlock({
         {phrase ? <span className="map-legend-range">{phrase}</span> : null}
         {mode !== 'off' && lidar ? <span className="map-legend-source">{lidar}</span> : null}
       </div>
-      {mode !== 'off' && hasOutline ? (
-        <label className="map-elev-buffer-strip">
-          <input
-            type="checkbox"
-            checked={showOutside}
-            onChange={(event) => setShowOutside(event.target.checked)}
-          />
-          Show outside field
-        </label>
+      {hasOutline ? (
+        <div className="map-elev-buffer-strip" ref={elevOptionsRef}>
+          <div className="map-elev-switch">
+            <span id="elev-pin-switch-label">Elevation pin</span>
+            <button
+              type="button"
+              className="map-ios-switch"
+              role="switch"
+              aria-checked={elevPinOn}
+              aria-labelledby="elev-pin-switch-label"
+              onClick={() => {
+                setElevPinOn((on) => {
+                  if (on) setElevPin(null);
+                  return !on;
+                });
+              }}
+            />
+          </div>
+          {mode !== 'off' ? (
+            <div className="map-elev-switch">
+              <span id="elev-outside-switch-label">Show outside field</span>
+              <button
+                type="button"
+                className="map-ios-switch"
+                role="switch"
+                aria-checked={showOutside}
+                aria-labelledby="elev-outside-switch-label"
+                onClick={() => setShowOutside((on) => !on)}
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
       {showSoils && hasOutline ? (
         <div className="map-soils-legend" aria-live="polite">

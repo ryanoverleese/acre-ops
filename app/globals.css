@@ -12211,7 +12211,8 @@ a.grower-list-row:hover .grower-list-primary {
 .map-elev-buffer-strip {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 20px;
   min-height: 44px;
   padding: 0 12px;
   background: #fff;
@@ -12222,17 +12223,69 @@ a.grower-list-row:hover .grower-list-primary {
   font-size: 12px;
   font-weight: 500;
   color: #1A1A1A;
-  cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
 }
-.map-elev-buffer-strip input {
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: #1F402A;
+.map-elev-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
   flex: 0 0 auto;
 }
+.map-ios-switch {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  width: 40px;
+  height: 24px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: #D8D5CE;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.map-ios-switch[aria-checked="true"] {
+  background: #1F402A;
+}
+.map-ios-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease;
+}
+.map-ios-switch[aria-checked="true"]::after {
+  transform: translateX(16px);
+}
+.map-ios-switch:focus-visible {
+  outline: 2px solid #1F402A;
+  outline-offset: 2px;
+}
+html.elev-pin-scroll-lock,
+html.elev-pin-scroll-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+html.elev-pin-scroll-lock body {
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+}
+/* Do not set touch-action: none on the map or html/body — that blocks
+   Leaflet two-finger pan and pinch. Page scroll is locked via overflow
+   and position:fixed only. The pin chip itself uses touch-action: none. */
 .field-map-frame .map-legend:has(+ .map-elev-pins-strip),
 .field-map-frame .map-legend:has(+ .map-elev-buffer-strip) {
   border-radius: 0;
@@ -12268,19 +12321,36 @@ a.grower-list-row:hover .grower-list-primary {
   outline: 2px solid #1F402A;
   outline-offset: 2px;
 }
+.elev-pin.leaflet-div-icon,
 .elev-pin {
-  background: transparent;
-  border: 0;
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  border: 0 !important;
 }
 .elev-pin-hit {
   display: flex;
   align-items: center;
-  gap: 6px;
   height: 44px;
-  padding-right: 4px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.elev-pin-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 2px 0 5px;
+  border: 1px solid #D8D5CE;
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+.elev-pin.is-dragging .elev-pin-chip {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
 }
 .elev-pin-dot {
   flex: 0 0 auto;
@@ -12298,42 +12368,50 @@ a.grower-list-row:hover .grower-list-primary {
 }
 .elev-pin-label {
   display: inline-block;
-  padding: 2px 6px;
-  border-radius: 3px;
-  background: #fff;
-  border: 1px solid #D8D5CE;
+  padding: 0 1px 0 0;
+  border: 0;
+  background: transparent;
   color: #1A1A1A;
   font-family: inherit;
   font-size: 11px;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1;
   white-space: nowrap;
   pointer-events: none;
 }
 .elev-pin-remove {
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  margin: 0;
+  position: relative;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 0 2px 0 0;
   padding: 0;
   border: 0;
-  border-radius: 3px;
+  border-radius: 50%;
   background: transparent;
   color: #1A1A1A;
   font-family: inherit;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 500;
-  line-height: 44px;
+  line-height: 16px;
   text-align: center;
   cursor: pointer;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
+.elev-pin-remove::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  transform: translate(-50%, -50%);
+}
 .leaflet-container.is-elev-pin-drag,
 .leaflet-container.is-elev-pin-drag .elev-pin-hit {
   cursor: grabbing;
-  touch-action: none;
 }
 .field-pin-icon { background: transparent; border: 0; }
 .field-pin-hit {
