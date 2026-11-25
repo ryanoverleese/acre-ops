@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import * as esriLeaflet from 'esri-leaflet';
@@ -72,15 +72,28 @@ function clipPathForBoundaries(map: L.Map, data: FieldBoundaryCollection | null 
   return `path(evenodd, "${parts.join('')}")`;
 }
 
+export type ElevationSampler = {
+  sample(lat: number, lng: number): number | null;
+};
+
 interface ElevationOverlayProps {
   mode?: TerrainMode;
   /** Legacy checkbox — maps to contours when true. */
   show?: boolean;
+  /** Live point samples from the same LERC tiles the map paints, in meters. */
+  samplerRef?: MutableRefObject<ElevationSampler | null>;
+  onSamplerChange?: () => void;
   /**
    * Field boundary polygons. Terrain is clipped to these outlines.
    * With no clip geometry, terrain stays off — we only want LiDAR inside fields.
    */
   clipTo?: FieldBoundaryCollection | null;
+  /**
+   * Rings used for the blue→red stretch. Defaults to clipTo.
+   * Pass the field outline when clipTo is a "show outside field" buffer so
+   * the legend range does not shift.
+   */
+  scaleTo?: FieldBoundaryCollection | null;
   /**
    * Field-wide color scale in meters, the same range the tiles are painted with.
    * Null when terrain is off. Display only.
@@ -131,7 +144,7 @@ function boundsForClip(data: FieldBoundaryCollection | null | undefined): L.LatL
  * Color modes use CutSheetRX's blue→red ramp on client-decoded DEM tiles.
  * One elevation min/max is taken from the field boundary and applied to every tile.
  */
-export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onFieldRelief }: ElevationOverlayProps) {
+export default function ElevationOverlay({ mode, show, clipTo, scaleTo, onFieldRange, onFieldRelief, samplerRef, onSamplerChange }: ElevationOverlayProps) {
   const map = useMap();
   const elevRef = useRef<ElevLayer | null>(null);
   const contourRef = useRef<ContourLayer | null>(null);
@@ -139,6 +152,18 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onF
   const onFieldReliefRef = useRef(onFieldRelief);
   onFieldRangeRef.current = onFieldRange;
   onFieldReliefRef.current = onFieldRelief;
+  const samplerRefBox = useRef(samplerRef);
+  const onSamplerChangeRef = useRef(onSamplerChange);
+  samplerRefBox.current = samplerRef;
+  onSamplerChangeRef.current = onSamplerChange;
+
+  const bindSampler = (layer: ElevLayer | null) => {
+    const ref = samplerRefBox.current;
+    if (ref) ref.current = layer
+      ? { sample: (lat, lng) => layer.sampleElevation(lat, lng) }
+      : null;
+    onSamplerChangeRef.current?.();
+  };
 
   const resolved: TerrainMode =
     mode ?? (show ? 'contours' : 'off');
@@ -177,6 +202,7 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onF
     if (resolved === 'off' || !hasClip) {
       clearElev();
       clearContour();
+      bindSampler(null);
       const pane = map.getPane(ELEVATION_PANE);
       if (pane) pane.style.clipPath = '';
       onFieldRangeRef.current?.(null);
@@ -202,8 +228,9 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onF
     // every tile. A per-tile min/max painted the straight color bands.
     clearContour();
     const elevMode = resolved as ElevRenderMode;
-    const fieldBounds = boundsForClip(clipTo);
-    const fieldRings = ringsForClip(clipTo);
+    const scaleSource = scaleTo ?? clipTo;
+    const fieldBounds = boundsForClip(scaleSource);
+    const fieldRings = ringsForClip(scaleSource);
     if (!elevRef.current) {
       elevRef.current = createElevGridLayer({
         mode: elevMode,
@@ -211,7 +238,10 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onF
         pane: ELEVATION_PANE,
         fieldBounds,
         fieldRings,
-        onFieldScale: (range) => onFieldRangeRef.current?.(range),
+        onFieldScale: (range) => {
+          onFieldRangeRef.current?.(range);
+          onSamplerChangeRef.current?.();
+        },
         onFieldRelief: (meters) => onFieldReliefRef.current?.(meters),
       });
       elevRef.current.addTo(map);
@@ -220,11 +250,12 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onF
       elevRef.current.setOpacity(MODE_OPACITY[elevMode]);
       elevRef.current.setFieldBounds(fieldBounds, fieldRings);
     }
+    bindSampler(elevRef.current);
 
     return () => {
       // Keep layer across mode switches between color/shade; full unmount clears below
     };
-  }, [resolved, map, hasClip, clipTo]);
+  }, [resolved, map, hasClip, clipTo, scaleTo]);
 
   // Tear down elev grid when leaving color modes or unmounting
   useEffect(() => {
@@ -237,6 +268,7 @@ export default function ElevationOverlay({ mode, show, clipTo, onFieldRange, onF
         map.removeLayer(contourRef.current);
         contourRef.current = null;
       }
+      bindSampler(null);
     };
   }, [map]);
 

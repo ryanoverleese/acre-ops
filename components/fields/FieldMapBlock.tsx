@@ -7,13 +7,19 @@ import 'leaflet/dist/leaflet.css';
 import BoundaryLayer from '@/components/BoundaryLayer';
 import CanalsOverlay, { CANALS_SOURCE_LABEL } from '@/components/CanalsOverlay';
 import CooperativeGestures from '@/components/fields/CooperativeGestures';
-import ElevationOverlay from '@/components/ElevationOverlay';
+import ElevationOverlay, { type ElevationSampler } from '@/components/ElevationOverlay';
+import ElevationPins, { type ElevPinPair } from '@/components/fields/ElevationPins';
 import SoilsOverlay, { useSoilMap } from '@/components/SoilsOverlay';
 import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import { probeHasPin, type ProbeRowData } from '@/components/fields/ProbeRows';
 import { formatElevationStrip, type ElevRange } from '@/lib/terrain/color-scale';
+import { formatPinStrip } from '@/lib/terrain/sample-elev';
+import {
+  bufferCollection,
+  OUTSIDE_FIELD_BUFFER_M,
+} from '@/lib/terrain/field-buffer';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -157,6 +163,10 @@ export default function FieldMapBlock({
   const [showCanals, setShowCanals] = useState(false);
   const [showSoils, setShowSoils] = useState(false);
   const [elevMenuOpen, setElevMenuOpen] = useState(false);
+  const [elevPins, setElevPins] = useState<ElevPinPair>({ a: null, b: null });
+  const [showOutside, setShowOutside] = useState(false);
+  const [samplerGen, setSamplerGen] = useState(0);
+  const samplerRef = useRef<ElevationSampler | null>(null);
   const [elevMenuLeft, setElevMenuLeft] = useState(0);
   const elevBtnRef = useRef<HTMLButtonElement | null>(null);
   const elevMenuRef = useRef<HTMLDivElement | null>(null);
@@ -164,6 +174,12 @@ export default function FieldMapBlock({
   const onMap = useCallback((map: L.Map) => { mapRef.current = map; }, []);
   const { rootRef, expanded, cssFallback, toggle } = useMapFullscreen();
   const hasOutline = boundaries.features.length > 0;
+  const paintBoundaries = useMemo(
+    () => (showOutside && hasOutline
+      ? bufferCollection(boundaries, OUTSIDE_FIELD_BUFFER_M)
+      : boundaries),
+    [boundaries, hasOutline, showOutside],
+  );
   const soils = useSoilMap(boundaries, showSoils && hasOutline);
   const layerNotes = [
     showSoils && soils.status === 'ready' ? SOIL_SOURCE_LABELS[soils.map.source] : '',
@@ -308,11 +324,23 @@ export default function FieldMapBlock({
         >
           <TileLayer url={SAT_URL} attribution={GOOGLE_ATTR} maxZoom={20} />
           {hasOutline && (
+            <>
             <ElevationOverlay
               mode={mode}
-              clipTo={boundaries}
+              clipTo={paintBoundaries}
+              scaleTo={boundaries}
               onFieldRange={setRange}
+              samplerRef={samplerRef}
+              onSamplerChange={() => setSamplerGen((n) => n + 1)}
             />
+            <ElevationPins
+              samplerRef={samplerRef}
+              enabled={mode !== 'off'}
+              pins={elevPins}
+              setPins={setElevPins}
+              generation={samplerGen}
+            />
+            </>
           )}
           <BoundaryLayer data={boundaries} selectedId={fieldId} />
           {showSoils ? <SoilsOverlay state={soils} boundaries={boundaries} /> : null}
@@ -331,7 +359,7 @@ export default function FieldMapBlock({
               }}
             />
           ))}
-          <FitBoundary boundaries={boundaries} expanded={expanded} />
+          <FitBoundary boundaries={paintBoundaries} expanded={expanded} />
           <FollowSelection selectedId={selectedId} probes={probes} />
           <BindMap onMap={onMap} />
           <MapSizeSync expanded={expanded} />
@@ -358,6 +386,24 @@ export default function FieldMapBlock({
         {phrase ? <span className="map-legend-range">{phrase}</span> : null}
         {mode !== 'off' && lidar ? <span className="map-legend-source">{lidar}</span> : null}
       </div>
+      {mode !== 'off' && hasOutline ? (
+        <label className="map-elev-buffer-strip">
+          <input
+            type="checkbox"
+            checked={showOutside}
+            onChange={(event) => setShowOutside(event.target.checked)}
+          />
+          Show outside field
+        </label>
+      ) : null}
+      {elevPins.a ? (
+        <div className="map-elev-pins-strip">
+          <span className="map-elev-pins-text">{formatPinStrip(elevPins.a, elevPins.b)}</span>
+          <button type="button" className="map-elev-pins-clear" onClick={() => setElevPins({ a: null, b: null })}>
+            Clear
+          </button>
+        </div>
+      ) : null}
       {showSoils && hasOutline ? (
         <div className="map-soils-legend" aria-live="polite">
           {soils.status === 'loading' ? <p className="map-soils-status">Loading soils…</p> : null}

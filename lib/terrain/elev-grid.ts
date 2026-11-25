@@ -15,6 +15,7 @@ import {
   elevationsInsideField,
   type LngLatRing,
 } from './elevation-request';
+import { sampleElevFromGrid, type ElevGridSample } from './sample-elev';
 import {
   ELEV_GRID,
   TILE,
@@ -83,6 +84,7 @@ export function ensureLerc() {
 type ElevTile = HTMLCanvasElement & {
   _elev?: Float32Array;
   _cell?: number;
+  _bbox?: [number, number, number, number];
   _z?: number;
   _tileY?: number;
   _dead?: boolean;
@@ -125,6 +127,8 @@ export type ElevGridLayer = L.GridLayer & {
   setFieldBounds: (bounds: L.LatLngBounds | null, rings?: LngLatRing[] | null) => void;
   setColorOptions: (color: ElevColorOptions) => void;
   rerender: () => void;
+  /** Bare-earth elevation in meters (NAVD 88), or null when no sample is loaded. */
+  sampleElevation: (lat: number, lng: number) => number | null;
 };
 
 function renderCanvas(
@@ -170,6 +174,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
     sampleValues: null as number[] | null,
     spreadMap: null as SpreadMap | null,
     activeScale: null as Range | null,
+    fieldGrid: null as ElevGridSample | null,
   };
 
   const applyColor = () => {
@@ -265,6 +270,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
           const sample = rangeFromSamples(values);
           const display = fieldElevationBounds(values);
           if (!sample || !display) return;
+          state.fieldGrid = { elev, width: FIELD_SAMPLE, height: FIELD_SAMPLE, bbox };
           // One scale for every tile at every zoom. Tile min/max is never used.
           // The legend uses the unpadded field min/max, not a tile extent.
           state.fieldScale = colorScaleForTile(null, sample);
@@ -368,6 +374,7 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
       owned.add(tile);
       const bb = tileBBox(coords);
       tile._cell = bb.cell;
+      tile._bbox = bb.bbox;
       const ac = typeof AbortController !== 'undefined' ? new AbortController() : null;
       tile._abort = ac;
 
@@ -443,6 +450,26 @@ export function createElevGridLayer(options: ElevGridOptions): ElevGridLayer {
     },
     rerender() {
       this._paintLoaded();
+    },
+    sampleElevation(lat: number, lng: number) {
+      let best: number | null = null;
+      let bestCell = Infinity;
+      for (const el of owned) {
+        if (el._dead || !el._elev || !el._bbox) continue;
+        const value = sampleElevFromGrid(
+          { elev: el._elev, width: N, height: N, bbox: el._bbox },
+          lat,
+          lng,
+        );
+        if (value == null) continue;
+        const cell = el._cell ?? Infinity;
+        if (cell <= bestCell) {
+          best = value;
+          bestCell = cell;
+        }
+      }
+      if (best != null) return best;
+      return state.fieldGrid ? sampleElevFromGrid(state.fieldGrid, lat, lng) : null;
     },
   });
 

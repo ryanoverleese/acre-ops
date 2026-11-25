@@ -55,15 +55,19 @@ export default function CooperativeGestures({ enabled }: { enabled: boolean }) {
     // two-finger pinch/move is Leaflet's touch zoom, which also pans.
     const touchFirst = prefersTouch();
     if (touchFirst) map.dragging.disable();
+    const pinDrag = () => container.classList.contains('is-elev-pin-drag');
     const onTouchStart = () => {
+      if (pinDrag()) return;
       if (map.dragging.enabled()) map.dragging.disable();
     };
     const onTouchMove = (event: TouchEvent) => {
+      if (pinDrag()) return;
       if (event.touches.length === 1) show('Use two fingers to move the map');
       else setHint(null);
     };
     // A real mouse brings click-drag panning back (hybrid laptops).
     const onPointerDown = (event: PointerEvent) => {
+      if (pinDrag()) return;
       if (event.pointerType === 'mouse' && !map.dragging.enabled()) map.dragging.enable();
     };
 
@@ -77,7 +81,9 @@ export default function CooperativeGestures({ enabled }: { enabled: boolean }) {
       container.removeEventListener('touchmove', onTouchMove, { capture: true });
       container.removeEventListener('pointerdown', onPointerDown, { capture: true });
       if (timer.current) clearTimeout(timer.current);
-      if (!map.dragging.enabled()) map.dragging.enable();
+      if (!map.dragging.enabled() && !container.classList.contains('is-elev-pin-drag')) {
+        map.dragging.enable();
+      }
     };
   }, [enabled, map]);
 
