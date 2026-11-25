@@ -8,18 +8,15 @@ import BoundaryLayer from '@/components/BoundaryLayer';
 import CanalsOverlay, { CANALS_SOURCE_LABEL } from '@/components/CanalsOverlay';
 import CooperativeGestures from '@/components/fields/CooperativeGestures';
 import ElevationOverlay, { type ElevationSampler } from '@/components/ElevationOverlay';
-import ElevationPins, { type ElevPinPair } from '@/components/fields/ElevationPins';
+import ElevationPins from '@/components/fields/ElevationPins';
 import SoilsOverlay, { useSoilMap } from '@/components/SoilsOverlay';
 import { MapSizeSync, useMapFullscreen } from '@/components/MapFullscreen';
 import { useLidarLabel } from '@/components/useLidarLabel';
 import type { FieldBoundaryCollection } from '@/components/useFieldBoundaries';
 import { probeHasPin, type ProbeRowData } from '@/components/fields/ProbeRows';
 import { formatElevationStrip, type ElevRange } from '@/lib/terrain/color-scale';
-import { formatPinStrip } from '@/lib/terrain/sample-elev';
-import {
-  bufferCollection,
-  OUTSIDE_FIELD_BUFFER_M,
-} from '@/lib/terrain/field-buffer';
+import type { ElevPoint } from '@/lib/terrain/sample-elev';
+import { bufferCollectionToFieldFraction } from '@/lib/terrain/field-buffer';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -163,7 +160,7 @@ export default function FieldMapBlock({
   const [showCanals, setShowCanals] = useState(false);
   const [showSoils, setShowSoils] = useState(false);
   const [elevMenuOpen, setElevMenuOpen] = useState(false);
-  const [elevPins, setElevPins] = useState<ElevPinPair>({ a: null, b: null });
+  const [elevPin, setElevPin] = useState<ElevPoint | null>(null);
   const [showOutside, setShowOutside] = useState(false);
   const [samplerGen, setSamplerGen] = useState(0);
   const samplerRef = useRef<ElevationSampler | null>(null);
@@ -176,7 +173,7 @@ export default function FieldMapBlock({
   const hasOutline = boundaries.features.length > 0;
   const paintBoundaries = useMemo(
     () => (showOutside && hasOutline
-      ? bufferCollection(boundaries, OUTSIDE_FIELD_BUFFER_M)
+      ? bufferCollectionToFieldFraction(boundaries)
       : boundaries),
     [boundaries, hasOutline, showOutside],
   );
@@ -335,9 +332,9 @@ export default function FieldMapBlock({
             />
             <ElevationPins
               samplerRef={samplerRef}
-              enabled={mode !== 'off'}
-              pins={elevPins}
-              setPins={setElevPins}
+              enabled={hasOutline}
+              pin={elevPin}
+              setPin={setElevPin}
               generation={samplerGen}
             />
             </>
@@ -395,14 +392,6 @@ export default function FieldMapBlock({
           />
           Show outside field
         </label>
-      ) : null}
-      {elevPins.a ? (
-        <div className="map-elev-pins-strip">
-          <span className="map-elev-pins-text">{formatPinStrip(elevPins.a, elevPins.b)}</span>
-          <button type="button" className="map-elev-pins-clear" onClick={() => setElevPins({ a: null, b: null })}>
-            Clear
-          </button>
-        </div>
       ) : null}
       {showSoils && hasOutline ? (
         <div className="map-soils-legend" aria-live="polite">

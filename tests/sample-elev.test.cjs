@@ -20,6 +20,13 @@ function gridAround(lat, lng, values) {
   };
 }
 
+function mercToLngLat(x, y) {
+  const R = 6378137;
+  const lng = (x / R) * (180 / Math.PI);
+  const lat = (Math.atan(Math.sinh(y / R)) * 180) / Math.PI;
+  return [lat, lng];
+}
+
 test('bilinear sample at pixel centers returns the stored meters', () => {
   const lat = 40.44;
   const lng = -99.37;
@@ -49,18 +56,10 @@ test('a point outside the raster, or no-data, returns null', () => {
   assert.equal(sample.sampleElevFromGrid(empty, 40.44, -99.37), null);
 });
 
-test('pin labels use tenths of a foot and the agreed difference phrase', () => {
+test('pin labels are tenths of a foot with no A/B prefix', () => {
   const meters = 710.594604492;
   assert.equal(sample.formatPointFeet(meters), `${(meters * scale.METERS_TO_FEET).toFixed(1)} ft`);
-  assert.equal(sample.formatPinDiff(100, 100 + 3.2 / scale.METERS_TO_FEET), 'B is 3.2 ft higher than A');
-  assert.equal(sample.formatPinDiff(100, 100 - 3.2 / scale.METERS_TO_FEET), 'B is 3.2 ft lower than A');
-  assert.equal(sample.formatPinDiff(100, 100), 'B is even with A');
-  const a = { lat: 40.44, lng: -99.37, meters: 710.594604492 };
-  const b = { lat: 40.441, lng: -99.37, meters: 709.5 };
-  const line = sample.formatPinStrip(a, b);
-  assert.match(line, /B is \d+\.\d ft lower than A · /);
-  assert.match(line, / ft$/);
-  assert.equal(sample.formatPinStrip(a, null), `A ${sample.formatPointFeet(a.meters)}`);
+  assert.equal(sample.formatPointFeet(677.4517822265625), '2222.6 ft');
 });
 
 test('haversine of a short north-south step is about 111 m per 0.001 deg', () => {
@@ -68,7 +67,7 @@ test('haversine of a short north-south step is about 111 m per 0.001 deg', () =>
   assert.ok(m > 110 && m < 113, m);
 });
 
-test('grower field map samples the client LERC grid and keeps the strip off the map', () => {
+test('grower field map uses one pin, samples the client LERC grid, and works on Satellite', () => {
   const map = fs.readFileSync(path.join(__dirname, '../components/fields/FieldMapBlock.tsx'), 'utf8');
   const pins = fs.readFileSync(path.join(__dirname, '../components/fields/ElevationPins.tsx'), 'utf8');
   const grid = fs.readFileSync(path.join(__dirname, '../lib/terrain/elev-grid.ts'), 'utf8');
@@ -76,65 +75,62 @@ test('grower field map samples the client LERC grid and keeps the strip off the 
   const gestures = fs.readFileSync(path.join(__dirname, '../components/fields/CooperativeGestures.tsx'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(map, /ElevationPins/);
-  assert.match(map, /map-elev-pins-strip/);
-  assert.match(map, /formatPinStrip/);
-  assert.match(map, /enabled=\{mode !== 'off'\}/);
+  assert.match(map, /enabled=\{hasOutline\}/);
+  assert.equal(map.includes('map-elev-pins-strip'), false);
+  assert.equal(map.includes('formatPinStrip'), false);
+  assert.equal(map.includes('B is'), false);
+  assert.equal(map.includes("enabled={mode !== 'off'}"), false);
   assert.equal(map.includes('epqs.nationalmap.gov'), false);
   assert.match(pins, /LONG_PRESS_MS = 450/);
   assert.match(pins, /is-elev-pin-drag/);
   assert.match(pins, /requestAnimationFrame/);
+  assert.match(pins, /formatPointFeet/);
+  assert.equal(pins.includes('A 2222') || pins.includes('${id}'), false);
+  assert.equal(pins.includes('B is'), false);
   assert.match(grid, /sampleElevation/);
   assert.match(grid, /sampleElevFromGrid/);
   assert.match(overlay, /samplerRef/);
+  assert.match(overlay, /resolved === 'off' \? 0/);
+  assert.match(overlay, /colorshade: 0\.9/);
+  assert.match(overlay, /shade: 0\.9/);
   assert.match(gestures, /is-elev-pin-drag/);
-  assert.match(css, /\.map-elev-pins-strip \{/);
   assert.match(css, /touch-action: none/);
 });
 
-function mercToLngLat(x, y) {
-  const R = 6378137;
-  const lng = (x / R) * (180 / Math.PI);
-  const lat = (Math.atan(Math.sinh(y / R)) * 180) / Math.PI;
-  return [lat, lng];
-}
-
-test('removing A promotes B; removing B leaves A; x on the label is a 44px target', () => {
-  const a = { lat: 40.44, lng: -99.37, meters: 710 };
-  const b = { lat: 40.441, lng: -99.37, meters: 709 };
-  assert.deepEqual(buffer.removeElevPin({ a, b }, 'A'), { a: b, b: null });
-  assert.deepEqual(buffer.removeElevPin({ a, b }, 'B'), { a, b: null });
-  assert.deepEqual(buffer.removeElevPin({ a, b: null }, 'A'), { a: null, b: null });
+test('the x on the label is a 44px target and a short tap removes the pin', () => {
   const pins = fs.readFileSync(path.join(__dirname, '../components/fields/ElevationPins.tsx'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(pins, /elev-pin-remove/);
-  assert.match(pins, /removeElevPin/);
+  assert.match(pins, /setPin\(null\)/);
   assert.match(css, /\.elev-pin-remove \{[^}]*width: 44px;[^}]*height: 44px;/);
 });
 
-test('outside-field buffer expands a square by 200 ft and the toggle sits under the legend', () => {
-  assert.equal(buffer.OUTSIDE_FIELD_BUFFER_FT, 200);
-  const meters = buffer.OUTSIDE_FIELD_BUFFER_M;
-  // 400 m square in mercator space around Holdrege
-  const sampleMod = sample;
+test('outside-field buffer is 25% of the longer bbox side and the toggle sits under the legend', () => {
+  assert.equal(buffer.OUTSIDE_FIELD_BUFFER_FRACTION, 0.25);
   const half = 200;
-  const [cx, cy] = sampleMod.lngLatToMercator(-99.37, 40.44);
+  const [cx, cy] = sample.lngLatToMercator(-99.37, 40.44);
   function ll(x, y) {
     const R = 6378137;
     return [(x / R) * (180 / Math.PI), (Math.atan(Math.sinh(y / R)) * 180) / Math.PI];
   }
-  // ring is lng,lat; CCW: SW, SE, NE, NW
   const sw = ll(cx - half, cy - half);
-  const se = ll(cx + half, cy - half);
+  const se2 = ll(cx + half, cy - half);
   const ne = ll(cx + half, cy + half);
   const nw = ll(cx - half, cy + half);
-  const ring = [sw, se, ne, nw, sw];
+  const ring = [sw, se2, ne, nw, sw];
+  const collection = {
+    type: 'FeatureCollection',
+    features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] } }],
+  };
+  const side = buffer.fieldLongerSideMeters(collection);
+  assert.ok(Math.abs(side - 400) < 1, side);
+  const meters = buffer.bufferMetersForCollection(collection);
+  assert.ok(Math.abs(meters - 100) < 0.5, meters);
   const out = buffer.bufferRing(ring, meters);
   assert.ok(out.length >= 4);
-  // mid-south edge should move south by about the buffer
-  // find the south-most point of the buffer (min mercator y)
   let minY = Infinity;
   for (const [lng, lat] of out) {
-    const [, y] = sampleMod.lngLatToMercator(lng, lat);
+    const [, y] = sample.lngLatToMercator(lng, lat);
     if (y < minY) minY = y;
   }
   const moved = (cy - half) - minY;
@@ -143,8 +139,8 @@ test('outside-field buffer expands a square by 200 ft and the toggle sits under 
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(map, /Show outside field/);
   assert.match(map, /map-elev-buffer-strip/);
+  assert.match(map, /bufferCollectionToFieldFraction/);
   assert.match(map, /scaleTo=\{boundaries\}/);
-  // Toggle is declared immediately after the elevation legend, not in map-controls
   const legendEnd = map.indexOf('map-legend-source');
   const toggleAt = map.indexOf('map-elev-buffer-strip');
   const controlsAt = map.indexOf('className="map-controls"');

@@ -1,60 +1,48 @@
 'use client';
 
 import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { Marker, Polyline, useMap } from 'react-leaflet';
+import { Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { ElevationSampler } from '@/components/ElevationOverlay';
-import { removeElevPin } from '@/lib/terrain/field-buffer';
 import { formatPointFeet, type ElevPoint } from '@/lib/terrain/sample-elev';
-
-export type ElevPinPair = { a: ElevPoint | null; b: ElevPoint | null };
 
 const LONG_PRESS_MS = 450;
 const SLOP_PX = 10;
 const DRAG_CLASS = 'is-elev-pin-drag';
 
-function pinIcon(id: 'A' | 'B', meters: number | null, dragging: boolean) {
-  const elev = meters != null ? formatPointFeet(meters) : '…';
-  const label = elev ? `${id} ${elev}` : id;
+function pinIcon(meters: number | null, dragging: boolean) {
+  const label = meters != null ? formatPointFeet(meters) : '…';
   const safe = label.replace(/[<>&"]/g, '');
   return L.divIcon({
     className: `elev-pin${dragging ? ' is-dragging' : ''}`,
-    html: `<div class="elev-pin-hit" data-elev-pin="${id}"><span class="elev-pin-dot"></span><span class="elev-pin-label">${safe}</span><span class="elev-pin-remove" aria-label="Remove ${id}">×</span></div>`,
-    iconSize: [200, 44],
+    html: `<div class="elev-pin-hit" data-elev-pin="1"><span class="elev-pin-dot"></span><span class="elev-pin-label">${safe}</span><span class="elev-pin-remove" aria-label="Remove pin">×</span></div>`,
+    iconSize: [180, 44],
     iconAnchor: [10, 22],
   });
-}
-
-function placeNext(prev: ElevPinPair, next: ElevPoint): ElevPinPair {
-  if (!prev.a || (prev.a && prev.b)) return { a: next, b: null };
-  return { a: prev.a, b: next };
 }
 
 export default function ElevationPins({
   samplerRef,
   enabled,
-  pins,
-  setPins,
+  pin,
+  setPin,
   generation,
 }: {
   samplerRef: MutableRefObject<ElevationSampler | null>;
   enabled: boolean;
-  pins: ElevPinPair;
-  setPins: Dispatch<SetStateAction<ElevPinPair>>;
-  /** Bumps when the DEM sample becomes available so placed pins can refresh. */
+  pin: ElevPoint | null;
+  setPin: Dispatch<SetStateAction<ElevPoint | null>>;
+  /** Bumps when the DEM sample becomes available so a placed pin can refresh. */
   generation: number;
 }) {
   const map = useMap();
-  const pinsRef = useRef(pins);
-  pinsRef.current = pins;
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;
   const ignoreClick = useRef(0);
-  const draggingId = useRef<'A' | 'B' | null>(null);
-  const [activeDrag, setActiveDrag] = useState<'A' | 'B' | null>(null);
+  const [dragging, setDragging] = useState(false);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dragRaf = useRef<number | null>(null);
-  const pending = useRef<{ id: 'A' | 'B'; lat: number; lng: number } | null>(null);
+  const pending = useRef<{ lat: number; lng: number } | null>(null);
   const restoreDrag = useRef<boolean | null>(null);
 
   const sample = (lat: number, lng: number) => samplerRef.current?.sample(lat, lng) ?? null;
@@ -73,8 +61,7 @@ export default function ElevationPins({
       dragRaf.current = null;
     }
     pending.current = null;
-    draggingId.current = null;
-    setActiveDrag(null);
+    setDragging(false);
     map.getContainer().classList.remove(DRAG_CLASS);
     if (restoreDrag.current === true && !map.dragging.enabled()) map.dragging.enable();
     restoreDrag.current = null;
@@ -85,21 +72,17 @@ export default function ElevationPins({
     const next = pending.current;
     if (!next) return;
     const meters = sample(next.lat, next.lng);
-    setPins((prev) => {
-      const point: ElevPoint = { lat: next.lat, lng: next.lng, meters };
-      if (next.id === 'A') return { ...prev, a: point };
-      return { ...prev, b: point };
-    });
+    setPin({ lat: next.lat, lng: next.lng, meters });
   };
 
-  const movePin = (id: 'A' | 'B', lat: number, lng: number) => {
-    pending.current = { id, lat, lng };
+  const movePin = (lat: number, lng: number) => {
+    pending.current = { lat, lng };
     if (dragRaf.current == null) {
       dragRaf.current = requestAnimationFrame(applyPending);
     }
   };
 
-  // Map tap places A, then B, then starts over. A tap after a pin drag is ignored.
+  // A tap places the pin, or moves it if one is already down.
   useEffect(() => {
     const onClick = (event: L.LeafletMouseEvent) => {
       if (Date.now() < ignoreClick.current) return;
@@ -107,32 +90,26 @@ export default function ElevationPins({
       const target = event.originalEvent?.target as HTMLElement | null;
       if (target?.closest('.elev-pin, .field-pin-icon, .elev-pin-hit')) return;
       const { lat, lng } = event.latlng;
-      const next: ElevPoint = { lat, lng, meters: sample(lat, lng) };
-      setPins((prev) => placeNext(prev, next));
+      setPin({ lat, lng, meters: sample(lat, lng) });
     };
     map.on('click', onClick);
     return () => {
       map.off('click', onClick);
     };
-  }, [map, setPins]);
+  }, [map, setPin]);
 
-  // Refresh labels once the field DEM (or a finer tile) is in memory.
+  // Refresh the label once the field DEM (or a finer tile) is in memory.
   useEffect(() => {
     if (!generation) return;
-    setPins((prev) => {
-      const refresh = (pin: ElevPoint | null) => {
-        if (!pin) return pin;
-        const meters = sample(pin.lat, pin.lng);
-        if (meters == null || meters === pin.meters) return pin;
-        return { ...pin, meters };
-      };
-      const a = refresh(prev.a);
-      const b = refresh(prev.b);
-      return a === prev.a && b === prev.b ? prev : { a, b };
+    setPin((prev) => {
+      if (!prev) return prev;
+      const meters = sample(prev.lat, prev.lng);
+      if (meters == null || meters === prev.meters) return prev;
+      return { ...prev, meters };
     });
-  }, [generation, setPins]);
+  }, [generation, setPin]);
 
-  // Long-press a pin, then drag it. Map pan and page scroll stay off while the pin moves.
+  // Long-press the pin, then drag it. A short tap, or the × on the label, removes it.
   useEffect(() => {
     const container = map.getContainer();
 
@@ -146,7 +123,6 @@ export default function ElevationPins({
     const onDown = (event: PointerEvent) => {
       const hit = (event.target as HTMLElement | null)?.closest('[data-elev-pin]') as HTMLElement | null;
       if (!hit) return;
-      const id = hit.getAttribute('data-elev-pin') === 'B' ? 'B' : 'A';
       event.stopPropagation();
       if (event.pointerType !== 'mouse') event.preventDefault();
 
@@ -160,8 +136,7 @@ export default function ElevationPins({
       clearHold();
       holdTimer.current = setTimeout(() => {
         armed = true;
-        draggingId.current = id;
-        setActiveDrag(id);
+        setDragging(true);
       }, LONG_PRESS_MS);
 
       const onMove = (move: PointerEvent) => {
@@ -174,7 +149,7 @@ export default function ElevationPins({
         }
         move.preventDefault();
         const ll = pointerAt(move);
-        movePin(id, ll.lat, ll.lng);
+        movePin(ll.lat, ll.lng);
       };
 
       const onUp = (up: PointerEvent) => {
@@ -188,10 +163,9 @@ export default function ElevationPins({
         ignoreClick.current = Date.now() + 400;
         endPinDrag();
         if (tapped) {
-          setPins((prev) => removeElevPin(prev, id));
+          setPin(null);
           return;
         }
-        setPins((prev) => ({ ...prev }));
       };
 
       document.addEventListener('pointermove', onMove, { passive: false });
@@ -199,7 +173,6 @@ export default function ElevationPins({
       document.addEventListener('pointercancel', onUp);
     };
 
-    // Keep one-finger page scroll from stealing a press on the pin.
     const onTouchMove = (event: TouchEvent) => {
       if (!container.classList.contains(DRAG_CLASS)) return;
       event.preventDefault();
@@ -212,48 +185,22 @@ export default function ElevationPins({
       container.removeEventListener('touchmove', onTouchMove);
       endPinDrag();
     };
-  }, [map, setPins]);
+  }, [map, setPin]);
 
-  const a = pins.a;
-  const b = pins.b;
-  const line = a && b ? ([[a.lat, a.lng], [b.lat, b.lng]] as [number, number][]) : null;
+  if (!pin) return null;
 
   return (
-    <>
-      {line ? (
-        <Polyline
-          positions={line}
-          pathOptions={{ color: '#1A1A1A', weight: 1.25, opacity: 0.7, interactive: false }}
-        />
-      ) : null}
-      {a ? (
-        <Marker
-          position={[a.lat, a.lng]}
-          icon={pinIcon('A', a.meters, activeDrag === 'A')}
-          zIndexOffset={600}
-          interactive
-          eventHandlers={{
-            click: (event) => {
-              L.DomEvent.stop(event);
-              if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
-            },
-          }}
-        />
-      ) : null}
-      {b ? (
-        <Marker
-          position={[b.lat, b.lng]}
-          icon={pinIcon('B', b.meters, activeDrag === 'B')}
-          zIndexOffset={601}
-          interactive
-          eventHandlers={{
-            click: (event) => {
-              L.DomEvent.stop(event);
-              if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
-            },
-          }}
-        />
-      ) : null}
-    </>
+    <Marker
+      position={[pin.lat, pin.lng]}
+      icon={pinIcon(pin.meters, dragging)}
+      zIndexOffset={600}
+      interactive
+      eventHandlers={{
+        click: (event) => {
+          L.DomEvent.stop(event);
+          if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
+        },
+      }}
+    />
   );
 }

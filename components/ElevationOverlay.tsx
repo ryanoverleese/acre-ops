@@ -31,11 +31,10 @@ const ELEVATION_PANE = 'acre-elevation';
 export const TERRAIN_RAMP_CSS = elevationCssGradient();
 
 const MODE_OPACITY: Record<Exclude<TerrainMode, 'off'>, number> = {
-  // Normal blend, clipped to the field. 0.65 keeps the aerial readable.
-  colorshade: 0.65,
-  color: 0.65,
-  // Mid-light hillshade over satellite, still clipped to the field.
-  shade: 0.75,
+  // Raised from 0.65 / 0.75 so Color and Gray pop more; 0.9 matches the staff map.
+  colorshade: 0.9,
+  color: 0.9,
+  shade: 0.9,
   contours: 0.8,
 };
 
@@ -199,7 +198,7 @@ export default function ElevationOverlay({ mode, show, clipTo, scaleTo, onFieldR
       }
     };
 
-    if (resolved === 'off' || !hasClip) {
+    if (!hasClip) {
       clearElev();
       clearContour();
       bindSampler(null);
@@ -210,6 +209,8 @@ export default function ElevationOverlay({ mode, show, clipTo, scaleTo, onFieldR
       return () => { clearElev(); clearContour(); };
     }
 
+    // Satellite (off) keeps the DEM loaded at opacity 0 so a placed pin
+    // still has live elevation values. The overlay itself is hidden.
     if (resolved === 'contours') {
       clearElev();
       clearContour();
@@ -227,14 +228,15 @@ export default function ElevationOverlay({ mode, show, clipTo, scaleTo, onFieldR
     // Client-colored DEM. Color uses one min/max from the field boundary on
     // every tile. A per-tile min/max painted the straight color bands.
     clearContour();
-    const elevMode = resolved as ElevRenderMode;
+    const elevMode: ElevRenderMode = resolved === 'off' ? 'colorshade' : resolved as ElevRenderMode;
+    const opacity = resolved === 'off' ? 0 : MODE_OPACITY[elevMode];
     const scaleSource = scaleTo ?? clipTo;
     const fieldBounds = boundsForClip(scaleSource);
     const fieldRings = ringsForClip(scaleSource);
     if (!elevRef.current) {
       elevRef.current = createElevGridLayer({
         mode: elevMode,
-        opacity: MODE_OPACITY[elevMode],
+        opacity,
         pane: ELEVATION_PANE,
         fieldBounds,
         fieldRings,
@@ -247,7 +249,7 @@ export default function ElevationOverlay({ mode, show, clipTo, scaleTo, onFieldR
       elevRef.current.addTo(map);
     } else {
       elevRef.current.setElevMode(elevMode);
-      elevRef.current.setOpacity(MODE_OPACITY[elevMode]);
+      elevRef.current.setOpacity(opacity);
       elevRef.current.setFieldBounds(fieldBounds, fieldRings);
     }
     bindSampler(elevRef.current);

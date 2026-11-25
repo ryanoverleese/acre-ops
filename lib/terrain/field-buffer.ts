@@ -1,11 +1,9 @@
 import type { LngLatRing } from './elevation-request';
 import { mercatorToLngLat } from './elevation-request';
-import { METERS_TO_FEET } from './color-scale';
 import { lngLatToMercator } from './sample-elev';
 
-/** Halo drawn when "Show outside field" is on. Not shown in the UI. */
-export const OUTSIDE_FIELD_BUFFER_FT = 200;
-export const OUTSIDE_FIELD_BUFFER_M = OUTSIDE_FIELD_BUFFER_FT / METERS_TO_FEET;
+/** Halo is about 25% of the field's longer bbox side. Not shown in the UI. */
+export const OUTSIDE_FIELD_BUFFER_FRACTION = 0.25;
 
 const MITER_LIMIT = 4;
 
@@ -109,14 +107,48 @@ export function bufferCollection<T extends BufferableCollection>(data: T, meters
   };
 }
 
-export type ElevPinId = 'A' | 'B';
-export type ElevPinPairLike<T> = { a: T | null; b: T | null };
-
-/** Drop one pin. If A is removed and B remains, B is relabeled as A. */
-export function removeElevPin<T>(prev: ElevPinPairLike<T>, id: ElevPinId): ElevPinPairLike<T> {
-  if (id === 'A') {
-    if (prev.b) return { a: prev.b, b: null };
-    return { a: null, b: null };
+function collectRings(coords: unknown, out: LngLatRing[]): void {
+  if (!Array.isArray(coords) || coords.length === 0) return;
+  if (isLngLatRing(coords)) {
+    out.push(coords);
+    return;
   }
-  return { a: prev.a, b: null };
+  for (const part of coords) collectRings(part, out);
+}
+
+/** Longer side of the field's Web Mercator bbox, in meters. */
+export function fieldLongerSideMeters(data: BufferableCollection): number {
+  const rings: LngLatRing[] = [];
+  for (const feature of data.features) collectRings(feature.geometry?.coordinates, rings);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const ring of rings) {
+    for (const [lng, lat] of ring) {
+      if (!Number.isFinite(lng) || !Number.isFinite(lat)) continue;
+      const [x, y] = lngLatToMercator(lng, lat);
+      if (x < minX) minX = x;
+      if (y < minY) minY = y;
+      if (x > maxX) maxX = x;
+      if (y > maxY) maxY = y;
+    }
+  }
+  if (!Number.isFinite(minX)) return 0;
+  return Math.max(maxX - minX, maxY - minY);
+}
+
+export function bufferMetersForCollection(
+  data: BufferableCollection,
+  fraction: number = OUTSIDE_FIELD_BUFFER_FRACTION,
+): number {
+  return fraction * fieldLongerSideMeters(data);
+}
+
+/** Expand the field outline by about 25% of its longer side. */
+export function bufferCollectionToFieldFraction<T extends BufferableCollection>(
+  data: T,
+  fraction: number = OUTSIDE_FIELD_BUFFER_FRACTION,
+): T {
+  return bufferCollection(data, bufferMetersForCollection(data, fraction));
 }

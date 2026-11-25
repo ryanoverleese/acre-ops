@@ -28,8 +28,8 @@ test('legend ramp is the CutSheetRX gradient, not a different scale', () => {
   const sheet = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(sheet, /\.map-seg button\.map-seg-sat \{ min-width: 88px; \}/);
   const overlay = fs.readFileSync(path.join(__dirname, '../components/ElevationOverlay.tsx'), 'utf8');
-  assert.match(overlay, /colorshade: 0\.65/);
-  assert.match(overlay, /shade: 0\.75/);
+  assert.match(overlay, /colorshade: 0\.9/);
+  assert.match(overlay, /shade: 0\.9/);
   assert.match(map, /padding: \[16, 16\]/);
   assert.equal(map.includes('viridis'), false);
 });
