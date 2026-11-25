@@ -8,7 +8,6 @@ import {
 import { fieldOperationFor, isAllOperationsSession } from '@/lib/grower-scope';
 import { findGrowerOperationForAdmin } from '@/lib/supabase/grower-admin';
 import { staffMetadata } from '@/lib/site-metadata';
-import { probeDotPosition } from '@/lib/valley/grower-icon';
 import FieldDetailClient from './FieldDetailClient';
 
 export const metadata = staffMetadata('grower');
@@ -62,15 +61,8 @@ export default async function GrowerFieldPage({
     );
   }
 
-  // Pivot icons come only from positions staff locked into each rec (loaded
-  // with the recs above under this farm's grower scope). No live Valley reads.
-  // The green dot marks this field's active probe inside the icon.
-  const probe = detail.probes.find((p) => p.lat != null && p.lng != null && !p.removalDate) ?? null;
-  const probeDot = probeDotPosition({ lat: detail.lat, lng: detail.lng }, probe, detail.acres);
-
   return (
     <FieldDetailClient
-      pivotProbeDot={probeDot}
       farmName={operationName}
       operationLabel={all ? operationName : null}
       field={{
@@ -83,7 +75,6 @@ export default async function GrowerFieldPage({
         season: detail.season,
         boundaries: detail.boundaries,
         probes: detail.probes,
-        waterRecs: detail.waterRecs,
       }}
     />
   );

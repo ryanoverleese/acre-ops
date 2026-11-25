@@ -58,8 +58,15 @@ test('grower pill tabs point at the existing routes and field detail stays on Fi
   assert.equal(nav.growerTabForPath('/grower/recommendations'), 'recs');
   assert.equal(nav.growerTabForPath('/grower/login'), null);
   const detail = fs.readFileSync(path.join(__dirname, '../app/grower/fields/[id]/FieldDetailClient.tsx'), 'utf8');
-  assert.match(detail, />Water recommendations</);
+  assert.equal(detail.includes('Water recommendations'), false);
+  assert.equal(detail.includes('waterRecs'), false);
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  const recsPage = fs.readFileSync(path.join(__dirname, '../app/grower/recommendations/page.tsx'), 'utf8');
+  const fieldMap = fs.readFileSync(path.join(__dirname, '../components/fields/FieldMapBlock.tsx'), 'utf8');
+  assert.match(recsPage, /listGrowerWaterRecsForSeason/);
+  assert.equal(fieldMap.includes('{!expanded && ('), false);
+  assert.match(css, /padding-top: env\(safe-area-inset-top/);
+  assert.equal(/is-map-expanded \.map-seg,[\s\S]*?display:\s*none/.test(css), false);
   assert.match(css, /\.grower-section-title \{[^}]*font-size: 12px;[^}]*font-weight: 500;[^}]*text-transform: none;[^}]*letter-spacing: 0;/);
   assert.match(css, /\.grower-pill \{[^}]*height: 52px/);
   assert.match(css, /box-shadow: 0 2px 8px rgba\(0, 0, 0, 0\.16\)/);

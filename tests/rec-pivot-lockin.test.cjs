@@ -154,17 +154,12 @@ test('save stores the lock with the rec; later saves keep it fixed; bad lock nev
   assert.equal((await f.db.query('SELECT count(*)::int AS n FROM water_rec_pivot_snapshots WHERE water_rec_id=$1', [data.createdIds[0]])).rows[0].n, 0);
 });
 
-test('grower field page: own farm sees locked icons per rec; other farm sees nothing', async () => {
+test('grower field page does not load recs; snapshots stay farm-scoped', async () => {
   const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
-  const full = detail.waterRecs.find(r => r.reportType === 'full' && r.date === DATE);
-  assert.deepEqual(full.pivots, [{ angle: 135, on: true }]);
-  const update = detail.waterRecs.find(r => r.reportType === 'update');
-  assert.equal(update.pivots, undefined);
+  assert.ok(detail);
+  assert.equal('waterRecs' in detail, false);
   assert.equal(await getGrowerFieldDetail(opB.id, fieldA.id, year), null);
-  // Farm B's own field has a rec without a lock: no icon data.
-  const other = await getGrowerFieldDetail(opB.id, fieldB.id, year);
-  assert.ok(other.waterRecs.length >= 1);
-  assert(other.waterRecs.every(r => r.pivots === undefined));
+  assert.ok(await getGrowerFieldDetail(opB.id, fieldB.id, year));
   // Farm B cannot read Farm A snapshots through the grower view.
   const { withGrowerOperation, growerQuery } = f.load('lib/supabase/grower.ts');
   const seen = await withGrowerOperation(opB.id, () => growerQuery('SELECT water_rec_id FROM public.grower_water_rec_pivot_snapshots'));
@@ -206,8 +201,8 @@ test('without the snapshot migration, recs still save and pages still load', asy
   assert.equal((await f.db.query('SELECT recommendation FROM water_recs WHERE id=$1', [data.createdIds[0]])).rows[0].recommendation, 'Still saves');
   assert.deepEqual(await lock.loadRecPivotSnapshots(), {});
   const detail = await getGrowerFieldDetail(opA.id, fieldA.id, year);
-  assert.ok(detail.waterRecs.length >= 1);
-  assert(detail.waterRecs.every(r => r.pivots === undefined));
+  assert.ok(detail);
+  assert.equal('waterRecs' in detail, false);
 });
 
 test('step 1 live icon: age label from device report time, and it reuses the cached badge reading', () => {

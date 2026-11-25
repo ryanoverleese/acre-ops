@@ -200,12 +200,14 @@ test('field detail includes boundary, probe pin, age, elevation, and soil', asyn
   assert.equal(detail.probes[1].lat, null);
   assert.equal(detail.probes[1].lng, null);
   assert.equal(detail.probes[1].ageSeasons, 1);
+  assert.equal('waterRecs' in detail, false);
+  const recs = (await listGrowerWaterRecsForSeason(opA.id, year)).filter((rec) => rec.fieldId === fieldA.id);
   assert.deepEqual(
-    detail.waterRecs.map((rec) => rec.reportType),
+    recs.map((rec) => rec.reportType),
     ['update', 'full'],
   );
-  assert.equal(detail.waterRecs[0].recommendation, 'Updated to Friday');
-  assert.match(detail.waterRecs[0].date, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(recs[0].recommendation, 'Updated to Friday');
+  assert.match(recs[0].date, /^\d{4}-\d{2}-\d{2}$/);
 
   const denied = await getGrowerFieldDetail(opB.id, fieldA.id, year);
   assert.equal(denied, null);

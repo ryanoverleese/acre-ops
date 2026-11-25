@@ -16,7 +16,7 @@
  */
 
 /** Lift the sample point above a finger pad so the tip is not covered. */
-export const TOUCH_DRAG_OFFSET_PX = 26;
+export const TOUCH_DRAG_OFFSET_PX = 36;
 
 export function pointWithTouchOffset(
   clientX: number,

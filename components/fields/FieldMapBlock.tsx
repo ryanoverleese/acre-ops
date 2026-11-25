@@ -227,67 +227,62 @@ export default function FieldMapBlock({
       className={`field-map-frame${expanded ? ' is-map-expanded' : ''}${cssFallback ? ' is-map-css-fullscreen' : ''}`}
     >
       <div className="map-controls">
-        {!expanded && (
-          <div className="map-seg" role="group" aria-label="Terrain">
+        <div className="map-seg" role="group" aria-label="Terrain">
+          <button
+            type="button"
+            className="map-seg-sat"
+            aria-pressed={mode === 'off'}
+            onClick={() => { setSourceOpen(false); setMode('off'); }}
+          >
+            Satellite
+          </button>
+          <button
+            ref={elevBtnRef}
+            type="button"
+            className="map-seg-elev"
+            aria-pressed={mode !== 'off'}
+            aria-haspopup="menu"
+            aria-expanded={elevMenuOpen}
+            onClick={() => {
+              const btn = elevBtnRef.current;
+              const frame = rootRef.current;
+              if (btn && frame) {
+                setElevMenuLeft(btn.getBoundingClientRect().left - frame.getBoundingClientRect().left);
+              }
+              setElevMenuOpen((open) => !open);
+            }}
+          >
+            {elevLabel}
+            <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+              <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+        <div className="map-seg map-seg-layers" role="group" aria-label="Layers">
+          <button
+            type="button"
+            className="map-seg-canals"
+            aria-pressed={showCanals}
+            onClick={() => setShowCanals((on) => !on)}
+          >
+            <span className="map-canals-swatch" aria-hidden="true" />
+            Canals
+          </button>
+          {hasOutline ? (
             <button
               type="button"
-              className="map-seg-sat"
-              aria-pressed={mode === 'off'}
-              onClick={() => { setSourceOpen(false); setMode('off'); }}
+              className="map-seg-soils"
+              aria-pressed={showSoils}
+              onClick={() => setShowSoils((on) => !on)}
             >
-              Satellite
+              <span className="map-soils-swatch" aria-hidden="true" />
+              Soils
             </button>
-            <button
-              ref={elevBtnRef}
-              type="button"
-              className="map-seg-elev"
-              aria-pressed={mode !== 'off'}
-              aria-haspopup="menu"
-              aria-expanded={elevMenuOpen}
-              onClick={() => {
-                const btn = elevBtnRef.current;
-                if (btn) setElevMenuLeft(btn.offsetLeft);
-                setElevMenuOpen((open) => !open);
-              }}
-            >
-              {elevLabel}
-              <svg width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
-                <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          </div>
-        )}
-        {!expanded && (
-          <div className="map-seg map-seg-layers" role="group" aria-label="Layers">
-            <button
-              type="button"
-              className="map-seg-canals"
-              aria-pressed={showCanals}
-              onClick={() => setShowCanals((on) => !on)}
-            >
-              <span className="map-canals-swatch" aria-hidden="true" />
-              Canals
-            </button>
-            {hasOutline ? (
-              <button
-                type="button"
-                className="map-seg-soils"
-                aria-pressed={showSoils}
-                onClick={() => setShowSoils((on) => !on)}
-              >
-                <span className="map-soils-swatch" aria-hidden="true" />
-                Soils
-              </button>
-            ) : null}
-          </div>
-        )}
+          ) : null}
+        </div>
         <div className="map-controls-right">
-          {!expanded && (
-            <>
-              <button type="button" className="map-zoom-btn" aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}>+</button>
-              <button type="button" className="map-zoom-btn" aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}>−</button>
-            </>
-          )}
+          <button type="button" className="map-zoom-btn" aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}>+</button>
+          <button type="button" className="map-zoom-btn" aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}>−</button>
           <button
             type="button"
             className="map-fs-btn"
@@ -299,7 +294,7 @@ export default function FieldMapBlock({
           </button>
         </div>
       </div>
-      {elevMenuOpen && !expanded ? (
+      {elevMenuOpen ? (
         <div ref={elevMenuRef} className="map-elev-menu" role="menu" aria-label="Elevation" style={{ left: elevMenuLeft }}>
           <button type="button" role="menuitemradio" aria-checked={mode === 'colorshade'} onClick={() => chooseElevation('colorshade')}>
             Color

@@ -185,7 +185,6 @@ export type GrowerFieldDetail = {
   season: number;
   boundaries: GrowerBoundaryCollection;
   probes: GrowerProbePin[];
-  waterRecs: GrowerWaterRec[];
 };
 
 function probePinLatLng(row: {
@@ -366,7 +365,9 @@ export async function listGrowerWaterRecsForSeason(
   });
 }
 
-/** One field for the signed-in farm: outline, probes, and season row. Null if not visible. */
+/** One field for the signed-in farm: outline, probes, and season row. Null if not visible.
+ *  Water recommendations live on the Recs tab, not this payload.
+ */
 export async function getGrowerFieldDetail(
   operationId: unknown,
   fieldId: unknown,
@@ -476,50 +477,6 @@ export async function getGrowerFieldDetail(
       });
     }
 
-    const recs = await growerQuery<{
-      id: unknown;
-      date: Date | string;
-      recommendation: string | null;
-      suggested_water_day: string | null;
-      report_type: string | null;
-    }>(
-      `SELECT id, date, recommendation, suggested_water_day, report_type
-         FROM public.grower_water_recs
-        WHERE field_season_id = $1
-          AND report_type IN ('full', 'update')
-        ORDER BY date DESC, id DESC`,
-      [positiveId(row.field_season_id)],
-    );
-
-    // Locked pivot positions saved with these recs (grower view, same field
-    // check as grower_water_recs). Savepoint: if the snapshot view is not in
-    // this database yet, the field page still loads with no icons.
-    const pivotsByRec = new Map<number, GrowerLockedPivot[]>();
-    if (recs.length) {
-      await growerQuery('SAVEPOINT grower_rec_pivots');
-      try {
-        const snaps = await growerQuery<{ water_rec_id: unknown; arm_angle: unknown; pivot_on: unknown }>(
-          `SELECT water_rec_id, arm_angle, pivot_on
-             FROM public.grower_water_rec_pivot_snapshots
-            WHERE water_rec_id = ANY($1::bigint[])
-            ORDER BY water_rec_id, pivot_index`,
-          [recs.map((rec) => positiveId(rec.id))],
-        );
-        await growerQuery('RELEASE SAVEPOINT grower_rec_pivots');
-        for (const snap of snaps) {
-          const angle = Number(snap.arm_angle);
-          if (!Number.isFinite(angle) || angle < 0 || angle >= 360) continue;
-          const id = positiveId(snap.water_rec_id);
-          const list = pivotsByRec.get(id) ?? [];
-          list.push({ angle, on: snap.pivot_on === true });
-          pivotsByRec.set(id, list);
-        }
-      } catch {
-        await growerQuery('ROLLBACK TO SAVEPOINT grower_rec_pivots').catch(() => {});
-        pivotsByRec.clear();
-      }
-    }
-
     return {
       id: positiveId(row.id),
       name: row.name,
@@ -531,18 +488,6 @@ export async function getGrowerFieldDetail(
       season: Number(row.season),
       boundaries,
       probes: probePins,
-      waterRecs: recs.flatMap((rec) => {
-        const date = growerDayString(rec.date);
-        if (!date) return [];
-        return [{
-          id: positiveId(rec.id),
-          date,
-          recommendation: rec.recommendation,
-          suggestedWaterDay: rec.suggested_water_day,
-          reportType: rec.report_type || 'full',
-          ...(pivotsByRec.has(positiveId(rec.id)) ? { pivots: pivotsByRec.get(positiveId(rec.id)) } : {}),
-        }];
-      }),
     };
   });
 }
