@@ -12,17 +12,29 @@ const DRAG_CLASS = 'is-elev-pin-drag';
 const MODE_CLASS = 'is-elev-pin-mode';
 
 const PIN_SVG =
-  '<svg class="elev-pin-mark" viewBox="0 0 24 36" width="22" height="32" aria-hidden="true">'
-  + '<path d="M12 1.2c5.4 0 9.8 4.4 9.8 9.8 0 7.3-9.8 23.4-9.8 23.4S2.2 18.3 2.2 11C2.2 5.6 6.6 1.2 12 1.2z" fill="#1A1A1A"/>'
-  + '<circle cx="12" cy="11.2" r="4.2" fill="#fff"/>'
+  '<svg class="elev-pin-mark" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">'
+  + '<g fill="none" stroke="#fff" stroke-width="2.75" stroke-linecap="square">'
+  + '<line x1="16" y1="1.5" x2="16" y2="11.5"/>'
+  + '<line x1="16" y1="20.5" x2="16" y2="30.5"/>'
+  + '<line x1="1.5" y1="16" x2="11.5" y2="16"/>'
+  + '<line x1="20.5" y1="16" x2="30.5" y2="16"/>'
+  + '</g>'
+  + '<g fill="none" stroke="#1A1A1A" stroke-width="1.25" stroke-linecap="square">'
+  + '<line x1="16" y1="1.5" x2="16" y2="11.5"/>'
+  + '<line x1="16" y1="20.5" x2="16" y2="30.5"/>'
+  + '<line x1="1.5" y1="16" x2="11.5" y2="16"/>'
+  + '<line x1="20.5" y1="16" x2="30.5" y2="16"/>'
+  + '</g>'
+  + '<circle cx="16" cy="16" r="2.1" fill="#fff"/>'
+  + '<circle cx="16" cy="16" r="1.15" fill="#1A1A1A"/>'
   + '</svg>';
 
 function pinIcon() {
   return L.divIcon({
     className: 'elev-pin',
     html: `<div class="elev-pin-hit" data-elev-pin="1">${PIN_SVG}</div>`,
-    iconSize: [44, 56],
-    iconAnchor: [22, 54],
+    iconSize: [44, 44],
+    iconAnchor: [22, 22],
   });
 }
 

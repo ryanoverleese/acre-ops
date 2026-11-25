@@ -103,16 +103,16 @@ test('grower field map uses one pin, samples the client LERC grid, and works on 
 });
 
 test('the pin is a precise marker and the elevation readout sits at the top of the map', () => {
-  assert.equal(gesture.TOUCH_DRAG_OFFSET_PX, 52);
+  assert.equal(gesture.TOUCH_DRAG_OFFSET_PX, 26);
   const touch = gesture.pointWithTouchOffset(100, 200, true);
   assert.equal(touch.x, 100);
-  assert.equal(touch.y, 148);
+  assert.equal(touch.y, 174);
   const mouse = gesture.pointWithTouchOffset(100, 200, false);
   assert.equal(mouse.y, 200);
   const pins = fs.readFileSync(path.join(__dirname, '../components/fields/ElevationPins.tsx'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
   assert.match(pins, /elev-pin-mark/);
-  assert.match(pins, /iconAnchor: \[22, 54\]/);
+  assert.match(pins, /iconAnchor: \[22, 22\]/);
   assert.match(pins, /map-elev-readout-remove/);
   assert.match(pins, /setPin\(null\)/);
   assert.match(pins, /createPortal/);

@@ -12310,16 +12310,16 @@ a.grower-list-row:hover .grower-list-primary {
 .elev-pin.leaflet-div-icon,
 .elev-pin {
   width: 44px !important;
-  height: 56px !important;
+  height: 44px !important;
   background: transparent !important;
   border: 0 !important;
 }
 .elev-pin-hit {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   width: 44px;
-  height: 56px;
+  height: 44px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -12327,13 +12327,9 @@ a.grower-list-row:hover .grower-list-primary {
 }
 .elev-pin-mark {
   display: block;
-  width: 22px;
+  width: 32px;
   height: 32px;
   pointer-events: none;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
-}
-.elev-pin.is-dragging .elev-pin-mark {
-  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
 }
 .map-elev-readout {
   position: absolute;
