@@ -12272,20 +12272,6 @@ a.grower-list-row:hover .grower-list-primary {
   outline: 2px solid #1F402A;
   outline-offset: 2px;
 }
-html.elev-pin-scroll-lock,
-html.elev-pin-scroll-lock body {
-  overflow: hidden !important;
-  overscroll-behavior: none;
-}
-html.elev-pin-scroll-lock body {
-  position: fixed;
-  left: 0;
-  right: 0;
-  width: 100%;
-}
-/* Do not set touch-action: none on the map or html/body — that blocks
-   Leaflet two-finger pan and pinch. Page scroll is locked via overflow
-   and position:fixed only. The pin chip itself uses touch-action: none. */
 .field-map-frame .map-legend:has(+ .map-elev-pins-strip),
 .field-map-frame .map-legend:has(+ .map-elev-buffer-strip) {
   border-radius: 0;
@@ -12323,84 +12309,80 @@ html.elev-pin-scroll-lock body {
 }
 .elev-pin.leaflet-div-icon,
 .elev-pin {
-  width: auto !important;
-  height: auto !important;
+  width: 44px !important;
+  height: 56px !important;
   background: transparent !important;
   border: 0 !important;
 }
 .elev-pin-hit {
   display: flex;
-  align-items: center;
-  height: 44px;
+  align-items: flex-end;
+  justify-content: center;
+  width: 44px;
+  height: 56px;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.elev-pin-chip {
+.elev-pin-mark {
+  display: block;
+  width: 22px;
+  height: 32px;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+.elev-pin.is-dragging .elev-pin-mark {
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
+}
+.map-elev-readout {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 1200;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  height: 26px;
-  padding: 0 2px 0 5px;
+  gap: 2px;
+  height: 28px;
+  padding: 0 2px 0 10px;
   border: 1px solid #D8D5CE;
-  border-radius: 13px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.22);
-}
-.elev-pin.is-dragging .elev-pin-chip {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.28);
-}
-.elev-pin-dot {
-  flex: 0 0 auto;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid #1A1A1A;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.9);
-}
-.elev-pin.is-dragging .elev-pin-dot {
-  width: 14px;
-  height: 14px;
-  border-width: 2.5px;
-}
-.elev-pin-label {
-  display: inline-block;
-  padding: 0 1px 0 0;
-  border: 0;
-  background: transparent;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
   color: #1A1A1A;
-  font-family: inherit;
-  font-size: 11px;
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  pointer-events: none;
+  transform: translateX(-50%);
+  user-select: none;
+  -webkit-user-select: none;
 }
-.elev-pin-remove {
+.map-elev-readout-value {
+  line-height: 1;
+}
+.map-elev-readout-remove {
   position: relative;
-  flex: 0 0 16px;
-  width: 16px;
-  height: 16px;
-  margin: 0 2px 0 0;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
   color: #1A1A1A;
   font-family: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 20px;
   text-align: center;
   cursor: pointer;
-  touch-action: none;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  user-select: none;
 }
-.elev-pin-remove::before {
+.map-elev-readout-remove::before {
   content: "";
   position: absolute;
   left: 50%;
@@ -12408,6 +12390,10 @@ html.elev-pin-scroll-lock body {
   width: 44px;
   height: 44px;
   transform: translate(-50%, -50%);
+}
+.map-elev-readout-remove:focus-visible {
+  outline: 2px solid #1F402A;
+  outline-offset: 2px;
 }
 .leaflet-container.is-elev-pin-drag,
 .leaflet-container.is-elev-pin-drag .elev-pin-hit {

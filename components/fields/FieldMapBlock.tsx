@@ -17,7 +17,6 @@ import { probeHasPin, type ProbeRowData } from '@/components/fields/ProbeRows';
 import { formatElevationStrip, type ElevRange } from '@/lib/terrain/color-scale';
 import type { ElevPoint } from '@/lib/terrain/sample-elev';
 import { bufferCollectionToFieldFraction } from '@/lib/terrain/field-buffer';
-import { lockPageScroll } from '@/lib/terrain/elev-pin-gesture';
 import { FIELD_MAP_ZOOM } from '@/lib/terrain/field-map-zoom';
 import { fieldInteriorPoint } from '@/lib/terrain/lidar-source';
 import type { TerrainMode } from '@/lib/terrain/modes';
@@ -163,7 +162,6 @@ export default function FieldMapBlock({
   const [elevMenuOpen, setElevMenuOpen] = useState(false);
   const [elevPin, setElevPin] = useState<ElevPoint | null>(null);
   const [elevPinOn, setElevPinOn] = useState(false);
-  const elevOptionsRef = useRef<HTMLDivElement | null>(null);
   const [showOutside, setShowOutside] = useState(false);
   const [samplerGen, setSamplerGen] = useState(0);
   const samplerRef = useRef<ElevationSampler | null>(null);
@@ -216,15 +214,6 @@ export default function FieldMapBlock({
   useEffect(() => {
     if (expanded) setElevMenuOpen(false);
   }, [expanded]);
-
-  // While the elevation pin is on, lock page scroll (iOS Safari included)
-  // so a one-finger drag cannot rubber-band the page. Scroll the strip into
-  // view first so the toggle stays reachable, then unlock on toggle-off.
-  useEffect(() => {
-    if (!elevPinOn) return;
-    elevOptionsRef.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    return lockPageScroll();
-  }, [elevPinOn]);
 
   const chooseElevation = (next: TerrainMode) => {
     setSourceOpen(false);
@@ -396,7 +385,7 @@ export default function FieldMapBlock({
         {mode !== 'off' && lidar ? <span className="map-legend-source">{lidar}</span> : null}
       </div>
       {hasOutline ? (
-        <div className="map-elev-buffer-strip" ref={elevOptionsRef}>
+        <div className="map-elev-buffer-strip">
           <div className="map-elev-switch">
             <span id="elev-pin-switch-label">Elevation pin</span>
             <button

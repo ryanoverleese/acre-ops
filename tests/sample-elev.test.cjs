@@ -82,12 +82,14 @@ test('grower field map uses one pin, samples the client LERC grid, and works on 
   assert.equal(map.includes('B is'), false);
   assert.equal(map.includes("enabled={mode !== 'off'}"), false);
   assert.equal(map.includes('epqs.nationalmap.gov'), false);
-  assert.match(pins, /LONG_PRESS_MS/);
   assert.match(pins, /is-elev-pin-drag/);
   assert.match(pins, /requestAnimationFrame/);
   assert.match(pins, /formatPointFeet/);
   assert.match(pins, /setLatLng/);
-  assert.match(pins, /paintPin/);
+  assert.match(pins, /map-elev-readout/);
+  assert.match(pins, /pointWithTouchOffset/);
+  assert.equal(pins.includes('LONG_PRESS_MS'), false);
+  assert.equal(pins.includes('elev-pin-chip'), false);
   assert.equal(pins.includes('A 2222') || pins.includes('${id}'), false);
   assert.equal(pins.includes('B is'), false);
   assert.match(grid, /sampleElevation/);
@@ -100,37 +102,44 @@ test('grower field map uses one pin, samples the client LERC grid, and works on 
   assert.match(css, /touch-action: none/);
 });
 
-test('a long-press hold is not cancelled by finger jitter, and a short tap removes the pin', () => {
-  const g = gesture.startElevPinGesture(0, 0);
-  assert.equal(gesture.LONG_PRESS_MS, 400);
-  assert.equal(gesture.shouldCancelHoldOnMove(g, 16, 16), false);
-  assert.equal(gesture.isElevPinTap(g, 3, 3), true);
-  assert.equal(gesture.isElevPinTap(g, 20, 0), false);
-  g.armed = true;
-  assert.equal(gesture.isElevPinTap(g, 0, 0), false);
+test('the pin is a precise marker and the elevation readout sits at the top of the map', () => {
+  assert.equal(gesture.TOUCH_DRAG_OFFSET_PX, 52);
+  const touch = gesture.pointWithTouchOffset(100, 200, true);
+  assert.equal(touch.x, 100);
+  assert.equal(touch.y, 148);
+  const mouse = gesture.pointWithTouchOffset(100, 200, false);
+  assert.equal(mouse.y, 200);
   const pins = fs.readFileSync(path.join(__dirname, '../components/fields/ElevationPins.tsx'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
-  assert.match(pins, /elev-pin-remove/);
-  assert.match(pins, /endPinDrag\(null\)/);
-  assert.match(pins, /elev-pin-chip/);
-  assert.match(css, /\.elev-pin-chip \{/);
-  assert.match(css, /\.elev-pin-remove::before \{[^}]*width: 44px;[^}]*height: 44px;/);
-  assert.equal(/\.elev-pin-remove \{[^}]*flex: 0 0 44px/.test(css), false);
+  assert.match(pins, /elev-pin-mark/);
+  assert.match(pins, /iconAnchor: \[22, 54\]/);
+  assert.match(pins, /map-elev-readout-remove/);
+  assert.match(pins, /setPin\(null\)/);
+  assert.match(pins, /createPortal/);
+  assert.equal(pins.includes('elev-pin-label'), false);
+  assert.match(css, /\.map-elev-readout \{/);
+  assert.match(css, /\.map-elev-readout \{[^}]*top: 8px;/);
+  assert.match(css, /\.map-elev-readout-remove::before \{[^}]*width: 44px;[^}]*height: 44px;/);
+  assert.equal(css.includes('elev-pin-chip'), false);
+  assert.equal(css.includes('elev-pin-scroll-lock'), false);
 });
 
 test('two-finger pan and pinch are never preventDefaulted or touch-action-blocked on the map', () => {
   const pins = fs.readFileSync(path.join(__dirname, '../components/fields/ElevationPins.tsx'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
+  const helper = fs.readFileSync(path.join(__dirname, '../lib/terrain/elev-pin-gesture.ts'), 'utf8');
   assert.match(pins, /touches\.length >= 2/);
+  assert.match(pins, /endSession\('revert'\)/);
   assert.match(pins, /addEventListener\('touchstart', onTouchStart, \{ passive: true \}/);
   assert.equal(pins.includes("container.addEventListener('touchmove'"), false);
-  assert.equal(/html\.elev-pin-scroll-lock[^{]*\{[^}]*touch-action:\s*none/.test(css), false);
   assert.equal(/\.leaflet-container\.is-elev-pin-mode[^{]*\{[^}]*touch-action:\s*none/.test(css), false);
   assert.equal(/\.leaflet-container\.is-elev-pin-drag \{[^}]*touch-action:\s*none/.test(css), false);
   assert.match(css, /\.elev-pin-hit \{[^}]*touch-action: none/);
+  assert.equal(helper.includes('lockPageScroll'), false);
+  assert.equal(helper.includes('position: fixed'), false);
 });
 
-test('elevation pin and outside-field switches sit under the legend; pin defaults off and locks page scroll', () => {
+test('elevation pin and outside-field switches sit under the legend; pin defaults off with no page lock', () => {
   assert.equal(buffer.OUTSIDE_FIELD_BUFFER_FRACTION, 0.25);
   const half = 200;
   const [cx, cy] = sample.lngLatToMercator(-99.37, 40.44);
@@ -162,14 +171,13 @@ test('elevation pin and outside-field switches sit under the legend; pin default
   assert.ok(Math.abs(moved - meters) < 8, `south offset ${moved} vs ${meters}`);
   const map = fs.readFileSync(path.join(__dirname, '../components/fields/FieldMapBlock.tsx'), 'utf8');
   const css = fs.readFileSync(path.join(__dirname, '../app/globals.css'), 'utf8');
-  const helper = fs.readFileSync(path.join(__dirname, '../lib/terrain/elev-pin-gesture.ts'), 'utf8');
   assert.match(map, /Elevation pin/);
   assert.match(map, /Show outside field/);
   assert.match(map, /map-elev-buffer-strip/);
   assert.match(map, /role="switch"/);
   assert.match(map, /\[elevPinOn, setElevPinOn\] = useState\(false\)/);
-  assert.match(map, /lockPageScroll/);
-  assert.match(map, /scrollIntoView/);
+  assert.equal(map.includes('lockPageScroll'), false);
+  assert.equal(map.includes('scrollIntoView'), false);
   assert.match(map, /bufferCollectionToFieldFraction/);
   assert.match(map, /scaleTo=\{boundaries\}/);
   assert.equal(map.includes('type="checkbox"'), false);
@@ -182,6 +190,5 @@ test('elevation pin and outside-field switches sit under the legend; pin default
   assert.ok(!map.slice(controlsAt, legendEnd).includes('Elevation pin'));
   assert.match(css, /\.map-elev-buffer-strip \{/);
   assert.match(css, /\.map-ios-switch \{/);
-  assert.match(css, /html\.elev-pin-scroll-lock/);
-  assert.match(helper, /position:fixed|style\.top/);
+  assert.equal(css.includes('elev-pin-scroll-lock'), false);
 });

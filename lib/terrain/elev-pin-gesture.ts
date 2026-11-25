@@ -1,66 +1,27 @@
 /**
- * Long-press-then-drag for the grower elevation pin.
+ * Elevation-pin gestures when the "Elevation pin" switch is on:
+ * - A single-finger touch that starts on the map places or drags the pin.
+ *   preventDefault runs only on that one-finger stream, so the page does
+ *   not scroll from it. Two fingers always pan and pinch the map — the
+ *   pin gesture is aborted and nothing is preventDefaulted.
+ * - Touches that start outside the map scroll the page normally.
+ * - There is no body scroll lock and no auto-scroll.
+ * - On a phone, the sampled point is offset above the finger so the pin
+ *   tip stays visible. Mouse drags use the cursor point, with no offset.
+ * - Mouse: a click places or moves the pin; a drag that starts on the pin
+ *   moves it. Click-drag on the empty map still pans.
  *
- * iOS Safari dropped the first version of this gesture for three reasons:
- * 1. Re-rendering the Leaflet icon (setState on "dragging" or each sampled
- *    elevation) replaced the touch target and cancelled the pointer stream.
- * 2. preventDefault() on pointerdown for touch suppressed later pointermove
- *    events on iOS. The touch path uses non-passive touchmove instead.
- * 3. A 10 px slop cancelled the hold timer as the finger settled, so the
- *    drag never armed. Movement during the hold does not cancel arming;
- *    a short tap is decided only on lift.
- *
- * Two-finger pan/pinch broke on that same build because a pin pointerdown
- * immediately added is-elev-pin-drag, and a standing non-passive
- * touchmove on the map container then preventDefault()'d every touch,
- * while the container also got touch-action: none. Those handlers now
- * attach only during a single-finger pin hold, bail out when a second
- * finger lands, and never change touch-action on the map.
+ * Do not leave a standing non-passive touchmove on the map, and never set
+ * touch-action: none on the map container (that broke two-finger pan/zoom).
  */
 
-export const LONG_PRESS_MS = 400;
-export const TAP_SLOP_PX = 12;
+/** Lift the sample point above a finger pad so the tip is not covered. */
+export const TOUCH_DRAG_OFFSET_PX = 52;
 
-export type ElevPinGesture = {
-  startX: number;
-  startY: number;
-  armed: boolean;
-};
-
-export function startElevPinGesture(x: number, y: number): ElevPinGesture {
-  return { startX: x, startY: y, armed: false };
-}
-
-export function movementPx(gesture: ElevPinGesture, x: number, y: number): number {
-  return Math.hypot(x - gesture.startX, y - gesture.startY);
-}
-
-/** Once the pin is claimed, finger jitter must not cancel the long-press timer. */
-export function shouldCancelHoldOnMove(_gesture: ElevPinGesture, _x: number, _y: number): boolean {
-  return false;
-}
-
-/** A short press that stayed close to the start is a tap (remove the pin). */
-export function isElevPinTap(gesture: ElevPinGesture, x: number, y: number): boolean {
-  return !gesture.armed && movementPx(gesture, x, y) <= TAP_SLOP_PX;
-}
-
-/**
- * Lock scrolling on iOS Safari while the elevation-pin toggle is on.
- * overflow:hidden alone still rubber-bands; position:fixed on body does not.
- * Returns an unlock function that restores the prior scroll offset.
- */
-export function lockPageScroll(): () => void {
-  const html = document.documentElement;
-  const body = document.body;
-  const y = window.scrollY;
-  html.classList.add('elev-pin-scroll-lock');
-  body.classList.add('elev-pin-scroll-lock');
-  body.style.top = `-${y}px`;
-  return () => {
-    html.classList.remove('elev-pin-scroll-lock');
-    body.classList.remove('elev-pin-scroll-lock');
-    body.style.top = '';
-    window.scrollTo(0, y);
-  };
+export function pointWithTouchOffset(
+  clientX: number,
+  clientY: number,
+  isTouch: boolean,
+): { x: number; y: number } {
+  return { x: clientX, y: isTouch ? clientY - TOUCH_DRAG_OFFSET_PX : clientY };
 }
